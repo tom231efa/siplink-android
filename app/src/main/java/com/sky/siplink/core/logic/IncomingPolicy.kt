@@ -1,5 +1,6 @@
 package com.sky.siplink.core.logic
 
+import com.sky.siplink.core.model.DndMode
 import com.sky.siplink.core.model.Settings
 
 /** Decides what happens to a new incoming call: do not disturb, forwarding, call waiting. */
@@ -29,7 +30,8 @@ object IncomingPolicy {
      * @param hasSecondCall a second (held or waiting) call already exists
      */
     fun decide(settings: Settings, hasActiveCall: Boolean, hasSecondCall: Boolean): Decision {
-        if (settings.doNotDisturb) return Decision.RejectDoNotDisturb
+        // In server mode the PBX holds the callers back; what it still sends is meant to ring.
+        if (settings.doNotDisturb && settings.dndMode == DndMode.SOFTWARE) return Decision.RejectDoNotDisturb
 
         val always = settings.forwardAlways.trim()
         if (always.isNotEmpty()) return Decision.Forward(always)

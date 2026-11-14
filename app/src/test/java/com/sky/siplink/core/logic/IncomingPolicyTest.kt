@@ -1,6 +1,7 @@
 package com.sky.siplink.core.logic
 
 import com.sky.siplink.core.logic.IncomingPolicy.Decision
+import com.sky.siplink.core.model.DndMode
 import com.sky.siplink.core.model.Settings
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -18,6 +19,13 @@ class IncomingPolicyTest {
         val settings = defaults.copy(doNotDisturb = true, forwardAlways = "2000", forwardBusy = "2001")
         assertEquals(Decision.RejectDoNotDisturb, IncomingPolicy.decide(settings, false, false))
         assertEquals(Decision.RejectDoNotDisturb, IncomingPolicy.decide(settings, true, false))
+    }
+
+    @Test
+    fun `do not disturb kept by the pbx lets through what the pbx still sends`() {
+        val settings = defaults.copy(doNotDisturb = true, dndMode = DndMode.SERVER)
+        assertEquals(Decision.Ring(null, 20), IncomingPolicy.decide(settings, hasActiveCall = false, hasSecondCall = false))
+        assertEquals(Decision.Waiting, IncomingPolicy.decide(settings, hasActiveCall = true, hasSecondCall = false))
     }
 
     @Test

@@ -71,6 +71,13 @@ if [ -z "${SKIP_INSTALL:-}" ]; then
   "$adb" install -r -t ../app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 fi
 
+# A real device left alone switches its screen off, and Android then tells a process in the
+# background, such as the tests, that there is no network: nothing registers any more. Keep the
+# device awake for as long as the tests run.
+(while "$adb" shell input keyevent KEYCODE_WAKEUP > /dev/null 2>&1; do sleep 15; done) &
+keep_awake=$!
+trap 'kill "$keep_awake" 2> /dev/null || true' EXIT
+
 # Runs one instrumentation process; succeeds when every test in it passed. The runner reports
 # when the process is done; progress in between is easiest to follow in logcat (tag TestRunner).
 run() {
@@ -85,7 +92,7 @@ run() {
 
 if [ $# -gt 0 ]; then
   run -e class "$1"
-  exit
+  exit # with the result of that run
 fi
 
 # Every class runs in a process of its own. Some state only exists once per process (the LDAP
@@ -93,7 +100,7 @@ fi
 # costs one class instead of the whole run.
 failed=()
 for class in RegistrationTest BasicCallTest TransferParkTest SupervisionTest CallHandlingTest \
-  DirectoryTest DirectoryTrustTest; do
+  CallerIdTest CodecTest DirectoryTest DirectoryTrustTest ShortcutStoreTest DirectoryCacheTest; do
   echo "=== $class" >&2
   run -e class "com.sky.siplink.itest.$class" || failed+=("$class")
 done

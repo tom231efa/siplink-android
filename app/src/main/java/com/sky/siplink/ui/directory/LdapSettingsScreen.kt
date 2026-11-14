@@ -18,12 +18,10 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,16 +31,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sky.siplink.core.logic.LdapRules
 import com.sky.siplink.core.model.LdapCertCheck
 import com.sky.siplink.core.model.LdapConfig
 import com.sky.siplink.engine
+import com.sky.siplink.ui.components.ChoiceRow
 import com.sky.siplink.ui.components.FormField
 import com.sky.siplink.ui.components.LocalMessenger
 import com.sky.siplink.ui.components.NavRow
 import com.sky.siplink.ui.components.SectionCard
 import com.sky.siplink.ui.components.SubScreen
 import com.sky.siplink.ui.components.SwitchRow
+import java.util.Locale
 
 @Composable
 fun LdapSettingsScreen(onBack: () -> Unit, onOpenTls: () -> Unit) {
@@ -51,6 +52,8 @@ fun LdapSettingsScreen(onBack: () -> Unit, onOpenTls: () -> Unit) {
     val messenger = LocalMessenger.current
     val stored = remember { directory.config.value }
     val initial = stored ?: LdapConfig()
+    val cache by directory.cacheStats.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) { directory.refreshCacheStats() }
 
     var enabled by rememberSaveable { mutableStateOf(initial.enabled) }
     var server by rememberSaveable { mutableStateOf(initial.server) }
@@ -96,7 +99,7 @@ fun LdapSettingsScreen(onBack: () -> Unit, onOpenTls: () -> Unit) {
             messenger("LDAP 设置已保存")
             onBack()
         } else {
-            messenger(errors.first().message)
+            messenger(errors.first().full)
         }
     }
 
@@ -108,7 +111,6 @@ fun LdapSettingsScreen(onBack: () -> Unit, onOpenTls: () -> Unit) {
         SectionCard(title = null) {
             SwitchRow(
                 title = "启用 LDAP 通讯录",
-                subtitle = "在“通讯录”页搜索企业目录中的联系人",
                 icon = Icons.Rounded.Power,
                 checked = enabled,
                 onCheckedChange = { enabled = it },
@@ -141,7 +143,7 @@ fun LdapSettingsScreen(onBack: () -> Unit, onOpenTls: () -> Unit) {
                     value = password,
                     onValueChange = { password = it },
                     label = "密码",
-                    supporting = if (stored != null && stored.bindDn.isNotEmpty()) "留空则保持已保存的密码" else null,
+                    placeholder = if (stored != null && stored.bindDn.isNotEmpty()) "留空则保持已保存的密码" else null,
                     password = true,
                 )
             }
@@ -150,7 +152,6 @@ fun LdapSettingsScreen(onBack: () -> Unit, onOpenTls: () -> Unit) {
         SectionCard(title = "加密") {
             SwitchRow(
                 title = "StartTLS 加密",
-                subtitle = "在 ldap:// 连接上协商 TLS，保护查询内容与密码。服务器地址须填写证书上的域名，不能用 IP",
                 icon = Icons.Rounded.Lock,
                 checked = startTls,
                 onCheckedChange = { startTls = it },
@@ -162,27 +163,18 @@ fun LdapSettingsScreen(onBack: () -> Unit, onOpenTls: () -> Unit) {
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(start = 16.dp, top = 8.dp),
                     )
-                    SingleChoiceSegmentedButtonRow(
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                    ) {
-                        val options = listOf(
+                    ChoiceRow(
+                        options = listOf(
                             LdapCertCheck.DEFAULT to "跟随全局",
                             LdapCertCheck.ENABLED to "始终校验",
                             LdapCertCheck.DISABLED to "不校验",
-                        )
-                        options.forEachIndexed { index, (value, label) ->
-                            SegmentedButton(
-                                selected = certCheck == value,
-                                onClick = { certCheck = value },
-                                shape = SegmentedButtonDefaults.itemShape(index, options.size),
-                            ) { Text(label) }
-                        }
-                    }
+                        ),
+                        selected = certCheck,
+                        onSelect = { certCheck = it },
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
                     NavRow(
                         title = "CA 证书",
-                        subtitle = "私有 CA 签发的 LDAP 证书需要先导入 CA",
                         icon = Icons.Rounded.VerifiedUser,
                         onClick = onOpenTls,
                     )
@@ -203,7 +195,6 @@ fun LdapSettingsScreen(onBack: () -> Unit, onOpenTls: () -> Unit) {
                     value = filter,
                     onValueChange = { filter = it },
                     label = "过滤器",
-                    supporting = "%s 会被替换为输入的关键字",
                     singleLine = false,
                     error = error(LdapRules.Error.FILTER_EMPTY, LdapRules.Error.FILTER_NO_PLACEHOLDER),
                 )
@@ -211,21 +202,18 @@ fun LdapSettingsScreen(onBack: () -> Unit, onOpenTls: () -> Unit) {
                     value = nameAttributes,
                     onValueChange = { nameAttributes = it },
                     label = "姓名属性",
-                    supporting = "逗号分隔，按优先级排列；用 + 拼接多个属性",
                     error = error(LdapRules.Error.NAME_ATTRIBUTES_EMPTY),
                 )
                 FormField(
                     value = sipAttributes,
                     onValueChange = { sipAttributes = it },
                     label = "号码属性",
-                    supporting = "用于生成呼叫号码的属性，逗号分隔",
                     error = error(LdapRules.Error.SIP_ATTRIBUTES_EMPTY),
                 )
                 FormField(
                     value = sipDomain,
                     onValueChange = { sipDomain = it },
                     label = "SIP 域（可选）",
-                    supporting = "为查到的号码补上该域名；留空则使用呼出账号的域",
                     keyboardType = KeyboardType.Uri,
                 )
             }
@@ -233,24 +221,26 @@ fun LdapSettingsScreen(onBack: () -> Unit, onOpenTls: () -> Unit) {
 
         SectionCard(title = "高级") {
             val numberError = error(LdapRules.Error.NUMBER_OUT_OF_RANGE)
+
+            // The error is one for all four values, so each field adds its own range to it.
+            fun rangeError(range: String): String? = numberError?.let { "应为 $range" }
+
             Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     FormField(
                         value = maxResults,
                         onValueChange = { maxResults = it },
                         label = "最多结果数",
-                        supporting = "0 为不限",
                         keyboardType = KeyboardType.Number,
-                        error = numberError,
+                        error = rangeError("0–1000"),
                         modifier = Modifier.weight(1f),
                     )
                     FormField(
                         value = minChars,
                         onValueChange = { minChars = it },
                         label = "最少字符数",
-                        supporting = "0–20",
                         keyboardType = KeyboardType.Number,
-                        error = numberError,
+                        error = rangeError("0–20"),
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -259,18 +249,16 @@ fun LdapSettingsScreen(onBack: () -> Unit, onOpenTls: () -> Unit) {
                         value = timeout,
                         onValueChange = { timeout = it },
                         label = "超时（秒）",
-                        supporting = "1–60",
                         keyboardType = KeyboardType.Number,
-                        error = numberError,
+                        error = rangeError("1–60"),
                         modifier = Modifier.weight(1f),
                     )
                     FormField(
                         value = delay,
                         onValueChange = { delay = it },
                         label = "查询间隔（毫秒）",
-                        supporting = "0–10000",
                         keyboardType = KeyboardType.Number,
-                        error = numberError,
+                        error = rangeError("0–10000"),
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -278,6 +266,21 @@ fun LdapSettingsScreen(onBack: () -> Unit, onOpenTls: () -> Unit) {
         }
 
         if (stored != null) {
+            SectionCard(title = "本地缓存") {
+                Text(
+                    "已缓存 ${cache.entries} 条，占用 ${megabytes(cache.bytes)} / ${megabytes(cache.maxBytes)} MB",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 10.dp),
+                )
+                TextButton(
+                    onClick = {
+                        directory.clearCache()
+                        messenger("已清空通讯录缓存")
+                    },
+                    enabled = cache.entries > 0,
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                ) { Text("清空缓存") }
+            }
             OutlinedButton(onClick = { confirmDelete = true }, modifier = Modifier.fillMaxWidth()) {
                 Text("删除 LDAP 配置", color = MaterialTheme.colorScheme.error)
             }
@@ -289,7 +292,7 @@ fun LdapSettingsScreen(onBack: () -> Unit, onOpenTls: () -> Unit) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
             title = { Text("删除 LDAP 配置？") },
-            text = { Text("服务器地址、绑定账号等设置都会被移除。") },
+            text = { Text("服务器地址、绑定账号等设置和本机缓存的联系人都会被移除。") },
             confirmButton = {
                 TextButton(onClick = {
                     directory.remove()
@@ -301,3 +304,6 @@ fun LdapSettingsScreen(onBack: () -> Unit, onOpenTls: () -> Unit) {
         )
     }
 }
+
+/** A size in bytes as megabytes with one decimal. */
+private fun megabytes(bytes: Long): String = String.format(Locale.US, "%.1f", bytes / (1024.0 * 1024.0))

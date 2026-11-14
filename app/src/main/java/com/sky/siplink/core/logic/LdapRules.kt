@@ -4,18 +4,26 @@ import com.sky.siplink.core.model.LdapConfig
 
 /** Pure validation rules for the LDAP directory configuration. */
 object LdapRules {
-    enum class Error(val message: String) {
-        SERVER_EMPTY("请输入 LDAP 服务器地址"),
-        SERVER_INVALID("服务器地址格式不正确，应为 ldap://主机[:端口]"),
-        SERVER_LDAPS("不支持 ldaps://，请使用 ldap:// 并开启 StartTLS 加密"),
-        STARTTLS_NEEDS_HOST_NAME("StartTLS 需要填写服务器域名（证书上的主机名），不能使用 IP 地址"),
-        BASE_DN_EMPTY("请输入搜索基准 DN"),
-        FILTER_EMPTY("请输入搜索过滤器"),
-        FILTER_NO_PLACEHOLDER("过滤器中必须包含 %s 占位符"),
-        NAME_ATTRIBUTES_EMPTY("请输入姓名属性"),
-        SIP_ATTRIBUTES_EMPTY("请输入号码属性"),
-        PASSWORD_WITHOUT_BIND_DN("填写了密码但缺少绑定 DN"),
-        NUMBER_OUT_OF_RANGE("数值超出允许范围"),
+    /**
+     * @param subject what the error is about
+     * @param message what is wrong with it, as shown right under that field
+     */
+    enum class Error(val subject: String, val message: String) {
+        SERVER_EMPTY("服务器", "必填"),
+        SERVER_INVALID("服务器", "应为 ldap://主机[:端口]"),
+        SERVER_LDAPS("服务器", "不支持 ldaps://，请用 StartTLS"),
+        STARTTLS_NEEDS_HOST_NAME("服务器", "StartTLS 需用域名"),
+        BASE_DN_EMPTY("搜索基准 DN", "必填"),
+        FILTER_EMPTY("过滤器", "必填"),
+        FILTER_NO_PLACEHOLDER("过滤器", "需包含 %s"),
+        NAME_ATTRIBUTES_EMPTY("姓名属性", "必填"),
+        SIP_ATTRIBUTES_EMPTY("号码属性", "必填"),
+        PASSWORD_WITHOUT_BIND_DN("绑定 DN", "必填（已填密码）"),
+        NUMBER_OUT_OF_RANGE("数值", "超出范围"),
+        ;
+
+        /** The error where no field stands next to it: in a notice. */
+        val full: String get() = subject + message
     }
 
     /** Trims fields and adds the `ldap://` scheme when the user typed a bare host. */

@@ -22,9 +22,6 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -39,10 +36,13 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sky.siplink.core.logic.AccountRules
+import com.sky.siplink.core.logic.ShortcutLines
 import com.sky.siplink.core.model.AccountDraft
 import com.sky.siplink.core.model.SipTransport
 import com.sky.siplink.engine
+import com.sky.siplink.ui.components.ChoiceRow
 import com.sky.siplink.ui.components.FormField
 import com.sky.siplink.ui.components.LocalMessenger
 import com.sky.siplink.ui.components.NavRow
@@ -59,6 +59,7 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
     val existing = remember(accountId) { accountId?.let { id -> manager.accounts.value.firstOrNull { it.id == id } } }
     val initial = existing?.toDraft() ?: AccountDraft()
 
+    var name by rememberSaveable { mutableStateOf(initial.name) }
     var username by rememberSaveable { mutableStateOf(initial.username) }
     var password by rememberSaveable { mutableStateOf("") }
     var domain by rememberSaveable { mutableStateOf(initial.domain) }
@@ -76,6 +77,7 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
 
     fun save() {
         val draft = AccountDraft(
+            name = name,
             username = username,
             password = password,
             domain = domain,
@@ -92,7 +94,7 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
             messenger(if (existing == null) "账号已添加" else "账号已保存")
             onBack()
         } else {
-            messenger(errors.first().message)
+            messenger(errors.first().full)
         }
     }
 
@@ -103,6 +105,13 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
     ) {
         SectionCard(title = "账号信息") {
             Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                FormField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = "账号名称（可选）",
+                    placeholder = "例如 前台、销售一线",
+                    error = error(AccountRules.Error.NAME_TOO_LONG, AccountRules.Error.NAME_TAKEN),
+                )
                 FormField(
                     value = username,
                     onValueChange = { username = it },
@@ -120,7 +129,7 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
                     value = password,
                     onValueChange = { password = it },
                     label = "密码",
-                    supporting = if (existing != null) "留空则不修改密码" else null,
+                    placeholder = if (existing != null) "留空则不修改密码" else null,
                     password = true,
                     error = error(AccountRules.Error.PASSWORD_REQUIRED),
                 )
@@ -145,23 +154,15 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
         }
 
         SectionCard(title = "传输协议") {
-            SingleChoiceSegmentedButtonRow(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-            ) {
-                SipTransport.entries.forEachIndexed { index, option ->
-                    SegmentedButton(
-                        selected = transport == option,
-                        onClick = { transport = option },
-                        shape = SegmentedButtonDefaults.itemShape(index, SipTransport.entries.size),
-                    ) { Text(option.name) }
-                }
-            }
+            ChoiceRow(
+                options = SipTransport.entries.map { it to it.name },
+                selected = transport,
+                onSelect = { transport = it },
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+            )
             AnimatedVisibility(transport == SipTransport.TLS) {
                 NavRow(
                     title = "TLS 与 CA 证书",
-                    subtitle = "信令将加密传输。服务器使用私有 CA 或自签名证书时，请先导入 CA",
                     icon = Icons.Rounded.VerifiedUser,
                     onClick = onOpenTls,
                 )
@@ -190,14 +191,12 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
                         value = authUser,
                         onValueChange = { authUser = it },
                         label = "认证用户名（可选）",
-                        supporting = "与用户名不同时填写",
                     )
                     FormField(
                         value = server,
                         onValueChange = { server = it },
                         label = "代理服务器（可选）",
                         placeholder = "主机[:端口]",
-                        supporting = "留空则直接向域名注册",
                         keyboardType = KeyboardType.Uri,
                         error = error(AccountRules.Error.SERVER_INVALID),
                     )
@@ -215,7 +214,6 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
         SectionCard(title = null) {
             SwitchRow(
                 title = "启用此账号",
-                subtitle = "停用后不再向服务器注册",
                 icon = Icons.Rounded.Power,
                 checked = enabled,
                 onCheckedChange = { enabled = it },
@@ -244,7 +242,14 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
             title = { Text("删除账号？") },
-            text = { Text("${existing.identity} 将从本机移除并注销。") },
+            text = {
+                val shortcuts by context.engine.shortcuts.shortcuts.collectAsStateWithLifecycle()
+                val keys = ShortcutLines.fixedTo(existing, shortcuts)
+                Text(
+                    "${existing.identity} 将从本机移除并注销。" +
+                        if (keys > 0) "\n$keys 个快捷键固定用这条线路，将改为拨出时选择。" else "",
+                )
+            },
             confirmButton = {
                 TextButton(onClick = {
                     manager.remove(existing.id)

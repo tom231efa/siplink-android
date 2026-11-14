@@ -1,7 +1,6 @@
 package com.sky.siplink.ui.components
 
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
@@ -9,7 +8,6 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -38,6 +36,11 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.ui.composed
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -87,48 +90,25 @@ fun regStateLabel(state: RegState): String = when (state) {
 @Composable
 fun StatusDot(state: RegState, modifier: Modifier = Modifier, size: Dp = 10.dp) {
     val color = regStateColor(state)
-    val alpha = if (state == RegState.PROGRESS) {
-        val transition = rememberInfiniteTransition(label = "statusDot")
-        val value by transition.animateFloat(
+    // The animated value is only read while drawing, so a breathing dot redraws without
+    // recomposing its row: with many accounts registering at once that adds up.
+    val breathing = if (state == RegState.PROGRESS) {
+        rememberInfiniteTransition(label = "statusDot").animateFloat(
             initialValue = 1f,
             targetValue = 0.25f,
             animationSpec = infiniteRepeatable(tween(650, easing = FastOutSlowInEasing), RepeatMode.Reverse),
             label = "statusDotAlpha",
         )
-        value
     } else {
-        1f
+        null
     }
     Box(
         modifier
             .size(size)
-            .graphicsLayer { this.alpha = alpha }
+            .graphicsLayer { alpha = breathing?.value ?: 1f }
             .clip(CircleShape)
             .background(color),
     )
-}
-
-/** Concentric rings expanding and fading out, used behind avatars while ringing. */
-@Composable
-fun PulseRings(color: Color, modifier: Modifier = Modifier, rings: Int = 3, durationMs: Int = 2400) {
-    val transition = rememberInfiniteTransition(label = "pulse")
-    val progress by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(durationMs, easing = LinearEasing)),
-        label = "pulseProgress",
-    )
-    Canvas(modifier) {
-        val maxRadius = size.minDimension / 2f
-        val minRadius = maxRadius * 0.42f
-        repeat(rings) { index ->
-            val phase = (progress + index.toFloat() / rings) % 1f
-            drawCircle(
-                color = color.copy(alpha = (1f - phase) * 0.32f),
-                radius = minRadius + (maxRadius - minRadius) * phase,
-            )
-        }
-    }
 }
 
 /** Centered placeholder for empty lists; fades and rises in on first composition. */
@@ -136,7 +116,6 @@ fun PulseRings(color: Color, modifier: Modifier = Modifier, rings: Int = 3, dura
 fun EmptyState(
     icon: ImageVector,
     title: String,
-    subtitle: String,
     modifier: Modifier = Modifier,
     action: (@Composable () -> Unit)? = null,
 ) {
@@ -174,16 +153,33 @@ fun EmptyState(
         }
         Spacer(Modifier.height(20.dp))
         Text(title, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
-        Spacer(Modifier.height(8.dp))
-        Text(
-            subtitle,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
         if (action != null) {
             Spacer(Modifier.height(24.dp))
             action()
+        }
+    }
+}
+
+/**
+ * Makes an element give way a little while it is pressed and spring back when released. It only
+ * watches the touch; the click itself is handled by whatever comes after it.
+ */
+fun Modifier.pressScale(pressed: Float = 0.94f): Modifier = composed {
+    var down by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(
+        targetValue = if (down) pressed else 1f,
+        animationSpec = spring(dampingRatio = 0.55f, stiffness = 700f),
+        label = "pressScale",
+    )
+    graphicsLayer {
+        scaleX = scale
+        scaleY = scale
+    }.pointerInput(Unit) {
+        awaitEachGesture {
+            awaitFirstDown(requireUnconsumed = false)
+            down = true
+            waitForUpOrCancellation()
+            down = false
         }
     }
 }

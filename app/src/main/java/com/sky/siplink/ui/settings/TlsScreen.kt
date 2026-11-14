@@ -21,7 +21,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.FileOpen
 import androidx.compose.material.icons.rounded.GppMaybe
-import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material.icons.rounded.VerifiedUser
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -29,10 +28,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -54,6 +49,7 @@ import com.sky.siplink.core.model.CertInfo
 import com.sky.siplink.core.model.MediaSecurity
 import com.sky.siplink.engine
 import com.sky.siplink.restartApp
+import com.sky.siplink.ui.components.ChoiceRow
 import com.sky.siplink.ui.components.LocalMessenger
 import com.sky.siplink.ui.components.SectionCard
 import com.sky.siplink.ui.components.SubScreen
@@ -101,13 +97,13 @@ fun TlsScreen(onBack: () -> Unit) {
             }
             val message = when {
                 data == null -> "无法读取所选文件"
-                data.size > MAX_CERT_FILE_BYTES -> "文件过大，不像是证书文件"
+                data.size > MAX_CERT_FILE_BYTES -> "文件过大"
                 else -> when (val result = engine.tls.import(data)) {
                     is TlsManager.ImportResult.Added -> {
                         restartPrompt = engine.directory.tlsChangeNeedsRestart
                         "已导入 ${result.count} 个证书，正在重新注册账号"
                     }
-                    TlsManager.ImportResult.AlreadyTrusted -> "这些证书已经导入过了"
+                    TlsManager.ImportResult.AlreadyTrusted -> "证书已导入过"
                     is TlsManager.ImportResult.Invalid -> result.reason
                 }
             }
@@ -116,22 +112,10 @@ fun TlsScreen(onBack: () -> Unit) {
     }
 
     SubScreen(title = "TLS 与 CA 证书", onBack = onBack) {
-        Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.tertiaryContainer) {
-            Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Rounded.Shield, contentDescription = null, tint = MaterialTheme.colorScheme.onTertiaryContainer)
-                Spacer(Modifier.width(12.dp))
-                Text(
-                    "将账号的传输协议设为 TLS 即可加密 SIP 信令。服务器证书由私有 CA 签发或为自签名时，在此导入对应的 CA 证书；它同时用于 LDAP 的 StartTLS。",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onTertiaryContainer,
-                )
-            }
-        }
-
         SectionCard(title = "已导入的 CA 证书") {
             if (certificates.isEmpty()) {
                 Text(
-                    "尚未导入证书，当前仅信任内置的公共根证书。",
+                    "尚未导入证书",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
@@ -150,25 +134,17 @@ fun TlsScreen(onBack: () -> Unit) {
                 Spacer(Modifier.width(8.dp))
                 Text("导入 CA 证书")
             }
-            Text(
-                "支持 PEM / CRT / CER / DER 格式，一个文件可包含多个证书。",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 10.dp),
-            )
         }
 
         SectionCard(title = "服务器证书校验") {
             SwitchRow(
                 title = "校验服务器证书",
-                subtitle = "确认证书由受信任的 CA 签发",
                 icon = Icons.Rounded.VerifiedUser,
                 checked = settings.verifyTlsCertificate,
                 onCheckedChange = { value -> engine.updateSettings { it.copy(verifyTlsCertificate = value) } },
             )
             SwitchRow(
                 title = "校验主机名",
-                subtitle = "确认证书中的名称与服务器地址一致",
                 icon = Icons.Rounded.VerifiedUser,
                 checked = settings.verifyTlsHostname,
                 enabled = settings.verifyTlsCertificate,
@@ -179,7 +155,7 @@ fun TlsScreen(onBack: () -> Unit) {
                     Icon(Icons.Rounded.GppMaybe, contentDescription = null, tint = Brand.Amber)
                     Spacer(Modifier.width(12.dp))
                     Text(
-                        "关闭校验后连接仍会加密，但无法确认对方身份，存在被中间人窃听的风险。建议导入 CA 证书而不是关闭校验。",
+                        "关闭校验后可能被窃听",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -193,24 +169,11 @@ fun TlsScreen(onBack: () -> Unit) {
                 MediaSecurity.SRTP_OPTIONAL to "优先",
                 MediaSecurity.SRTP_MANDATORY to "强制",
             )
-            SingleChoiceSegmentedButtonRow(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-            ) {
-                options.forEachIndexed { index, (value, label) ->
-                    SegmentedButton(
-                        selected = settings.mediaSecurity == value,
-                        onClick = { engine.updateSettings { it.copy(mediaSecurity = value) } },
-                        shape = SegmentedButtonDefaults.itemShape(index, options.size),
-                    ) { Text(label) }
-                }
-            }
-            Text(
-                "TLS 只加密信令。开启 SRTP 后通话语音也会加密；“强制”模式下对端不支持 SRTP 时通话将无法建立。",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 10.dp),
+            ChoiceRow(
+                options = options,
+                selected = settings.mediaSecurity,
+                onSelect = { value -> engine.updateSettings { it.copy(mediaSecurity = value) } },
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
             )
         }
         Spacer(Modifier.height(8.dp))

@@ -1,6 +1,7 @@
 package com.sky.siplink.core
 
-import com.sky.siplink.core.logic.Formatters
+import com.sky.siplink.core.logic.PartyName
+import com.sky.siplink.core.model.FeatureCodes
 import com.sky.siplink.core.model.HistoryEntry
 import com.sky.siplink.core.model.HistoryKind
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -10,28 +11,54 @@ import org.linphone.core.Call
 import org.linphone.core.CallLog
 import org.linphone.core.Core
 
-/** Call history backed by the SIP core's own call log storage. */
-class HistoryManager(private val core: Core) {
-    private val state = MutableStateFlow<List<HistoryEntry>>(emptyList())
+/**
+ * Call history backed by the SIP core's own call log storage.
+ *
+ * The log is read in full once; afterwards single entries are added, changed or removed, so
+ * that a finished call does not cost a pass over the whole history. A number that is in the
+ * directory is shown by its name there.
+ */
+class HistoryManager(private val core: Core, private val names: NameResolver, private val codes: () -> FeatureCodes) {
+    private val state = MutableStateFlow(load())
     val entries: StateFlow<List<HistoryEntry>> = state.asStateFlow()
 
     init {
-        refresh()
+        names.addListener(::rename)
     }
 
-    fun refresh() {
-        state.value = core.callLogs.map(::toEntry).sortedByDescending { it.startedAtMs }
+    /**
+     * Asks the local copy of the directory for the names of the numbers in the history. Called
+     * when the history is looked at, so that starting the app does not wait for the directory.
+     */
+    fun resolveNames() = names.preload(state.value.map { it.address })
+
+    /** Names were found: entries of those numbers are called by them from now on. */
+    private fun rename() {
+        val renamed = state.value.map { entry -> names.known(entry.address)?.takeIf { it != entry.name }?.let { entry.copy(name = it) } ?: entry }
+        if (renamed != state.value) state.value = renamed
+    }
+
+    /** A call log was written or changed by the core: put it where it belongs, newest first. */
+    fun onLogUpdated(log: CallLog) {
+        val entry = toEntry(log)
+        val list = state.value.filterTo(ArrayList(state.value.size + 1)) { it.id != entry.id }
+        val position = list.indexOfFirst { it.startedAtMs <= entry.startedAtMs }
+        list.add(if (position < 0) list.size else position, entry)
+        state.value = if (list.size > MAX_ENTRIES) list.subList(0, MAX_ENTRIES).toList() else list
     }
 
     fun remove(id: String) {
         core.callLogs.firstOrNull { idOf(it) == id }?.let(core::removeCallLog)
-        refresh()
+        state.value = state.value.filterNot { it.id == id }
     }
 
     fun clear() {
         core.clearCallLogs()
-        refresh()
+        state.value = emptyList()
     }
+
+    private fun load(): List<HistoryEntry> =
+        core.callLogs.map(::toEntry).sortedByDescending { it.startedAtMs }.take(MAX_ENTRIES)
 
     fun isMissed(log: CallLog): Boolean = log.dir == Call.Dir.Incoming && log.status == Call.Status.Missed
 
@@ -39,8 +66,7 @@ class HistoryManager(private val core: Core) {
         log.callId?.takeIf { it.isNotEmpty() } ?: "${log.startDate}|${log.remoteAddress.asStringUriOnly()}"
 
     private fun toEntry(log: CallLog): HistoryEntry {
-        val remote = log.remoteAddress
-        val address = Formatters.shortAddress(remote.asStringUriOnly())
+        val party = CallSupport.side(log.remoteAddress)
         val local = log.localAddress
         val kind = when {
             log.dir == Call.Dir.Incoming && log.status == Call.Status.Missed -> HistoryKind.MISSED
@@ -50,12 +76,17 @@ class HistoryManager(private val core: Core) {
         }
         return HistoryEntry(
             id = idOf(log),
-            name = remote.displayName?.takeIf { it.isNotBlank() } ?: remote.username ?: address,
-            address = address,
+            name = PartyName.of(party.name, party.address, log.dir == Call.Dir.Outgoing, codes(), names::known),
+            address = party.address,
             kind = kind,
             startedAtMs = log.startDate * 1000L,
             durationSec = log.duration,
             accountLabel = "${local.username.orEmpty()}@${local.domain.orEmpty()}",
         )
+    }
+
+    private companion object {
+        /** The newest calls shown; older ones stay in the core's storage. */
+        const val MAX_ENTRIES = 500
     }
 }

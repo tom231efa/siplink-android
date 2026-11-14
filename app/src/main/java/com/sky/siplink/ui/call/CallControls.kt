@@ -4,14 +4,8 @@ package com.sky.siplink.ui.call
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -25,6 +19,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -32,9 +27,8 @@ import androidx.compose.material.icons.automirrored.rounded.CallMerge
 import androidx.compose.material.icons.automirrored.rounded.PhoneForwarded
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.Bluetooth
-import androidx.compose.material.icons.rounded.Call
+import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.CallEnd
-import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Dialpad
 import androidx.compose.material.icons.rounded.Headset
 import androidx.compose.material.icons.rounded.LocalParking
@@ -50,9 +44,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -72,43 +63,19 @@ import com.sky.siplink.core.model.AudioRoute
 import com.sky.siplink.core.model.CallInfo
 import com.sky.siplink.core.model.CallPhase
 import com.sky.siplink.core.model.SupervisionMode
-import com.sky.siplink.ui.components.PulseRings
+import com.sky.siplink.ui.components.ChoiceRow
 import com.sky.siplink.ui.theme.Brand
 
 @Composable
 internal fun IncomingControls(onAnswer: () -> Unit, onDecline: () -> Unit) {
-    Row(
+    Box(
         Modifier
             .fillMaxWidth()
-            .height(220.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically,
+            .height(150.dp)
+            .padding(horizontal = 24.dp),
+        contentAlignment = Alignment.Center,
     ) {
-        RoundAction(Brand.HangUpRed, Icons.Rounded.CallEnd, "拒绝", onDecline)
-
-        val transition = rememberInfiniteTransition(label = "answer")
-        val bounce by transition.animateFloat(
-            initialValue = 0f,
-            targetValue = -10f,
-            animationSpec = infiniteRepeatable(tween(620, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-            label = "answerBounce",
-        )
-        Box(contentAlignment = Alignment.TopCenter) {
-            PulseRings(
-                Brand.CallGreen,
-                Modifier
-                    .size(132.dp)
-                    .graphicsLayer { translationY = -30.dp.toPx() },
-                durationMs = 1800,
-            )
-            RoundAction(
-                Brand.CallGreen,
-                Icons.Rounded.Call,
-                "接听",
-                onAnswer,
-                modifier = Modifier.graphicsLayer { translationY = bounce.dp.toPx() },
-            )
-        }
+        SlideToAnswer(onAnswer = onAnswer, onDecline = onDecline)
     }
 }
 
@@ -118,6 +85,7 @@ internal fun ActiveControls(
     calls: CallManager,
     onOpenKeypad: () -> Unit,
     onOpenTransfer: () -> Unit,
+    onOpenShortcuts: () -> Unit,
     onNotice: (String) -> Unit,
 ) {
     val established = info.phase == CallPhase.CONNECTED || info.phase == CallPhase.HELD
@@ -188,7 +156,14 @@ internal fun ActiveControls(
                 onClick = { calls.merge()?.let(onNotice) },
             )
         }
-        RoundAction(Brand.HangUpRed, Icons.Rounded.CallEnd, if (info.conference) "结束全部" else "挂断", calls::hangUp, size = 72.dp)
+        // The shortcut keys sit next to the hang up button, which stays in the middle.
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                ControlToggle(Icons.Rounded.Apps, "快捷键", active = false, onClick = onOpenShortcuts)
+            }
+            RoundAction(Brand.HangUpRed, Icons.Rounded.CallEnd, if (info.conference) "结束全部" else "挂断", calls::hangUp, size = 72.dp)
+            Spacer(Modifier.weight(1f))
+        }
     }
 }
 
@@ -200,15 +175,18 @@ private fun SupervisionSwitch(mode: SupervisionMode, onSelect: (SupervisionMode)
         SupervisionMode.WHISPER to "耳语",
         SupervisionMode.BARGE to "强插",
     )
-    SingleChoiceSegmentedButtonRow(Modifier.padding(horizontal = 24.dp)) {
-        options.forEachIndexed { index, (value, label) ->
-            SegmentedButton(
-                selected = mode == value,
-                onClick = { onSelect(value) },
-                shape = SegmentedButtonDefaults.itemShape(index, options.size),
-            ) { Text(label) }
-        }
-    }
+    ChoiceRow(
+        options = options,
+        selected = mode,
+        onSelect = onSelect,
+        modifier = Modifier
+            .padding(horizontal = 24.dp)
+            .widthIn(max = 320.dp),
+        track = Color.White.copy(alpha = 0.14f),
+        thumb = Color.White,
+        content = Color.White,
+        selectedContent = Color(0xFF1B1E23),
+    )
 }
 
 @Composable
@@ -236,9 +214,12 @@ private fun RouteToggle(info: CallInfo, calls: CallManager) {
         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
             info.availableRoutes.forEach { route ->
                 DropdownMenuItem(
-                    text = { Text(routeName(route)) },
-                    trailingIcon = {
-                        if (route == info.route) Icon(Icons.Rounded.Check, contentDescription = "当前")
+                    // The route in use is the one in the accent colour.
+                    text = {
+                        Text(
+                            routeName(route),
+                            color = if (route == info.route) MaterialTheme.colorScheme.primary else Color.Unspecified,
+                        )
                     },
                     onClick = {
                         menuOpen = false

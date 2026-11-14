@@ -71,6 +71,7 @@
             android:launchMode="singleTask"
             android:showWhenLocked="true"
             android:taskAffinity="com.sky.siplink.call"
+            android:theme="@style/Theme.SipLink.Call"
             android:turnScreenOn="true" />
 
         <service

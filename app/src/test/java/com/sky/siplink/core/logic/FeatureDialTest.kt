@@ -14,11 +14,33 @@ class FeatureDialTest {
 
     @Test
     fun `default codes compose prefix plus extension`() {
+        assertEquals("*801002", FeatureDial.compose(Action.INTERCOM, "1002", codes))
         assertEquals("*911002", FeatureDial.compose(Action.LISTEN, "1002", codes))
         assertEquals("*921002", FeatureDial.compose(Action.WHISPER, "1002", codes))
         assertEquals("*931002", FeatureDial.compose(Action.BARGE, "1002", codes))
         assertEquals("*941002", FeatureDial.compose(Action.FORCE_HANG_UP, "1002", codes))
         assertEquals("**1002", FeatureDial.compose(Action.PICKUP, "1002", codes))
+    }
+
+    @Test
+    fun `a dialled number is read back into the feature and the extension`() {
+        assertEquals(Action.INTERCOM to "1002", FeatureDial.parse("*801002", codes))
+        assertEquals(Action.PICKUP to "1002", FeatureDial.parse("**1002", codes))
+        assertNull(FeatureDial.parse("1002", codes))
+        assertNull(FeatureDial.parse("*80", codes))
+        assertNull(FeatureDial.parse("*80#9", codes))
+        // Of two codes that fit, the longer one is meant: "*8" for one, "*80" for the other.
+        val overlapping = codes.copy(pickup = "*8", intercom = "*80")
+        assertEquals(Action.INTERCOM to "1002", FeatureDial.parse("*801002", overlapping))
+        assertEquals(Action.PICKUP to "1002", FeatureDial.parse("*81002", overlapping))
+    }
+
+    @Test
+    fun `a code dialled as it is has a name`() {
+        assertEquals("语音信箱", FeatureDial.plainLabel("*97", codes))
+        assertEquals("驻留", FeatureDial.plainLabel("700", codes))
+        assertNull(FeatureDial.plainLabel("701", codes))
+        assertNull(FeatureDial.plainLabel("", codes.copy(voicemail = "")))
     }
 
     @Test

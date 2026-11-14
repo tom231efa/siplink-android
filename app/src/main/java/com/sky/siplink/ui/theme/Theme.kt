@@ -24,11 +24,14 @@ object Brand {
     val HangUpRed = Color(0xFFE5484D)
     val Amber = Color(0xFFF5A524)
 
-    /** The call screen is always dark: its background, and the ink on its white controls. */
-    val CallSurface = Color(0xFF121212)
+    /** The dark background, also of the always dark call screen, and the ink on white controls. */
+    val CallSurface = Color(0xFF121417)
+
+    /** The one accent of the dark scheme. */
+    val Blue = Color(0xFF6AA5FF)
 }
 
-// A neutral palette: greys only. Colour is left to what it stands for (call, hang up, warning).
+// Light: greys only. Colour is left to what it stands for (call, hang up, warning).
 private val LightColors = lightColorScheme(
     primary = Color(0xFF1C1C1E),
     onPrimary = Color.White,
@@ -64,37 +67,38 @@ private val LightColors = lightColorScheme(
     errorContainer = Color(0xFFFFDAD9),
 )
 
+// Dark: a soft, slightly cool black (never pure black) with one blue accent.
 private val DarkColors = darkColorScheme(
-    primary = Color(0xFFF0F0F0),
-    onPrimary = Color(0xFF141414),
-    primaryContainer = Color(0xFF2E2E2E),
-    onPrimaryContainer = Color(0xFFF0F0F0),
-    inversePrimary = Color(0xFF1C1C1E),
-    secondary = Color(0xFFC8C8C8),
-    onSecondary = Color(0xFF1E1E1E),
-    secondaryContainer = Color(0xFF333333),
-    onSecondaryContainer = Color(0xFFEAEAEA),
-    tertiary = Color(0xFFBDBDBD),
-    onTertiary = Color(0xFF1E1E1E),
-    tertiaryContainer = Color(0xFF3A3A3A),
-    onTertiaryContainer = Color(0xFFEAEAEA),
-    background = Color(0xFF101010),
-    onBackground = Color(0xFFE6E6E6),
-    surface = Color(0xFF101010),
-    onSurface = Color(0xFFE6E6E6),
-    surfaceVariant = Color(0xFF3A3A3A),
-    onSurfaceVariant = Color(0xFFC2C2C2),
-    inverseSurface = Color(0xFFE6E6E6),
-    inverseOnSurface = Color(0xFF1A1A1A),
-    surfaceBright = Color(0xFF333333),
-    surfaceDim = Color(0xFF101010),
-    surfaceContainerLowest = Color(0xFF0A0A0A),
-    surfaceContainerLow = Color(0xFF161616),
-    surfaceContainer = Color(0xFF1A1A1A),
-    surfaceContainerHigh = Color(0xFF232323),
-    surfaceContainerHighest = Color(0xFF2D2D2D),
-    outline = Color(0xFF8F8F8F),
-    outlineVariant = Color(0xFF444444),
+    primary = Brand.Blue,
+    onPrimary = Color(0xFF06224A),
+    primaryContainer = Color(0xFF1B3F78),
+    onPrimaryContainer = Color(0xFFD7E6FF),
+    inversePrimary = Color(0xFF2B6DE9),
+    secondary = Color(0xFFA9B4C6),
+    onSecondary = Color(0xFF1A2330),
+    secondaryContainer = Color(0xFF2A3442),
+    onSecondaryContainer = Color(0xFFDCE4F0),
+    tertiary = Color(0xFF9DB7DE),
+    onTertiary = Color(0xFF142235),
+    tertiaryContainer = Color(0xFF26364C),
+    onTertiaryContainer = Color(0xFFD9E6F8),
+    background = Brand.CallSurface,
+    onBackground = Color(0xFFE6E8EB),
+    surface = Brand.CallSurface,
+    onSurface = Color(0xFFE6E8EB),
+    surfaceVariant = Color(0xFF2B3037),
+    onSurfaceVariant = Color(0xFFB4BAC4),
+    inverseSurface = Color(0xFFE6E8EB),
+    inverseOnSurface = Color(0xFF1B1E23),
+    surfaceBright = Color(0xFF2B3037),
+    surfaceDim = Brand.CallSurface,
+    surfaceContainerLowest = Color(0xFF0D0F12),
+    surfaceContainerLow = Color(0xFF171A1E),
+    surfaceContainer = Color(0xFF1B1E23),
+    surfaceContainerHigh = Color(0xFF22262C),
+    surfaceContainerHighest = Color(0xFF2B3037),
+    outline = Color(0xFF7D8590),
+    outlineVariant = Color(0xFF3A4048),
     error = Color(0xFFFFB3B3),
     errorContainer = Color(0xFF93000F),
 )

@@ -23,7 +23,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Call
-import androidx.compose.material.icons.rounded.Campaign
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Contacts
 import androidx.compose.material.icons.rounded.Dns
@@ -34,7 +33,6 @@ import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -62,11 +60,16 @@ import com.sky.siplink.ui.components.Avatar
 import com.sky.siplink.ui.components.EmptyState
 import com.sky.siplink.ui.components.FeatureSheet
 import com.sky.siplink.ui.components.rememberCallLauncher
+import com.sky.siplink.ui.shortcuts.NewShortcutSheet
 import kotlinx.coroutines.delay
 
-private const val SEARCH_DEBOUNCE_MS = 350L
+/**
+ * Only gathers the letters of a quick typist into one request: the directory itself already
+ * waits for the delay of its settings before it asks the server.
+ */
+private const val SEARCH_DEBOUNCE_MS = 120L
 
-/** LDAP directory: search as you type, then call or intercom a contact with one tap. */
+/** LDAP directory: search as you type, then call a contact with one tap. */
 @Composable
 fun DirectoryScreen(onOpenSettings: () -> Unit) {
     val context = LocalContext.current
@@ -77,6 +80,7 @@ fun DirectoryScreen(onOpenSettings: () -> Unit) {
     val launcher = rememberCallLauncher()
     var query by rememberSaveable { mutableStateOf("") }
     var featuresFor by remember { mutableStateOf<DirectoryContact?>(null) }
+    var shortcutFor by remember { mutableStateOf<DirectoryContact?>(null) }
 
     LaunchedEffect(query, config) {
         delay(SEARCH_DEBOUNCE_MS)
@@ -98,7 +102,6 @@ fun DirectoryScreen(onOpenSettings: () -> Unit) {
             !directory.isAvailable -> EmptyState(
                 icon = Icons.Rounded.Dns,
                 title = "当前 SDK 不支持 LDAP",
-                subtitle = "所使用的 Linphone SDK 构建未包含 LDAP 模块。",
                 modifier = Modifier.fillMaxSize(),
             )
 
@@ -107,14 +110,12 @@ fun DirectoryScreen(onOpenSettings: () -> Unit) {
             accounts.isEmpty() -> EmptyState(
                 icon = Icons.Rounded.Contacts,
                 title = "请先添加 SIP 账号",
-                subtitle = "通讯录中的号码需要借助 SIP 账号才能呼叫，添加账号后即可搜索。",
                 modifier = Modifier.fillMaxSize(),
             )
 
             current == null || !current.enabled -> EmptyState(
                 icon = Icons.Rounded.Dns,
                 title = if (current == null) "尚未配置 LDAP 通讯录" else "LDAP 通讯录已停用",
-                subtitle = "连接企业 LDAP 目录后，可以搜索同事并一键呼叫或对讲。",
                 modifier = Modifier.fillMaxSize(),
             ) {
                 Button(onClick = onOpenSettings) { Text(if (current == null) "配置 LDAP 服务器" else "打开 LDAP 设置") }
@@ -156,24 +157,33 @@ fun DirectoryScreen(onOpenSettings: () -> Unit) {
                 when {
                     trimmed.length < current.minChars -> EmptyState(
                         icon = Icons.Rounded.Contacts,
-                        title = "搜索企业通讯录",
-                        subtitle = "输入至少 ${current.minChars} 个字符开始搜索 ${current.server.removePrefix("ldap://")}。",
+                        title = "输入至少 ${current.minChars} 个字符搜索",
                         modifier = Modifier.fillMaxSize(),
                     )
 
                     state.contacts.isEmpty() && !state.searching && state.query == trimmed -> EmptyState(
                         icon = Icons.Rounded.SearchOff,
                         title = "没有匹配的联系人",
-                        subtitle = "换个关键字试试；如果始终没有结果，请检查 LDAP 设置与网络。",
                         modifier = Modifier.fillMaxSize(),
                     )
 
                     else -> LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) {
-                        items(state.contacts, key = { "${it.callTarget}|${it.name}" }) { contact ->
+                        if (state.fromCache && state.contacts.isNotEmpty()) {
+                            item(key = "cache", contentType = "note") {
+                                Text(
+                                    if (state.searching) "本地缓存，正在查询服务器…" else "来自本地缓存",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier
+                                        .animateItem()
+                                        .padding(horizontal = 24.dp, vertical = 6.dp),
+                                )
+                            }
+                        }
+                        items(state.contacts, key = { "${it.callTarget}|${it.name}" }, contentType = { "contact" }) { contact ->
                             ContactRow(
                                 contact = contact,
                                 onCall = { launcher.call(contact.callTarget) },
-                                onIntercom = { launcher.intercom(contact.callTarget) },
                                 onMore = { featuresFor = contact },
                                 modifier = Modifier.animateItem(),
                             )
@@ -181,7 +191,7 @@ fun DirectoryScreen(onOpenSettings: () -> Unit) {
                         if (state.limitReached) {
                             item(key = "limit") {
                                 Text(
-                                    "结果较多，仅显示前 ${state.contacts.size} 条，请输入更多字符缩小范围。",
+                                    "仅显示前 ${state.contacts.size} 条",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
@@ -200,7 +210,11 @@ fun DirectoryScreen(onOpenSettings: () -> Unit) {
             onDismiss = { featuresFor = null },
             name = contact.name,
             target = contact.callTarget,
+            onAddShortcut = { shortcutFor = contact },
         )
+    }
+    shortcutFor?.let { contact ->
+        NewShortcutSheet(name = contact.name, number = contact.callTarget, onDismiss = { shortcutFor = null })
     }
 }
 
@@ -208,7 +222,6 @@ fun DirectoryScreen(onOpenSettings: () -> Unit) {
 private fun ContactRow(
     contact: DirectoryContact,
     onCall: () -> Unit,
-    onIntercom: () -> Unit,
     onMore: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -231,10 +244,6 @@ private fun ContactRow(
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        FilledTonalIconButton(onClick = onIntercom) {
-            Icon(Icons.Rounded.Campaign, contentDescription = "对讲呼叫 ${contact.name}")
-        }
-        Spacer(Modifier.width(6.dp))
         FilledIconButton(onClick = onCall) {
             Icon(Icons.Rounded.Call, contentDescription = "呼叫 ${contact.name}")
         }

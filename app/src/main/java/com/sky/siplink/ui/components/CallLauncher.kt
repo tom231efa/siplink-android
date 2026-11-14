@@ -12,7 +12,9 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
+import com.sky.siplink.core.SipEngine
 import com.sky.siplink.core.logic.FeatureDial
+import com.sky.siplink.core.model.DndMode
 import com.sky.siplink.core.model.FeatureCodes
 import com.sky.siplink.core.model.SupervisionMode
 import com.sky.siplink.engine
@@ -22,18 +24,36 @@ import com.sky.siplink.openCallScreen
 class CallLauncher(
     private val launch: (CallRequest) -> Unit,
     private val notify: (String) -> Unit,
-    private val codes: () -> FeatureCodes,
+    private val engine: SipEngine,
 ) {
+    private fun codes(): FeatureCodes = engine.settings.current.features
+
     fun call(target: String, accountId: String? = null) = launch(CallRequest(target, accountId))
 
-    fun intercom(target: String, accountId: String? = null) =
-        launch(CallRequest(target, accountId, intercom = true))
+    /**
+     * Switches do not disturb on or off. In [DndMode.SOFTWARE] that is a switch of this app; in
+     * [DndMode.SERVER] the PBX is told by a call to its feature code, on [accountId].
+     */
+    fun doNotDisturb(on: Boolean, accountId: String? = null) {
+        val settings = engine.settings.current
+        if (settings.dndMode == DndMode.SOFTWARE) {
+            engine.updateSettings { it.copy(doNotDisturb = on) }
+            return
+        }
+        val code = (if (on) settings.features.dndOn else settings.features.dndOff).trim()
+        if (code.isEmpty()) {
+            notify("未配置“${if (on) "开启" else "关闭"}免打扰”功能码")
+        } else {
+            // The switch follows once the call to the code is on its way.
+            launch(CallRequest(code, accountId, onStarted = { engine.updateSettings { it.copy(doNotDisturb = on) } }))
+        }
+    }
 
-    /** Dials a PBX feature code (listen, whisper, barge, force hang up, pickup) for [target]. */
+    /** Dials a PBX feature code (intercom, listen, whisper, barge, force hang up, pickup) for [target]. */
     fun feature(action: FeatureDial.Action, target: String, accountId: String? = null) {
         val number = FeatureDial.compose(action, target, codes())
         if (number == null) {
-            notify("尚未配置“${action.label}”功能码，或号码为空")
+            notify("未配置“${action.label}”功能码")
         } else {
             launch(CallRequest(number, accountId, supervision = FeatureDial.supervisionOf(action)))
         }
@@ -46,15 +66,16 @@ class CallLauncher(
     fun voicemail(accountId: String? = null) = code(codes().voicemail, "语音信箱", accountId)
 
     private fun code(code: String, label: String, accountId: String?) {
-        if (code.isBlank()) notify("尚未配置“$label”功能码") else launch(CallRequest(code.trim(), accountId))
+        if (code.isBlank()) notify("未配置“$label”功能码") else launch(CallRequest(code.trim(), accountId))
     }
 }
 
-data class CallRequest(
+/** @param onStarted called once the call is on its way */
+class CallRequest(
     val target: String,
     val accountId: String?,
-    val intercom: Boolean = false,
     val supervision: SupervisionMode? = null,
+    val onStarted: (() -> Unit)? = null,
 )
 
 @Composable
@@ -64,8 +85,13 @@ fun rememberCallLauncher(): CallLauncher {
     var pending by remember { mutableStateOf<CallRequest?>(null) }
 
     fun start(request: CallRequest) {
-        val error = context.engine.calls.dial(request.target, request.accountId, request.intercom, request.supervision)
-        if (error != null) messenger(error) else context.openCallScreen()
+        val error = context.engine.calls.dial(request.target, request.accountId, request.supervision)
+        if (error != null) {
+            messenger(error)
+        } else {
+            request.onStarted?.invoke()
+            context.openCallScreen()
+        }
     }
 
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -74,7 +100,7 @@ fun rememberCallLauncher(): CallLauncher {
         when {
             request == null -> Unit
             granted -> start(request)
-            else -> messenger("需要麦克风权限才能通话")
+            else -> messenger("需要麦克风权限")
         }
     }
 
@@ -91,7 +117,7 @@ fun rememberCallLauncher(): CallLauncher {
                 }
             },
             notify = { messenger(it) },
-            codes = { context.engine.settings.current.features },
+            engine = context.engine,
         )
     }
 }

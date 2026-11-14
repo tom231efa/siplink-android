@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -23,14 +22,13 @@ import androidx.compose.material.icons.rounded.Campaign
 import androidx.compose.material.icons.rounded.Dialpad
 import androidx.compose.material.icons.rounded.Dns
 import androidx.compose.material.icons.rounded.DoNotDisturbOn
+import androidx.compose.material.icons.rounded.GraphicEq
+import androidx.compose.material.icons.rounded.ManageAccounts
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material.icons.rounded.VerifiedUser
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -40,27 +38,33 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sky.siplink.BuildConfig
-import com.sky.siplink.core.model.IntercomHeaderMode
-import com.sky.siplink.core.model.Settings
+import com.sky.siplink.core.model.BannerPosition
+import com.sky.siplink.core.model.RegState
 import com.sky.siplink.core.model.ThemeMode
 import com.sky.siplink.engine
+import com.sky.siplink.ui.components.ChoiceRow
 import com.sky.siplink.ui.components.LocalMessenger
 import com.sky.siplink.ui.components.NavRow
 import com.sky.siplink.ui.components.SectionCard
 import com.sky.siplink.ui.components.SwitchRow
+import com.sky.siplink.ui.components.rememberCallLauncher
 
 @Composable
 fun SettingsScreen(
+    onOpenAccounts: () -> Unit,
     onOpenTls: () -> Unit,
     onOpenLdap: () -> Unit,
     onOpenCallHandling: () -> Unit,
     onOpenFeatureCodes: () -> Unit,
+    onOpenCodecs: () -> Unit,
 ) {
     val context = LocalContext.current
     val engine = context.engine
     val settings by engine.settings.settings.collectAsStateWithLifecycle()
     val certificates by engine.tls.certificates.collectAsStateWithLifecycle()
+    val accounts by engine.accounts.accounts.collectAsStateWithLifecycle()
     val messenger = LocalMessenger.current
+    val launcher = rememberCallLauncher()
 
     Column(Modifier.fillMaxSize()) {
         TopAppBar(title = { Text("设置") })
@@ -71,95 +75,56 @@ fun SettingsScreen(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            SectionCard(title = "呼叫与企业功能") {
-                SwitchRow(
-                    title = "免打扰",
-                    subtitle = "拒接所有来电",
-                    icon = Icons.Rounded.DoNotDisturbOn,
-                    checked = settings.doNotDisturb,
-                    onCheckedChange = { value -> engine.updateSettings { it.copy(doNotDisturb = value) } },
-                )
+            SectionCard(title = "账号") {
                 NavRow(
-                    title = "呼叫处理",
-                    subtitle = callHandlingSummary(settings),
-                    icon = Icons.AutoMirrored.Rounded.PhoneForwarded,
-                    onClick = onOpenCallHandling,
-                )
-                NavRow(
-                    title = "功能码",
-                    subtitle = "驻留、监听、耳语、强插、强拆、代接、语音信箱",
-                    icon = Icons.Rounded.Dialpad,
-                    onClick = onOpenFeatureCodes,
+                    title = "SIP 账号",
+                    // Registered / all.
+                    trailing = "${accounts.count { it.state == RegState.OK }}/${accounts.size}".takeIf { accounts.isNotEmpty() },
+                    icon = Icons.Rounded.ManageAccounts,
+                    onClick = onOpenAccounts,
                 )
             }
 
-            SectionCard(title = "对讲") {
+            SectionCard(title = "呼叫与话务功能") {
+                SwitchRow(
+                    title = "免打扰",
+                    icon = Icons.Rounded.DoNotDisturbOn,
+                    checked = settings.doNotDisturb,
+                    onCheckedChange = { value -> launcher.doNotDisturb(value) },
+                )
+                NavRow(title = "呼叫处理", icon = Icons.AutoMirrored.Rounded.PhoneForwarded, onClick = onOpenCallHandling)
+                NavRow(title = "功能码", icon = Icons.Rounded.Dialpad, onClick = onOpenFeatureCodes)
+                NavRow(title = "音频编码", icon = Icons.Rounded.GraphicEq, onClick = onOpenCodecs)
+            }
+
+            SectionCard(title = "对讲来电") {
                 SwitchRow(
                     title = "自动接听对讲呼叫",
-                    subtitle = "来电带有自动应答标记时免按键接通。任何能呼叫本机的人都可能借此开启麦克风，请只在可信网络中开启",
                     icon = Icons.Rounded.Campaign,
                     checked = settings.intercomAutoAnswer,
                     onCheckedChange = { value -> engine.updateSettings { it.copy(intercomAutoAnswer = value) } },
                 )
                 SwitchRow(
                     title = "对讲使用扬声器",
-                    subtitle = "对讲接通后自动切换到免提",
                     icon = Icons.AutoMirrored.Rounded.VolumeUp,
                     checked = settings.intercomSpeaker,
                     onCheckedChange = { value -> engine.updateSettings { it.copy(intercomSpeaker = value) } },
-                )
-                Text(
-                    "呼出对讲时附加的自动应答头",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(start = 16.dp, top = 10.dp),
-                )
-                val modes = listOf(
-                    IntercomHeaderMode.CALL_INFO to "Call-Info",
-                    IntercomHeaderMode.ALERT_INFO to "Alert-Info",
-                    IntercomHeaderMode.ANSWER_MODE to "Answer-Mode",
-                    IntercomHeaderMode.ALL to "全部",
-                )
-                SingleChoiceSegmentedButtonRow(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                ) {
-                    modes.forEachIndexed { index, (mode, label) ->
-                        SegmentedButton(
-                            selected = settings.intercomHeaderMode == mode,
-                            onClick = { engine.updateSettings { it.copy(intercomHeaderMode = mode) } },
-                            shape = SegmentedButtonDefaults.itemShape(index, modes.size),
-                            icon = {},
-                        ) { Text(label, maxLines = 1, style = MaterialTheme.typography.labelMedium) }
-                    }
-                }
-                Text(
-                    "不同品牌话机识别的头不同：多数话机与 PBX 识别 Call-Info（answer-after=0）；如对端不自动接听，可尝试其他选项或“全部”。",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 10.dp),
                 )
             }
 
             SectionCard(title = "安全与通讯录") {
                 NavRow(
                     title = "TLS 与 CA 证书",
-                    subtitle = if (certificates.isEmpty()) "导入 CA 证书以启用私有 TLS 加密" else "已导入 ${certificates.size} 个证书",
+                    trailing = certificates.size.toString().takeIf { certificates.isNotEmpty() },
                     icon = Icons.Rounded.VerifiedUser,
                     onClick = onOpenTls,
                 )
-                NavRow(
-                    title = "LDAP 通讯录",
-                    subtitle = "配置企业目录服务器",
-                    icon = Icons.Rounded.Dns,
-                    onClick = onOpenLdap,
-                )
+                NavRow(title = "LDAP 通讯录", icon = Icons.Rounded.Dns, onClick = onOpenLdap)
             }
 
             SectionCard(title = "后台运行") {
                 SwitchRow(
                     title = "后台保持在线",
-                    subtitle = "通过常驻通知保持账号注册，退出界面后仍可接听来电",
                     icon = Icons.Rounded.Sync,
                     checked = settings.keepAlive,
                     onCheckedChange = { value -> engine.updateSettings { it.copy(keepAlive = value) } },
@@ -167,13 +132,12 @@ fun SettingsScreen(
                 AnimatedVisibility(settings.keepAlive) {
                     NavRow(
                         title = "电池优化",
-                        subtitle = "将 SipLink 设为“不受限制”可避免系统在待机时中断注册",
                         icon = Icons.Rounded.BatterySaver,
                         onClick = {
                             val intent = Intent(SystemSettings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
                                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                             runCatching { context.startActivity(intent) }
-                                .onFailure { messenger("无法打开系统的电池优化设置") }
+                                .onFailure { messenger("无法打开电池优化设置") }
                         },
                     )
                 }
@@ -186,23 +150,27 @@ fun SettingsScreen(
                     modifier = Modifier.padding(start = 16.dp, top = 10.dp),
                 )
                 val themes = listOf(ThemeMode.SYSTEM to "跟随系统", ThemeMode.LIGHT to "浅色", ThemeMode.DARK to "深色")
-                SingleChoiceSegmentedButtonRow(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                ) {
-                    themes.forEachIndexed { index, (mode, label) ->
-                        SegmentedButton(
-                            selected = settings.themeMode == mode,
-                            onClick = { engine.updateSettings { it.copy(themeMode = mode) } },
-                            shape = SegmentedButtonDefaults.itemShape(index, themes.size),
-                        ) { Text(label) }
-                    }
-                }
+                ChoiceRow(
+                    options = themes,
+                    selected = settings.themeMode,
+                    onSelect = { mode -> engine.updateSettings { it.copy(themeMode = mode) } },
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+                Text(
+                    "通话横幅位置",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(start = 16.dp, top = 10.dp),
+                )
+                val positions = listOf(BannerPosition.TOP to "顶部", BannerPosition.BOTTOM to "底部")
+                ChoiceRow(
+                    options = positions,
+                    selected = settings.callBannerPosition,
+                    onSelect = { position -> engine.updateSettings { it.copy(callBannerPosition = position) } },
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                )
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     SwitchRow(
                         title = "动态配色",
-                        subtitle = "界面颜色跟随系统壁纸",
                         icon = Icons.Rounded.Palette,
                         checked = settings.dynamicColor,
                         onCheckedChange = { value -> engine.updateSettings { it.copy(dynamicColor = value) } },
@@ -225,14 +193,4 @@ fun SettingsScreen(
             Spacer(Modifier.height(16.dp))
         }
     }
-}
-
-private fun callHandlingSummary(settings: Settings): String {
-    val forwards = listOf(
-        "无条件" to settings.forwardAlways,
-        "遇忙" to settings.forwardBusy,
-        "无应答" to settings.forwardNoAnswer,
-    ).filter { it.second.isNotBlank() }.joinToString("、") { "${it.first}→${it.second}" }
-    val waiting = if (settings.callWaiting) "呼叫等待已开启" else "呼叫等待已关闭"
-    return if (forwards.isEmpty()) "$waiting · 未设置前转" else "$waiting · 前转：$forwards"
 }

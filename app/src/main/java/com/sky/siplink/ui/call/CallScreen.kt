@@ -3,11 +3,9 @@ package com.sky.siplink.ui.call
 import android.os.SystemClock
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -57,6 +55,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -70,29 +69,36 @@ import com.sky.siplink.core.model.CallPhase
 import com.sky.siplink.core.model.SideCall
 import com.sky.siplink.core.model.TransferStatus
 import com.sky.siplink.engine
-import com.sky.siplink.ui.components.Avatar
-import com.sky.siplink.ui.components.PulseRings
 import com.sky.siplink.ui.theme.Brand
 import kotlinx.coroutines.delay
 
 internal enum class Controls { INCOMING, ACTIVE, ENDED }
 
-/** Full-screen call UI: incoming, outgoing, established and ended states of the current call. */
+/**
+ * Full-screen call UI: incoming, outgoing, established and ended states of the current call.
+ *
+ * @param glass the window is see through and what is behind it is blurred, so the background
+ *   may let it shine through; without the blur it has to cover more to keep the text readable
+ */
 @Composable
-fun CallScreen(onAnswer: () -> Unit, onFinished: () -> Unit) {
+fun CallScreen(onAnswer: () -> Unit, onFinished: () -> Unit, glass: Boolean = false) {
     val calls = LocalContext.current.engine.calls
     val live by calls.call.collectAsStateWithLifecycle()
     // Keep showing the last known call while the screen animates away.
     var shown by remember { mutableStateOf(live) }
     var keypadOpen by remember { mutableStateOf(false) }
     var transferOpen by remember { mutableStateOf(false) }
+    var shortcutsOpen by remember { mutableStateOf(false) }
     var notice by remember { mutableStateOf<String?>(null) }
 
+    // The screen fades in over what was there before, and out again once the call is gone.
+    val presence = remember { Animatable(0f) }
     LaunchedEffect(live) {
         if (live != null) {
             shown = live
+            presence.animateTo(1f, tween(APPEAR_MS))
         } else {
-            delay(250)
+            presence.animateTo(0f, tween(DISAPPEAR_MS))
             onFinished()
         }
     }
@@ -104,8 +110,12 @@ fun CallScreen(onAnswer: () -> Unit, onFinished: () -> Unit) {
     }
 
     val info = shown
-    Box(Modifier.fillMaxSize()) {
-        CallBackground()
+    Box(
+        Modifier
+            .fillMaxSize()
+            .graphicsLayer { alpha = presence.value },
+    ) {
+        CallBackground(ringingIn = info?.phase == CallPhase.INCOMING, glass = glass)
         if (info != null) {
             val controls = when (info.phase) {
                 CallPhase.INCOMING -> Controls.INCOMING
@@ -120,6 +130,7 @@ fun CallScreen(onAnswer: () -> Unit, onFinished: () -> Unit) {
                 onAnswer = onAnswer,
                 onOpenKeypad = { keypadOpen = true },
                 onOpenTransfer = { transferOpen = true },
+                onOpenShortcuts = { shortcutsOpen = true },
                 onNotice = { notice = it },
             )
             AnimatedVisibility(
@@ -144,31 +155,51 @@ fun CallScreen(onAnswer: () -> Unit, onFinished: () -> Unit) {
                     },
                 )
             }
+            if (shortcutsOpen && controls == Controls.ACTIVE) {
+                ShortcutsSheet(onDismiss = { shortcutsOpen = false }, onNotice = { notice = it })
+            }
         }
     }
 }
 
+/**
+ * Dark, with one faint blue highlight for depth. A call that only rings lets what is behind the
+ * window shine through, like glass; once it is dialled or answered the call has the screen to
+ * itself, and the glass turns solid.
+ *
+ * It does not move otherwise: a call can last for hours, and a background that animates would
+ * redraw the whole screen all that time.
+ */
 @Composable
-private fun CallBackground() {
-    val transition = rememberInfiniteTransition(label = "callBackground")
-    val drift by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(11_000, easing = LinearEasing), RepeatMode.Reverse),
-        label = "drift",
+private fun CallBackground(ringingIn: Boolean, glass: Boolean) {
+    val tint by animateFloatAsState(
+        targetValue = when {
+            !ringingIn -> 1f
+            glass -> GLASS_TINT
+            else -> PLAIN_TINT
+        },
+        animationSpec = tween(SOLIDIFY_MS, easing = FastOutSlowInEasing),
+        label = "callTint",
     )
     Canvas(Modifier.fillMaxSize()) {
-        drawRect(Brand.CallSurface)
-        // One faint highlight drifting slowly gives the plain background some depth.
+        drawRect(Brand.CallSurface.copy(alpha = tint))
         val radius = size.minDimension * 0.9f
-        val center = Offset(size.width * (0.2f + 0.6f * drift), size.height * 0.18f)
+        val center = Offset(size.width * 0.5f, size.height * 0.18f)
         drawCircle(
-            Brush.radialGradient(listOf(Color.White.copy(alpha = 0.07f), Color.Transparent), center, radius),
+            Brush.radialGradient(listOf(Brand.Blue.copy(alpha = 0.13f), Color.Transparent), center, radius),
             radius,
             center,
         )
     }
 }
+
+/** How much of what is behind a ringing call its dark tint covers: over a blur, and over a sharp picture. */
+private const val GLASS_TINT = 0.72f
+private const val PLAIN_TINT = 0.95f
+
+private const val APPEAR_MS = 280
+private const val DISAPPEAR_MS = 220
+private const val SOLIDIFY_MS = 450
 
 @Composable
 private fun CallContent(
@@ -179,6 +210,7 @@ private fun CallContent(
     onAnswer: () -> Unit,
     onOpenKeypad: () -> Unit,
     onOpenTransfer: () -> Unit,
+    onOpenShortcuts: () -> Unit,
     onNotice: (String) -> Unit,
 ) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -217,17 +249,12 @@ private fun CallContent(
             }
 
             Spacer(Modifier.weight(0.4f))
-            Box(Modifier.size(ringSize), contentAlignment = Alignment.Center) {
-                val ringing = info.phase == CallPhase.INCOMING || info.phase == CallPhase.OUTGOING
-                androidx.compose.animation.AnimatedVisibility(
-                    ringing,
-                    enter = fadeIn(tween(400)),
-                    exit = fadeOut(tween(400)),
-                ) {
-                    PulseRings(Color.White, Modifier.fillMaxSize())
-                }
-                Avatar(info.remoteName, size = avatarSize)
-            }
+            CallAvatar(
+                name = info.remoteName,
+                beating = info.phase == CallPhase.INCOMING || info.phase == CallPhase.OUTGOING,
+                size = avatarSize,
+                haloSize = ringSize,
+            )
             Spacer(Modifier.height(4.dp))
             Text(
                 info.remoteName,
@@ -261,7 +288,7 @@ private fun CallContent(
             ) { mode ->
                 when (mode) {
                     Controls.INCOMING -> IncomingControls(onAnswer = onAnswer, onDecline = calls::decline)
-                    Controls.ACTIVE -> ActiveControls(info, calls, onOpenKeypad, onOpenTransfer, onNotice)
+                    Controls.ACTIVE -> ActiveControls(info, calls, onOpenKeypad, onOpenTransfer, onOpenShortcuts, onNotice)
                     Controls.ENDED -> Spacer(Modifier.fillMaxWidth())
                 }
             }
@@ -398,7 +425,7 @@ private fun StatusLine(info: CallInfo) {
     ) { phase ->
         val text = when (phase) {
             CallPhase.INCOMING -> if (info.intercom) "对讲呼叫" else "来电"
-            CallPhase.OUTGOING -> if (info.intercom) "正在发起对讲…" else "正在呼叫…"
+            CallPhase.OUTGOING -> "正在呼叫…"
             CallPhase.CONNECTED -> callTimer(info.connectedAt)
             CallPhase.HELD -> "通话已保留"
             CallPhase.ENDED -> info.endReason ?: "通话结束"

@@ -8,19 +8,32 @@ object AccountRules {
     const val MAX_ACCOUNTS = 100
     const val MIN_EXPIRES = 60
     const val MAX_EXPIRES = 86_400
+    const val MAX_NAME_LENGTH = 30
 
-    enum class Error(val message: String) {
-        LIMIT_REACHED("最多只能添加 $MAX_ACCOUNTS 个账号"),
-        USERNAME_EMPTY("请输入用户名"),
-        USERNAME_INVALID("用户名包含无效字符"),
-        DOMAIN_EMPTY("请输入域名或服务器地址"),
-        DOMAIN_INVALID("域名格式不正确"),
-        SERVER_INVALID("代理服务器格式不正确，应为 主机[:端口]"),
-        EXPIRES_OUT_OF_RANGE("注册有效期需在 $MIN_EXPIRES–$MAX_EXPIRES 秒之间"),
-        DUPLICATE("该账号已存在"),
-        PASSWORD_REQUIRED("修改用户名、域名或认证用户后需要重新输入密码"),
-        ADDRESS_REJECTED("SIP 协议栈无法解析该账号地址"),
-        NOT_FOUND("账号不存在"),
+    /**
+     * @param subject what the error is about
+     * @param message what is wrong with it, as shown right under that field
+     */
+    enum class Error(val subject: String, val message: String) {
+        LIMIT_REACHED("", "最多 $MAX_ACCOUNTS 个账号"),
+        NAME_TOO_LONG("账号名称", "最多 $MAX_NAME_LENGTH 个字符"),
+        NAME_TAKEN("账号名称", "已存在"),
+        USERNAME_EMPTY("用户名", "必填"),
+        USERNAME_INVALID("用户名", "含无效字符"),
+        DOMAIN_EMPTY("域名", "必填"),
+        DOMAIN_INVALID("域名", "格式不正确"),
+        SERVER_INVALID("代理服务器", "应为 主机[:端口]"),
+        EXPIRES_OUT_OF_RANGE("注册有效期", "应为 $MIN_EXPIRES–$MAX_EXPIRES 秒"),
+        DUPLICATE("", "账号已存在"),
+
+        /** A stored password belongs to the user name and domain it was entered for. */
+        PASSWORD_REQUIRED("密码", "必填（已改用户名或域名）"),
+        ADDRESS_REJECTED("", "地址无法解析"),
+        NOT_FOUND("", "账号不存在"),
+        ;
+
+        /** The error where no field stands next to it: in a notice, or in a list of import errors. */
+        val full: String get() = subject + message
     }
 
     private val userRegex = Regex("^[A-Za-z0-9\\-_.!~*'()&=+$,?/%]+$")
@@ -46,6 +59,7 @@ object AccountRules {
             username = username.substring(0, at)
         }
         return draft.copy(
+            name = draft.name.trim(),
             username = username,
             domain = domain,
             displayName = draft.displayName.trim(),
@@ -58,14 +72,18 @@ object AccountRules {
      * @param draft already normalized draft
      * @param existingKeys identity keys of the accounts already configured
      * @param editingKey identity key of the account being edited, null when adding a new one
+     * @param takenNames names of the other accounts
      */
     fun validate(
         draft: AccountDraft,
         existingKeys: Collection<String>,
         editingKey: String? = null,
+        takenNames: Collection<String> = emptyList(),
     ): List<Error> {
         val errors = mutableListOf<Error>()
         if (editingKey == null && !canAdd(existingKeys.size)) errors += Error.LIMIT_REACHED
+        if (draft.name.length > MAX_NAME_LENGTH) errors += Error.NAME_TOO_LONG
+        if (isNameTaken(draft.name, takenNames)) errors += Error.NAME_TAKEN
 
         when {
             draft.username.isEmpty() -> errors += Error.USERNAME_EMPTY
@@ -82,6 +100,13 @@ object AccountRules {
         if (key != editingKey && existingKeys.contains(key)) errors += Error.DUPLICATE
         return errors
     }
+
+    /**
+     * Whether another account is already called [name]. A name is how the user, and a shortcut
+     * key fixed to a line, tells accounts apart; upper and lower case do not make two names.
+     */
+    fun isNameTaken(name: String, takenNames: Collection<String>): Boolean =
+        name.isNotEmpty() && takenNames.any { it.equals(name, ignoreCase = true) }
 
     /** Accepts `host`, `host:port`, `1.2.3.4:5061`, `[::1]` and `[::1]:5061`. */
     fun isValidHostPort(value: String): Boolean {

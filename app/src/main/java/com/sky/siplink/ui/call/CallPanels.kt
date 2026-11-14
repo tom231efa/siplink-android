@@ -1,5 +1,3 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
-
 package com.sky.siplink.ui.call
 
 import androidx.compose.foundation.background
@@ -10,9 +8,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -22,30 +20,36 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sky.siplink.engine
+import com.sky.siplink.ui.components.AppBottomSheet
+import com.sky.siplink.ui.components.LocalMessenger
+import com.sky.siplink.ui.shortcuts.ShortcutBoard
+import com.sky.siplink.ui.shortcuts.rememberShortcutRunner
 
 private val dtmfKeys = listOf('1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#')
 
@@ -58,7 +62,7 @@ internal fun DtmfPanel(onDigit: (Char) -> Unit, onClose: () -> Unit) {
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
-            .background(Color(0xF51C1C1C))
+            .background(Color(0xF51B1E23))
             // Swallow touches so they do not reach the controls underneath.
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = {})
             .navigationBarsPadding()
@@ -117,12 +121,10 @@ internal fun TransferSheet(
     onConsult: (String) -> Unit,
 ) {
     var target by remember { mutableStateOf("") }
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+    AppBottomSheet(onDismiss) {
         Column(
             Modifier
                 .fillMaxWidth()
-                .imePadding()
-                .navigationBarsPadding()
                 .padding(horizontal = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -137,11 +139,6 @@ internal fun TransferSheet(
                 shape = MaterialTheme.shapes.medium,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
             )
-            Text(
-                "盲转：立即把对方交给目标号码。咨询转：先保留对方并呼叫目标，确认后再完成转接。",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedButton(
                     onClick = { onConsult(target) },
@@ -155,6 +152,42 @@ internal fun TransferSheet(
                 ) { Text("盲转") }
             }
             Spacer(Modifier.height(12.dp))
+        }
+    }
+}
+
+/**
+ * The shortcut keys during a call: transfer, park and DTMF keys act on the call in progress,
+ * a speed dial key starts a consultation call next to it.
+ */
+@Composable
+internal fun ShortcutsSheet(onDismiss: () -> Unit, onNotice: (String) -> Unit) {
+    val all by LocalContext.current.engine.shortcuts.shortcuts.collectAsStateWithLifecycle()
+    var category by rememberSaveable { mutableStateOf<String?>(null) }
+    // This screen has no snackbar: what the keys have to say goes to its notice line.
+    CompositionLocalProvider(LocalMessenger provides onNotice) {
+        val runner = rememberShortcutRunner(accountId = null) { outcome ->
+            onDismiss()
+            outcome.notice?.let(onNotice)
+        }
+        AppBottomSheet(onDismiss) {
+            if (all.isEmpty()) {
+                Text(
+                    "还没有快捷键",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 32.dp),
+                )
+            } else {
+                ShortcutBoard(
+                    all = all,
+                    category = category,
+                    onCategoryChange = { category = it },
+                    editing = false,
+                    onKey = runner,
+                    modifier = Modifier.fillMaxHeight(0.72f),
+                )
+            }
         }
     }
 }

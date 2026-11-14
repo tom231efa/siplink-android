@@ -57,6 +57,8 @@ class SipLinkApp : Application(), CallManager.Host {
         }
     }
 
+    override fun updateIncomingCall(info: CallInfo) = notifier.updateIncomingCall(info)
+
     override fun dismissIncomingCall() = notifier.cancelIncomingCall()
 
     override fun onCallActivityChanged() = SipService.sync(this)

@@ -15,12 +15,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.CallMade
 import androidx.compose.material.icons.automirrored.rounded.CallMissed
 import androidx.compose.material.icons.automirrored.rounded.CallReceived
 import androidx.compose.material.icons.rounded.Call
-import androidx.compose.material.icons.rounded.Campaign
+import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.DeleteSweep
 import androidx.compose.material.icons.rounded.History
@@ -37,6 +38,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,6 +57,7 @@ import com.sky.siplink.ui.components.Avatar
 import com.sky.siplink.ui.components.EmptyState
 import com.sky.siplink.ui.components.FeatureSheet
 import com.sky.siplink.ui.components.rememberCallLauncher
+import com.sky.siplink.ui.shortcuts.NewShortcutSheet
 import com.sky.siplink.ui.theme.Brand
 import java.time.Instant
 import java.time.LocalDate
@@ -65,14 +68,35 @@ private val timeFormat = DateTimeFormatter.ofPattern("HH:mm")
 private val dayFormat = DateTimeFormatter.ofPattern("M月d日")
 private val dayWithYearFormat = DateTimeFormatter.ofPattern("yyyy年M月d日")
 
+/** A line of the list: a day header ([entry] is null, [text] the day) or a call ([text] its time). */
+private class HistoryListRow(val key: String, val text: String, val entry: HistoryEntry?)
+
+private fun historyRows(entries: List<HistoryEntry>, zone: ZoneId): List<HistoryListRow> {
+    val today = LocalDate.now(zone)
+    val rows = ArrayList<HistoryListRow>(entries.size + 8)
+    var previousDay: LocalDate? = null
+    for (entry in entries) {
+        val moment = Instant.ofEpochMilli(entry.startedAtMs).atZone(zone)
+        val day = moment.toLocalDate()
+        if (day != previousDay) {
+            previousDay = day
+            rows += HistoryListRow("day-$day", dayLabel(day, today), null)
+        }
+        rows += HistoryListRow(entry.id, moment.format(timeFormat), entry)
+    }
+    return rows
+}
+
 @Composable
 fun HistoryScreen() {
     val context = LocalContext.current
     val history = context.engine.history
+    LaunchedEffect(Unit) { history.resolveNames() }
     val entries by history.entries.collectAsStateWithLifecycle()
     val launcher = rememberCallLauncher()
     var confirmClear by remember { mutableStateOf(false) }
     var featuresFor by remember { mutableStateOf<HistoryEntry?>(null) }
+    var shortcutFor by remember { mutableStateOf<HistoryEntry?>(null) }
 
     Column(Modifier.fillMaxSize()) {
         TopAppBar(
@@ -89,35 +113,29 @@ fun HistoryScreen() {
             EmptyState(
                 icon = Icons.Rounded.History,
                 title = "还没有通话记录",
-                subtitle = "拨出或接听的通话会显示在这里。",
                 modifier = Modifier.fillMaxSize(),
             )
         } else {
-            val zone = remember { ZoneId.systemDefault() }
-            val today = remember(entries) { LocalDate.now(zone) }
+            // Day headers and clock times are worked out once per change of the list, not while scrolling.
+            val rows = remember(entries) { historyRows(entries, ZoneId.systemDefault()) }
             LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) {
-                var previousDay: LocalDate? = null
-                entries.forEach { entry ->
-                    val day = Instant.ofEpochMilli(entry.startedAtMs).atZone(zone).toLocalDate()
-                    if (day != previousDay) {
-                        previousDay = day
-                        item(key = "day-$day") {
-                            Text(
-                                dayLabel(day, today),
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier
-                                    .animateItem()
-                                    .padding(start = 24.dp, top = 16.dp, bottom = 4.dp),
-                            )
-                        }
-                    }
-                    item(key = entry.id) {
+                items(rows, key = { it.key }, contentType = { it.entry == null }) { row ->
+                    val entry = row.entry
+                    if (entry == null) {
+                        Text(
+                            row.text,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .animateItem()
+                                .padding(start = 24.dp, top = 16.dp, bottom = 4.dp),
+                        )
+                    } else {
                         HistoryRow(
                             entry = entry,
-                            time = Instant.ofEpochMilli(entry.startedAtMs).atZone(zone).format(timeFormat),
+                            time = row.text,
                             onCall = { launcher.call(entry.address) },
-                            onIntercom = { launcher.intercom(entry.address) },
+                            onAddShortcut = { shortcutFor = entry },
                             onMore = { featuresFor = entry },
                             onDelete = { history.remove(entry.id) },
                             modifier = Modifier.animateItem(),
@@ -129,7 +147,16 @@ fun HistoryScreen() {
     }
 
     featuresFor?.let { entry ->
-        FeatureSheet(launcher = launcher, onDismiss = { featuresFor = null }, name = entry.name, target = entry.address)
+        FeatureSheet(
+            launcher = launcher,
+            onDismiss = { featuresFor = null },
+            name = entry.name,
+            target = entry.address,
+            onAddShortcut = { shortcutFor = entry },
+        )
+    }
+    shortcutFor?.let { entry ->
+        NewShortcutSheet(name = entry.name, number = entry.address, onDismiss = { shortcutFor = null })
     }
 
     if (confirmClear) {
@@ -160,7 +187,7 @@ private fun HistoryRow(
     entry: HistoryEntry,
     time: String,
     onCall: () -> Unit,
-    onIntercom: () -> Unit,
+    onAddShortcut: () -> Unit,
     onMore: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
@@ -224,15 +251,15 @@ private fun HistoryRow(
         }
         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
             DropdownMenuItem(
-                text = { Text("对讲呼叫") },
-                leadingIcon = { Icon(Icons.Rounded.Campaign, contentDescription = null) },
+                text = { Text("添加到快捷键") },
+                leadingIcon = { Icon(Icons.Rounded.Apps, contentDescription = null) },
                 onClick = {
                     menuOpen = false
-                    onIntercom()
+                    onAddShortcut()
                 },
             )
             DropdownMenuItem(
-                text = { Text("企业功能…") },
+                text = { Text("话务功能…") },
                 leadingIcon = { Icon(Icons.Rounded.SupportAgent, contentDescription = null) },
                 onClick = {
                     menuOpen = false

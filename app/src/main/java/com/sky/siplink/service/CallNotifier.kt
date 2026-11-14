@@ -22,6 +22,9 @@ import com.sky.siplink.core.model.CallInfo
 class CallNotifier(private val context: Context) {
     private val manager = NotificationManagerCompat.from(context)
 
+    /** Whether the incoming call notification is up (the app was not visible when the call came in). */
+    private var incomingShown = false
+
     init {
         createChannels()
     }
@@ -60,7 +63,13 @@ class CallNotifier(private val context: Context) {
         return builder.build()
     }
 
+    /** Renames the incoming call notification if there is one; it does not ring or pop up again. */
+    fun updateIncomingCall(info: CallInfo) {
+        if (incomingShown) showIncomingCall(info)
+    }
+
     fun showIncomingCall(info: CallInfo) {
+        incomingShown = true
         val openCall = activity(CallActivity::class.java, null, REQUEST_CALL)
         val notification = NotificationCompat.Builder(context, CHANNEL_INCOMING)
             .setSmallIcon(R.drawable.ic_stat_call)
@@ -81,11 +90,15 @@ class CallNotifier(private val context: Context) {
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setOngoing(true)
             .setAutoCancel(false)
+            .setOnlyAlertOnce(true)
             .build()
         post(ID_INCOMING, notification)
     }
 
-    fun cancelIncomingCall() = manager.cancel(ID_INCOMING)
+    fun cancelIncomingCall() {
+        incomingShown = false
+        manager.cancel(ID_INCOMING)
+    }
 
     fun showMissedCall(name: String, address: String) {
         val notification = NotificationCompat.Builder(context, CHANNEL_MISSED)

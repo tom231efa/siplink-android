@@ -16,7 +16,7 @@ class AccountImportTest {
             1002,secret2,pbx.example.com,tls,张三,edge.example.com:5061
         """.trimIndent()
         val result = AccountImport.parse(text, emptyList())
-        assertEquals(emptyList<AccountImport.LineError>(), result.errors)
+        assertEquals(emptyList<Csv.LineError>(), result.errors)
         assertEquals(2, result.drafts.size)
 
         val first = result.drafts[0]
@@ -33,14 +33,14 @@ class AccountImportTest {
     @Test
     fun `quoted fields keep commas quotes and spaces`() {
         val result = AccountImport.parse("1001,\"pa,ss \"\"w\"\" \",pbx.example.com", emptyList())
-        assertEquals(emptyList<AccountImport.LineError>(), result.errors)
+        assertEquals(emptyList<Csv.LineError>(), result.errors)
         assertEquals("pa,ss \"w\" ", result.drafts.single().password)
     }
 
     @Test
     fun `byte order mark at the start of the file is ignored`() {
         val result = AccountImport.parse("\uFEFF1001,secret1,pbx.example.com", emptyList())
-        assertEquals(emptyList<AccountImport.LineError>(), result.errors)
+        assertEquals(emptyList<Csv.LineError>(), result.errors)
         assertEquals("1001", result.drafts.single().username)
     }
 
@@ -59,12 +59,28 @@ class AccountImportTest {
     }
 
     @Test
+    fun `the seventh field is the name of the account`() {
+        val result = AccountImport.parse("1001,pw,pbx.example.com,udp,张三,,前台总机\n1002,pw,pbx.example.com", emptyList())
+        assertEquals(emptyList<Csv.LineError>(), result.errors)
+        assertEquals(listOf("前台总机", ""), result.drafts.map { it.name })
+    }
+
+    @Test
     fun `duplicates against existing accounts and within the file are rejected`() {
         val existing = listOf(AccountRules.identityKey("1001", "pbx.example.com"))
         val text = "1001,pw,pbx.example.com\n1002,pw,pbx.example.com\n1002,pw,PBX.example.com"
         val result = AccountImport.parse(text, existing)
         assertEquals(listOf("1002"), result.drafts.map { it.username })
         assertEquals(listOf(1, 3), result.errors.map { it.line })
+    }
+
+    @Test
+    fun `a name that an account or an earlier line has is rejected`() {
+        val text = "1001,p,pbx.example.com,,,,前台\n1002,p,pbx.example.com,,,,销售\n1003,p,pbx.example.com,,,,销售\n1004,p,pbx.example.com"
+        val result = AccountImport.parse(text, emptyList(), existingNames = listOf("前台"))
+        assertEquals(listOf("1002", "1004"), result.drafts.map { it.username })
+        assertEquals(listOf(1, 3), result.errors.map { it.line })
+        assertEquals("账号名称已存在", result.errors.first().reason)
     }
 
     @Test
@@ -87,8 +103,8 @@ class AccountImportTest {
 
     @Test
     fun `csv splitting`() {
-        assertEquals(listOf("a", "b", ""), AccountImport.splitCsvLine("a, b ,"))
-        assertEquals(listOf("a,b", "c"), AccountImport.splitCsvLine("\"a,b\",c"))
-        assertNull(AccountImport.splitCsvLine("\"open,b"))
+        assertEquals(listOf("a", "b", ""), Csv.split("a, b ,"))
+        assertEquals(listOf("a,b", "c"), Csv.split("\"a,b\",c"))
+        assertNull(Csv.split("\"open,b"))
     }
 }

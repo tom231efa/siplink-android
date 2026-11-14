@@ -1,9 +1,9 @@
 package com.sky.siplink.core
 
-import com.sky.siplink.core.logic.Formatters
 import com.sky.siplink.core.model.AudioRoute
 import com.sky.siplink.core.model.CallPhase
 import com.sky.siplink.core.model.SideCall
+import org.linphone.core.Address
 import org.linphone.core.AudioDevice
 import org.linphone.core.Call
 import org.linphone.core.Core
@@ -35,20 +35,28 @@ internal object CallSupport {
      * changed (transfer, pickup, ...) through P-Asserted-Identity; that identity then wins.
      */
     fun party(call: Call): SideCall {
-        val remote = call.remoteAddress
-        var name = remote.displayName?.takeIf { it.isNotBlank() }
-        var number = remote.username
-        var address = Formatters.shortAddress(remote.asStringUriOnly())
-
         val asserted = call.remoteParams?.getCustomHeader(ASSERTED_IDENTITY)
             ?.takeIf { it.isNotBlank() && phaseOf(call) != CallPhase.INCOMING }
             ?.let { Factory.instance().createAddress(it) }
-        if (asserted != null && !asserted.username.isNullOrEmpty()) {
-            name = asserted.displayName?.takeIf { it.isNotBlank() }
-            number = asserted.username
-            address = Formatters.shortAddress(asserted.asStringUriOnly())
-        }
-        return SideCall(name = name ?: number ?: address, address = address)
+            ?.takeUnless { it.username.isNullOrEmpty() }
+        return side(asserted ?: call.remoteAddress)
+    }
+
+    /** [address] as a party: by the name it carries, else by its number. */
+    fun side(address: Address): SideCall {
+        val plain = plain(address)
+        return SideCall(name = address.displayName?.takeIf { it.isNotBlank() } ?: address.username ?: plain, address = plain)
+    }
+
+    /**
+     * `user@host[:port]` the way a person writes it: without scheme and parameters, and with the
+     * characters a URI has to escape (`#`, a space) as they are.
+     */
+    fun plain(address: Address): String {
+        val domain = address.domain.orEmpty()
+        val host = (if (':' in domain) "[$domain]" else domain) + (address.port.takeIf { it > 0 }?.let { ":$it" } ?: "")
+        val user = address.username
+        return if (user.isNullOrEmpty()) host else "$user@$host"
     }
 
     fun routeOf(type: AudioDevice.Type?): AudioRoute? = when (type) {
@@ -109,7 +117,7 @@ internal object CallSupport {
             Reason.NoResponse -> "对方无响应"
             Reason.DoNotDisturb -> "对方已开启免打扰"
             Reason.TemporarilyUnavailable -> "对方暂时无法接通"
-            Reason.Forbidden, Reason.Unauthorized -> "认证失败，无权呼叫"
+            Reason.Forbidden, Reason.Unauthorized -> "无权呼叫"
             Reason.IOError -> "网络连接失败"
             Reason.NotAcceptable, Reason.UnsupportedContent -> "媒体协商失败"
             else -> error.phrase?.takeIf { it.isNotBlank() } ?: message.ifBlank { "呼叫失败" }

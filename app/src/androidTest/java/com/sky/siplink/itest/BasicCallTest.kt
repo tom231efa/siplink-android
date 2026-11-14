@@ -2,7 +2,6 @@ package com.sky.siplink.itest
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.sky.siplink.core.model.CallPhase
-import com.sky.siplink.core.model.IntercomHeaderMode
 import com.sky.siplink.core.model.MediaSecurity
 import com.sky.siplink.core.model.SipTransport
 import org.junit.Assert.assertEquals
@@ -12,7 +11,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.linphone.core.MediaEncryption
 
-/** Outgoing and incoming calls, hold, DTMF, intercom (auto answer) and SRTP. */
+/** Outgoing and incoming calls, hold, DTMF, intercom (feature code, auto answer) and SRTP. */
 @RunWith(AndroidJUnit4::class)
 class BasicCallTest : PbxTestBase() {
     @Test
@@ -82,16 +81,18 @@ class BasicCallTest : PbxTestBase() {
     }
 
     @Test
-    fun intercomCallCarriesAutoAnswerHeaders() {
+    fun intercomIsACallToTheFeatureCodeOfThePbx() {
+        // What an "intercom" shortcut key does: the feature code in front of the extension. The
+        // PBX then asks that phone to answer by itself (1004 answers and echoes).
         register()
-        settings { it.copy(intercomHeaderMode = IntercomHeaderMode.ALL) }
-        val mark = pbx.mark()
-        dial("2020", intercom = true) // reports the auto answer headers of the INVITE
-        val event = pbx.awaitEvent("UserEvent", mark) { it["UserEvent"] == "SipLinkHeaders" }
-        assertTrue("Call-Info: ${event["CallInfo"]}", event["CallInfo"].orEmpty().contains("answer-after=0"))
-        assertTrue("Alert-Info: ${event["AlertInfo"]}", event["AlertInfo"].orEmpty().contains("info=alert-autoanswer"))
-        assertEquals("Auto", event["AnswerMode"])
-        assertTrue(awaitConnected("2020").intercom)
+        dial("*80$ECHO_PHONE")
+        // Once it is answered the PBX names the phone that was reached, not the code that was dialled.
+        awaitCall("the intercom call to be answered") {
+            it.phase == CallPhase.CONNECTED && (it.remoteAddress.startsWith("$ECHO_PHONE@") || it.remoteAddress.startsWith("*80$ECHO_PHONE@"))
+        }
+        awaitAppHearsAudio()
+        onMain { engine.calls.hangUp() }
+        awaitNoCall()
     }
 
     @Test

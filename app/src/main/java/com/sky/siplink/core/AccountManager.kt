@@ -35,16 +35,25 @@ class AccountManager(private val core: Core) {
     private val handler = Handler(Looper.getMainLooper())
     private val retired = HashMap<Long, Retired>()
 
+    /** Accounts whose registration state changed since the list was last published, by native pointer. */
+    private val changed = LinkedHashMap<Long, Account>()
+    private val publisher = Runnable { publishChanged() }
+
     init {
         refresh()
     }
 
     fun refresh() {
+        handler.removeCallbacks(publisher)
+        changed.clear()
         val defaultId = core.defaultAccount?.let(::idOf)
         state.value = core.accountList.map { snapshot(it, defaultId) }
     }
 
-    /** Cheap update of a single row, used for the bursts of registration events of many accounts. */
+    /**
+     * Registration events come in bursts (a hundred accounts registering at once), so they are
+     * gathered for a moment and published as one new list instead of one list per event.
+     */
     fun onRegistrationChanged(account: Account) {
         val pointer = account.nativePointer
         if (pointer in retired) {
@@ -54,23 +63,40 @@ class AccountManager(private val core: Core) {
             }
             return
         }
-        val id = idOf(account)
-        val list = state.value
-        val index = list.indexOfFirst { it.id == id }
-        if (index < 0) {
-            refresh()
-            return
-        }
-        state.value = list.toMutableList().also {
-            it[index] = snapshot(account, if (list[index].isDefault) id else null)
-        }
+        if (changed.isEmpty()) handler.postDelayed(publisher, PUBLISH_DELAY_MS)
+        changed[pointer] = account
     }
+
+    private fun publishChanged() {
+        val accounts = changed.values.toList()
+        changed.clear()
+        val list = state.value.toMutableList()
+        val positions = HashMap<String, Int>(list.size * 2)
+        list.forEachIndexed { index, account -> positions[account.id] = index }
+        for (account in accounts) {
+            val id = idOf(account)
+            val index = positions[id]
+            if (index == null) {
+                // Not an account of the list: start over from what the core has.
+                refresh()
+                return
+            }
+            list[index] = snapshot(account, if (list[index].isDefault) id else null)
+        }
+        state.value = list
+    }
+
+    /**
+     * Called after the user changed, switched or removed an account, with the accounts before and after:
+     * whatever refers to an account by its name or address has to follow.
+     */
+    var onEdited: ((before: List<SipAccount>, after: List<SipAccount>) -> Unit)? = null
 
     fun find(id: String): Account? = core.accountList.firstOrNull { idOf(it) == id }
 
     fun add(input: AccountDraft): List<AccountRules.Error> {
         val draft = AccountRules.normalize(input)
-        val errors = AccountRules.validate(draft, existingKeys())
+        val errors = AccountRules.validate(draft, existingKeys(), takenNames = state.value.map { it.name })
         if (errors.isNotEmpty()) return errors
         if (!create(draft)) return listOf(AccountRules.Error.ADDRESS_REJECTED)
         refresh()
@@ -90,10 +116,12 @@ class AccountManager(private val core: Core) {
 
     fun update(id: String, input: AccountDraft): List<AccountRules.Error> {
         val account = find(id) ?: return listOf(AccountRules.Error.NOT_FOUND)
+        val accountsBefore = state.value
         val before = snapshot(account, null)
         val draft = AccountRules.normalize(input)
         val editingKey = AccountRules.identityKey(before.username, before.domain)
-        val errors = AccountRules.validate(draft, existingKeys(), editingKey).toMutableList()
+        val otherNames = accountsBefore.filter { it.id != id }.map { it.name }
+        val errors = AccountRules.validate(draft, existingKeys(), editingKey, otherNames).toMutableList()
 
         val credentialsChanged = draft.username != before.username ||
             !draft.domain.equals(before.domain, ignoreCase = true) ||
@@ -110,6 +138,7 @@ class AccountManager(private val core: Core) {
         val params = account.params.clone()
         applyParams(params, draft, identity, server)
         account.params = params
+        storeName(id, draft.name)
 
         if (draft.password.isNotEmpty()) {
             if (credentialsChanged) {
@@ -121,16 +150,19 @@ class AccountManager(private val core: Core) {
             addAuthInfo(draft, identity)
         }
         refresh()
+        onEdited?.invoke(accountsBefore, state.value)
         return emptyList()
     }
 
     fun remove(id: String) {
         val account = find(id) ?: return
+        val accountsBefore = state.value
         val wasDefault = core.defaultAccount?.let(::idOf) == id
         val auth = account.findAuthInfo()
         val identityKey = identityKeyOf(account)
         val registered = account.state == RegistrationState.Ok || account.state == RegistrationState.Progress
         core.removeAccount(account)
+        storeName(id, "")
         when {
             auth == null -> Unit
             // The core now sends an un-REGISTER, which the server challenges like any other
@@ -144,6 +176,7 @@ class AccountManager(private val core: Core) {
         }
         if (wasDefault) core.defaultAccount = core.accountList.firstOrNull { idOf(it) != id }
         refresh()
+        onEdited?.invoke(accountsBefore, state.value)
     }
 
     private fun finishRetiring(pointer: Long) {
@@ -163,10 +196,15 @@ class AccountManager(private val core: Core) {
 
     fun setEnabled(id: String, enabled: Boolean) {
         val account = find(id) ?: return
+        val accountsBefore = state.value
         val params = account.params.clone()
         params.isRegisterEnabled = enabled
         account.params = params
+        // The switch the user just flipped should follow at once.
         onRegistrationChanged(account)
+        handler.removeCallbacks(publisher)
+        publishChanged()
+        onEdited?.invoke(accountsBefore, state.value)
     }
 
     fun setDefault(id: String) {
@@ -183,8 +221,10 @@ class AccountManager(private val core: Core) {
         val server = Factory.instance().createAddress(AccountRules.serverUri(draft)) ?: return false
 
         val params = core.createAccountParams()
-        params.idkey = UUID.randomUUID().toString()
+        val id = UUID.randomUUID().toString()
+        params.idkey = id
         applyParams(params, draft, identity, server)
+        storeName(id, draft.name)
 
         addAuthInfo(draft, identity)
         val account = core.createAccount(params)
@@ -217,6 +257,11 @@ class AccountManager(private val core: Core) {
             identity.domain,
         )
         core.addAuthInfo(authInfo)
+    }
+
+    /** The name is the app's own business: the SIP core has no field for it. */
+    private fun storeName(id: String, name: String) {
+        if (name.isEmpty()) core.config.cleanEntry(NAMES_SECTION, id) else core.config.setString(NAMES_SECTION, id, name)
     }
 
     private fun idOf(account: Account): String {
@@ -256,6 +301,7 @@ class AccountManager(private val core: Core) {
             state = state,
             isDefault = id == defaultId,
             error = if (state == RegState.FAILED) describeError(account) else null,
+            name = core.config.getString(NAMES_SECTION, id, null).orEmpty(),
         )
     }
 
@@ -283,5 +329,11 @@ class AccountManager(private val core: Core) {
     private companion object {
         /** How long the credentials of a removed identity are kept if its unregistration stalls. */
         const val UNREGISTER_GRACE_MS = 40_000L
+
+        /** How long registration events are gathered before the list is published. */
+        const val PUBLISH_DELAY_MS = 50L
+
+        /** Section of the core configuration file holding the account names, keyed by account id. */
+        const val NAMES_SECTION = "siplink_account_names"
     }
 }

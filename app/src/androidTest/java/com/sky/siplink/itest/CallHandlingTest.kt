@@ -3,6 +3,7 @@ package com.sky.siplink.itest
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.sky.siplink.core.logic.FeatureDial
 import com.sky.siplink.core.model.CallPhase
+import com.sky.siplink.core.model.DndMode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -74,6 +75,36 @@ class CallHandlingTest : PbxTestBase() {
     }
 
     @Test
+    fun doNotDisturbCanBeKeptByThePbx() {
+        register()
+        settings { it.copy(dndMode = DndMode.SERVER, doNotDisturb = true) }
+        try {
+            // The switch alone refuses nothing here: what the PBX still sends is meant to ring.
+            phoneCalls(AGENT, "$APP")
+            awaitCall("the call to ring although the switch is on") { it.phase == CallPhase.INCOMING }
+            onMain { engine.calls.decline() }
+            awaitNoCall()
+
+            // Told by its feature code, the PBX turns the callers away itself.
+            dial(features().dndOn)
+            awaitCall("the PBX to take the code") { it.phase == CallPhase.CONNECTED }
+            awaitNoCall()
+            val mark = phones.mark()
+            phoneCalls(AGENT, "$APP")
+            awaitPhoneCallReleased(AGENT, mark)
+            assertNull("The PBX sent a call although it was told not to", call())
+
+            dial(features().dndOff)
+            awaitCall("the PBX to take the code") { it.phase == CallPhase.CONNECTED }
+            awaitNoCall()
+            phoneCalls(AGENT, "$APP")
+            awaitCall("calls to arrive again") { it.phase == CallPhase.INCOMING }
+        } finally {
+            pbx.command("database deltree DND")
+        }
+    }
+
+    @Test
     fun forwardsAllCalls() {
         register()
         settings { it.copy(forwardAlways = "$CUSTOMER") }
@@ -129,7 +160,39 @@ class CallHandlingTest : PbxTestBase() {
     fun voicemailIsAnnouncedAndReachable() {
         register()
         val before = engine.voicemail.value
-        // A scripted party leaves a message (a tone) in the mailbox of the app's extension.
+        leaveMessage()
+        await("the new message to be announced to the app (MWI)") { engine.voicemail.value > before }
+
+        dial(features().voicemail)
+        awaitCall("the voicemail box to answer") { it.phase == CallPhase.CONNECTED }
+        assertEquals("VoiceMailMain", pbxChannel(pbxLeg(APP))?.get("Application"))
+        onMain { engine.calls.hangUp() }
+        awaitNoCall()
+
+        // Once the messages are gone from the mailbox, so is the announcement.
+        for (id in MESSAGE_ID.findAll(pbx.command("voicemail show mailbox $APP default")).map { it.value }.toList()) {
+            pbx.command("voicemail remove $APP default INBOX $id")
+        }
+        await("the announcement to be withdrawn") { engine.voicemail.value == 0 }
+    }
+
+    @Test
+    fun theAnnouncementOfARemovedAccountIsForgotten() {
+        register()
+        leaveMessage()
+        await("the new message to be announced to the app (MWI)") { engine.voicemail.value > 0 }
+        try {
+            onMain { engine.accounts.remove(account(APP)!!.id) }
+            assertEquals("The count outlived its account", 0, engine.voicemail.value)
+        } finally {
+            for (id in MESSAGE_ID.findAll(pbx.command("voicemail show mailbox $APP default")).map { it.value }.toList()) {
+                pbx.command("voicemail remove $APP default INBOX $id")
+            }
+        }
+    }
+
+    /** A scripted party leaves a message (a tone) in the mailbox of the app's extension. */
+    private fun leaveMessage() {
         val response = pbx.send(
             "Originate",
             "Channel" to "Local/2001@internal",
@@ -141,14 +204,12 @@ class CallHandlingTest : PbxTestBase() {
         assertEquals("Success", response["Response"])
         Thread.sleep(MESSAGE_MS)
         pbx.command("channel request hangup all")
-        await("the new message to be announced to the app (MWI)") { engine.voicemail.value > before }
-
-        dial(features().voicemail)
-        awaitCall("the voicemail box to answer") { it.phase == CallPhase.CONNECTED }
-        assertEquals("VoiceMailMain", pbxChannel(pbxLeg(APP))?.get("Application"))
     }
 
     private companion object {
         const val MESSAGE_MS = 6_000L
+
+        /** A message id in the output of "voicemail show mailbox", like 1794645458-00000000. */
+        val MESSAGE_ID = Regex("\\b\\d{9,}-[0-9a-f]{8}\\b")
     }
 }

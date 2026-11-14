@@ -75,6 +75,29 @@ class AccountRulesTest {
     }
 
     @Test
+    fun `two accounts cannot have the same name`() {
+        val named = valid.copy(name = "前台")
+        assertEquals(emptyList<AccountRules.Error>(), AccountRules.validate(named, emptyList(), takenNames = listOf("销售", "")))
+        assertEquals(listOf(AccountRules.Error.NAME_TAKEN), AccountRules.validate(named, emptyList(), takenNames = listOf("销售", "前台")))
+        assertEquals(
+            listOf(AccountRules.Error.NAME_TAKEN),
+            AccountRules.validate(valid.copy(name = "Front"), emptyList(), takenNames = listOf("front")),
+        )
+        // Any number of accounts may go without a name.
+        assertEquals(emptyList<AccountRules.Error>(), AccountRules.validate(valid, emptyList(), takenNames = listOf("", "")))
+    }
+
+    @Test
+    fun `an account name is trimmed and limited in length`() {
+        assertEquals("总机", AccountRules.normalize(valid.copy(name = "  总机 ")).name)
+        assertTrue(AccountRules.validate(valid.copy(name = "x".repeat(AccountRules.MAX_NAME_LENGTH)), emptyList()).isEmpty())
+        assertTrue(
+            AccountRules.Error.NAME_TOO_LONG in
+                AccountRules.validate(valid.copy(name = "x".repeat(AccountRules.MAX_NAME_LENGTH + 1)), emptyList()),
+        )
+    }
+
+    @Test
     fun `normalize trims strips scheme and splits user at domain`() {
         val draft = AccountRules.normalize(AccountDraft(username = "  sip:alice@example.org ", domain = " "))
         assertEquals("alice", draft.username)

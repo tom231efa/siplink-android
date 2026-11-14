@@ -41,4 +41,9 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onStop() {
+        super.onStop()
+        engine.settings.flush()
+    }
 }

@@ -6,6 +6,8 @@ enum class RegState { DISABLED, NONE, PROGRESS, OK, FAILED }
 
 /** Editable form of a SIP account, before it is handed to the SIP core. */
 data class AccountDraft(
+    /** Name the user gave the account. It stays on the device and is never sent to the server. */
+    val name: String = "",
     val username: String = "",
     val password: String = "",
     val domain: String = "",
@@ -32,11 +34,19 @@ data class SipAccount(
     val state: RegState,
     val isDefault: Boolean,
     val error: String? = null,
+    val name: String = "",
 ) {
     val identity: String get() = "$username@$domain"
-    val label: String get() = displayName.ifBlank { username }
+
+    /** What the account is called in lists: its name, else the display name, else the user. */
+    val label: String get() = name.ifBlank { displayName.ifBlank { username } }
+
+    /** True when [query] is part of anything the user may know the account by. */
+    fun matches(query: String): Boolean =
+        query.isBlank() || name.contains(query, true) || identity.contains(query, true) || displayName.contains(query, true)
 
     fun toDraft(): AccountDraft = AccountDraft(
+        name = name,
         username = username,
         password = "",
         domain = domain,
@@ -113,6 +123,8 @@ data class DirectoryState(
     val searching: Boolean = false,
     val contacts: List<DirectoryContact> = emptyList(),
     val limitReached: Boolean = false,
+    /** The contacts come from the local copy: the server has not answered (yet), or had nothing. */
+    val fromCache: Boolean = false,
 )
 
 enum class LdapCertCheck { DEFAULT, ENABLED, DISABLED }
@@ -151,7 +163,6 @@ data class CertInfo(
     val expired: Boolean,
 )
 
-enum class IntercomHeaderMode { CALL_INFO, ALERT_INFO, ANSWER_MODE, ALL }
 
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
 
@@ -171,19 +182,43 @@ data class FeatureCodes(
     val pickup: String = "**",
     val groupPickup: String = "*8",
     val voicemail: String = "*97",
+    /** Prefix of an intercom call: the PBX asks the called phone to answer by itself. */
+    val intercom: String = "*80",
+    /** Dialled to switch do not disturb on and off on the PBX ([DndMode.SERVER]). */
+    val dndOn: String = "*78",
+    val dndOff: String = "*79",
 )
+
+/** Who refuses the calls while do not disturb is on. */
+enum class DndMode {
+    /** This phone: it declines every incoming call itself. */
+    SOFTWARE,
+
+    /** The PBX: it is told by a call to its feature code and deals with the callers itself. */
+    SERVER,
+}
+
+/** Where the strip that leads back to a running call sits on the main screens. */
+enum class BannerPosition { TOP, BOTTOM }
+
+/** An audio codec of the SIP core; the list order is the order of preference. */
+data class AudioCodec(val mime: String, val clockRate: Int, val channels: Int, val enabled: Boolean) {
+    val key: String get() = "$mime/$clockRate/$channels"
+}
 
 data class Settings(
     val keepAlive: Boolean = true,
     val intercomAutoAnswer: Boolean = false,
     val intercomSpeaker: Boolean = true,
-    val intercomHeaderMode: IntercomHeaderMode = IntercomHeaderMode.CALL_INFO,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val dynamicColor: Boolean = false,
+    val callBannerPosition: BannerPosition = BannerPosition.BOTTOM,
     val verifyTlsCertificate: Boolean = true,
     val verifyTlsHostname: Boolean = true,
     val mediaSecurity: MediaSecurity = MediaSecurity.NONE,
+    /** Do not disturb is on; in [DndMode.SERVER] this is what the PBX was last told. */
     val doNotDisturb: Boolean = false,
+    val dndMode: DndMode = DndMode.SOFTWARE,
     val callWaiting: Boolean = true,
     /** Forwarding targets; an empty string disables the rule. */
     val forwardAlways: String = "",

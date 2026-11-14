@@ -14,9 +14,11 @@ val keystoreProperties = Properties().apply {
     }
 }
 
-// Optional: -Psiplink.abi=x86_64 builds for a single ABI, which keeps the APK small when it only
-// has to be installed on an emulator for the integration tests.
-val abiOverride = providers.gradleProperty("siplink.abi").orNull
+// The native SIP stack is by far the largest part of the APK, and it is packaged once per ABI.
+// The default is arm64-v8a only, which is what every Android 16 phone runs. Other ABIs on request:
+//   -Psiplink.abi=x86_64                  for the emulator of the integration tests
+//   -Psiplink.abi=arm64-v8a,armeabi-v7a   to also cover old 32 bit phones
+val abis = (providers.gradleProperty("siplink.abi").orNull ?: "arm64-v8a").split(',')
 
 android {
     namespace = "com.sky.siplink"
@@ -32,8 +34,8 @@ android {
         versionName = "0.1.0"
 
         ndk {
-            // Linphone SDK native libraries (16 KB page aligned). x86_64 is kept for emulators.
-            abiFilters += abiOverride?.split(',') ?: listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+            // Linphone SDK native libraries (16 KB page aligned).
+            abiFilters += abis
         }
 
         // Integration tests (app/src/androidTest) need the test environment in testenv/.
@@ -79,6 +81,14 @@ android {
         }
     }
 
+    androidResources {
+        // Media the Linphone SDK ships but this app has no use for: its own ring tones (the device
+        // ringtone is used), hold music (the PBX plays its own) and demo recordings. About 9 MB.
+        // The first part is the default pattern of the build tools, which this setting replaces.
+        ignoreAssetsPattern = "!.svn:!.git:!.ds_store:!*.scc:.*:<dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~" +
+            ":!*.mkv:!toy-mono.wav:!hello8000.wav:!hello16000.wav:!oldphone-mono.wav"
+    }
+
     lint {
         abortOnError = false
         checkReleaseBuilds = false
@@ -99,10 +109,8 @@ dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
-    implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
-    debugImplementation(libs.androidx.compose.ui.tooling)
 
     implementation(libs.linphone)
 

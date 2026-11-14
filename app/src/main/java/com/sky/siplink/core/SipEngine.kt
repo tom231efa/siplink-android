@@ -3,6 +3,7 @@ package com.sky.siplink.core
 import android.content.Context
 import com.sky.siplink.BuildConfig
 import com.sky.siplink.core.model.Settings
+import com.sky.siplink.core.model.SipAccount
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,21 +25,36 @@ import java.io.File
  * Application on the main thread, which then is the thread every core call must be made from.
  */
 class SipEngine(context: Context) {
+    private val appContext: Context = context.applicationContext
     val core: Core
     val settings: SettingsStore
     val tls: TlsManager
     val accounts: AccountManager
     val calls: CallManager
     val history: HistoryManager
-    val directory: DirectoryManager by lazy { DirectoryManager(core) }
+    val directory: DirectoryManager by lazy {
+        DirectoryManager(core, DirectoryCache(appContext)).also { it.onChanged = names::clear }
+    }
+
+    /** Directory names for the numbers of calls; sets the directory up when the first call needs it. */
+    val names = NameResolver { directory }
+    val codecs: CodecManager by lazy { CodecManager(core) }
+    val shortcuts: ShortcutManager
 
     val sdkVersion: String get() = core.version
+
+    /** Lives as long as the engine, which is as long as the process. */
+    private val networkWatch: NetworkWatch
 
     private val voicemailState = MutableStateFlow(0)
 
     /** Number of new voicemail messages announced by the PBX (MWI), summed over all accounts. */
     val voicemail: StateFlow<Int> = voicemailState.asStateFlow()
-    private val voicemailByAccount = HashMap<String, Int>()
+
+    /** New messages of one mailbox; [user] is the user part of the address the PBX names it with. */
+    private class Mailbox(val user: String, val count: Int)
+
+    private val mailboxes = HashMap<String, Mailbox>()
 
     /** Invoked with (name, address) when an incoming call was missed. */
     var onMissedCall: ((String, String) -> Unit)? = null
@@ -63,8 +79,9 @@ class SipEngine(context: Context) {
         override fun onMessageWaitingIndicationChanged(core: Core, lev: Event, mwi: MessageWaitingIndication) {
             val voice = mwi.getSummary(MessageWaitingIndication.ContextClass.Voice)
             val count = voice?.nbNew ?: if (mwi.hasMessageWaiting()) 1 else 0
-            voicemailByAccount[mwi.accountAddress?.asStringUriOnly() ?: lev.toAddress.asStringUriOnly()] = count
-            voicemailState.value = voicemailByAccount.values.sum()
+            val address = mwi.accountAddress ?: lev.toAddress
+            mailboxes[address.asStringUriOnly()] = Mailbox(address.username.orEmpty(), count)
+            voicemailState.value = mailboxes.values.sumOf { it.count }
         }
 
         override fun onAudioDeviceChanged(core: Core, audioDevice: AudioDevice) = calls.onAudioChanged()
@@ -72,11 +89,11 @@ class SipEngine(context: Context) {
         override fun onAudioDevicesListUpdated(core: Core) = calls.onAudioChanged()
 
         override fun onCallLogUpdated(core: Core, callLog: CallLog) {
-            history.refresh()
+            history.onLogUpdated(callLog)
             if (history.isMissed(callLog)) {
                 val remote = callLog.remoteAddress
                 val number = remote.username.orEmpty()
-                onMissedCall?.invoke(remote.displayName?.takeIf { it.isNotBlank() } ?: number, number)
+                onMissedCall?.invoke(names.known(number) ?: remote.displayName?.takeIf { it.isNotBlank() } ?: number, number)
             }
         }
     }
@@ -87,7 +104,6 @@ class SipEngine(context: Context) {
         factory.enableLogcatLogs(true)
         factory.loggingService.setLogLevel(if (BuildConfig.DEBUG) LogLevel.Message else LogLevel.Warning)
 
-        val appContext = context.applicationContext
         core = factory.createCore(File(appContext.filesDir, CONFIG_FILE).absolutePath, null, appContext)
         configure()
 
@@ -95,11 +111,22 @@ class SipEngine(context: Context) {
         tls = TlsManager(appContext, core)
         tls.applySettings(settings.current)
         accounts = AccountManager(core)
-        calls = CallManager(core, settings, accounts)
-        history = HistoryManager(core)
+        calls = CallManager(core, settings, accounts, names)
+        history = HistoryManager(core, names) { settings.current.features }
+        shortcuts = ShortcutManager(File(appContext.filesDir, SHORTCUTS_FILE))
+        accounts.onEdited = ::onAccountsEdited
 
         core.addListener(listener)
         core.start()
+        networkWatch = NetworkWatch(appContext)
+    }
+
+    /** What refers to an account follows after the user changed, switched off or removed one. */
+    private fun onAccountsEdited(before: List<SipAccount>, after: List<SipAccount>) {
+        shortcuts.followAccounts(before, after)
+        // The PBX no longer tells an account that is gone when its mailbox empties: forget the count.
+        val users = after.filter { it.enabled }.flatMapTo(HashSet()) { listOf(it.username, it.authUser) }
+        if (mailboxes.values.removeAll { it.user !in users }) voicemailState.value = mailboxes.values.sumOf { it.count }
     }
 
     /** Persists a settings change and applies its side effects to the SIP core. */
@@ -147,6 +174,7 @@ class SipEngine(context: Context) {
         const val LOG_TAG = "SipLink"
         const val USER_AGENT = "SipLink"
         const val CONFIG_FILE = "linphonerc"
+        const val SHORTCUTS_FILE = "shortcuts.csv"
         const val MAX_CALLS = 4
 
         /** liblinphone's LC_SIP_TRANSPORT_RANDOM. */

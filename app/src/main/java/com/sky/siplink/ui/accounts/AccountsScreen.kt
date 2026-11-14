@@ -2,13 +2,18 @@
 
 package com.sky.siplink.ui.accounts
 
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -23,6 +28,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Lock
@@ -35,7 +41,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -43,6 +48,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -52,8 +58,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -62,6 +72,7 @@ import com.sky.siplink.core.model.RegState
 import com.sky.siplink.core.model.SipAccount
 import com.sky.siplink.core.model.SipTransport
 import com.sky.siplink.engine
+import com.sky.siplink.ui.Motion
 import com.sky.siplink.ui.components.Avatar
 import com.sky.siplink.ui.components.EmptyState
 import com.sky.siplink.ui.components.LocalMessenger
@@ -70,44 +81,99 @@ import com.sky.siplink.ui.components.regStateColor
 import com.sky.siplink.ui.components.regStateLabel
 
 @Composable
-fun AccountsScreen(onAdd: () -> Unit, onEdit: (String) -> Unit) {
+fun AccountsScreen(onBack: () -> Unit, onAdd: () -> Unit, onEdit: (String) -> Unit) {
     val context = LocalContext.current
     val manager = context.engine.accounts
     val accounts by manager.accounts.collectAsStateWithLifecycle()
     val messenger = LocalMessenger.current
+    val focusManager = LocalFocusManager.current
     var query by rememberSaveable { mutableStateOf("") }
+    var searching by rememberSaveable { mutableStateOf(false) }
+    // Only a tap on the search button focuses the field: coming back from an account with the
+    // search still open must not bring the keyboard up again.
+    var focusSearch by remember { mutableStateOf(false) }
     var importOpen by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
     val fabExpanded by remember { derivedStateOf { listState.firstVisibleItemIndex == 0 } }
 
     val filtered = remember(accounts, query) {
-        if (query.isBlank()) {
-            accounts
-        } else {
-            accounts.filter { it.identity.contains(query, true) || it.displayName.contains(query, true) }
-        }
+        if (query.isBlank()) accounts else accounts.filter { it.matches(query) }
     }
     val full = !AccountRules.canAdd(accounts.size)
+    // Without accounts the empty state takes the screen, and there is nothing to search in.
+    val searchOpen = searching && accounts.isNotEmpty()
 
     fun add() {
         if (full) messenger(AccountRules.Error.LIMIT_REACHED.message) else onAdd()
     }
 
+    fun openSearch() {
+        searching = true
+        focusSearch = true
+    }
+
+    fun closeSearch() {
+        searching = false
+        focusSearch = false
+        query = ""
+        focusManager.clearFocus()
+    }
+    // Back first puts the search away, like its close button.
+    BackHandler(enabled = searchOpen, onBack = ::closeSearch)
+
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
             TopAppBar(
                 title = { Text("SIP 账号") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回") }
+                },
                 actions = {
                     IconButton(onClick = { if (full) messenger(AccountRules.Error.LIMIT_REACHED.message) else importOpen = true }) {
                         Icon(Icons.Rounded.UploadFile, contentDescription = "批量导入账号")
                     }
+                    IconButton(
+                        onClick = { if (searching) closeSearch() else openSearch() },
+                        enabled = accounts.isNotEmpty(),
+                    ) {
+                        Icon(Icons.Rounded.Search, contentDescription = "搜索账号")
+                    }
                 },
             )
+            AnimatedVisibility(
+                visible = searchOpen,
+                enter = expandVertically(Motion.spatial()) + fadeIn(Motion.fade(160)),
+                exit = shrinkVertically(Motion.spatial()) + fadeOut(Motion.fade(100)),
+            ) {
+                val focusRequester = remember { FocusRequester() }
+                LaunchedEffect(focusSearch) {
+                    if (focusSearch) {
+                        focusRequester.requestFocus()
+                        focusSearch = false
+                    }
+                }
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 16.dp, bottom = 6.dp)
+                        .focusRequester(focusRequester),
+                    placeholder = { Text("搜索账号") },
+                    leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
+                    trailingIcon = {
+                        IconButton(onClick = ::closeSearch) {
+                            Icon(Icons.Rounded.Close, contentDescription = "关闭搜索")
+                        }
+                    },
+                    singleLine = true,
+                    shape = CircleShape,
+                )
+            }
             if (accounts.isEmpty()) {
                 EmptyState(
                     icon = Icons.Rounded.ManageAccounts,
                     title = "添加第一个 SIP 账号",
-                    subtitle = "最多可以配置 ${AccountRules.MAX_ACCOUNTS} 个账号，支持 UDP、TCP 和 TLS，也可以批量导入。",
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     Button(onClick = ::add) { Text("添加账号") }
@@ -118,24 +184,17 @@ fun AccountsScreen(onAdd: () -> Unit, onEdit: (String) -> Unit) {
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 96.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    item(key = "summary") { SummaryCard(accounts) }
-                    if (accounts.size > 6) {
-                        item(key = "search") {
-                            OutlinedTextField(
-                                value = query,
-                                onValueChange = { query = it },
-                                modifier = Modifier.fillMaxWidth(),
-                                placeholder = { Text("搜索账号") },
-                                leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
-                                trailingIcon = {
-                                    if (query.isNotEmpty()) {
-                                        IconButton(onClick = { query = "" }) {
-                                            Icon(Icons.Rounded.Close, contentDescription = "清除")
-                                        }
-                                    }
-                                },
-                                singleLine = true,
-                                shape = CircleShape,
+                    item(key = "summary") { SummaryRow(accounts) }
+                    if (filtered.isEmpty()) {
+                        item(key = "noMatch") {
+                            Text(
+                                "没有匹配的账号",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 24.dp),
                             )
                         }
                     }
@@ -169,46 +228,30 @@ fun AccountsScreen(onAdd: () -> Unit, onEdit: (String) -> Unit) {
     }
 }
 
+/** One slim line with the totals; it only wraps when the screen is too narrow for it. */
 @Composable
-private fun SummaryCard(accounts: List<SipAccount>) {
+private fun SummaryRow(accounts: List<SipAccount>) {
     val registered = accounts.count { it.state == RegState.OK }
     val failed = accounts.count { it.state == RegState.FAILED }
     val disabled = accounts.count { !it.enabled }
-    val progress by animateFloatAsState(
-        targetValue = accounts.size / AccountRules.MAX_ACCOUNTS.toFloat(),
-        animationSpec = spring(dampingRatio = 0.8f, stiffness = 80f),
-        label = "accountUsage",
-    )
     Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.primaryContainer) {
-        Column(Modifier.padding(20.dp)) {
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(
-                    accounts.size.toString(),
-                    style = MaterialTheme.typography.displaySmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
-                Text(
-                    " / ${AccountRules.MAX_ACCOUNTS} 个账号",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
-                    modifier = Modifier.padding(bottom = 6.dp),
-                )
-            }
-            Spacer(Modifier.height(12.dp))
-            LinearProgressIndicator(
-                progress = { progress },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(8.dp)
-                    .clip(CircleShape),
-                trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.12f),
+        FlowRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+            itemVerticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                "${accounts.size} / ${AccountRules.MAX_ACCOUNTS} 个账号",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                maxLines = 1,
             )
-            Spacer(Modifier.height(14.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                SummaryStat(regStateColor(RegState.OK), "已注册 $registered")
-                SummaryStat(regStateColor(RegState.FAILED), "失败 $failed")
-                SummaryStat(regStateColor(RegState.DISABLED), "停用 $disabled")
-            }
+            SummaryStat(regStateColor(RegState.OK), "已注册 $registered")
+            SummaryStat(regStateColor(RegState.FAILED), "失败 $failed")
+            SummaryStat(regStateColor(RegState.DISABLED), "停用 $disabled")
         }
     }
 }
@@ -218,12 +261,17 @@ private fun SummaryStat(color: Color, text: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(
             Modifier
-                .size(8.dp)
+                .size(6.dp)
                 .clip(CircleShape)
                 .background(color),
         )
-        Spacer(Modifier.width(6.dp))
-        Text(text, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
+        Spacer(Modifier.width(4.dp))
+        Text(
+            text,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
+            maxLines = 1,
+        )
     }
 }
 

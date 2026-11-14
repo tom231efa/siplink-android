@@ -42,7 +42,7 @@ class TlsManager(context: Context, private val core: Core) {
     val certificates: StateFlow<List<CertInfo>> = state.asStateFlow()
 
     init {
-        applyTrust(reconnect = false)
+        applyTrust(reconnect = false, rewrite = bundleIsStale())
     }
 
     /** Parses PEM / DER / PKCS#7 data and trusts every certificate found in it. */
@@ -100,20 +100,31 @@ class TlsManager(context: Context, private val core: Core) {
         core.setSipNetworkReachable(true)
     }
 
-    private fun applyTrust(reconnect: Boolean) {
+    /** @param rewrite store the user CAs and rebuild the bundle; not needed when nothing changed since they were written */
+    private fun applyTrust(reconnect: Boolean, rewrite: Boolean = true) {
         if (userCertificates.isEmpty()) {
             userCaFile.delete()
             bundleFile.delete()
             defaultRootCa?.let { core.rootCa = it }
         } else {
-            directory.mkdirs()
-            userCaFile.writeText(userCertificates.joinToString("") { CertificateTools.toPem(it) })
-            bundleFile.writeText(CertificateTools.bundle(readDefaultRoots(), userCertificates))
+            if (rewrite) {
+                directory.mkdirs()
+                userCaFile.writeText(userCertificates.joinToString("") { CertificateTools.toPem(it) })
+                bundleFile.writeText(CertificateTools.bundle(readDefaultRoots(), userCertificates))
+            }
             core.rootCa = bundleFile.absolutePath
         }
         val now = System.currentTimeMillis()
         state.value = userCertificates.map { CertificateTools.describe(it, now) }
         if (reconnect) reconnect()
+    }
+
+    /** At start up: whether the bundle is missing or older than the user CAs or the stock roots it contains. */
+    private fun bundleIsStale(): Boolean {
+        if (!bundleFile.isFile) return true
+        val built = bundleFile.lastModified()
+        val roots = defaultRootCa?.let(::File)
+        return userCaFile.lastModified() > built || (roots != null && roots.lastModified() > built)
     }
 
     private fun loadUserCertificates(): List<X509Certificate> {

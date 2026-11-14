@@ -211,8 +211,8 @@ abstract class PbxTestBase {
         return account(extension)!!
     }
 
-    protected fun dial(target: String, intercom: Boolean = false, supervision: SupervisionMode? = null) =
-        ok(onMain { engine.calls.dial(target, null, intercom, supervision) })
+    protected fun dial(target: String, supervision: SupervisionMode? = null) =
+        ok(onMain { engine.calls.dial(target, null, supervision) })
 
     protected fun settings(change: (Settings) -> Settings) = onMain { engine.updateSettings(change) }
 

@@ -6,12 +6,15 @@ import android.os.SystemClock
 import com.sky.siplink.core.CallSupport.isEnded
 import com.sky.siplink.core.CallSupport.isRinging
 import com.sky.siplink.core.CallSupport.phaseOf
+import com.sky.siplink.core.logic.DialTarget
 import com.sky.siplink.core.logic.Formatters
 import com.sky.siplink.core.logic.IncomingPolicy
 import com.sky.siplink.core.logic.IntercomHeaders
+import com.sky.siplink.core.logic.PartyName
 import com.sky.siplink.core.model.AudioRoute
 import com.sky.siplink.core.model.CallInfo
 import com.sky.siplink.core.model.CallPhase
+import com.sky.siplink.core.model.SideCall
 import com.sky.siplink.core.model.SupervisionMode
 import com.sky.siplink.core.model.TransferStatus
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,12 +39,16 @@ class CallManager(
     private val core: Core,
     private val settings: SettingsStore,
     private val accounts: AccountManager,
+    private val names: NameResolver,
 ) {
     /** Hooks implemented by the app layer (notifications, call screen, foreground service). */
     interface Host {
         /** True when one of the app's activities is visible, i.e. the microphone may be used. */
         val isAppVisible: Boolean
         fun showIncomingCall(info: CallInfo)
+
+        /** The call that is being announced got a better name (found in the directory). */
+        fun updateIncomingCall(info: CallInfo)
         fun dismissIncomingCall()
         fun onCallActivityChanged()
     }
@@ -50,6 +57,10 @@ class CallManager(
 
     private val state = MutableStateFlow<CallInfo?>(null)
     val call: StateFlow<CallInfo?> = state.asStateFlow()
+
+    init {
+        names.addListener(::onNamesFound)
+    }
 
     /** True while a call is being set up or is established (not merely ringing in). */
     val hasOngoingCall: Boolean
@@ -67,7 +78,7 @@ class CallManager(
     )
 
     /** What the next outgoing call started by [invite] is meant to be. */
-    private class Pending(val intercom: Boolean, val supervision: SupervisionMode?, val consultation: Boolean)
+    private class Pending(val supervision: SupervisionMode?, val consultation: Boolean)
 
     private val handler = Handler(Looper.getMainLooper())
     private val metas = HashMap<Long, Meta>()
@@ -89,15 +100,10 @@ class CallManager(
     // ---------------------------------------------------------------- placing calls
 
     /** @return a user readable error, or null when the call was started */
-    fun dial(
-        target: String,
-        accountId: String?,
-        asIntercom: Boolean = false,
-        supervision: SupervisionMode? = null,
-    ): String? {
+    fun dial(target: String, accountId: String?, supervision: SupervisionMode? = null): String? {
         if (live(current) != null || core.calls.any { !isEnded(it) }) return "已有通话正在进行"
         val account = accountId?.let(accounts::find) ?: core.defaultAccount
-        return invite(target, account, Pending(asIntercom, supervision, consultation = false))
+        return invite(target, account, Pending(supervision, consultation = false))
     }
 
     /** Puts the current call on hold and calls [target]: first step of an attended transfer. */
@@ -106,28 +112,24 @@ class CallManager(
         if (other != null) return "已经有两路通话"
         val phase = phaseOf(active)
         if (phase != CallPhase.CONNECTED && phase != CallPhase.HELD) return "通话接通后才能发起咨询"
-        return invite(target, active.params.account ?: core.defaultAccount, Pending(false, null, consultation = true))
+        return invite(target, active.params.account ?: core.defaultAccount, Pending(null, consultation = true))
     }
 
     private fun invite(target: String, account: Account?, kind: Pending): String? {
-        val cleaned = target.filterNot { it.isWhitespace() }
-        if (cleaned.isEmpty()) return "请输入号码或 SIP 地址"
+        val cleaned = DialTarget.of(target)
+        if (cleaned.isEmpty()) return "请输入号码"
         if (account == null) return "请先添加 SIP 账号"
+        // A line that is switched off stays out of use, even where the PBX would take its calls.
+        if (!account.params.isRegisterEnabled) return "线路已停用"
         val address = account.normalizeSipUri(cleaned) ?: return "号码或地址无效"
         val params = core.createCallParams(null) ?: return "无法创建呼叫"
         params.account = account
         params.isVideoEnabled = false
-        if (kind.intercom) {
-            val domain = account.params.identityAddress?.domain.orEmpty()
-            IntercomHeaders.outgoing(settings.current.intercomHeaderMode, domain).forEach {
-                params.addCustomHeader(it.name, it.value)
-            }
-        }
         // The core reports OutgoingInit from inside the invite call; `pending` tells it apart there.
         pending = kind
         val created = core.inviteAddressWithParams(address, params)
         pending = null
-        return if (created == null) "呼叫失败，请检查网络和账号状态" else null
+        return if (created == null) "呼叫失败" else null
     }
 
     // ---------------------------------------------------------------- answering / ending
@@ -195,6 +197,13 @@ class CallManager(
         if (Formatters.isDtmf(digit)) current?.sendDtmf(digit)
     }
 
+    /** Sends a string of digits one after the other (a DTMF shortcut key). */
+    fun sendDtmfs(digits: String): String? {
+        val call = live(current)?.takeIf { it.state == Call.State.StreamsRunning } ?: return "通话中才能发送按键"
+        call.sendDtmfs(digits.filter(Formatters::isDtmf))
+        return null
+    }
+
     fun setRoute(route: AudioRoute) {
         val call = current ?: return
         if (CallSupport.applyRoute(core, call, route)) publish()
@@ -229,7 +238,7 @@ class CallManager(
         val call = live(current) ?: return "当前没有通话"
         val phase = phaseOf(call)
         if (phase != CallPhase.CONNECTED && phase != CallPhase.HELD) return "通话接通后才能转接"
-        val cleaned = target.filterNot { it.isWhitespace() }
+        val cleaned = DialTarget.of(target)
         if (cleaned.isEmpty()) return "请输入转接号码"
         val address = (call.params.account ?: core.defaultAccount)?.normalizeSipUri(cleaned)
             ?: return "号码或地址无效"
@@ -258,8 +267,8 @@ class CallManager(
     fun completeTransfer(): String? {
         val consulted = live(current)
         val held = live(other)
-        if (!consulting || consulted == null || held == null) return "没有可以完成的咨询转接"
-        if (phaseOf(consulted) != CallPhase.CONNECTED) return "请等待对方接听后再完成转接"
+        if (!consulting || consulted == null || held == null) return "没有待完成的转接"
+        if (phaseOf(consulted) != CallPhase.CONNECTED) return "对方接听后才能转接"
         attendedTransfer = true
         transferStatus = TransferStatus.IN_PROGRESS
         if (held.transferToAnother(consulted) != 0) {
@@ -276,7 +285,7 @@ class CallManager(
     fun merge(): String? {
         val first = live(current)
         val second = live(other)?.takeIf { !isRinging(it) }
-        if (first == null || second == null) return "需要两路已接通的通话才能合并"
+        if (first == null || second == null) return "需要两路已接通的通话"
         val params = core.createConferenceParams(null)
         params.isVideoEnabled = false
         val created = core.createConferenceWithParams(params) ?: return "无法创建三方通话"
@@ -423,7 +432,7 @@ class CallManager(
 
     private fun forward(call: Call, target: String) {
         // A bare number is completed with the domain of the account that was called.
-        val address = (call.params.account ?: core.defaultAccount)?.normalizeSipUri(target.filterNot { it.isWhitespace() })
+        val address = (call.params.account ?: core.defaultAccount)?.normalizeSipUri(DialTarget.of(target))
             ?: core.interpretUrl(target, false)
         if (address == null || call.redirectTo(address) != 0) call.decline(Reason.Busy)
     }
@@ -445,10 +454,7 @@ class CallManager(
                 generation++
                 current = call
                 resetScenario()
-                metaOf(call).apply {
-                    intercom = kind?.intercom == true
-                    supervision = kind?.supervision
-                }
+                metaOf(call).supervision = kind?.supervision
             }
 
             // A second call next to the active one: the consultation leg of an attended transfer.
@@ -565,10 +571,24 @@ class CallManager(
         )
     }
 
+    /** The other side of a call, by its name in the directory when it has one there. */
+    private fun partyOf(call: Call): SideCall {
+        val party = CallSupport.party(call)
+        val outgoing = call.dir == Call.Dir.Outgoing
+        return party.copy(name = PartyName.of(party.name, party.address, outgoing, settings.current.features, names::nameOf))
+    }
+
+    /** The directory found a name: show it on the call that is up, and where that call is being announced. */
+    private fun onNamesFound() {
+        val call = current ?: return
+        val info = publish() ?: return
+        if (isRinging(call) && call.dir == Call.Dir.Incoming) host?.updateIncomingCall(info)
+    }
+
     /** Snapshot of a single call, without the second-call fields. */
     private fun describe(call: Call): CallInfo {
         val meta = metaOf(call)
-        val party = CallSupport.party(call)
+        val party = partyOf(call)
         val account = call.params.account?.params?.identityAddress
         return CallInfo(
             phase = phaseOf(call),
@@ -593,8 +613,8 @@ class CallManager(
         val described = describe(call)
         val info = described.copy(
             endReason = transferEndReason() ?: described.endReason,
-            heldCall = second?.takeIf { !isRinging(it) }?.let(CallSupport::party),
-            waitingCall = second?.takeIf(::isRinging)?.let(CallSupport::party),
+            heldCall = second?.takeIf { !isRinging(it) }?.let(::partyOf),
+            waitingCall = second?.takeIf(::isRinging)?.let(::partyOf),
             consulting = consulting && second != null,
             transfer = transferStatus,
             parked = parking && transferStatus == TransferStatus.SUCCEEDED,

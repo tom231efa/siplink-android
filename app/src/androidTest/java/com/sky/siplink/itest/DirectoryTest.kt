@@ -2,6 +2,7 @@ package com.sky.siplink.itest
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.sky.siplink.core.logic.LdapRules
+import com.sky.siplink.core.model.CallPhase
 import com.sky.siplink.core.model.DirectoryContact
 import com.sky.siplink.core.model.LdapCertCheck
 import com.sky.siplink.core.model.LdapConfig
@@ -86,10 +87,10 @@ class DirectoryTest : DirectoryTestBase() {
         assertEquals(listOf("1006", "13800001006"), alice.map { it.number })
         assertEquals(setOf("Alice Smith"), alice.map { it.name }.toSet())
 
-        // One tap intercom call to a directory entry (1004 answers and echoes).
+        // One tap call to a directory entry (1004 answers and echoes).
         val target = search("$ECHO_PHONE").first { it.number == "$ECHO_PHONE" }.callTarget
-        dial(target, intercom = true)
-        assertTrue(awaitConnected("$ECHO_PHONE").intercom)
+        dial(target)
+        awaitConnected("$ECHO_PHONE")
         awaitAppHearsAudio()
     }
 
@@ -98,6 +99,71 @@ class DirectoryTest : DirectoryTestBase() {
         register() // numbers only become callable contacts once there is an account
         configure(env.ldapHost, startTls = false)
         assertFindsTheStaff(search("100"))
+    }
+
+    @Test
+    fun keepsALocalCopyThatAnswersBeforeTheServer() {
+        register()
+        configure(env.ldapHost, startTls = false)
+        onMain { engine.directory.clearCache() }
+        assertFindsTheStaff(search("100"))
+        onMain { engine.directory.refreshCacheStats() }
+        await("the local copy to hold the staff") { engine.directory.cacheStats.value.entries >= 7 }
+
+        // Make the server slow to be asked (the delay does not touch the local copy): the entries
+        // found before are on screen long before it answers, marked as coming from the copy.
+        val slow = ldapConfig(env.ldapHost, startTls = false).copy(delayMs = SLOW_SERVER_MS)
+        assertTrue(onMain { engine.directory.save(slow) }.isEmpty())
+        onMain { engine.directory.search("Alice") }
+        await("the local copy to answer first", SLOW_SERVER_MS.toLong()) {
+            val state = engine.directory.state.value
+            state.query == "Alice" && state.searching && state.fromCache && state.contacts.any { it.number == "1006" }
+        }
+        await("the answer of the server to take over") {
+            val state = engine.directory.state.value
+            !state.searching && !state.fromCache && state.contacts.any { it.number == "1006" }
+        }
+
+        // Emptying the copy leaves the server's results alone and reports an empty copy.
+        onMain { engine.directory.clearCache() }
+        await("the local copy to be empty") { engine.directory.cacheStats.value.entries == 0L }
+    }
+
+    @Test
+    fun namesCallersAndCalleesFromTheDirectory() {
+        register()
+        configure(env.ldapHost, startTls = false)
+        onMain { engine.directory.clearCache() }
+        val echoName = search("$ECHO_PHONE").first { it.number == "$ECHO_PHONE" }.name
+
+        // Incoming: whatever name the PBX sends along, the directory knows 1002 as 王芳. Her entry
+        // is not in the local copy yet, so this one is answered by the server.
+        phoneCalls(AGENT, "$APP")
+        awaitCall("the caller to be named by the directory") { it.phase == CallPhase.INCOMING && it.remoteName == "王芳" }
+        onMain { engine.calls.decline() }
+        awaitNoCall()
+        await("the caller to be released") { !phoneHasCall(AGENT) }
+        await("the call history to use the name") { engine.history.entries.value.firstOrNull()?.name == "王芳" }
+
+        // Outgoing: the name of the number that was dialled.
+        dial("$ECHO_PHONE")
+        awaitCall("the callee to be named by the directory") { it.phase == CallPhase.CONNECTED && it.remoteName == echoName }
+        onMain { engine.calls.hangUp() }
+        awaitNoCall()
+        await("the PBX to release the call") { pbxChannel(pbxLeg(APP)) == null }
+
+        // From now on the local copy answers. With a server that is only asked after seconds
+        // (saving the settings also makes the app forget the names it had in memory), the name
+        // is there long before the server could have said anything.
+        val slow = ldapConfig(env.ldapHost, startTls = false).copy(delayMs = SLOW_SERVER_MS)
+        assertTrue(onMain { engine.directory.save(slow) }.isEmpty())
+        phoneCalls(AGENT, "$APP")
+        awaitCall("the caller to be named from the local copy", SLOW_SERVER_MS - 1_000L) {
+            it.phase == CallPhase.INCOMING && it.remoteName == "王芳"
+        }
+        onMain { engine.calls.decline() }
+        awaitNoCall()
+        await("the caller to be released") { !phoneHasCall(AGENT) }
     }
 
     @Test
@@ -123,3 +189,6 @@ class DirectoryTrustTest : DirectoryTestBase() {
         assertTrue(onMain { engine.directory.tlsChangeNeedsRestart })
     }
 }
+
+/** Delay before the server is asked in the test of the local copy, long enough to look at the copy's answer. */
+private const val SLOW_SERVER_MS = 4_000

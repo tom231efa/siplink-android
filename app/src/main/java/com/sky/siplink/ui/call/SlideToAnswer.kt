@@ -1,0 +1,178 @@
+package com.sky.siplink.ui.call
+
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Call
+import androidx.compose.material.icons.rounded.CallEnd
+import androidx.compose.material3.Icon
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
+import com.sky.siplink.ui.theme.Brand
+import kotlin.math.abs
+import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+
+private val TrackHeight = 78.dp
+private val DotSize = 62.dp
+private val TrackPadding = 8.dp
+private val MaxTrackWidth = 320.dp
+private val EndIconSize = 30.dp
+
+/** How far the dot has to be dragged (share of the way) for the choice to count. */
+private const val COMMIT_AT = 0.6f
+
+/** A quick flick counts from this much of the way on ("quick" being the velocity below, in px per second). */
+private const val FLICK_FROM = 0.2f
+private const val FLICK_VELOCITY = 1500f
+
+/**
+ * Incoming call: a white dot on a glass track, with "hang up" at its left end and "answer" at
+ * its right end. Sliding the dot to one of them does that; the dot and the track take on the
+ * colour of where it is heading on the way. Nothing moves before it is touched.
+ */
+@Composable
+internal fun SlideToAnswer(onAnswer: () -> Unit, onDecline: () -> Unit, modifier: Modifier = Modifier) {
+    val haptics = LocalHapticFeedback.current
+    val scope = rememberCoroutineScope()
+    val answer by rememberUpdatedState(onAnswer)
+    val decline by rememberUpdatedState(onDecline)
+
+    /** Position of the dot in pixels from the middle; negative is towards "hang up". */
+    val position = remember { Animatable(0f) }
+    var decided by remember { mutableStateOf(false) }
+
+    // An answer can be held up (microphone permission refused): give the dot back then.
+    LaunchedEffect(decided) {
+        if (decided) {
+            delay(1500)
+            position.animateTo(0f, tween(160))
+            decided = false
+        }
+    }
+
+    BoxWithConstraints(
+        modifier
+            .widthIn(max = MaxTrackWidth)
+            .fillMaxWidth()
+            .height(TrackHeight),
+    ) {
+        val reach = with(LocalDensity.current) { ((maxWidth - DotSize) / 2 - TrackPadding).toPx() }
+
+        /** -1 (hang up) .. 0 (at rest) .. 1 (answer). Read while drawing, so dragging does not recompose. */
+        val progress = { (position.value / reach).coerceIn(-1f, 1f) }
+
+        Box(
+            Modifier
+                .fillMaxSize()
+                .drawBehind {
+                    val p = progress()
+                    val towards = if (p >= 0f) Brand.CallGreen else Brand.HangUpRed
+                    drawRoundRect(
+                        lerp(Color.White.copy(alpha = 0.14f), towards.copy(alpha = 0.34f), abs(p)),
+                        cornerRadius = CornerRadius(size.height / 2),
+                    )
+                }
+                .semantics(mergeDescendants = true) {
+                    contentDescription = "来电：向右滑动接听，向左滑动挂断"
+                    customActions = listOf(
+                        CustomAccessibilityAction("接听") {
+                            answer()
+                            true
+                        },
+                        CustomAccessibilityAction("挂断") {
+                            decline()
+                            true
+                        },
+                    )
+                }
+                .draggable(
+                    orientation = Orientation.Horizontal,
+                    enabled = !decided,
+                    state = rememberDraggableState { delta ->
+                        scope.launch { position.snapTo((position.value + delta).coerceIn(-reach, reach)) }
+                    },
+                    onDragStopped = { velocity ->
+                        val p = progress()
+                        val flicked = abs(velocity) > FLICK_VELOCITY && abs(p) > FLICK_FROM && velocity * p > 0f
+                        if (abs(p) >= COMMIT_AT || flicked) {
+                            decided = true
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            position.animateTo(if (p > 0f) reach else -reach, tween(110))
+                            if (p > 0f) answer() else decline()
+                        } else {
+                            // Straight back, without a bounce.
+                            position.animateTo(0f, spring(dampingRatio = 1f, stiffness = 700f))
+                        }
+                    },
+                ),
+        ) {
+            End(Icons.Rounded.CallEnd, Modifier.align(Alignment.CenterStart)) { -progress() }
+            End(Icons.Rounded.Call, Modifier.align(Alignment.CenterEnd)) { progress() }
+            Box(
+                Modifier
+                    .align(Alignment.Center)
+                    .offset { IntOffset(position.value.roundToInt(), 0) }
+                    .size(DotSize)
+                    .drawBehind {
+                        val p = progress()
+                        drawCircle(lerp(Color.White, if (p >= 0f) Brand.CallGreen else Brand.HangUpRed, abs(p)))
+                    },
+            )
+        }
+    }
+}
+
+/**
+ * The icon at one end of the track. It grows clearer as the dot comes towards it and fades as
+ * the dot goes the other way; [approach] is 1 when the dot has arrived and -1 at the far end.
+ */
+@Composable
+private fun End(icon: ImageVector, modifier: Modifier, approach: () -> Float) {
+    Icon(
+        icon,
+        contentDescription = null,
+        tint = Color.White,
+        modifier = modifier
+            .padding(horizontal = 24.dp)
+            .size(EndIconSize)
+            .graphicsLayer { alpha = (0.7f + approach() * 0.5f).coerceIn(0.2f, 1f) },
+    )
+}

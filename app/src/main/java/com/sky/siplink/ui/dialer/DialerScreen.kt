@@ -34,28 +34,23 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Backspace
+import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.ArrowDropDown
 import androidx.compose.material.icons.rounded.Call
-import androidx.compose.material.icons.rounded.Campaign
-import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Dialpad
 import androidx.compose.material.icons.rounded.DoNotDisturbOn
 import androidx.compose.material.icons.rounded.Keyboard
 import androidx.compose.material.icons.rounded.PersonAdd
-import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.SupportAgent
 import androidx.compose.material.icons.rounded.Voicemail
 import androidx.compose.material3.AssistChip
@@ -63,7 +58,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -90,13 +84,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.sky.siplink.core.model.RegState
 import com.sky.siplink.core.model.SipAccount
 import com.sky.siplink.engine
 import com.sky.siplink.ui.components.FeatureSheet
+import com.sky.siplink.ui.components.AccountPickerSheet
 import com.sky.siplink.ui.components.LocalMessenger
 import com.sky.siplink.ui.components.StatusDot
-import com.sky.siplink.ui.components.regStateLabel
+import com.sky.siplink.ui.components.pressScale
 import com.sky.siplink.ui.components.rememberCallLauncher
 import com.sky.siplink.ui.theme.Brand
 
@@ -108,7 +102,7 @@ private val dialKeys = listOf(
 )
 
 @Composable
-fun DialerScreen(onAddAccount: () -> Unit) {
+fun DialerScreen(onAddAccount: () -> Unit, onOpenShortcuts: (accountId: String?) -> Unit) {
     val context = LocalContext.current
     val engine = context.engine
     val accounts by engine.accounts.accounts.collectAsStateWithLifecycle()
@@ -127,11 +121,10 @@ fun DialerScreen(onAddAccount: () -> Unit) {
     val selected = accounts.firstOrNull { it.id == selectedId }
     val active = selected ?: accounts.firstOrNull { it.isDefault } ?: accounts.firstOrNull()
 
-    fun place(intercom: Boolean) {
+    fun place() {
         when {
             active == null -> onAddAccount()
-            number.isBlank() -> messenger("请输入号码或 SIP 地址")
-            intercom -> launcher.intercom(number, selected?.id)
+            number.isBlank() -> messenger("请输入号码")
             else -> launcher.call(number, selected?.id)
         }
     }
@@ -146,7 +139,7 @@ fun DialerScreen(onAddAccount: () -> Unit) {
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = { if (active == null) onAddAccount() else featuresOpen = true }) {
-                Icon(Icons.Rounded.SupportAgent, contentDescription = "企业功能：监听、耳语、强插、强拆、代接")
+                Icon(Icons.Rounded.SupportAgent, contentDescription = "话务功能")
             }
             Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                 AccountChip(active, onClick = { if (active == null) onAddAccount() else pickerOpen = true })
@@ -164,7 +157,7 @@ fun DialerScreen(onAddAccount: () -> Unit) {
         StatusChips(
             doNotDisturb = settings.doNotDisturb,
             voicemail = voicemail,
-            onDisableDnd = { engine.updateSettings { it.copy(doNotDisturb = false) } },
+            onDisableDnd = { launcher.doNotDisturb(false, selected?.id) },
             onVoicemail = { launcher.voicemail(selected?.id) },
         )
 
@@ -189,7 +182,7 @@ fun DialerScreen(onAddAccount: () -> Unit) {
             label = "dialInput",
         ) { keyboard ->
             if (keyboard) {
-                AddressInput(number, onChange = { number = it }, onCall = { place(false) })
+                AddressInput(number, onChange = { number = it }, onCall = ::place)
             } else {
                 DialPad(
                     onDigit = {
@@ -210,20 +203,28 @@ fun DialerScreen(onAddAccount: () -> Unit) {
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            SideAction(visible = true, label = "对讲", onClick = { place(true) }) {
-                Icon(Icons.Rounded.Campaign, contentDescription = "对讲呼叫")
+            // Left: the shortcut keys. Right: delete, there only while a number is being typed
+            // (it keeps its place, so the call button stays in the middle).
+            SideAction(onClick = { onOpenShortcuts(selected?.id) }) {
+                Icon(Icons.Rounded.Apps, contentDescription = "快捷键")
             }
-            CallButton(enabled = number.isNotBlank() || active == null, onClick = { place(false) })
-            SideAction(
-                visible = number.isNotEmpty(),
-                label = "删除",
-                onClick = { number = number.dropLast(1) },
-                onLongClick = {
-                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                    number = ""
-                },
-            ) {
-                Icon(Icons.AutoMirrored.Rounded.Backspace, contentDescription = "删除")
+            CallButton(enabled = number.isNotBlank() || active == null, onClick = ::place)
+            Box(Modifier.size(SideActionSize)) {
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = number.isNotEmpty(),
+                    enter = fadeIn(tween(120)) + scaleIn(spring(dampingRatio = 0.6f, stiffness = 600f), initialScale = 0.7f),
+                    exit = fadeOut(tween(90)) + scaleOut(tween(120), targetScale = 0.7f),
+                ) {
+                    SideAction(
+                        onClick = { number = number.dropLast(1) },
+                        onLongClick = {
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            number = ""
+                        },
+                    ) {
+                        Icon(Icons.AutoMirrored.Rounded.Backspace, contentDescription = "删除")
+                    }
+                }
             }
         }
         Spacer(Modifier.height(16.dp))
@@ -271,7 +272,7 @@ private fun AccountChip(account: SipAccount?, onClick: () -> Unit) {
                 StatusDot(account.state)
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    account.identity,
+                    account.name.ifBlank { account.identity },
                     style = MaterialTheme.typography.labelLarge,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -439,12 +440,6 @@ private fun AddressInput(value: String, onChange: (String) -> Unit, onCall: () -
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Go),
             keyboardActions = KeyboardActions(onGo = { onCall() }),
         )
-        Spacer(Modifier.height(12.dp))
-        Text(
-            "只输入号码时，会自动补全所选账号的域名。",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }
 
@@ -476,121 +471,20 @@ private fun CallButton(enabled: Boolean, onClick: () -> Unit) {
     }
 }
 
+/** Round key next to the call button; what it does is said by its icon alone. */
 @Composable
-private fun SideAction(
-    visible: Boolean,
-    label: String,
-    onClick: () -> Unit,
-    onLongClick: (() -> Unit)? = null,
-    icon: @Composable () -> Unit,
-) {
-    Box(Modifier.size(width = 72.dp, height = 76.dp), contentAlignment = Alignment.Center) {
-        AnimatedVisibility(visible, enter = fadeIn() + scaleIn(initialScale = 0.7f), exit = fadeOut() + scaleOut(targetScale = 0.7f)) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(
-                    Modifier
-                        .size(52.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.secondaryContainer)
-                        .combinedClickable(onClick = onClick, onLongClick = onLongClick),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    icon()
-                }
-                Spacer(Modifier.height(4.dp))
-                Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-    }
-}
-
-@Composable
-private fun AccountPickerSheet(
-    accounts: List<SipAccount>,
-    selectedId: String?,
-    onSelect: (String?) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    var query by remember { mutableStateOf("") }
-    val filtered = remember(accounts, query) {
-        accounts.filter { it.enabled && (query.isBlank() || it.identity.contains(query, true) || it.displayName.contains(query, true)) }
-    }
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(Modifier.navigationBarsPadding()) {
-            Text(
-                "选择呼出账号",
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
-            )
-            if (accounts.size > 6) {
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 8.dp),
-                    placeholder = { Text("搜索账号") },
-                    leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
-                    singleLine = true,
-                    shape = CircleShape,
-                )
-            }
-            LazyColumn(Modifier.heightIn(max = 420.dp)) {
-                item(key = "default") {
-                    PickerRow(
-                        title = "跟随默认账号",
-                        subtitle = accounts.firstOrNull { it.isDefault }?.identity ?: "尚未设置",
-                        state = accounts.firstOrNull { it.isDefault }?.state ?: RegState.NONE,
-                        selected = selectedId == null,
-                        onClick = { onSelect(null) },
-                    )
-                }
-                items(filtered, key = { it.id }) { account ->
-                    PickerRow(
-                        title = account.label,
-                        subtitle = "${account.identity} · ${regStateLabel(account.state)}",
-                        state = account.state,
-                        selected = account.id == selectedId,
-                        onClick = { onSelect(account.id) },
-                        modifier = Modifier.animateItem(),
-                    )
-                }
-            }
-            Spacer(Modifier.height(12.dp))
-        }
-    }
-}
-
-@Composable
-private fun PickerRow(
-    title: String,
-    subtitle: String,
-    state: RegState,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 24.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
+private fun SideAction(onClick: () -> Unit, onLongClick: (() -> Unit)? = null, icon: @Composable () -> Unit) {
+    Box(
+        Modifier
+            .size(SideActionSize)
+            .pressScale()
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.secondaryContainer)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+        contentAlignment = Alignment.Center,
     ) {
-        StatusDot(state, size = 12.dp)
-        Spacer(Modifier.width(16.dp))
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(
-                subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        if (selected) {
-            Icon(Icons.Rounded.Check, contentDescription = "已选择", tint = MaterialTheme.colorScheme.primary)
-        }
+        icon()
     }
 }
+
+private val SideActionSize = 56.dp
