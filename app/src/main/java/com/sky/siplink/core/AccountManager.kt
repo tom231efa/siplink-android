@@ -155,7 +155,7 @@ class AccountManager(private val core: Core) {
         val errors = AccountRules.validate(draft, existingKeys(), editingKey, otherNames).toMutableList()
 
         val credentialsChanged = draft.username != before.username ||
-            !draft.domain.equals(before.domain, ignoreCase = true) ||
+            !draft.address.equals(before.domain, ignoreCase = true) ||
             draft.authUser != before.authUser
         val previousAuth = account.findAuthInfo()
         val savedPassword = previousAuth?.password.orEmpty()
@@ -169,7 +169,7 @@ class AccountManager(private val core: Core) {
         // The account stays on the server it is on (which may be its backup) unless something about its servers changed.
         val rerouted = before.server != draft.server || before.backupServer != draft.backupServer ||
             before.dnsServer != draft.dnsServer || before.transport != draft.transport ||
-            !before.domain.equals(draft.domain, ignoreCase = true) || before.enabled != draft.enabled
+            !before.domain.equals(draft.address, ignoreCase = true) || before.enabled != draft.enabled
         val server = if (rerouted) {
             Factory.instance().createAddress(AccountRules.serverUri(draft)) ?: return listOf(AccountRules.Error.ADDRESS_REJECTED)
         } else {

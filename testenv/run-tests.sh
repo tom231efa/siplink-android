@@ -79,8 +79,10 @@ fi
 
 # A real device left alone switches its screen off, and Android then tells a process in the
 # background, such as the tests, that there is no network: nothing registers any more. Keep the
-# device awake for as long as the tests run.
-(while "$adb" shell input keyevent KEYCODE_WAKEUP > /dev/null 2>&1; do sleep 15; done) &
+# device awake for as long as the tests run. The wake key switches the screen on but does not
+# count as someone using the device, so the screen would still go off every time its timeout
+# runs out; a key that no app acts on follows it.
+(while "$adb" shell input keyevent KEYCODE_WAKEUP KEYCODE_SHIFT_LEFT > /dev/null 2>&1; do sleep 10; done) &
 keep_awake=$!
 trap 'kill "$keep_awake" 2> /dev/null || true' EXIT
 

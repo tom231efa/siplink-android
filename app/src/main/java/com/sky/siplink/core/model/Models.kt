@@ -11,6 +11,8 @@ data class AccountDraft(
     val username: String = "",
     val password: String = "",
     val domain: String = "",
+    /** Port of [domain] as typed; empty: the port the transport has by itself, or the one the domain's DNS records name. */
+    val port: String = "",
     val displayName: String = "",
     val authUser: String = "",
     /** Optional registrar / outbound proxy as host[:port]. Empty means "same as domain". */
@@ -24,7 +26,10 @@ data class AccountDraft(
     /** Ask the PBX to report new voicemail (SUBSCRIBE); a PBX that reports it unasked needs none. */
     val subscribeMwi: Boolean = false,
     val enabled: Boolean = true,
-)
+) {
+    /** The domain with its port, where one is given: `host[:port]`, as it stands in the address of the account. */
+    val address: String get() = if (port.isEmpty()) domain else "$domain:$port"
+}
 
 /** Snapshot of an account living in the SIP core. */
 data class SipAccount(

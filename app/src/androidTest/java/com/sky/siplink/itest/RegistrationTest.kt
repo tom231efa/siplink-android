@@ -31,6 +31,13 @@ class RegistrationTest : PbxTestBase() {
     }
 
     @Test
+    fun registersAtANameWithAPort() {
+        assumeTrue("The device has no name for the PBX", env.pbxName != env.pbxHost)
+        register(APP, domain = "${env.pbxName}:5060")
+        await("the PBX to know the contact of $APP") { pbxHasContact(APP) }
+    }
+
+    @Test
     fun tlsNeedsTheImportedCa() {
         // The PBX certificate is signed by a private CA the device does not know. Where the
         // device can resolve it, the account uses the DNS name of the PBX; BasicCallTest covers
@@ -82,7 +89,9 @@ class RegistrationTest : PbxTestBase() {
         await("the registration with the wrong password to be refused") { at(env.pbxName)?.state == RegState.FAILED }
         addAccount(draft(APP))
         await("the registration with the right password") { at(env.pbxHost)?.state == RegState.OK }
-        assertEquals(RegState.FAILED, at(env.pbxName)?.state)
+        // The refused account may just be trying once more: what counts is that it does not get in.
+        never("registered with the password of the other account", QUIET_WINDOW_MS) { at(env.pbxName)?.state == RegState.OK }
+        await("the other account to be refused again") { at(env.pbxName)?.state == RegState.FAILED }
     }
 
     @Test

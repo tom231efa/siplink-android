@@ -22,6 +22,7 @@ object AccountRules {
         USERNAME_INVALID("用户名", "含无效字符"),
         DOMAIN_EMPTY("域名", "必填"),
         DOMAIN_INVALID("域名", "格式不正确"),
+        PORT_INVALID("端口", "应为 1–65535"),
         SERVER_INVALID("代理服务器", "应为 主机[:端口]"),
         BACKUP_INVALID("备用服务器", "应为 主机[:端口]"),
         BACKUP_SAME("备用服务器", "与主服务器相同"),
@@ -43,6 +44,7 @@ object AccountRules {
     private val hostLabel = "[A-Za-z0-9]([A-Za-z0-9\\-]*[A-Za-z0-9])?"
     private val hostRegex = Regex("^$hostLabel(\\.$hostLabel)*\\.?$")
     private val ipv6Regex = Regex("^\\[[0-9A-Fa-f:.]+]$")
+    private const val WIDE_COLON = '\uFF1A'
 
     fun canAdd(currentCount: Int): Boolean = currentCount < MAX_ACCOUNTS
 
@@ -50,21 +52,31 @@ object AccountRules {
     fun identityKey(username: String, domain: String): String = "$username@${domain.lowercase()}"
 
     /**
-     * Trims every field, drops a leading `sip:` / `sips:` scheme and splits `user@domain`
-     * typed into the username field when the domain was left empty.
+     * Trims every field, drops a leading `sip:` / `sips:` scheme, splits `user@domain` typed
+     * into the username field when the domain was left empty, and takes a port typed behind the
+     * domain (`host:port`, as providers print it) to the port field.
      */
     fun normalize(draft: AccountDraft): AccountDraft {
         var username = draft.username.trim().removePrefix("sips:").removePrefix("sip:")
-        var domain = draft.domain.trim().removePrefix("sips:").removePrefix("sip:")
+        // A Chinese keyboard types the colon in front of a port in its wide form.
+        var domain = draft.domain.trim().replace(WIDE_COLON, ':').removePrefix("sips:").removePrefix("sip:")
         val at = username.lastIndexOf('@')
         if (at > 0) {
             if (domain.isEmpty()) domain = username.substring(at + 1)
             username = username.substring(0, at)
         }
+        var port = draft.port.trim()
+        val (host, typedPort) = AccountRoute.split(domain)
+        if (typedPort != null) {
+            // The port written out with the domain is the one that is meant, whatever the port field holds.
+            domain = host
+            port = typedPort.toString()
+        }
         return draft.copy(
             name = draft.name.trim(),
             username = username,
             domain = domain,
+            port = port,
             displayName = draft.displayName.trim(),
             authUser = draft.authUser.trim(),
             server = draft.server.trim().removePrefix("sips:").removePrefix("sip:"),
@@ -98,16 +110,17 @@ object AccountRules {
             draft.domain.isEmpty() -> errors += Error.DOMAIN_EMPTY
             !isValidHostPort(draft.domain) -> errors += Error.DOMAIN_INVALID
         }
+        if (draft.port.isNotEmpty() && !isValidPort(draft.port)) errors += Error.PORT_INVALID
         if (draft.server.isNotEmpty() && !isValidHostPort(draft.server)) errors += Error.SERVER_INVALID
         when {
             draft.backupServer.isEmpty() -> Unit
             !isValidHostPort(draft.backupServer) -> errors += Error.BACKUP_INVALID
-            draft.backupServer.equals(draft.server.ifEmpty { draft.domain }, ignoreCase = true) -> errors += Error.BACKUP_SAME
+            draft.backupServer.equals(draft.server.ifEmpty { draft.address }, ignoreCase = true) -> errors += Error.BACKUP_SAME
         }
         if (draft.dnsServer.isNotEmpty() && !AccountRoute.isValidDnsServer(draft.dnsServer)) errors += Error.DNS_INVALID
         if (draft.expires !in MIN_EXPIRES..MAX_EXPIRES) errors += Error.EXPIRES_OUT_OF_RANGE
 
-        val key = identityKey(draft.username, draft.domain)
+        val key = identityKey(draft.username, draft.address)
         if (key != editingKey && existingKeys.contains(key)) errors += Error.DUPLICATE
         return errors
     }
@@ -141,17 +154,16 @@ object AccountRules {
             port = if (colon >= 0) value.substring(colon + 1) else null
             if (host.length > 253 || !hostRegex.matches(host)) return false
         }
-        if (port != null) {
-            val number = port.toIntOrNull() ?: return false
-            if (port.length > 5 || number !in 1..65_535) return false
-        }
-        return true
+        return port == null || isValidPort(port)
     }
 
-    fun identityUri(draft: AccountDraft): String = "sip:${draft.username}@${draft.domain}"
+    fun isValidPort(port: String): Boolean =
+        port.length in 1..5 && port.all { it in '0'..'9' } && port.toInt() in 1..65_535
+
+    fun identityUri(draft: AccountDraft): String = "sip:${draft.username}@${draft.address}"
 
     /** URI of the registrar / proxy the account starts on; the transport is carried as a URI parameter. */
-    fun serverUri(draft: AccountDraft): String = AccountRoute.uri(draft.server.ifEmpty { draft.domain }, draft.transport)
+    fun serverUri(draft: AccountDraft): String = AccountRoute.uri(draft.server.ifEmpty { draft.address }, draft.transport)
 
     fun transportParam(transport: SipTransport): String = when (transport) {
         SipTransport.UDP -> "udp"

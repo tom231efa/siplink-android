@@ -133,6 +133,60 @@ class AccountRulesTest {
     }
 
     @Test
+    fun `a port typed behind the domain goes to the port field`() {
+        val typed = AccountRules.normalize(AccountDraft(username = "1001", domain = " Pbx.Example.com:5090 "))
+        assertEquals("Pbx.Example.com", typed.domain)
+        assertEquals("5090", typed.port)
+        assertEquals("Pbx.Example.com:5090", typed.address)
+
+        // It is the port that is meant, whatever the port field shows; a Chinese keyboard types a wide colon.
+        val wide = AccountRules.normalize(AccountDraft(username = "1001", domain = "pbx.example.com\uFF1A5090", port = "5060"))
+        assertEquals("pbx.example.com", wide.domain)
+        assertEquals("5090", wide.port)
+
+        val address = AccountRules.normalize(AccountDraft(username = "1001", domain = "[2001:db8::1]:5061"))
+        assertEquals("[2001:db8::1]", address.domain)
+        assertEquals("5061", address.port)
+
+        // Without a port in the domain the port field stands; a bare IPv6 address has no port in it.
+        val apart = AccountRules.normalize(AccountDraft(username = "1001", domain = "[2001:db8::1]", port = " 5070 "))
+        assertEquals("[2001:db8::1]", apart.domain)
+        assertEquals("5070", apart.port)
+        assertEquals("", AccountRules.normalize(valid).port)
+    }
+
+    @Test
+    fun `a port is a number from 1 to 65535`() {
+        listOf("1", "5060", "65535").forEach {
+            assertEquals(it, emptyList<AccountRules.Error>(), AccountRules.validate(valid.copy(port = it), emptyList()))
+        }
+        listOf("0", "65536", "123456", "50a", "+5060", "-1", "5 060").forEach {
+            assertEquals(it, listOf(AccountRules.Error.PORT_INVALID), AccountRules.validate(valid.copy(port = it), emptyList()))
+        }
+        // What is typed behind the domain is checked as a port too.
+        val typed = AccountRules.normalize(valid.copy(domain = "pbx.example.com:0"))
+        assertEquals(listOf(AccountRules.Error.PORT_INVALID), AccountRules.validate(typed, emptyList()))
+    }
+
+    @Test
+    fun `the port is part of the address of the account`() {
+        val account = valid.copy(port = "5090")
+        assertEquals("sip:1001@pbx.example.com:5090", AccountRules.identityUri(account))
+        assertEquals("sip:pbx.example.com:5090;transport=udp", AccountRules.serverUri(account))
+        // A proxy of its own is where the account registers, on the port given with it.
+        assertEquals("sip:edge.example.com;transport=udp", AccountRules.serverUri(account.copy(server = "edge.example.com")))
+
+        // The same user on another port of the host is another account; on the same port it is the same.
+        val existing = listOf(AccountRules.identityKey("1001", "pbx.example.com"))
+        assertEquals(emptyList<AccountRules.Error>(), AccountRules.validate(account, existing))
+        val taken = listOf(AccountRules.identityKey("1001", "PBX.example.com:5090"))
+        assertEquals(listOf(AccountRules.Error.DUPLICATE), AccountRules.validate(account, taken))
+        // The backup server must differ from the server the account is on, port included.
+        assertTrue(AccountRules.Error.BACKUP_SAME in AccountRules.validate(account.copy(backupServer = "pbx.example.com:5090"), emptyList()))
+        assertFalse(AccountRules.Error.BACKUP_SAME in AccountRules.validate(account.copy(backupServer = "pbx.example.com"), emptyList()))
+    }
+
+    @Test
     fun `host and port validation`() {
         listOf("pbx.example.com", "pbx", "10.0.0.5", "10.0.0.5:5061", "pbx.example.com:5060", "[::1]", "[2001:db8::1]:5061")
             .forEach { assertTrue(it, AccountRules.isValidHostPort(it)) }

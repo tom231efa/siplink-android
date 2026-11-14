@@ -56,7 +56,7 @@ object AccountImport {
             )
             // Limit is checked separately below so it is reported as "skipped", not as a line error.
             val problems = AccountRules.validate(draft, emptyList(), takenNames = names)
-            val key = AccountRules.identityKey(draft.username, draft.domain)
+            val key = AccountRules.identityKey(draft.username, draft.address)
             when {
                 problems.isNotEmpty() -> errors += Csv.LineError(line, problems.first().full)
                 !seen.add(key) -> errors += Csv.LineError(line, AccountRules.Error.DUPLICATE.full)

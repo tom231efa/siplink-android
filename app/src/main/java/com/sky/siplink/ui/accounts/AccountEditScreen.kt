@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Power
 import androidx.compose.material.icons.rounded.VerifiedUser
@@ -31,6 +32,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sky.siplink.core.logic.AccountRoute
 import com.sky.siplink.core.logic.AccountRules
 import com.sky.siplink.core.logic.ShortcutLines
 import com.sky.siplink.core.model.AccountDraft
@@ -54,6 +56,10 @@ private val advancedErrors = setOf(
     AccountRules.Error.EXPIRES_OUT_OF_RANGE,
 )
 
+private val PORT_FIELD_WIDTH = 124.dp
+
+private fun defaultPort(transport: SipTransport): String = AccountRoute.defaultPort(transport).toString()
+
 /** Adds a new account ([accountId] == null) or edits an existing one. */
 @Composable
 fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> Unit) {
@@ -61,13 +67,16 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
     val manager = context.engine.accounts
     val messenger = LocalMessenger.current
     val existing = remember(accountId) { accountId?.let { id -> manager.accounts.value.firstOrNull { it.id == id } } }
-    val initial = existing?.toDraft() ?: AccountDraft()
+    // Normalized, the draft has the port of the account apart from its domain.
+    val initial = existing?.toDraft()?.let(AccountRules::normalize) ?: AccountDraft()
 
     var name by rememberSaveable { mutableStateOf(initial.name) }
     var username by rememberSaveable { mutableStateOf(initial.username) }
     // The saved password stands in the field, to look at or to change.
     var password by rememberSaveable { mutableStateOf(existing?.let { manager.passwordOf(it.id) }.orEmpty()) }
     var domain by rememberSaveable { mutableStateOf(initial.domain) }
+    // Without a port of its own the account shows the one its protocol has by itself.
+    var port by rememberSaveable { mutableStateOf(initial.port.ifEmpty { defaultPort(initial.transport) }) }
     var displayName by rememberSaveable { mutableStateOf(initial.displayName) }
     var transport by rememberSaveable { mutableStateOf(initial.transport) }
     var authUser by rememberSaveable { mutableStateOf(initial.authUser) }
@@ -94,6 +103,9 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
             username = username,
             password = password,
             domain = domain,
+            // The port the protocol has by itself is not written into the address, so that a domain
+            // whose DNS records name another one is still found; an account that has it there keeps it.
+            port = port.trim().takeUnless { it == defaultPort(transport) && it != initial.port }.orEmpty(),
             displayName = displayName,
             authUser = authUser,
             server = server,
@@ -151,18 +163,29 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
                     password = true,
                     error = error(AccountRules.Error.PASSWORD_REQUIRED),
                 )
-                FormField(
-                    value = domain,
-                    onValueChange = { domain = it },
-                    label = "域名 / 服务器",
-                    placeholder = "pbx.example.com 或 192.168.1.10:5060",
-                    keyboardType = KeyboardType.Uri,
-                    error = error(
-                        AccountRules.Error.DOMAIN_EMPTY,
-                        AccountRules.Error.DOMAIN_INVALID,
-                        AccountRules.Error.ADDRESS_REJECTED,
-                    ),
-                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FormField(
+                        value = domain,
+                        onValueChange = { domain = it },
+                        label = "域名 / 服务器",
+                        modifier = Modifier.weight(1f),
+                        placeholder = "pbx.example.com 或 192.168.1.10",
+                        keyboardType = KeyboardType.Uri,
+                        error = error(
+                            AccountRules.Error.DOMAIN_EMPTY,
+                            AccountRules.Error.DOMAIN_INVALID,
+                            AccountRules.Error.ADDRESS_REJECTED,
+                        ),
+                    )
+                    FormField(
+                        value = port,
+                        onValueChange = { port = it },
+                        label = "端口",
+                        modifier = Modifier.width(PORT_FIELD_WIDTH),
+                        keyboardType = KeyboardType.Number,
+                        error = error(AccountRules.Error.PORT_INVALID),
+                    )
+                }
                 FormField(
                     value = displayName,
                     onValueChange = { displayName = it },
@@ -175,7 +198,11 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
             ChoiceRow(
                 options = SipTransport.entries.map { it to it.name },
                 selected = transport,
-                onSelect = { transport = it },
+                onSelect = {
+                    // The port follows the protocol for as long as it is the one the protocol has by itself.
+                    if (port.isBlank() || port.trim() == defaultPort(transport)) port = defaultPort(it)
+                    transport = it
+                },
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
             )
             AnimatedVisibility(transport == SipTransport.TLS) {

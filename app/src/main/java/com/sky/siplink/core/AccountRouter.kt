@@ -86,7 +86,7 @@ internal class AccountRouter(
      */
     fun configure(id: String, draft: AccountDraft): Boolean {
         val record = AccountRoute.Record(draft.server, draft.backupServer, draft.dnsServer)
-        val wait = draft.enabled && needsLookup(draft.server.ifEmpty { draft.domain }, record)
+        val wait = draft.enabled && needsLookup(draft.server.ifEmpty { draft.address }, record)
         store(id, record.copy(waiting = wait))
         states.remove(id)?.let(::cancelProbe)
         return draft.enabled && !wait
