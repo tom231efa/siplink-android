@@ -35,6 +35,17 @@ class DirectoryManager(private val core: Core) {
     private val handler = Handler(Looper.getMainLooper())
     private var searchToken = 0
 
+    /**
+     * True once a StartTLS search ran. The LDAP library loads the CA certificates once per
+     * process, at its first TLS connection, and keeps them from then on.
+     */
+    var tlsUsed = false
+        private set
+
+    /** Whether a change of the trusted CAs only reaches the directory after an app restart. */
+    val tlsChangeNeedsRestart: Boolean
+        get() = tlsUsed && configState.value?.let { it.enabled && it.useStartTls } == true
+
     private val magicSearch: MagicSearch = core.createMagicSearch().also {
         it.limitedSearch = false
         it.addListener(object : MagicSearchListenerStub() {
@@ -42,7 +53,7 @@ class DirectoryManager(private val core: Core) {
                 searchToken++
                 searchState.value = searchState.value.copy(
                     searching = false,
-                    contacts = magicSearch.lastSearch.mapNotNull(::toContact).distinct(),
+                    contacts = magicSearch.lastSearch.flatMap(::toContacts).distinct(),
                 )
             }
 
@@ -119,6 +130,7 @@ class DirectoryManager(private val core: Core) {
             return
         }
         val token = ++searchToken
+        if (config.useStartTls) tlsUsed = true
         searchState.value = searchState.value.copy(query = text, searching = true, limitReached = false)
         magicSearch.resetSearchCache()
         magicSearch.getContactsListAsync(
@@ -159,18 +171,32 @@ class DirectoryManager(private val core: Core) {
         delayMs = params.delay,
     )
 
-    private fun toContact(result: SearchResult): DirectoryContact? {
+    /**
+     * One row per number of the entry (extension, mobile, ...). The address of a search result
+     * does not always belong to the number it reports, so the call target is built from the
+     * number that is shown.
+     */
+    private fun toContacts(result: SearchResult): List<DirectoryContact> {
         val address = result.address
         val friend = result.friend
-        val number = result.phoneNumber?.takeIf { it.isNotBlank() } ?: address?.username ?: return null
-        val name = friend?.name?.takeIf { it.isNotBlank() }
-            ?: address?.displayName?.takeIf { it.isNotBlank() }
-            ?: number
-        return DirectoryContact(
-            name = name,
-            number = number,
-            callTarget = address?.asStringUriOnly() ?: number,
-            organization = friend?.organization.orEmpty(),
-        )
+        val name = friend?.name?.takeIf { it.isNotBlank() } ?: address?.displayName?.takeIf { it.isNotBlank() }
+        val organization = friend?.organization.orEmpty()
+        val numbers = (friend?.phoneNumbers.orEmpty().toList() + listOfNotNull(result.phoneNumber))
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .distinct()
+        if (numbers.isNotEmpty()) {
+            return numbers.map { DirectoryContact(name ?: it, it, callTargetOf(it), organization) }
+        }
+        // No number: the entry only has a SIP address.
+        val user = address?.username?.takeIf { it.isNotBlank() } ?: return emptyList()
+        return listOf(DirectoryContact(name ?: user, user, address.asStringUriOnly(), organization))
+    }
+
+    /** A number is dialled in the configured SIP domain, or else in the domain of the calling account. */
+    private fun callTargetOf(number: String): String {
+        val domain = configState.value?.sipDomain.orEmpty()
+        if (domain.isEmpty()) return number
+        return "sip:${number.filterNot { it.isWhitespace() || it in "()-" }}@$domain"
     }
 }

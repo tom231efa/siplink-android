@@ -83,6 +83,8 @@ import com.sky.siplink.ui.dialer.DialerScreen
 import com.sky.siplink.ui.directory.DirectoryScreen
 import com.sky.siplink.ui.directory.LdapSettingsScreen
 import com.sky.siplink.ui.history.HistoryScreen
+import com.sky.siplink.ui.settings.CallHandlingScreen
+import com.sky.siplink.ui.settings.FeatureCodesScreen
 import com.sky.siplink.ui.settings.SettingsScreen
 import com.sky.siplink.ui.settings.TlsScreen
 import com.sky.siplink.ui.theme.Brand
@@ -101,6 +103,8 @@ private object Routes {
     const val ACCOUNT_EDIT = "account/edit/{id}"
     const val LDAP = "ldap"
     const val TLS = "tls"
+    const val CALL_HANDLING = "call-handling"
+    const val FEATURE_CODES = "feature-codes"
 
     fun accountEdit(id: String) = "account/edit/${Uri.encode(id)}"
 }
@@ -185,6 +189,8 @@ fun AppRoot() {
                     SettingsScreen(
                         onOpenTls = { navController.navigate(Routes.TLS) },
                         onOpenLdap = { navController.navigate(Routes.LDAP) },
+                        onOpenCallHandling = { navController.navigate(Routes.CALL_HANDLING) },
+                        onOpenFeatureCodes = { navController.navigate(Routes.FEATURE_CODES) },
                     )
                 }
                 composable(Routes.ACCOUNT_NEW) {
@@ -211,6 +217,8 @@ fun AppRoot() {
                     )
                 }
                 composable(Routes.TLS) { TlsScreen(onBack = { navController.popBackStack() }) }
+                composable(Routes.CALL_HANDLING) { CallHandlingScreen(onBack = { navController.popBackStack() }) }
+                composable(Routes.FEATURE_CODES) { FeatureCodesScreen(onBack = { navController.popBackStack() }) }
             }
         }
     }

@@ -1,0 +1,93 @@
+# Directory content of the SipLink test LDAP server (fictional people).
+# Non-ASCII values are base64 encoded as required by LDIF.
+dn: dc=siplink,dc=test
+objectClass: top
+objectClass: dcObject
+objectClass: organization
+o: SipLink Test
+dc: siplink
+
+dn: ou=people,dc=siplink,dc=test
+objectClass: organizationalUnit
+ou: people
+
+dn: uid=1001,ou=people,dc=siplink,dc=test
+objectClass: inetOrgPerson
+uid: 1001
+cn:: 5byg5Lyf
+sn:: 5byg
+givenName:: 5Lyf
+telephoneNumber: 1001
+mobile: 13800001001
+o:: 56CU5Y+R6YOo
+
+dn: uid=1002,ou=people,dc=siplink,dc=test
+objectClass: inetOrgPerson
+uid: 1002
+cn:: 546L6Iqz
+sn:: 546L
+givenName:: 6Iqz
+telephoneNumber: 1002
+mobile: 13800001002
+o:: 56CU5Y+R6YOo
+
+dn: uid=1003,ou=people,dc=siplink,dc=test
+objectClass: inetOrgPerson
+uid: 1003
+cn:: 5p2O5aic
+sn:: 5p2O
+givenName:: 5aic
+telephoneNumber: 1003
+mobile: 13800001003
+o:: 5biC5Zy66YOo
+
+dn: uid=1004,ou=people,dc=siplink,dc=test
+objectClass: inetOrgPerson
+uid: 1004
+cn:: 5YiY5rSL
+sn:: 5YiY
+givenName:: 5rSL
+telephoneNumber: 1004
+mobile: 13800001004
+o:: 5biC5Zy66YOo
+
+dn: uid=1005,ou=people,dc=siplink,dc=test
+objectClass: inetOrgPerson
+uid: 1005
+cn:: 6ZmI6Z2Z
+sn:: 6ZmI
+givenName:: 6Z2Z
+telephoneNumber: 1005
+mobile: 13800001005
+o:: 6LSi5Yqh6YOo
+
+dn: uid=1006,ou=people,dc=siplink,dc=test
+objectClass: inetOrgPerson
+uid: 1006
+cn:: QWxpY2UgU21pdGg=
+sn:: U21pdGg=
+givenName:: QWxpY2U=
+telephoneNumber: 1006
+mobile: 13800001006
+o:: U2FsZXM=
+
+dn: uid=1007,ou=people,dc=siplink,dc=test
+objectClass: inetOrgPerson
+uid: 1007
+cn:: Qm9iIFpoYW5n
+sn:: Wmhhbmc=
+givenName:: Qm9i
+telephoneNumber: 1007
+mobile: 13800001007
+o:: U2FsZXM=
+
+dn: uid=2000,ou=people,dc=siplink,dc=test
+objectClass: inetOrgPerson
+uid: 2000
+cn:: 5Zue5aOw5rWL6K+V
+sn:: 5Zue5aOw
+givenName:: 5rWL6K+V
+telephoneNumber: 2000
+mobile: 13800002000
+o:: 5rWL6K+V5Y+356CB
+

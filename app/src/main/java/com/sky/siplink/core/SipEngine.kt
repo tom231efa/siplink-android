@@ -3,13 +3,19 @@ package com.sky.siplink.core
 import android.content.Context
 import com.sky.siplink.BuildConfig
 import com.sky.siplink.core.model.Settings
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import org.linphone.core.Account
 import org.linphone.core.AudioDevice
 import org.linphone.core.Call
 import org.linphone.core.CallLog
 import org.linphone.core.Core
 import org.linphone.core.CoreListenerStub
+import org.linphone.core.Event
 import org.linphone.core.Factory
+import org.linphone.core.LogLevel
+import org.linphone.core.MessageWaitingIndication
 import org.linphone.core.RegistrationState
 import java.io.File
 
@@ -28,6 +34,12 @@ class SipEngine(context: Context) {
 
     val sdkVersion: String get() = core.version
 
+    private val voicemailState = MutableStateFlow(0)
+
+    /** Number of new voicemail messages announced by the PBX (MWI), summed over all accounts. */
+    val voicemail: StateFlow<Int> = voicemailState.asStateFlow()
+    private val voicemailByAccount = HashMap<String, Int>()
+
     /** Invoked with (name, address) when an incoming call was missed. */
     var onMissedCall: ((String, String) -> Unit)? = null
 
@@ -45,6 +57,16 @@ class SipEngine(context: Context) {
         override fun onCallStateChanged(core: Core, call: Call, state: Call.State?, message: String) =
             calls.onCallStateChanged(call, state, message)
 
+        override fun onTransferStateChanged(core: Core, transfered: Call, callState: Call.State?) =
+            calls.onTransferStateChanged(transfered, callState)
+
+        override fun onMessageWaitingIndicationChanged(core: Core, lev: Event, mwi: MessageWaitingIndication) {
+            val voice = mwi.getSummary(MessageWaitingIndication.ContextClass.Voice)
+            val count = voice?.nbNew ?: if (mwi.hasMessageWaiting()) 1 else 0
+            voicemailByAccount[mwi.accountAddress?.asStringUriOnly() ?: lev.toAddress.asStringUriOnly()] = count
+            voicemailState.value = voicemailByAccount.values.sum()
+        }
+
         override fun onAudioDeviceChanged(core: Core, audioDevice: AudioDevice) = calls.onAudioChanged()
 
         override fun onAudioDevicesListUpdated(core: Core) = calls.onAudioChanged()
@@ -61,7 +83,9 @@ class SipEngine(context: Context) {
 
     init {
         val factory = Factory.instance()
-        factory.setDebugMode(BuildConfig.DEBUG, LOG_TAG)
+        factory.setLoggerDomain(LOG_TAG)
+        factory.enableLogcatLogs(true)
+        factory.loggingService.setLogLevel(if (BuildConfig.DEBUG) LogLevel.Message else LogLevel.Warning)
 
         val appContext = context.applicationContext
         core = factory.createCore(File(appContext.filesDir, CONFIG_FILE).absolutePath, null, appContext)
@@ -97,10 +121,15 @@ class SipEngine(context: Context) {
         core.isAutoIterateEnabled = true
         core.isKeepAliveEnabled = true
 
-        // Audio-only client that handles one call at a time.
+        // Audio-only client. Two calls are shown to the user (current + held or waiting); the
+        // extra room is for the short overlaps while the PBX rearranges calls (REFER, replaces).
         core.isVideoCaptureEnabled = false
         core.isVideoDisplayEnabled = false
-        core.maxCalls = 1
+        core.maxCalls = MAX_CALLS
+
+        // CallManager ends transferred calls itself: a parked call has to stay up until the PBX
+        // has announced the parking slot, which the core's automatic hang-up would cut off.
+        core.config.setInt("sip", "terminate_call_upon_transfer_completion", 0)
 
         // Let the SDK ring with the device ringtone and vibrate on incoming calls.
         core.isNativeRingingEnabled = true
@@ -118,6 +147,7 @@ class SipEngine(context: Context) {
         const val LOG_TAG = "SipLink"
         const val USER_AGENT = "SipLink"
         const val CONFIG_FILE = "linphonerc"
+        const val MAX_CALLS = 4
 
         /** liblinphone's LC_SIP_TRANSPORT_RANDOM. */
         const val RANDOM_PORT = -1

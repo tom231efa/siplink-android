@@ -53,6 +53,14 @@ enum class CallPhase { INCOMING, OUTGOING, CONNECTED, HELD, ENDED }
 
 enum class AudioRoute { EARPIECE, SPEAKER, BLUETOOTH, HEADSET }
 
+/** The second call of the device: either parked on hold or ringing on top of the current call. */
+data class SideCall(val name: String, val address: String)
+
+enum class TransferStatus { IN_PROGRESS, SUCCEEDED, FAILED }
+
+/** Supervisor ("班长") call modes, switched on the PBX with DTMF 4 / 5 / 6 during the call. */
+enum class SupervisionMode(val dtmf: Char) { LISTEN('4'), WHISPER('5'), BARGE('6') }
+
 data class CallInfo(
     val phase: CallPhase,
     val remoteName: String,
@@ -66,6 +74,18 @@ data class CallInfo(
     /** SystemClock.elapsedRealtime() at the moment media started, null before that. */
     val connectedAt: Long? = null,
     val endReason: String? = null,
+    /** Another call kept on hold while this one is active. */
+    val heldCall: SideCall? = null,
+    /** Another call ringing while this one is active (call waiting). */
+    val waitingCall: SideCall? = null,
+    /** True while this call is the consultation leg of an attended transfer. */
+    val consulting: Boolean = false,
+    val transfer: TransferStatus? = null,
+    /** True once the call was parked and the PBX is announcing the parking slot on it. */
+    val parked: Boolean = false,
+    /** True when both calls were merged into a local three-way conference. */
+    val conference: Boolean = false,
+    val supervision: SupervisionMode? = null,
 )
 
 enum class HistoryKind { OUTGOING, INCOMING, MISSED, FAILED }
@@ -137,14 +157,38 @@ enum class ThemeMode { SYSTEM, LIGHT, DARK }
 
 enum class MediaSecurity { NONE, SRTP_OPTIONAL, SRTP_MANDATORY }
 
+/**
+ * PBX feature codes. They are plain dial strings understood by the PBX, so they must match its
+ * dial plan; the defaults match the sample Asterisk dial plan in testenv/.
+ */
+data class FeatureCodes(
+    /** Extension a call is blind-transferred to in order to park it. */
+    val park: String = "700",
+    val listen: String = "*91",
+    val whisper: String = "*92",
+    val barge: String = "*93",
+    val forceHangUp: String = "*94",
+    val pickup: String = "**",
+    val groupPickup: String = "*8",
+    val voicemail: String = "*97",
+)
+
 data class Settings(
     val keepAlive: Boolean = true,
     val intercomAutoAnswer: Boolean = false,
     val intercomSpeaker: Boolean = true,
     val intercomHeaderMode: IntercomHeaderMode = IntercomHeaderMode.CALL_INFO,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
-    val dynamicColor: Boolean = true,
+    val dynamicColor: Boolean = false,
     val verifyTlsCertificate: Boolean = true,
     val verifyTlsHostname: Boolean = true,
     val mediaSecurity: MediaSecurity = MediaSecurity.NONE,
+    val doNotDisturb: Boolean = false,
+    val callWaiting: Boolean = true,
+    /** Forwarding targets; an empty string disables the rule. */
+    val forwardAlways: String = "",
+    val forwardBusy: String = "",
+    val forwardNoAnswer: String = "",
+    val forwardNoAnswerSeconds: Int = 20,
+    val features: FeatureCodes = FeatureCodes(),
 )

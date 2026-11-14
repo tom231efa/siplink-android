@@ -1,0 +1,8 @@
+# Only the Dockerfile, the entrypoint and the static configuration belong in the build context.
+*
+!Dockerfile
+!entrypoint.sh
+!config/
+!config/**
+!phones/
+!phones/**

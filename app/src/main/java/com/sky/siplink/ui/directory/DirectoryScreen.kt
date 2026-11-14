@@ -1,10 +1,12 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
+@file:OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 
 package com.sky.siplink.ui.directory
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -25,6 +27,7 @@ import androidx.compose.material.icons.rounded.Campaign
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Contacts
 import androidx.compose.material.icons.rounded.Dns
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.SearchOff
 import androidx.compose.material.icons.rounded.Tune
@@ -43,6 +46,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -56,6 +60,7 @@ import com.sky.siplink.core.model.DirectoryContact
 import com.sky.siplink.engine
 import com.sky.siplink.ui.components.Avatar
 import com.sky.siplink.ui.components.EmptyState
+import com.sky.siplink.ui.components.FeatureSheet
 import com.sky.siplink.ui.components.rememberCallLauncher
 import kotlinx.coroutines.delay
 
@@ -68,8 +73,10 @@ fun DirectoryScreen(onOpenSettings: () -> Unit) {
     val directory = context.engine.directory
     val config by directory.config.collectAsStateWithLifecycle()
     val state by directory.state.collectAsStateWithLifecycle()
+    val accounts by context.engine.accounts.accounts.collectAsStateWithLifecycle()
     val launcher = rememberCallLauncher()
     var query by rememberSaveable { mutableStateOf("") }
+    var featuresFor by remember { mutableStateOf<DirectoryContact?>(null) }
 
     LaunchedEffect(query, config) {
         delay(SEARCH_DEBOUNCE_MS)
@@ -92,6 +99,15 @@ fun DirectoryScreen(onOpenSettings: () -> Unit) {
                 icon = Icons.Rounded.Dns,
                 title = "当前 SDK 不支持 LDAP",
                 subtitle = "所使用的 Linphone SDK 构建未包含 LDAP 模块。",
+                modifier = Modifier.fillMaxSize(),
+            )
+
+            // The SIP stack completes directory numbers with the domain of the default account,
+            // and drops every entry while there is none.
+            accounts.isEmpty() -> EmptyState(
+                icon = Icons.Rounded.Contacts,
+                title = "请先添加 SIP 账号",
+                subtitle = "通讯录中的号码需要借助 SIP 账号才能呼叫，添加账号后即可搜索。",
                 modifier = Modifier.fillMaxSize(),
             )
 
@@ -158,6 +174,7 @@ fun DirectoryScreen(onOpenSettings: () -> Unit) {
                                 contact = contact,
                                 onCall = { launcher.call(contact.callTarget) },
                                 onIntercom = { launcher.intercom(contact.callTarget) },
+                                onMore = { featuresFor = contact },
                                 modifier = Modifier.animateItem(),
                             )
                         }
@@ -176,6 +193,15 @@ fun DirectoryScreen(onOpenSettings: () -> Unit) {
             }
         }
     }
+
+    featuresFor?.let { contact ->
+        FeatureSheet(
+            launcher = launcher,
+            onDismiss = { featuresFor = null },
+            name = contact.name,
+            target = contact.callTarget,
+        )
+    }
 }
 
 @Composable
@@ -183,12 +209,14 @@ private fun ContactRow(
     contact: DirectoryContact,
     onCall: () -> Unit,
     onIntercom: () -> Unit,
+    onMore: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
         modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 10.dp),
+            .combinedClickable(onClick = onCall, onLongClick = onMore)
+            .padding(start = 20.dp, end = 8.dp, top = 10.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Avatar(contact.name)
@@ -209,6 +237,9 @@ private fun ContactRow(
         Spacer(Modifier.width(6.dp))
         FilledIconButton(onClick = onCall) {
             Icon(Icons.Rounded.Call, contentDescription = "呼叫 ${contact.name}")
+        }
+        IconButton(onClick = onMore) {
+            Icon(Icons.Rounded.MoreVert, contentDescription = "${contact.name} 的更多功能")
         }
     }
 }

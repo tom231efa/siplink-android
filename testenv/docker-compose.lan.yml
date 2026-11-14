@@ -1,0 +1,24 @@
+# Optional addition to docker-compose.yml for testing with a real device on the local network:
+# publishes the PBX, the AMI of the phones and the LDAP server on one address of this host and
+# makes the PBX announce that address. ./up.sh applies it when LAN_ADDRESS is set.
+services:
+  asterisk:
+    environment:
+      LAN_ADDRESS: ${LAN_ADDRESS:?set LAN_ADDRESS to an address of this host}
+      # The subnet of docker-compose.yml: everything else gets LAN_ADDRESS announced.
+      LOCAL_NET: 172.31.250.0/24
+    ports:
+      - "${LAN_ADDRESS}:5060:5060/udp"
+      - "${LAN_ADDRESS}:5060:5060/tcp"
+      - "${LAN_ADDRESS}:5061:5061/tcp"
+      - "${LAN_ADDRESS}:5038:5038/tcp"
+      # The RTP range of asterisk/config/rtp.conf.
+      - "${LAN_ADDRESS}:20000-20099:20000-20099/udp"
+
+  phones:
+    ports:
+      - "${LAN_ADDRESS}:5039:5038/tcp"
+
+  ldap:
+    ports:
+      - "${LAN_ADDRESS}:389:389/tcp"

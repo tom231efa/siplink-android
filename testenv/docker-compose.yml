@@ -1,0 +1,69 @@
+# Local integration-test environment for SipLink: an Asterisk PBX, a second Asterisk instance
+# playing the desk phones 1002-1005, an OpenLDAP directory, and a name server for *.siplink.test.
+# They live on a private bridge network without published ports, so they are reachable from
+# this host (and from an Android emulator running on it) but not from the outside, unless
+# docker-compose.lan.yml is added for a real device on the local network.
+# Start it with ./up.sh, which creates the secrets (.env) and the test certificates first.
+name: siplink-testenv
+
+services:
+  asterisk:
+    build: ./asterisk
+    image: siplink-testenv-asterisk:local
+    environment:
+      SIP_PASSWORD: ${SIP_PASSWORD:?run ./up.sh}
+      AMI_USER: ${AMI_USER:?run ./up.sh}
+      AMI_SECRET: ${AMI_SECRET:?run ./up.sh}
+      VM_PIN: ${VM_PIN:?run ./up.sh}
+    volumes:
+      - ./certs:/certs:ro
+    networks:
+      testnet:
+        ipv4_address: 172.31.250.10
+
+  # Same image as the PBX, started as the scripted desk phones (see asterisk/entrypoint.sh).
+  phones:
+    image: siplink-testenv-asterisk:local
+    depends_on:
+      - asterisk
+    environment:
+      ROLE: phones
+      PBX_ADDRESS: 172.31.250.10
+      SIP_PASSWORD: ${SIP_PASSWORD:?run ./up.sh}
+      AMI_USER: ${AMI_USER:?run ./up.sh}
+      AMI_SECRET: ${AMI_SECRET:?run ./up.sh}
+    networks:
+      testnet:
+        ipv4_address: 172.31.250.12
+
+  ldap:
+    build: ./ldap
+    image: siplink-testenv-ldap:local
+    environment:
+      LDAP_ADMIN_PASSWORD: ${LDAP_ADMIN_PASSWORD:?run ./up.sh}
+      LDAP_READER_PASSWORD: ${LDAP_READER_PASSWORD:?run ./up.sh}
+    volumes:
+      - ./certs:/certs:ro
+    networks:
+      testnet:
+        ipv4_address: 172.31.250.11
+
+  # pbx.siplink.test and ldap.siplink.test are the names in the TLS certificate. An emulator
+  # resolves them when it is started with: -dns-server 172.31.250.13
+  dns:
+    build: ./dns
+    image: siplink-testenv-dns:local
+    command:
+      - --listen-address=172.31.250.13
+      - --address=/pbx.siplink.test/172.31.250.10
+      - --address=/ldap.siplink.test/172.31.250.11
+    networks:
+      testnet:
+        ipv4_address: 172.31.250.13
+
+networks:
+  testnet:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.31.250.0/24

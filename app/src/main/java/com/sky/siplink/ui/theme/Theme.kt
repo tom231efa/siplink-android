@@ -18,76 +18,83 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sky.siplink.core.model.ThemeMode
 
-/** Fixed brand colours that keep their meaning regardless of the (possibly dynamic) scheme. */
+/** Fixed colours that keep their meaning regardless of the (possibly dynamic) scheme. */
 object Brand {
-    val Indigo = Color(0xFF4F5BD5)
-    val Violet = Color(0xFF7C5CFC)
-    val Teal = Color(0xFF12B5A6)
-    val CallGreen = Color(0xFF1FBF6B)
-    val HangUpRed = Color(0xFFEF4455)
+    val CallGreen = Color(0xFF30A46C)
+    val HangUpRed = Color(0xFFE5484D)
     val Amber = Color(0xFFF5A524)
 
-    /** Background gradient of the call screen. */
-    val CallGradient = listOf(Color(0xFF1B1F4B), Color(0xFF232A6E), Color(0xFF0E3B4A))
-    val IntercomGradient = listOf(Color(0xFF3A1B4B), Color(0xFF5B2A6E), Color(0xFF16304A))
+    /** The call screen is always dark: its background, and the ink on its white controls. */
+    val CallSurface = Color(0xFF121212)
 }
 
+// A neutral palette: greys only. Colour is left to what it stands for (call, hang up, warning).
 private val LightColors = lightColorScheme(
-    primary = Brand.Indigo,
+    primary = Color(0xFF1C1C1E),
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFE0E3FF),
-    onPrimaryContainer = Color(0xFF0C1466),
-    secondary = Color(0xFF5B5F7A),
+    primaryContainer = Color(0xFFE7E7E7),
+    onPrimaryContainer = Color(0xFF1C1C1E),
+    inversePrimary = Color(0xFFE0E0E0),
+    secondary = Color(0xFF5F5F5F),
     onSecondary = Color.White,
-    secondaryContainer = Color(0xFFE2E4F5),
-    onSecondaryContainer = Color(0xFF181B33),
-    tertiary = Color(0xFF00897B),
+    secondaryContainer = Color(0xFFEAEAEA),
+    onSecondaryContainer = Color(0xFF1C1C1C),
+    tertiary = Color(0xFF4A4A4A),
     onTertiary = Color.White,
-    tertiaryContainer = Color(0xFFC5F3EC),
-    onTertiaryContainer = Color(0xFF00201C),
-    background = Color(0xFFF7F8FC),
-    onBackground = Color(0xFF1A1B22),
-    surface = Color(0xFFF7F8FC),
-    onSurface = Color(0xFF1A1B22),
-    surfaceVariant = Color(0xFFE3E4F0),
-    onSurfaceVariant = Color(0xFF464756),
+    tertiaryContainer = Color(0xFFEFEFEF),
+    onTertiaryContainer = Color(0xFF1C1C1C),
+    background = Color(0xFFFAFAFA),
+    onBackground = Color(0xFF1A1A1A),
+    surface = Color(0xFFFAFAFA),
+    onSurface = Color(0xFF1A1A1A),
+    surfaceVariant = Color(0xFFEBEBEB),
+    onSurfaceVariant = Color(0xFF5C5C5C),
+    inverseSurface = Color(0xFF2B2B2B),
+    inverseOnSurface = Color(0xFFF2F2F2),
+    surfaceBright = Color(0xFFFAFAFA),
+    surfaceDim = Color(0xFFDADADA),
     surfaceContainerLowest = Color.White,
-    surfaceContainerLow = Color(0xFFF1F2F9),
-    surfaceContainer = Color(0xFFECEDF6),
-    surfaceContainerHigh = Color(0xFFE6E7F1),
-    surfaceContainerHighest = Color(0xFFE0E1EC),
-    outline = Color(0xFF777889),
-    outlineVariant = Color(0xFFC7C8D7),
+    surfaceContainerLow = Color(0xFFF5F5F5),
+    surfaceContainer = Color(0xFFF0F0F0),
+    surfaceContainerHigh = Color(0xFFEAEAEA),
+    surfaceContainerHighest = Color(0xFFE4E4E4),
+    outline = Color(0xFF8A8A8A),
+    outlineVariant = Color(0xFFD6D6D6),
     error = Color(0xFFBA1A2B),
     errorContainer = Color(0xFFFFDAD9),
 )
 
 private val DarkColors = darkColorScheme(
-    primary = Color(0xFFBDC3FF),
-    onPrimary = Color(0xFF1B258C),
-    primaryContainer = Color(0xFF3540B4),
-    onPrimaryContainer = Color(0xFFE0E3FF),
-    secondary = Color(0xFFC4C6E0),
-    onSecondary = Color(0xFF2D3048),
-    secondaryContainer = Color(0xFF3B3E57),
-    onSecondaryContainer = Color(0xFFE2E4F5),
-    tertiary = Color(0xFF5EDCCB),
-    onTertiary = Color(0xFF003731),
-    tertiaryContainer = Color(0xFF005048),
-    onTertiaryContainer = Color(0xFFC5F3EC),
-    background = Color(0xFF0F1116),
-    onBackground = Color(0xFFE4E4EE),
-    surface = Color(0xFF0F1116),
-    onSurface = Color(0xFFE4E4EE),
-    surfaceVariant = Color(0xFF3A3B49),
-    onSurfaceVariant = Color(0xFFC7C8D7),
-    surfaceContainerLowest = Color(0xFF0A0B0F),
-    surfaceContainerLow = Color(0xFF16181F),
-    surfaceContainer = Color(0xFF1A1C24),
-    surfaceContainerHigh = Color(0xFF24262F),
-    surfaceContainerHighest = Color(0xFF2F313B),
-    outline = Color(0xFF9192A2),
-    outlineVariant = Color(0xFF464756),
+    primary = Color(0xFFF0F0F0),
+    onPrimary = Color(0xFF141414),
+    primaryContainer = Color(0xFF2E2E2E),
+    onPrimaryContainer = Color(0xFFF0F0F0),
+    inversePrimary = Color(0xFF1C1C1E),
+    secondary = Color(0xFFC8C8C8),
+    onSecondary = Color(0xFF1E1E1E),
+    secondaryContainer = Color(0xFF333333),
+    onSecondaryContainer = Color(0xFFEAEAEA),
+    tertiary = Color(0xFFBDBDBD),
+    onTertiary = Color(0xFF1E1E1E),
+    tertiaryContainer = Color(0xFF3A3A3A),
+    onTertiaryContainer = Color(0xFFEAEAEA),
+    background = Color(0xFF101010),
+    onBackground = Color(0xFFE6E6E6),
+    surface = Color(0xFF101010),
+    onSurface = Color(0xFFE6E6E6),
+    surfaceVariant = Color(0xFF3A3A3A),
+    onSurfaceVariant = Color(0xFFC2C2C2),
+    inverseSurface = Color(0xFFE6E6E6),
+    inverseOnSurface = Color(0xFF1A1A1A),
+    surfaceBright = Color(0xFF333333),
+    surfaceDim = Color(0xFF101010),
+    surfaceContainerLowest = Color(0xFF0A0A0A),
+    surfaceContainerLow = Color(0xFF161616),
+    surfaceContainer = Color(0xFF1A1A1A),
+    surfaceContainerHigh = Color(0xFF232323),
+    surfaceContainerHighest = Color(0xFF2D2D2D),
+    outline = Color(0xFF8F8F8F),
+    outlineVariant = Color(0xFF444444),
     error = Color(0xFFFFB3B3),
     errorContainer = Color(0xFF93000F),
 )
@@ -121,7 +128,7 @@ fun isDarkTheme(mode: ThemeMode): Boolean = when (mode) {
 @Composable
 fun SipLinkTheme(
     themeMode: ThemeMode = ThemeMode.SYSTEM,
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val dark = isDarkTheme(themeMode)

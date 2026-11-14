@@ -53,6 +53,7 @@ import com.sky.siplink.core.TlsManager
 import com.sky.siplink.core.model.CertInfo
 import com.sky.siplink.core.model.MediaSecurity
 import com.sky.siplink.engine
+import com.sky.siplink.restartApp
 import com.sky.siplink.ui.components.LocalMessenger
 import com.sky.siplink.ui.components.SectionCard
 import com.sky.siplink.ui.components.SubScreen
@@ -78,6 +79,7 @@ fun TlsScreen(onBack: () -> Unit) {
     val messenger = LocalMessenger.current
     val scope = rememberCoroutineScope()
     var pendingRemoval by remember { mutableStateOf<CertInfo?>(null) }
+    var restartPrompt by remember { mutableStateOf(false) }
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
@@ -101,7 +103,10 @@ fun TlsScreen(onBack: () -> Unit) {
                 data == null -> "无法读取所选文件"
                 data.size > MAX_CERT_FILE_BYTES -> "文件过大，不像是证书文件"
                 else -> when (val result = engine.tls.import(data)) {
-                    is TlsManager.ImportResult.Added -> "已导入 ${result.count} 个证书，正在重新注册账号"
+                    is TlsManager.ImportResult.Added -> {
+                        restartPrompt = engine.directory.tlsChangeNeedsRestart
+                        "已导入 ${result.count} 个证书，正在重新注册账号"
+                    }
                     TlsManager.ImportResult.AlreadyTrusted -> "这些证书已经导入过了"
                     is TlsManager.ImportResult.Invalid -> result.reason
                 }
@@ -220,9 +225,34 @@ fun TlsScreen(onBack: () -> Unit) {
                 TextButton(onClick = {
                     engine.tls.remove(certificate.fingerprint)
                     pendingRemoval = null
+                    restartPrompt = engine.directory.tlsChangeNeedsRestart
                 }) { Text("移除", color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = { TextButton(onClick = { pendingRemoval = null }) { Text("取消") } },
+        )
+    }
+
+    if (restartPrompt) {
+        AlertDialog(
+            onDismissRequest = { restartPrompt = false },
+            title = { Text("重启后对 LDAP 生效") },
+            text = {
+                Text(
+                    "SIP 账号已经使用新的证书设置。LDAP 通讯录的加密连接在本次运行中已经建立过，" +
+                        "它要到应用重启后才会改用新的 CA 证书。",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (engine.calls.call.value != null) {
+                        restartPrompt = false
+                        messenger("通话结束后再重启应用")
+                    } else {
+                        context.restartApp()
+                    }
+                }) { Text("立即重启") }
+            },
+            dismissButton = { TextButton(onClick = { restartPrompt = false }) { Text("稍后") } },
         )
     }
 }

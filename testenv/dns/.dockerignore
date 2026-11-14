@@ -1,0 +1,3 @@
+# Only the Dockerfile belongs in the build context.
+*
+!Dockerfile

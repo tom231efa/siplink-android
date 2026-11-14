@@ -1,5 +1,7 @@
 package com.sky.siplink.core
 
+import android.os.Handler
+import android.os.Looper
 import com.sky.siplink.core.logic.AccountRules
 import com.sky.siplink.core.model.AccountDraft
 import com.sky.siplink.core.model.RegState
@@ -11,6 +13,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import org.linphone.core.Account
 import org.linphone.core.AccountParams
 import org.linphone.core.Address
+import org.linphone.core.AuthInfo
 import org.linphone.core.Core
 import org.linphone.core.Factory
 import org.linphone.core.RegistrationState
@@ -26,6 +29,12 @@ class AccountManager(private val core: Core) {
     private val state = MutableStateFlow<List<SipAccount>>(emptyList())
     val accounts: StateFlow<List<SipAccount>> = state.asStateFlow()
 
+    /** Credentials of a removed account, kept until its unregistration went through. */
+    private class Retired(val auth: AuthInfo, val identityKey: String)
+
+    private val handler = Handler(Looper.getMainLooper())
+    private val retired = HashMap<Long, Retired>()
+
     init {
         refresh()
     }
@@ -37,6 +46,14 @@ class AccountManager(private val core: Core) {
 
     /** Cheap update of a single row, used for the bursts of registration events of many accounts. */
     fun onRegistrationChanged(account: Account) {
+        val pointer = account.nativePointer
+        if (pointer in retired) {
+            // A removed account: once it is unregistered its credentials can go.
+            if (account.state == RegistrationState.Cleared || account.state == RegistrationState.Failed) {
+                finishRetiring(pointer)
+            }
+            return
+        }
         val id = idOf(account)
         val list = state.value
         val index = list.indexOfFirst { it.id == id }
@@ -95,7 +112,12 @@ class AccountManager(private val core: Core) {
         account.params = params
 
         if (draft.password.isNotEmpty()) {
-            previousAuth?.let(core::removeAuthInfo)
+            if (credentialsChanged) {
+                // The old identity is unregistered now and still needs its credentials for that.
+                previousAuth?.let { old -> handler.postDelayed({ dropAuth(old, editingKey) }, UNREGISTER_GRACE_MS) }
+            } else {
+                previousAuth?.let(core::removeAuthInfo)
+            }
             addAuthInfo(draft, identity)
         }
         refresh()
@@ -106,10 +128,37 @@ class AccountManager(private val core: Core) {
         val account = find(id) ?: return
         val wasDefault = core.defaultAccount?.let(::idOf) == id
         val auth = account.findAuthInfo()
+        val identityKey = identityKeyOf(account)
+        val registered = account.state == RegistrationState.Ok || account.state == RegistrationState.Progress
         core.removeAccount(account)
-        auth?.let(core::removeAuthInfo)
+        when {
+            auth == null -> Unit
+            // The core now sends an un-REGISTER, which the server challenges like any other
+            // request: without the credentials the registration would linger on the server.
+            registered -> {
+                val pointer = account.nativePointer
+                retired[pointer] = Retired(auth, identityKey)
+                handler.postDelayed({ finishRetiring(pointer) }, UNREGISTER_GRACE_MS)
+            }
+            else -> dropAuth(auth, identityKey)
+        }
         if (wasDefault) core.defaultAccount = core.accountList.firstOrNull { idOf(it) != id }
         refresh()
+    }
+
+    private fun finishRetiring(pointer: Long) {
+        val entry = retired.remove(pointer) ?: return
+        dropAuth(entry.auth, entry.identityKey)
+    }
+
+    private fun dropAuth(auth: AuthInfo, identityKey: String) {
+        // The same identity may have been added again meanwhile: then the credentials stay.
+        if (core.accountList.none { identityKeyOf(it) == identityKey }) core.removeAuthInfo(auth)
+    }
+
+    private fun identityKeyOf(account: Account): String {
+        val identity = account.params.identityAddress
+        return AccountRules.identityKey(identity?.username.orEmpty(), hostPort(identity))
     }
 
     fun setEnabled(id: String, enabled: Boolean) {
@@ -229,5 +278,10 @@ class AccountManager(private val core: Core) {
         val literal = if (':' in host && !host.startsWith("[")) "[$host]" else host
         val port = address?.port ?: 0
         return if (port > 0) "$literal:$port" else literal
+    }
+
+    private companion object {
+        /** How long the credentials of a removed identity are kept if its unregistration stalls. */
+        const val UNREGISTER_GRACE_MS = 40_000L
     }
 }

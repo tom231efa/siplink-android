@@ -29,6 +29,8 @@ class FormattersTest {
         assertEquals("1001@pbx.local", Formatters.shortAddress("sip:1001@pbx.local;transport=tls"))
         assertEquals("1001", Formatters.userPart("sip:1001@pbx.local"))
         assertEquals("1001", Formatters.userPart("1001"))
+        assertEquals("alice", Formatters.userPart("alice@example.com:5060"))
+        assertEquals("1002@pbx.local", Formatters.shortAddress("SIPS:1002@pbx.local"))
     }
 
     @Test

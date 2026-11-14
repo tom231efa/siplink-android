@@ -8,12 +8,13 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.LocalIndication
@@ -51,9 +52,13 @@ import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.Campaign
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Dialpad
+import androidx.compose.material.icons.rounded.DoNotDisturbOn
 import androidx.compose.material.icons.rounded.Keyboard
 import androidx.compose.material.icons.rounded.PersonAdd
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.SupportAgent
+import androidx.compose.material.icons.rounded.Voicemail
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -72,7 +77,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -89,6 +93,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sky.siplink.core.model.RegState
 import com.sky.siplink.core.model.SipAccount
 import com.sky.siplink.engine
+import com.sky.siplink.ui.components.FeatureSheet
 import com.sky.siplink.ui.components.LocalMessenger
 import com.sky.siplink.ui.components.StatusDot
 import com.sky.siplink.ui.components.regStateLabel
@@ -105,7 +110,10 @@ private val dialKeys = listOf(
 @Composable
 fun DialerScreen(onAddAccount: () -> Unit) {
     val context = LocalContext.current
-    val accounts by context.engine.accounts.accounts.collectAsStateWithLifecycle()
+    val engine = context.engine
+    val accounts by engine.accounts.accounts.collectAsStateWithLifecycle()
+    val settings by engine.settings.settings.collectAsStateWithLifecycle()
+    val voicemail by engine.voicemail.collectAsStateWithLifecycle()
     val launcher = rememberCallLauncher()
     val messenger = LocalMessenger.current
     val haptics = LocalHapticFeedback.current
@@ -114,6 +122,7 @@ fun DialerScreen(onAddAccount: () -> Unit) {
     var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
     var keyboardMode by rememberSaveable { mutableStateOf(false) }
     var pickerOpen by remember { mutableStateOf(false) }
+    var featuresOpen by remember { mutableStateOf(false) }
 
     val selected = accounts.firstOrNull { it.id == selectedId }
     val active = selected ?: accounts.firstOrNull { it.isDefault } ?: accounts.firstOrNull()
@@ -136,7 +145,9 @@ fun DialerScreen(onAddAccount: () -> Unit) {
     ) {
         Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Spacer(Modifier.width(48.dp))
+            IconButton(onClick = { if (active == null) onAddAccount() else featuresOpen = true }) {
+                Icon(Icons.Rounded.SupportAgent, contentDescription = "企业功能：监听、耳语、强插、强拆、代接")
+            }
             Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                 AccountChip(active, onClick = { if (active == null) onAddAccount() else pickerOpen = true })
             }
@@ -149,6 +160,13 @@ fun DialerScreen(onAddAccount: () -> Unit) {
                 }
             }
         }
+
+        StatusChips(
+            doNotDisturb = settings.doNotDisturb,
+            voicemail = voicemail,
+            onDisableDnd = { engine.updateSettings { it.copy(doNotDisturb = false) } },
+            onVoicemail = { launcher.voicemail(selected?.id) },
+        )
 
         Box(
             Modifier
@@ -211,6 +229,15 @@ fun DialerScreen(onAddAccount: () -> Unit) {
         Spacer(Modifier.height(16.dp))
     }
 
+    if (featuresOpen) {
+        FeatureSheet(
+            launcher = launcher,
+            onDismiss = { featuresOpen = false },
+            target = number,
+            accountId = selected?.id,
+        )
+    }
+
     if (pickerOpen) {
         AccountPickerSheet(
             accounts = accounts,
@@ -251,6 +278,31 @@ private fun AccountChip(account: SipAccount?, onClick: () -> Unit) {
                     modifier = Modifier.sizeIn(maxWidth = 200.dp),
                 )
                 Icon(Icons.Rounded.ArrowDropDown, contentDescription = "选择呼出账号")
+            }
+        }
+    }
+}
+
+/** Reminders shown under the account chip: do not disturb is on, new voicemail is waiting. */
+@Composable
+private fun StatusChips(doNotDisturb: Boolean, voicemail: Int, onDisableDnd: () -> Unit, onVoicemail: () -> Unit) {
+    AnimatedVisibility(doNotDisturb || voicemail > 0, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
+        Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (doNotDisturb) {
+                AssistChip(
+                    onClick = onDisableDnd,
+                    label = { Text("免打扰已开启 · 点按关闭") },
+                    leadingIcon = {
+                        Icon(Icons.Rounded.DoNotDisturbOn, contentDescription = null, tint = Brand.HangUpRed, modifier = Modifier.size(18.dp))
+                    },
+                )
+            }
+            if (voicemail > 0) {
+                AssistChip(
+                    onClick = onVoicemail,
+                    label = { Text("$voicemail 条新留言") },
+                    leadingIcon = { Icon(Icons.Rounded.Voicemail, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                )
             }
         }
     }
@@ -414,9 +466,9 @@ private fun CallButton(enabled: Boolean, onClick: () -> Unit) {
                 scaleY = scale
                 this.alpha = alpha
             }
-            .shadow(if (enabled) 10.dp else 0.dp, CircleShape, spotColor = Brand.CallGreen)
+            .shadow(if (enabled) 6.dp else 0.dp, CircleShape)
             .clip(CircleShape)
-            .background(Brush.linearGradient(listOf(Color(0xFF34D17F), Brand.CallGreen, Color(0xFF12A65A))))
+            .background(Brand.CallGreen)
             .clickable(interactionSource = interaction, indication = LocalIndication.current, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {

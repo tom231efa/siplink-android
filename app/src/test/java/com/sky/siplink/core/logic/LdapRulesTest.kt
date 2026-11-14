@@ -36,6 +36,17 @@ class LdapRulesTest {
     }
 
     @Test
+    fun `StartTLS needs a host name`() {
+        val expected = listOf(LdapRules.Error.STARTTLS_NEEDS_HOST_NAME)
+        assertEquals(expected, LdapRules.validate(valid.copy(server = "ldap://192.0.2.10", useStartTls = true)))
+        assertEquals(expected, LdapRules.validate(valid.copy(server = "ldap://192.0.2.10:389", useStartTls = true)))
+        assertEquals(expected, LdapRules.validate(valid.copy(server = "ldap://[2001:db8::1]", useStartTls = true)))
+        // Without encryption an address is fine, and so is a name with encryption.
+        assertEquals(emptyList<LdapRules.Error>(), LdapRules.validate(valid.copy(server = "ldap://192.0.2.10", useStartTls = false)))
+        assertEquals(emptyList<LdapRules.Error>(), LdapRules.validate(valid.copy(server = "ldap://ldap.example.com", useStartTls = true)))
+    }
+
+    @Test
     fun `filter must contain the placeholder`() {
         assertTrue(LdapRules.Error.FILTER_NO_PLACEHOLDER in LdapRules.validate(valid.copy(filter = "(cn=*)")))
         assertTrue(LdapRules.Error.FILTER_EMPTY in LdapRules.validate(valid.copy(filter = "")))

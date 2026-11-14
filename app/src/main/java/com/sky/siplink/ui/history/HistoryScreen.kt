@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.CallMade
 import androidx.compose.material.icons.automirrored.rounded.CallMissed
@@ -25,6 +24,7 @@ import androidx.compose.material.icons.rounded.Campaign
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.DeleteSweep
 import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.SupportAgent
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -53,6 +53,7 @@ import com.sky.siplink.core.model.HistoryKind
 import com.sky.siplink.engine
 import com.sky.siplink.ui.components.Avatar
 import com.sky.siplink.ui.components.EmptyState
+import com.sky.siplink.ui.components.FeatureSheet
 import com.sky.siplink.ui.components.rememberCallLauncher
 import com.sky.siplink.ui.theme.Brand
 import java.time.Instant
@@ -71,6 +72,7 @@ fun HistoryScreen() {
     val entries by history.entries.collectAsStateWithLifecycle()
     val launcher = rememberCallLauncher()
     var confirmClear by remember { mutableStateOf(false) }
+    var featuresFor by remember { mutableStateOf<HistoryEntry?>(null) }
 
     Column(Modifier.fillMaxSize()) {
         TopAppBar(
@@ -116,6 +118,7 @@ fun HistoryScreen() {
                             time = Instant.ofEpochMilli(entry.startedAtMs).atZone(zone).format(timeFormat),
                             onCall = { launcher.call(entry.address) },
                             onIntercom = { launcher.intercom(entry.address) },
+                            onMore = { featuresFor = entry },
                             onDelete = { history.remove(entry.id) },
                             modifier = Modifier.animateItem(),
                         )
@@ -123,6 +126,10 @@ fun HistoryScreen() {
                 }
             }
         }
+    }
+
+    featuresFor?.let { entry ->
+        FeatureSheet(launcher = launcher, onDismiss = { featuresFor = null }, name = entry.name, target = entry.address)
     }
 
     if (confirmClear) {
@@ -154,6 +161,7 @@ private fun HistoryRow(
     time: String,
     onCall: () -> Unit,
     onIntercom: () -> Unit,
+    onMore: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -221,6 +229,14 @@ private fun HistoryRow(
                 onClick = {
                     menuOpen = false
                     onIntercom()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text("企业功能…") },
+                leadingIcon = { Icon(Icons.Rounded.SupportAgent, contentDescription = null) },
+                onClick = {
+                    menuOpen = false
+                    onMore()
                 },
             )
             DropdownMenuItem(

@@ -123,7 +123,12 @@ fun LdapSettingsScreen(onBack: () -> Unit, onOpenTls: () -> Unit) {
                     label = "服务器地址",
                     placeholder = "ldap://ldap.example.com:389",
                     keyboardType = KeyboardType.Uri,
-                    error = error(LdapRules.Error.SERVER_EMPTY, LdapRules.Error.SERVER_INVALID, LdapRules.Error.SERVER_LDAPS),
+                    error = error(
+                        LdapRules.Error.SERVER_EMPTY,
+                        LdapRules.Error.SERVER_INVALID,
+                        LdapRules.Error.SERVER_LDAPS,
+                        LdapRules.Error.STARTTLS_NEEDS_HOST_NAME,
+                    ),
                 )
                 FormField(
                     value = bindDn,
@@ -145,7 +150,7 @@ fun LdapSettingsScreen(onBack: () -> Unit, onOpenTls: () -> Unit) {
         SectionCard(title = "加密") {
             SwitchRow(
                 title = "StartTLS 加密",
-                subtitle = "在 ldap:// 连接上协商 TLS，保护查询内容与密码",
+                subtitle = "在 ldap:// 连接上协商 TLS，保护查询内容与密码。服务器地址须填写证书上的域名，不能用 IP",
                 icon = Icons.Rounded.Lock,
                 checked = startTls,
                 onCheckedChange = { startTls = it },

@@ -16,10 +16,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.PhoneForwarded
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.BatterySaver
 import androidx.compose.material.icons.rounded.Campaign
+import androidx.compose.material.icons.rounded.Dialpad
 import androidx.compose.material.icons.rounded.Dns
+import androidx.compose.material.icons.rounded.DoNotDisturbOn
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material.icons.rounded.VerifiedUser
@@ -38,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sky.siplink.BuildConfig
 import com.sky.siplink.core.model.IntercomHeaderMode
+import com.sky.siplink.core.model.Settings
 import com.sky.siplink.core.model.ThemeMode
 import com.sky.siplink.engine
 import com.sky.siplink.ui.components.LocalMessenger
@@ -46,7 +50,12 @@ import com.sky.siplink.ui.components.SectionCard
 import com.sky.siplink.ui.components.SwitchRow
 
 @Composable
-fun SettingsScreen(onOpenTls: () -> Unit, onOpenLdap: () -> Unit) {
+fun SettingsScreen(
+    onOpenTls: () -> Unit,
+    onOpenLdap: () -> Unit,
+    onOpenCallHandling: () -> Unit,
+    onOpenFeatureCodes: () -> Unit,
+) {
     val context = LocalContext.current
     val engine = context.engine
     val settings by engine.settings.settings.collectAsStateWithLifecycle()
@@ -62,6 +71,28 @@ fun SettingsScreen(onOpenTls: () -> Unit, onOpenLdap: () -> Unit) {
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            SectionCard(title = "呼叫与企业功能") {
+                SwitchRow(
+                    title = "免打扰",
+                    subtitle = "拒接所有来电",
+                    icon = Icons.Rounded.DoNotDisturbOn,
+                    checked = settings.doNotDisturb,
+                    onCheckedChange = { value -> engine.updateSettings { it.copy(doNotDisturb = value) } },
+                )
+                NavRow(
+                    title = "呼叫处理",
+                    subtitle = callHandlingSummary(settings),
+                    icon = Icons.AutoMirrored.Rounded.PhoneForwarded,
+                    onClick = onOpenCallHandling,
+                )
+                NavRow(
+                    title = "功能码",
+                    subtitle = "驻留、监听、耳语、强插、强拆、代接、语音信箱",
+                    icon = Icons.Rounded.Dialpad,
+                    onClick = onOpenFeatureCodes,
+                )
+            }
+
             SectionCard(title = "对讲") {
                 SwitchRow(
                     title = "自动接听对讲呼叫",
@@ -194,4 +225,14 @@ fun SettingsScreen(onOpenTls: () -> Unit, onOpenLdap: () -> Unit) {
             Spacer(Modifier.height(16.dp))
         }
     }
+}
+
+private fun callHandlingSummary(settings: Settings): String {
+    val forwards = listOf(
+        "无条件" to settings.forwardAlways,
+        "遇忙" to settings.forwardBusy,
+        "无应答" to settings.forwardNoAnswer,
+    ).filter { it.second.isNotBlank() }.joinToString("、") { "${it.first}→${it.second}" }
+    val waiting = if (settings.callWaiting) "呼叫等待已开启" else "呼叫等待已关闭"
+    return if (forwards.isEmpty()) "$waiting · 未设置前转" else "$waiting · 前转：$forwards"
 }

@@ -67,3 +67,14 @@ val Context.engine: SipEngine get() = (applicationContext as SipLinkApp).engine
 fun Context.openCallScreen() = startActivity(CallActivity.intent(this))
 
 fun Intent.asNewTask(): Intent = addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
+/**
+ * Restarts the app process. Needed for the few settings a native library only reads once per
+ * process (the CA certificates of the LDAP library).
+ */
+fun Context.restartApp() {
+    val launch = packageManager.getLaunchIntentForPackage(packageName)?.component ?: return
+    engine.core.config.sync()
+    startActivity(Intent.makeRestartActivityTask(launch))
+    Runtime.getRuntime().exit(0)
+}

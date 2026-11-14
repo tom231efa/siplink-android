@@ -14,6 +14,10 @@ val keystoreProperties = Properties().apply {
     }
 }
 
+// Optional: -Psiplink.abi=x86_64 builds for a single ABI, which keeps the APK small when it only
+// has to be installed on an emulator for the integration tests.
+val abiOverride = providers.gradleProperty("siplink.abi").orNull
+
 android {
     namespace = "com.sky.siplink"
     // Compiled against API 37 because current AndroidX releases require it; the app still
@@ -29,8 +33,11 @@ android {
 
         ndk {
             // Linphone SDK native libraries (16 KB page aligned). x86_64 is kept for emulators.
-            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+            abiFilters += abiOverride?.split(',') ?: listOf("arm64-v8a", "armeabi-v7a", "x86_64")
         }
+
+        // Integration tests (app/src/androidTest) need the test environment in testenv/.
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     signingConfigs {
@@ -100,4 +107,9 @@ dependencies {
     implementation(libs.linphone)
 
     testImplementation(libs.junit)
+
+    androidTestImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.core)
+    androidTestImplementation(libs.androidx.test.ext.junit)
 }

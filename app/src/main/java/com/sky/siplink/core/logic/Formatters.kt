@@ -23,9 +23,13 @@ object Formatters {
         return words.take(2).joinToString("") { it.first().uppercase() }
     }
 
+    private val schemes = listOf("sip:", "sips:", "tel:")
+
     /** Strips the scheme and URI parameters: `sip:1001@pbx.local;transport=tls` -> `1001@pbx.local`. */
-    fun shortAddress(uri: String): String =
-        uri.substringAfter(':', uri).substringBefore(';').substringBefore('?')
+    fun shortAddress(uri: String): String {
+        val scheme = schemes.firstOrNull { uri.startsWith(it, ignoreCase = true) }
+        return uri.drop(scheme?.length ?: 0).substringBefore(';').substringBefore('?')
+    }
 
     /** User part of a SIP URI, or the whole value when it is not a URI. */
     fun userPart(uri: String): String = shortAddress(uri).substringBefore('@')

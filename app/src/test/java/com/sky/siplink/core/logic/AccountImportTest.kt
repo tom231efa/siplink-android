@@ -38,6 +38,13 @@ class AccountImportTest {
     }
 
     @Test
+    fun `byte order mark at the start of the file is ignored`() {
+        val result = AccountImport.parse("\uFEFF1001,secret1,pbx.example.com", emptyList())
+        assertEquals(emptyList<AccountImport.LineError>(), result.errors)
+        assertEquals("1001", result.drafts.single().username)
+    }
+
+    @Test
     fun `reports bad lines with their line number`() {
         val text = listOf(
             "1001,pw,pbx.example.com",

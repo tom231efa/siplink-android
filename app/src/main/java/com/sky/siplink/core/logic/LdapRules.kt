@@ -8,6 +8,7 @@ object LdapRules {
         SERVER_EMPTY("请输入 LDAP 服务器地址"),
         SERVER_INVALID("服务器地址格式不正确，应为 ldap://主机[:端口]"),
         SERVER_LDAPS("不支持 ldaps://，请使用 ldap:// 并开启 StartTLS 加密"),
+        STARTTLS_NEEDS_HOST_NAME("StartTLS 需要填写服务器域名（证书上的主机名），不能使用 IP 地址"),
         BASE_DN_EMPTY("请输入搜索基准 DN"),
         FILTER_EMPTY("请输入搜索过滤器"),
         FILTER_NO_PLACEHOLDER("过滤器中必须包含 %s 占位符"),
@@ -32,6 +33,11 @@ object LdapRules {
         )
     }
 
+    private val ipv4 = Regex("""^\d{1,3}(\.\d{1,3}){3}(:\d+)?$""")
+
+    /** True for `192.0.2.1`, `192.0.2.1:389` and bracketed IPv6 literals. */
+    fun isIpLiteral(hostPort: String): Boolean = hostPort.startsWith("[") || ipv4.matches(hostPort)
+
     /** @param config already normalized configuration */
     fun validate(config: LdapConfig): List<Error> {
         val errors = mutableListOf<Error>()
@@ -41,6 +47,10 @@ object LdapRules {
             server.startsWith("ldaps://", ignoreCase = true) -> errors += Error.SERVER_LDAPS
             !server.startsWith("ldap://", ignoreCase = true) -> errors += Error.SERVER_INVALID
             !AccountRules.isValidHostPort(server.substring("ldap://".length)) -> errors += Error.SERVER_INVALID
+            // The LDAP library of the SIP stack refuses the TLS handshake without a host name to
+            // check the certificate against, even when verification is switched off.
+            config.useStartTls && isIpLiteral(server.substring("ldap://".length)) ->
+                errors += Error.STARTTLS_NEEDS_HOST_NAME
         }
         if (config.baseDn.isEmpty()) errors += Error.BASE_DN_EMPTY
         when {

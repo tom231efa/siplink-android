@@ -1,0 +1,24 @@
+; Template of the phone accounts; entrypoint.sh appends the password and the 1001-1100 sections.
+[phone](!)
+type = wizard
+accepts_auth = yes
+accepts_registrations = yes
+endpoint/context = internal
+endpoint/allow = !all,ulaw,alaw,g722
+endpoint/direct_media = no
+; Phones sit behind the emulator's NAT.
+endpoint/rtp_symmetric = yes
+endpoint/force_rport = yes
+endpoint/rewrite_contact = yes
+endpoint/send_pai = yes
+endpoint/trust_id_inbound = yes
+endpoint/allow_transfer = yes
+endpoint/call_group = 1
+endpoint/pickup_group = 1
+; Accept both plain RTP and SDES-SRTP offers.
+endpoint/media_encryption = sdes
+endpoint/media_encryption_optimistic = yes
+endpoint/mwi_subscribe_replaces_unsolicited = yes
+aor/max_contacts = 5
+aor/remove_existing = yes
+aor/qualify_frequency = 0

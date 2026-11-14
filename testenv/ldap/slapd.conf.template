@@ -1,0 +1,28 @@
+include /etc/ldap/schema/core.schema
+include /etc/ldap/schema/cosine.schema
+include /etc/ldap/schema/inetorgperson.schema
+
+pidfile /run/ldap-test/slapd.pid
+modulepath /usr/lib/ldap
+moduleload back_mdb
+
+# StartTLS with the certificate issued by the test CA (see testenv/gen-certs.sh).
+TLSCACertificateFile /certs/ca.crt.pem
+TLSCertificateFile /certs/server.crt.pem
+TLSCertificateKeyFile /certs/server.key
+
+database mdb
+maxsize 134217728
+suffix "dc=siplink,dc=test"
+rootdn "cn=admin,dc=siplink,dc=test"
+rootpw @ADMIN_HASH@
+directory /var/lib/ldap-test
+index objectClass eq
+index cn,sn,givenName,telephoneNumber,mobile eq,sub
+
+access to attrs=userPassword
+    by anonymous auth
+    by * none
+access to *
+    by users read
+    by * none

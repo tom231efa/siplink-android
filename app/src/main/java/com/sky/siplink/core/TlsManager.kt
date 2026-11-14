@@ -89,8 +89,16 @@ class TlsManager(context: Context, private val core: Core) {
         }
     }
 
-    /** Re-registers every account so new trust / verification settings take effect. */
-    fun reconnect() = core.refreshRegisters()
+    /**
+     * Drops the SIP connections and registers again, so that changed trust or verification
+     * settings take effect. Only refreshing the registrations would keep using the TLS
+     * connections that were accepted before the change. To the SIP stack this is a short
+     * loss of the network.
+     */
+    fun reconnect() {
+        core.setSipNetworkReachable(false)
+        core.setSipNetworkReachable(true)
+    }
 
     private fun applyTrust(reconnect: Boolean) {
         if (userCertificates.isEmpty()) {

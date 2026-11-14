@@ -33,7 +33,7 @@ object AccountImport {
 
         text.lineSequence().forEachIndexed { index, raw ->
             val lineNumber = index + 1
-            val line = raw.trim().removePrefix("﻿")
+            val line = raw.trim().removePrefix("\uFEFF")
             if (line.isEmpty() || line.startsWith("#")) return@forEachIndexed
 
             val fields = splitCsvLine(line)

@@ -33,7 +33,6 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -49,30 +48,19 @@ import com.sky.siplink.ui.theme.Brand
 /** Shows a transient message (snackbar) from anywhere below the app root. */
 val LocalMessenger = staticCompositionLocalOf<(String) -> Unit> { {} }
 
-private val avatarPalette = listOf(
-    Color(0xFF4F5BD5) to Color(0xFF7C5CFC),
-    Color(0xFF12B5A6) to Color(0xFF2E8BDB),
-    Color(0xFFF2709C) to Color(0xFFFF9472),
-    Color(0xFFF5A524) to Color(0xFFEF6C4D),
-    Color(0xFF5B86E5) to Color(0xFF36D1DC),
-    Color(0xFF8E54E9) to Color(0xFF4776E6),
-    Color(0xFF11998E) to Color(0xFF38C172),
-)
-
-/** Round avatar with a gradient picked from the name and the name's initials. */
+/** Round avatar showing the initials of a name. */
 @Composable
 fun Avatar(name: String, modifier: Modifier = Modifier, size: Dp = 44.dp) {
-    val (start, end) = avatarPalette[(name.hashCode() and 0x7FFFFFFF) % avatarPalette.size]
     Box(
         modifier = modifier
             .size(size)
             .clip(CircleShape)
-            .background(Brush.linearGradient(listOf(start, end))),
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = Formatters.initials(name),
-            color = Color.White,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontWeight = FontWeight.SemiBold,
             fontSize = (size.value * 0.36f).sp,
             maxLines = 1,
@@ -84,7 +72,7 @@ fun regStateColor(state: RegState): Color = when (state) {
     RegState.OK -> Brand.CallGreen
     RegState.PROGRESS -> Brand.Amber
     RegState.FAILED -> Brand.HangUpRed
-    RegState.NONE, RegState.DISABLED -> Color(0xFF9A9CAB)
+    RegState.NONE, RegState.DISABLED -> Color(0xFF9E9E9E)
 }
 
 fun regStateLabel(state: RegState): String = when (state) {
