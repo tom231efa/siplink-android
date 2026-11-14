@@ -128,6 +128,24 @@ class RegistrationTest : PbxTestBase() {
         }
     }
 
+    @Test
+    fun aPasswordGivenWithAnotherPortIsTheSavedOneAtOnce() {
+        // An account as an earlier version saved it: a digest in place of the password.
+        onMain { engine.core.config.setInt("sip", "store_ha1_passwd", 1) }
+        val account = try {
+            register(APP).also { await("the core to keep a digest only") { onMain { engine.accounts.passwordOf(it.id) }.isEmpty() } }
+        } finally {
+            onMain { engine.core.config.setInt("sip", "store_ha1_passwd", 0) }
+        }
+        // On another port the host and the user name are the same: the digest must not stay next to the password.
+        val moved = draft(APP, domain = "${env.pbxHost}:5060")
+        assertEquals(emptyList<AccountRules.Error>(), onMain { engine.accounts.update(account.id, moved) })
+        assertEquals(env.sipPassword, onMain { engine.accounts.passwordOf(account.id) })
+        never("refused on the other port", QUIET_WINDOW_MS) { account(APP)?.state == RegState.FAILED }
+        assertEquals(RegState.OK, account(APP)?.state)
+        assertEquals(env.sipPassword, onMain { engine.accounts.passwordOf(account.id) })
+    }
+
     /** The account of [APP] at [domain]. */
     private fun at(domain: String) = accounts().firstOrNull { it.domain == domain }
 

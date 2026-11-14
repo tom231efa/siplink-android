@@ -183,7 +183,12 @@ class AccountManager(private val core: Core) {
         storeName(id, draft.name)
 
         if (credentialsChanged || password != savedPassword) {
-            if (credentialsChanged) {
+            // The core tells credentials apart by user name and host. Where both stay, as on another
+            // port of the host, the new ones answer for the old address as well, and the old ones
+            // would only stand in front of them: the form would show their password, or none.
+            val sameLogin = draft.username == before.username &&
+                previousAuth?.domain?.equals(identity.domain, ignoreCase = true) == true
+            if (credentialsChanged && !sameLogin) {
                 previousAuth?.let { old ->
                     val entry = part(old, editingKey)
                     handler.postDelayed({ release(entry) }, UNREGISTER_GRACE_MS)
