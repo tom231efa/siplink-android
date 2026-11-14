@@ -1,5 +1,7 @@
 package com.sky.siplink.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -12,6 +14,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.DropdownMenuItem
@@ -34,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -59,6 +63,33 @@ fun SectionCard(title: String?, modifier: Modifier = Modifier, content: @Composa
         ) {
             Column(Modifier.padding(vertical = 6.dp), content = content)
         }
+    }
+}
+
+/**
+ * A card that shows only its title until it is opened: for what most people leave as it is.
+ *
+ * @param open whether its rows are shown; a tap on the title asks for the opposite with [onToggle]
+ */
+@Composable
+fun FoldingCard(title: String, open: Boolean, onToggle: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+    SectionCard(title = null) {
+        val rotation by animateFloatAsState(if (open) 180f else 0f, label = "foldingChevron")
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onToggle)
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(title, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+            Icon(
+                Icons.Rounded.ExpandMore,
+                contentDescription = if (open) "收起" else "展开",
+                modifier = Modifier.graphicsLayer { rotationZ = rotation },
+            )
+        }
+        AnimatedVisibility(open) { Column(content = content) }
     }
 }
 

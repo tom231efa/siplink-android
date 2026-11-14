@@ -314,7 +314,8 @@ class AccountManager(private val core: Core) {
         if (name.isEmpty()) core.config.cleanEntry(NAMES_SECTION, id) else core.config.setString(NAMES_SECTION, id, name)
     }
 
-    private fun idOf(account: Account): String {
+    /** What the app knows [account] by, also after it was renamed or moved to another address. */
+    fun idOf(account: Account): String {
         val params = account.params
         return params.idkey?.takeIf { it.isNotEmpty() } ?: params.identityAddress?.asStringUriOnly().orEmpty()
     }

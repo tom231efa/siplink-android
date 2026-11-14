@@ -8,8 +8,9 @@ import com.sky.siplink.core.logic.NameLookup
 import com.sky.siplink.core.model.DirectoryContact
 
 /**
- * Local copy of the directory entries the LDAP server has returned so far, in a SQLite database
- * in the app's private storage. It answers searches at once and without the server.
+ * Local copy of the entries the LDAP servers have returned so far, in a SQLite database in the
+ * app's private storage. It answers searches at once and without the server. Every entry
+ * belongs to the directory it came from, by the id of that directory.
  *
  * The copy stays below [maxBytes]: when it grows beyond that, the entries the server has not
  * returned for the longest time go first. Entries not returned for [MAX_AGE_MS] are dropped as
@@ -28,8 +29,8 @@ class DirectoryCache(
         override fun onCreate(db: SQLiteDatabase) {
             // "key" is the number as NameLookup compares numbers, for finding the name of a caller.
             db.execSQL(
-                "CREATE TABLE $TABLE (target TEXT NOT NULL, name TEXT NOT NULL, number TEXT NOT NULL, " +
-                    "organization TEXT NOT NULL, key TEXT NOT NULL, seen INTEGER NOT NULL, UNIQUE (target, name))",
+                "CREATE TABLE $TABLE (directory TEXT NOT NULL, target TEXT NOT NULL, name TEXT NOT NULL, number TEXT NOT NULL, " +
+                    "organization TEXT NOT NULL, key TEXT NOT NULL, seen INTEGER NOT NULL, UNIQUE (directory, target, name))",
             )
             db.execSQL("CREATE INDEX ${TABLE}_seen ON $TABLE (seen)")
             db.execSQL("CREATE INDEX ${TABLE}_key ON $TABLE (key)")
@@ -45,21 +46,22 @@ class DirectoryCache(
         setWriteAheadLoggingEnabled(false)
     }
 
-    /** Adds the entries, or marks the ones already there as seen at [now]. */
-    fun store(contacts: List<DirectoryContact>, now: Long = System.currentTimeMillis()) {
+    /** Adds the entries to those of [directory], or marks the ones already there as seen at [now]. */
+    fun store(directory: String, contacts: List<DirectoryContact>, now: Long = System.currentTimeMillis()) {
         val db = helper.writableDatabase
         db.beginTransaction()
         try {
             val insert = db.compileStatement(
-                "INSERT OR REPLACE INTO $TABLE (target, name, number, organization, key, seen) VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT OR REPLACE INTO $TABLE (directory, target, name, number, organization, key, seen) VALUES (?, ?, ?, ?, ?, ?, ?)",
             )
+            insert.bindString(1, directory)
             for (contact in contacts) {
-                insert.bindString(1, contact.callTarget)
-                insert.bindString(2, contact.name)
-                insert.bindString(3, contact.number)
-                insert.bindString(4, contact.organization)
-                insert.bindString(5, NameLookup.key(contact.number).orEmpty())
-                insert.bindLong(6, now)
+                insert.bindString(2, contact.callTarget)
+                insert.bindString(3, contact.name)
+                insert.bindString(4, contact.number)
+                insert.bindString(5, contact.organization)
+                insert.bindString(6, NameLookup.key(contact.number).orEmpty())
+                insert.bindLong(7, now)
                 insert.executeInsert()
             }
             db.delete(TABLE, "seen < ?", arrayOf((now - MAX_AGE_MS).toString()))
@@ -70,14 +72,14 @@ class DirectoryCache(
         trim(db)
     }
 
-    /** Entries whose name or number contains [query], by name, at most [limit] of them. */
-    fun search(query: String, limit: Int): List<DirectoryContact> {
+    /** Entries of [directory] whose name or number contains [query], by name, at most [limit] of them. */
+    fun search(directory: String, query: String, limit: Int): List<DirectoryContact> {
         val pattern = "%" + query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
         val contacts = ArrayList<DirectoryContact>()
         helper.readableDatabase.rawQuery(
             "SELECT name, number, target, organization FROM $TABLE " +
-                "WHERE name LIKE ? ESCAPE '\\' OR number LIKE ? ESCAPE '\\' ORDER BY name LIMIT ?",
-            arrayOf(pattern, pattern, limit.toString()),
+                "WHERE directory = ? AND (name LIKE ? ESCAPE '\\' OR number LIKE ? ESCAPE '\\') ORDER BY name LIMIT ?",
+            arrayOf(directory, pattern, pattern, limit.toString()),
         ).use { cursor ->
             while (cursor.moveToNext()) {
                 contacts += DirectoryContact(cursor.getString(0), cursor.getString(1), cursor.getString(2), cursor.getString(3))
@@ -87,43 +89,62 @@ class DirectoryCache(
     }
 
     /**
-     * The entry of the number behind [key] ([NameLookup.key]): one with exactly that number, else
-     * one that is the same line with or without a prefix ([NameLookup.sameLine]).
+     * The entry of the number behind [key] ([NameLookup.key]) in the first of [directories] that
+     * has one: an entry with exactly that number, else one that is the same line with or without
+     * a prefix ([NameLookup.sameLine]).
      */
-    fun find(key: String): DirectoryContact? {
+    fun find(key: String, directories: List<String>): DirectoryContact? {
         val db = helper.readableDatabase
-        one(db, "key = ?", key)?.let { return it }
-        if (key.length < NameLookup.MIN_SUFFIX_DIGITS || !key.all(Char::isDigit)) return null
-        // No index helps here, but this is one pass over the copy, off the main thread.
-        return one(
-            db,
-            "length(key) >= ${NameLookup.MIN_SUFFIX_DIGITS} AND key NOT GLOB '*[^0-9]*' AND (key LIKE '%' || ?1 OR ?1 LIKE '%' || key)",
-            key,
-        )
+        val suffixes = key.length >= NameLookup.MIN_SUFFIX_DIGITS && key.all(Char::isDigit)
+        for (directory in directories) {
+            one(db, "key = ?2", directory, key)?.let { return it }
+            if (!suffixes) continue
+            // No index helps here, but this is one pass over the copy, off the main thread.
+            one(
+                db,
+                "length(key) >= ${NameLookup.MIN_SUFFIX_DIGITS} AND key NOT GLOB '*[^0-9]*' AND (key LIKE '%' || ?2 OR ?2 LIKE '%' || key)",
+                directory,
+                key,
+            )?.let { return it }
+        }
+        return null
     }
 
-    private fun one(db: SQLiteDatabase, where: String, key: String): DirectoryContact? =
-        db.rawQuery("SELECT name, number, target, organization FROM $TABLE WHERE $where ORDER BY seen DESC LIMIT 1", arrayOf(key)).use {
+    private fun one(db: SQLiteDatabase, where: String, directory: String, key: String): DirectoryContact? =
+        db.rawQuery(
+            "SELECT name, number, target, organization FROM $TABLE WHERE directory = ?1 AND $where ORDER BY seen DESC LIMIT 1",
+            arrayOf(directory, key),
+        ).use {
             if (it.moveToFirst()) DirectoryContact(it.getString(0), it.getString(1), it.getString(2), it.getString(3)) else null
         }
 
-    /** The names of the entries with exactly the numbers behind [keys], by key. */
-    fun names(keys: Collection<String>): Map<String, String> {
+    /**
+     * The names of the entries with exactly the numbers behind [keys], by key. Where several of
+     * [directories] know a number, the first of them names it.
+     */
+    fun names(keys: Collection<String>, directories: List<String>): Map<String, String> {
         val names = HashMap<String, String>()
         val db = helper.readableDatabase
-        for (chunk in keys.distinct().chunked(MAX_QUERY_ARGUMENTS)) {
-            val marks = chunk.joinToString(",") { "?" }
-            // Oldest first, so that of two entries with one number the one seen last wins.
-            db.rawQuery("SELECT key, name FROM $TABLE WHERE key IN ($marks) ORDER BY seen", chunk.toTypedArray()).use {
-                while (it.moveToNext()) names[it.getString(0)] = it.getString(1)
+        // Last directory first, so that an earlier one overwrites what a later one says.
+        for (directory in directories.asReversed()) {
+            for (chunk in keys.distinct().chunked(MAX_QUERY_ARGUMENTS)) {
+                val marks = chunk.joinToString(",") { "?" }
+                // Oldest first, so that of two entries with one number the one seen last wins.
+                db.rawQuery(
+                    "SELECT key, name FROM $TABLE WHERE directory = ? AND key IN ($marks) ORDER BY seen",
+                    arrayOf(directory, *chunk.toTypedArray()),
+                ).use {
+                    while (it.moveToNext()) names[it.getString(0)] = it.getString(1)
+                }
             }
         }
         return names
     }
 
-    fun clear() {
+    /** Drops the entries of [directory], or every entry when it is null. */
+    fun clear(directory: String? = null) {
         val db = helper.writableDatabase
-        db.delete(TABLE, null, null)
+        if (directory == null) db.delete(TABLE, null, null) else db.delete(TABLE, "directory = ?", arrayOf(directory))
         db.execSQL("VACUUM")
     }
 
@@ -157,7 +178,7 @@ class DirectoryCache(
         const val MAX_AGE_MS = 90L * 24 * 60 * 60 * 1000
 
         private const val FILE_NAME = "directory-cache.db"
-        private const val VERSION = 2
+        private const val VERSION = 3
         private const val MAX_QUERY_ARGUMENTS = 500
         private const val TABLE = "contact"
         private const val MAX_TRIM_ROUNDS = 6

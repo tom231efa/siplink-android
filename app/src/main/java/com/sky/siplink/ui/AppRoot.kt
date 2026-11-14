@@ -81,7 +81,8 @@ import com.sky.siplink.ui.components.LocalMessenger
 import com.sky.siplink.ui.components.pressScale
 import com.sky.siplink.ui.dialer.DialerScreen
 import com.sky.siplink.ui.directory.DirectoryScreen
-import com.sky.siplink.ui.directory.LdapSettingsScreen
+import com.sky.siplink.ui.directory.LdapEditScreen
+import com.sky.siplink.ui.directory.LdapListScreen
 import com.sky.siplink.ui.history.HistoryScreen
 import com.sky.siplink.ui.settings.CallHandlingScreen
 import com.sky.siplink.ui.settings.CodecsScreen
@@ -106,6 +107,8 @@ private object Routes {
     const val ACCOUNT_NEW = "account/new"
     const val ACCOUNT_EDIT = "account/edit/{id}"
     const val LDAP = "ldap"
+    const val LDAP_NEW = "ldap/new"
+    const val LDAP_EDIT = "ldap/edit/{id}"
     const val TLS = "tls"
     const val CALL_HANDLING = "call-handling"
     const val FEATURE_CODES = "feature-codes"
@@ -115,6 +118,8 @@ private object Routes {
     const val SHORTCUTS = "shortcuts?account={account}"
 
     fun accountEdit(id: String) = "account/edit/${Uri.encode(id)}"
+
+    fun ldapEdit(id: String) = "ldap/edit/${Uri.encode(id)}"
 
     fun shortcuts(accountId: String?) = if (accountId == null) "shortcuts" else "shortcuts?account=${Uri.encode(accountId)}"
 }
@@ -243,7 +248,25 @@ fun AppRoot() {
                     )
                 }
                 composable(Routes.LDAP) {
-                    LdapSettingsScreen(
+                    LdapListScreen(
+                        onBack = { navController.popBackStack() },
+                        onAdd = { navController.navigate(Routes.LDAP_NEW) },
+                        onEdit = { navController.navigate(Routes.ldapEdit(it)) },
+                    )
+                }
+                composable(Routes.LDAP_NEW) {
+                    LdapEditScreen(
+                        directoryId = null,
+                        onBack = { navController.popBackStack() },
+                        onOpenTls = { navController.navigate(Routes.TLS) },
+                    )
+                }
+                composable(
+                    Routes.LDAP_EDIT,
+                    arguments = listOf(navArgument("id") { type = NavType.StringType }),
+                ) { entry ->
+                    LdapEditScreen(
+                        directoryId = entry.arguments?.getString("id"),
                         onBack = { navController.popBackStack() },
                         onOpenTls = { navController.navigate(Routes.TLS) },
                     )

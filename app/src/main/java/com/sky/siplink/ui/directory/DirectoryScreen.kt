@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -33,6 +35,7 @@ import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -63,28 +66,35 @@ import com.sky.siplink.ui.components.rememberCallLauncher
 import com.sky.siplink.ui.shortcuts.NewShortcutSheet
 import kotlinx.coroutines.delay
 
-/**
- * Only gathers the letters of a quick typist into one request: the directory itself already
- * waits for the delay of its settings before it asks the server.
- */
-private const val SEARCH_DEBOUNCE_MS = 120L
+/** Gathers the letters of a quick typist into one question to the server. */
+private const val SEARCH_DEBOUNCE_MS = 250L
 
-/** LDAP directory: search as you type, then call a contact with one tap. */
+/**
+ * The LDAP directories: search one of them as you type, then call a contact with one tap.
+ * Without a search it lists what the directory has, as far as the server lets it.
+ */
 @Composable
 fun DirectoryScreen(onOpenSettings: () -> Unit) {
     val context = LocalContext.current
     val directory = context.engine.directory
-    val config by directory.config.collectAsStateWithLifecycle()
+    val directories by directory.directories.collectAsStateWithLifecycle()
     val state by directory.state.collectAsStateWithLifecycle()
     val accounts by context.engine.accounts.accounts.collectAsStateWithLifecycle()
     val launcher = rememberCallLauncher()
     var query by rememberSaveable { mutableStateOf("") }
+    var chosen by rememberSaveable { mutableStateOf("") }
     var featuresFor by remember { mutableStateOf<DirectoryContact?>(null) }
     var shortcutFor by remember { mutableStateOf<DirectoryContact?>(null) }
 
-    LaunchedEffect(query, config) {
+    val usable = remember(directories) { directories.filter { it.enabled } }
+    val current = usable.firstOrNull { it.id == chosen } ?: usable.firstOrNull()
+    // The line of the directory, as long as that account is still there.
+    val callLine = current?.line?.takeIf { line -> accounts.any { it.id == line } }
+
+    LaunchedEffect(query, current) {
+        if (current == null) return@LaunchedEffect
         delay(SEARCH_DEBOUNCE_MS)
-        directory.search(query)
+        directory.search(current.id, query)
     }
 
     Column(Modifier.fillMaxSize()) {
@@ -97,7 +107,6 @@ fun DirectoryScreen(onOpenSettings: () -> Unit) {
             },
         )
 
-        val current = config
         when {
             !directory.isAvailable -> EmptyState(
                 icon = Icons.Rounded.Dns,
@@ -113,15 +122,30 @@ fun DirectoryScreen(onOpenSettings: () -> Unit) {
                 modifier = Modifier.fillMaxSize(),
             )
 
-            current == null || !current.enabled -> EmptyState(
+            current == null -> EmptyState(
                 icon = Icons.Rounded.Dns,
-                title = if (current == null) "尚未配置 LDAP 通讯录" else "LDAP 通讯录已停用",
+                title = if (directories.isEmpty()) "尚未配置 LDAP 通讯录" else "LDAP 通讯录已停用",
                 modifier = Modifier.fillMaxSize(),
             ) {
-                Button(onClick = onOpenSettings) { Text(if (current == null) "配置 LDAP 服务器" else "打开 LDAP 设置") }
+                Button(onClick = onOpenSettings) { Text("LDAP 设置") }
             }
 
             else -> {
+                if (usable.size > 1) {
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.padding(bottom = 8.dp),
+                    ) {
+                        items(usable, key = { it.id }, contentType = { "chip" }) { item ->
+                            FilterChip(
+                                selected = item.id == current.id,
+                                onClick = { chosen = item.id },
+                                label = { Text(item.title, maxLines = 1) },
+                            )
+                        }
+                    }
+                }
                 OutlinedTextField(
                     value = query,
                     onValueChange = { query = it },
@@ -154,21 +178,17 @@ fun DirectoryScreen(onOpenSettings: () -> Unit) {
                 }
 
                 val trimmed = query.trim()
+                // What another directory found is not shown as this one's.
+                val contacts = if (state.directory == current.id) state.contacts else emptyList()
                 when {
-                    trimmed.length < current.minChars -> EmptyState(
-                        icon = Icons.Rounded.Contacts,
-                        title = "输入至少 ${current.minChars} 个字符搜索",
-                        modifier = Modifier.fillMaxSize(),
-                    )
-
-                    state.contacts.isEmpty() && !state.searching && state.query == trimmed -> EmptyState(
+                    contacts.isEmpty() && !state.searching && state.directory == current.id && state.query == trimmed -> EmptyState(
                         icon = Icons.Rounded.SearchOff,
                         title = "没有匹配的联系人",
                         modifier = Modifier.fillMaxSize(),
                     )
 
                     else -> LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) {
-                        if (state.fromCache && state.contacts.isNotEmpty()) {
+                        if (state.fromCache && contacts.isNotEmpty()) {
                             item(key = "cache", contentType = "note") {
                                 Text(
                                     if (state.searching) "本地缓存，正在查询服务器…" else "来自本地缓存",
@@ -180,10 +200,10 @@ fun DirectoryScreen(onOpenSettings: () -> Unit) {
                                 )
                             }
                         }
-                        items(state.contacts, key = { "${it.callTarget}|${it.name}" }, contentType = { "contact" }) { contact ->
+                        items(contacts, key = { "${it.callTarget}|${it.name}" }, contentType = { "contact" }) { contact ->
                             ContactRow(
                                 contact = contact,
-                                onCall = { launcher.call(contact.callTarget) },
+                                onCall = { launcher.call(contact.callTarget, callLine) },
                                 onMore = { featuresFor = contact },
                                 modifier = Modifier.animateItem(),
                             )
@@ -191,7 +211,7 @@ fun DirectoryScreen(onOpenSettings: () -> Unit) {
                         if (state.limitReached) {
                             item(key = "limit") {
                                 Text(
-                                    "仅显示前 ${state.contacts.size} 条",
+                                    "仅显示前 ${contacts.size} 条",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),

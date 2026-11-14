@@ -3,24 +3,19 @@
 package com.sky.siplink.ui.accounts
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Power
 import androidx.compose.material.icons.rounded.VerifiedUser
 import androidx.compose.material.icons.rounded.Voicemail
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -31,9 +26,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -44,6 +37,7 @@ import com.sky.siplink.core.model.AccountDraft
 import com.sky.siplink.core.model.SipTransport
 import com.sky.siplink.engine
 import com.sky.siplink.ui.components.ChoiceRow
+import com.sky.siplink.ui.components.FoldingCard
 import com.sky.siplink.ui.components.FormField
 import com.sky.siplink.ui.components.LocalMessenger
 import com.sky.siplink.ui.components.NavRow
@@ -192,70 +186,51 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
             }
         }
 
-        SectionCard(title = null) {
-            val rotation by animateFloatAsState(if (advancedOpen) 180f else 0f, label = "advancedChevron")
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .clickable { advancedOpen = !advancedOpen }
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text("高级设置", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                Icon(
-                    Icons.Rounded.ExpandMore,
-                    contentDescription = if (advancedOpen) "收起" else "展开",
-                    modifier = Modifier.graphicsLayer { rotationZ = rotation },
+        FoldingCard(title = "高级设置", open = advancedOpen, onToggle = { advancedOpen = !advancedOpen }) {
+            Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                FormField(
+                    value = authUser,
+                    onValueChange = { authUser = it },
+                    label = "认证用户名（可选）",
+                )
+                FormField(
+                    value = server,
+                    onValueChange = { server = it },
+                    label = "代理服务器（可选）",
+                    placeholder = "主机[:端口]",
+                    keyboardType = KeyboardType.Uri,
+                    error = error(AccountRules.Error.SERVER_INVALID),
+                )
+                FormField(
+                    value = backupServer,
+                    onValueChange = { backupServer = it },
+                    label = "备用代理服务器（可选）",
+                    placeholder = "主机[:端口]",
+                    keyboardType = KeyboardType.Uri,
+                    error = error(AccountRules.Error.BACKUP_INVALID, AccountRules.Error.BACKUP_SAME),
+                )
+                FormField(
+                    value = dnsServer,
+                    onValueChange = { dnsServer = it },
+                    label = "DNS 服务器（可选）",
+                    placeholder = "IP[:端口]",
+                    keyboardType = KeyboardType.Uri,
+                    error = error(AccountRules.Error.DNS_INVALID),
+                )
+                FormField(
+                    value = expires,
+                    onValueChange = { expires = it },
+                    label = "注册有效期（秒）",
+                    keyboardType = KeyboardType.Number,
+                    error = error(AccountRules.Error.EXPIRES_OUT_OF_RANGE),
                 )
             }
-            AnimatedVisibility(advancedOpen) {
-                Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    FormField(
-                        value = authUser,
-                        onValueChange = { authUser = it },
-                        label = "认证用户名（可选）",
-                    )
-                    FormField(
-                        value = server,
-                        onValueChange = { server = it },
-                        label = "代理服务器（可选）",
-                        placeholder = "主机[:端口]",
-                        keyboardType = KeyboardType.Uri,
-                        error = error(AccountRules.Error.SERVER_INVALID),
-                    )
-                    FormField(
-                        value = backupServer,
-                        onValueChange = { backupServer = it },
-                        label = "备用代理服务器（可选）",
-                        placeholder = "主机[:端口]",
-                        keyboardType = KeyboardType.Uri,
-                        error = error(AccountRules.Error.BACKUP_INVALID, AccountRules.Error.BACKUP_SAME),
-                    )
-                    FormField(
-                        value = dnsServer,
-                        onValueChange = { dnsServer = it },
-                        label = "DNS 服务器（可选）",
-                        placeholder = "IP[:端口]",
-                        keyboardType = KeyboardType.Uri,
-                        error = error(AccountRules.Error.DNS_INVALID),
-                    )
-                    FormField(
-                        value = expires,
-                        onValueChange = { expires = it },
-                        label = "注册有效期（秒）",
-                        keyboardType = KeyboardType.Number,
-                        error = error(AccountRules.Error.EXPIRES_OUT_OF_RANGE),
-                    )
-                }
-            }
-            AnimatedVisibility(advancedOpen) {
-                SwitchRow(
-                    title = "订阅语音留言",
-                    icon = Icons.Rounded.Voicemail,
-                    checked = subscribeMwi,
-                    onCheckedChange = { subscribeMwi = it },
-                )
-            }
+            SwitchRow(
+                title = "订阅语音留言",
+                icon = Icons.Rounded.Voicemail,
+                checked = subscribeMwi,
+                onCheckedChange = { subscribeMwi = it },
+            )
         }
 
         SectionCard(title = null) {

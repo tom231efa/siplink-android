@@ -91,3 +91,27 @@ telephoneNumber: 2000
 mobile: 13800002000
 o:: 5rWL6K+V5Y+356CB
 
+# A second part of the directory, for the tests with several directories. Its first entry has
+# the extension of a member of staff under another name, and a number in an attribute of its own.
+dn: ou=partners,dc=siplink,dc=test
+objectClass: organizationalUnit
+ou: partners
+
+dn: uid=p1,ou=partners,dc=siplink,dc=test
+objectClass: inetOrgPerson
+uid: p1
+cn:: 5ZCI5L2c5LyZ5Ly055Sy
+sn:: 5ZCI5L2c
+telephoneNumber: 1002
+homePhone: 02155550001
+o:: 5aSW6YOo5Y2V5L2N
+
+dn: uid=p2,ou=partners,dc=siplink,dc=test
+objectClass: inetOrgPerson
+uid: p2
+cn: Partner Lee
+sn: Lee
+givenName: Partner
+telephoneNumber: 3001
+mobile: 13900003001
+o: Partners

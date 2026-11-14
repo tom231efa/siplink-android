@@ -66,7 +66,8 @@ abstract class PbxTestBase {
         onMain {
             engine.updateSettings { Settings() }
             engine.tls.certificates.value.forEach { engine.tls.remove(it.fingerprint) }
-            engine.directory.remove()
+            engine.directory.directories.value.forEach { engine.directory.remove(it.id) }
+            engine.directory.serverDelayMs = DIRECTORY_DELAY_MS
             engine.core.useFiles = true
             engine.core.playFile = tone.absolutePath
             // There is nothing to cancel with file audio, and the SDK's echo canceller cannot
@@ -382,6 +383,9 @@ abstract class PbxTestBase {
         const val TIMEOUT_MS = 60_000L
         const val LONG_TIMEOUT_MS = 300_000L
         const val QUIET_WINDOW_MS = 5_000L
+
+        /** What the directory waits before it asks a server, unless a test makes it slow. */
+        private const val DIRECTORY_DELAY_MS = 100
         private const val UNREGISTER_WAIT_MS = 20_000L
         const val POLL_MS = 200L
 

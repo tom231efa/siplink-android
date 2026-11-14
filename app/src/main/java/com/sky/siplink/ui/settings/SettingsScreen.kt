@@ -63,6 +63,7 @@ fun SettingsScreen(
     val settings by engine.settings.settings.collectAsStateWithLifecycle()
     val certificates by engine.tls.certificates.collectAsStateWithLifecycle()
     val accounts by engine.accounts.accounts.collectAsStateWithLifecycle()
+    val directories by engine.directory.directories.collectAsStateWithLifecycle()
     val messenger = LocalMessenger.current
     val launcher = rememberCallLauncher()
 
@@ -119,7 +120,12 @@ fun SettingsScreen(
                     icon = Icons.Rounded.VerifiedUser,
                     onClick = onOpenTls,
                 )
-                NavRow(title = "LDAP 通讯录", icon = Icons.Rounded.Dns, onClick = onOpenLdap)
+                NavRow(
+                    title = "LDAP 通讯录",
+                    trailing = directories.size.toString().takeIf { directories.isNotEmpty() },
+                    icon = Icons.Rounded.Dns,
+                    onClick = onOpenLdap,
+                )
             }
 
             SectionCard(title = "后台运行") {

@@ -130,6 +130,7 @@ class SipEngine(context: Context) {
     /** What refers to an account follows after the user changed, switched off or removed one. */
     private fun onAccountsEdited(before: List<SipAccount>, after: List<SipAccount>) {
         shortcuts.followAccounts(before, after)
+        if (before.size > after.size) directory.followAccounts(after.mapTo(HashSet()) { it.id })
         // The PBX no longer tells an account that is gone when its mailbox empties: forget the count.
         val users = after.filter { it.enabled }.flatMapTo(HashSet()) { listOf(it.username, it.authUser) }
         if (mailboxes.values.removeAll { it.user !in users }) voicemailState.value = mailboxes.values.sumOf { it.count }
@@ -158,6 +159,11 @@ class SipEngine(context: Context) {
     private fun configure() {
         core.setUserAgent(USER_AGENT, BuildConfig.VERSION_NAME)
         core.isAutoIterateEnabled = true
+        // With the app off the screen the core looks at the network less often, and was seen to
+        // take about one SIP message each time it does. At its usual half second an answer is
+        // read later than the 500 ms after which a request over UDP is repeated, so requests go
+        // out twice, and a hundred accounts do not get registered within five minutes.
+        core.autoIterateBackgroundSchedule = BACKGROUND_ITERATE_MS
         core.isKeepAliveEnabled = true
 
         // Audio-only client. Two calls are shown to the user (current + held or waiting); the
@@ -188,6 +194,7 @@ class SipEngine(context: Context) {
         const val CONFIG_FILE = "linphonerc"
         const val SHORTCUTS_FILE = "shortcuts.csv"
         const val MAX_CALLS = 4
+        const val BACKGROUND_ITERATE_MS = 100
 
         /** liblinphone's LC_SIP_TRANSPORT_RANDOM. */
         const val RANDOM_PORT = -1

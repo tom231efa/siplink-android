@@ -133,6 +133,8 @@ data class DirectoryContact(
 )
 
 data class DirectoryState(
+    /** Id of the directory that is searched; empty while there is none. */
+    val directory: String = "",
     val query: String = "",
     val searching: Boolean = false,
     val contacts: List<DirectoryContact> = emptyList(),
@@ -141,29 +143,56 @@ data class DirectoryState(
     val fromCache: Boolean = false,
 )
 
-enum class LdapCertCheck { DEFAULT, ENABLED, DISABLED }
+/** How the connection to an LDAP server is protected. */
+enum class LdapSecurity { NONE, START_TLS }
 
-data class LdapConfig(
+/**
+ * One LDAP directory. A server, where to look in it and whom to log in as are all it needs; the
+ * rest has defaults that fit most servers.
+ *
+ * In a filter `%` stands for what is being searched, taken as the beginning of the value:
+ * `(cn=%)` finds the names that start with it, `(cn=*%)` the ones that contain it.
+ */
+data class LdapDirectory(
+    /** Assigned when the directory is stored. */
+    val id: String = "",
+    val name: String = "",
     val enabled: Boolean = true,
-    val server: String = "",
-    val useStartTls: Boolean = true,
-    val certCheck: LdapCertCheck = LdapCertCheck.DEFAULT,
+    val host: String = "",
+    val port: Int = DEFAULT_PORT,
+    val security: LdapSecurity = LdapSecurity.NONE,
+    /** The user to log in as, empty for an anonymous bind. */
     val bindDn: String = "",
+    /** Never read back from the store: empty means "keep the stored one". */
     val password: String = "",
     val baseDn: String = "",
-    val filter: String = DEFAULT_FILTER,
-    val nameAttributes: String = DEFAULT_NAME_ATTRIBUTES,
-    val sipAttributes: String = DEFAULT_SIP_ATTRIBUTES,
-    val sipDomain: String = "",
+    /**
+     * Id of the account this directory belongs to: the calls of that account are named from it
+     * before any other directory, and its entries are called on that account. Empty: it is
+     * for every account.
+     */
+    val line: String = "",
+    /** Name the callers from this directory. */
+    val lookupIncoming: Boolean = true,
+    /** Name the people called from this directory. */
+    val lookupOutgoing: Boolean = true,
     val maxResults: Int = 50,
-    val minChars: Int = 1,
-    val timeoutSec: Int = 5,
-    val delayMs: Int = 500,
+    /** The attributes the name is taken from (the first one an entry has), and searched in. */
+    val nameAttributes: String = DEFAULT_NAME_ATTRIBUTES,
+    /** The attributes that hold numbers: each is listed with the entry, and searched in. */
+    val numberAttributes: String = DEFAULT_NUMBER_ATTRIBUTES,
+    /** Used when a name is searched; empty: made from the name attributes. */
+    val nameFilter: String = "",
+    /** Used when a number is searched and to name a call; empty: made from the number attributes. */
+    val numberFilter: String = "",
 ) {
+    /** What the directory is called where it is listed. */
+    val title: String get() = name.ifEmpty { host }
+
     companion object {
-        const val DEFAULT_FILTER = "(|(cn=*%s*)(sn=*%s*)(givenName=*%s*)(telephoneNumber=*%s*)(mobile=*%s*))"
-        const val DEFAULT_NAME_ATTRIBUTES = "cn,displayName,sn+givenName"
-        const val DEFAULT_SIP_ATTRIBUTES = "telephoneNumber,mobile,ipPhone"
+        const val DEFAULT_PORT = 389
+        const val DEFAULT_NAME_ATTRIBUTES = "cn sn"
+        const val DEFAULT_NUMBER_ATTRIBUTES = "telephoneNumber mobile"
     }
 }
 

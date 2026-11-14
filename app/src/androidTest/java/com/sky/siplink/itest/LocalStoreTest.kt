@@ -109,7 +109,7 @@ class ShortcutStoreTest {
     }
 }
 
-/** The local copy of the directory: search, renewal, expiry and its size limit. Needs no PBX. */
+/** The local copy of the directories: search, renewal, expiry, its size limit, and what belongs to which directory. Needs no PBX. */
 @RunWith(AndroidJUnit4::class)
 class DirectoryCacheTest {
     private var cache: DirectoryCache? = null
@@ -131,6 +131,7 @@ class DirectoryCacheTest {
     fun storesSearchesAndClears() {
         val cache = open()
         cache.store(
+            HQ,
             listOf(
                 contact("王芳", "1002", "销售"),
                 contact("Alice Smith", "1006"),
@@ -138,52 +139,81 @@ class DirectoryCacheTest {
                 contact("100%_折扣", "1009"),
             ),
         )
-        assertEquals(setOf("1006", "13800001006"), cache.search("alice", 50).map { it.number }.toSet())
-        assertEquals(listOf("王芳"), cache.search("芳", 50).map { it.name })
-        assertEquals(setOf("1002", "1006", "13800001006", "1009"), cache.search("100", 50).map { it.number }.toSet())
-        assertEquals("sip:1002@pbx.example.com", cache.search("1002", 50).single().callTarget)
+        assertEquals(setOf("1006", "13800001006"), cache.search(HQ, "alice", 50).map { it.number }.toSet())
+        assertEquals(listOf("王芳"), cache.search(HQ, "芳", 50).map { it.name })
+        assertEquals(setOf("1002", "1006", "13800001006", "1009"), cache.search(HQ, "100", 50).map { it.number }.toSet())
+        assertEquals("sip:1002@pbx.example.com", cache.search(HQ, "1002", 50).single().callTarget)
         // The wildcards of the database are ordinary characters in a query.
-        assertEquals(listOf("1009"), cache.search("%_", 50).map { it.number })
-        assertEquals(1, cache.search("100", 1).size)
+        assertEquals(listOf("1009"), cache.search(HQ, "%_", 50).map { it.number })
+        assertEquals(1, cache.search(HQ, "100", 1).size)
 
         // An entry that comes again is renewed, not doubled.
-        cache.store(listOf(contact("王芳", "1002", "市场")))
+        cache.store(HQ, listOf(contact("王芳", "1002", "市场")))
         assertEquals(4, cache.stats().entries)
-        assertEquals("市场", cache.search("王芳", 5).single().organization)
+        assertEquals("市场", cache.search(HQ, "王芳", 5).single().organization)
 
         cache.clear()
         assertEquals(0, cache.stats().entries)
-        assertTrue(cache.search("1", 5).isEmpty())
+        assertTrue(cache.search(HQ, "1", 5).isEmpty())
     }
 
     @Test
     fun findsTheEntryOfANumberHoweverItIsWritten() {
         val cache = open()
         val now = System.currentTimeMillis()
-        cache.store(listOf(contact("王芳", "1002"), contact("Alice Smith", "138-0000-1006"), contact("总机", "0755 8888 1000")), now)
-        assertEquals("王芳", cache.find("1002")?.name)
-        assertEquals("Alice Smith", cache.find("13800001006")?.name)
+        cache.store(HQ, listOf(contact("王芳", "1002"), contact("Alice Smith", "138-0000-1006"), contact("总机", "0755 8888 1000")), now)
+        assertEquals("王芳", cache.find("1002", listOf(HQ))?.name)
+        assertEquals("Alice Smith", cache.find("13800001006", listOf(HQ))?.name)
         // The same line with a country code or a trunk prefix in front, in either direction.
-        assertEquals("Alice Smith", cache.find("8613800001006")?.name)
-        assertEquals("总机", cache.find("88881000")?.name)
+        assertEquals("Alice Smith", cache.find("8613800001006", listOf(HQ))?.name)
+        assertEquals("总机", cache.find("88881000", listOf(HQ))?.name)
         // An extension is not the tail of an outside number, and unknown numbers stay unknown.
-        assertEquals(null, cache.find("1006"))
-        assertEquals(null, cache.find("13800001007"))
+        assertEquals(null, cache.find("1006", listOf(HQ)))
+        assertEquals(null, cache.find("13800001007", listOf(HQ)))
 
         // Of two entries with one number the one the server returned last is taken.
-        cache.store(listOf(contact("王芳（新）", "1002").copy(callTarget = "sip:1002@other.example.com")), now + 1)
-        assertEquals("王芳（新）", cache.find("1002")?.name)
-        assertEquals(mapOf("1002" to "王芳（新）", "13800001006" to "Alice Smith"), cache.names(listOf("1002", "13800001006", "4711")))
+        cache.store(HQ, listOf(contact("王芳（新）", "1002").copy(callTarget = "sip:1002@other.example.com")), now + 1)
+        assertEquals("王芳（新）", cache.find("1002", listOf(HQ))?.name)
+        assertEquals(mapOf("1002" to "王芳（新）", "13800001006" to "Alice Smith"), cache.names(listOf("1002", "13800001006", "4711"), listOf(HQ)))
+    }
+
+    @Test
+    fun keepsTheEntriesOfEveryDirectoryApart() {
+        val cache = open()
+        val now = System.currentTimeMillis()
+        cache.store(HQ, listOf(contact("王芳", "1002"), contact("Alice Smith", "1006")), now)
+        cache.store(BRANCH, listOf(contact("分公司前台", "1002"), contact("李娜", "1003")), now + 1)
+        assertEquals(4, cache.stats().entries)
+
+        assertEquals(listOf("王芳"), cache.search(HQ, "1002", 10).map { it.name })
+        assertEquals(listOf("分公司前台"), cache.search(BRANCH, "1002", 10).map { it.name })
+        assertTrue(cache.search(BRANCH, "Alice", 10).isEmpty())
+
+        // A number is named by the first of the directories asked that has it, whichever saw it last.
+        assertEquals("王芳", cache.find("1002", listOf(HQ, BRANCH))?.name)
+        assertEquals("分公司前台", cache.find("1002", listOf(BRANCH, HQ))?.name)
+        assertEquals("李娜", cache.find("1003", listOf(HQ, BRANCH))?.name)
+        assertEquals(null, cache.find("1003", listOf(HQ)))
+        assertEquals(null, cache.find("1002", emptyList()))
+        assertEquals(mapOf("1002" to "王芳", "1003" to "李娜"), cache.names(listOf("1002", "1003"), listOf(HQ, BRANCH)))
+        assertEquals(mapOf("1002" to "分公司前台", "1003" to "李娜"), cache.names(listOf("1002", "1003"), listOf(BRANCH, HQ)))
+        assertEquals(mapOf("1002" to "王芳"), cache.names(listOf("1002", "1003"), listOf(HQ)))
+
+        // Removing a directory takes its entries along and leaves the others.
+        cache.clear(BRANCH)
+        assertEquals(2, cache.stats().entries)
+        assertTrue(cache.search(BRANCH, "1002", 10).isEmpty())
+        assertEquals("王芳", cache.find("1002", listOf(BRANCH, HQ))?.name)
     }
 
     @Test
     fun dropsEntriesTheServerHasNotReturnedForNinetyDays() {
         val cache = open()
         val now = System.currentTimeMillis()
-        cache.store(listOf(contact("离职员工", "1101")), now - DirectoryCache.MAX_AGE_MS - 60_000)
-        cache.store(listOf(contact("在职员工", "1102")), now - DirectoryCache.MAX_AGE_MS + 60_000)
-        cache.store(listOf(contact("新员工", "1103")), now)
-        assertEquals(setOf("在职员工", "新员工"), cache.search("员工", 10).map { it.name }.toSet())
+        cache.store(HQ, listOf(contact("离职员工", "1101")), now - DirectoryCache.MAX_AGE_MS - 60_000)
+        cache.store(HQ, listOf(contact("在职员工", "1102")), now - DirectoryCache.MAX_AGE_MS + 60_000)
+        cache.store(HQ, listOf(contact("新员工", "1103")), now)
+        assertEquals(setOf("在职员工", "新员工"), cache.search(HQ, "员工", 10).map { it.name }.toSet())
     }
 
     @Test
@@ -195,15 +225,15 @@ class DirectoryCacheTest {
         val batches = 80
         val perBatch = 250
         repeat(batches) { batch ->
-            cache.store((0 until perBatch).map { contact("员工${batch * perBatch + it}号", "${200_000 + batch * perBatch + it}", "研发中心") }, now + batch)
+            cache.store(HQ, (0 until perBatch).map { contact("员工${batch * perBatch + it}号", "${200_000 + batch * perBatch + it}", "研发中心") }, now + batch)
             val size = cache.stats().bytes
             assertTrue("The copy grew to $size bytes, over its limit of $limit", size <= limit)
         }
         val stats = cache.stats()
         assertTrue("Nothing was kept: $stats", stats.entries in 1 until batches * perBatch)
         // The newest entries are there, the oldest ones made room.
-        assertEquals(1, cache.search("员工${batches * perBatch - 1}号", 5).size)
-        assertTrue(cache.search("员工0号", 5).isEmpty())
+        assertEquals(1, cache.search(HQ, "员工${batches * perBatch - 1}号", 5).size)
+        assertTrue(cache.search(HQ, "员工0号", 5).isEmpty())
     }
 
     @Test
@@ -214,5 +244,9 @@ class DirectoryCacheTest {
 
     private companion object {
         const val FILE = "itest-directory-cache.db"
+
+        /** Ids of two directories. */
+        const val HQ = "hq"
+        const val BRANCH = "branch"
     }
 }

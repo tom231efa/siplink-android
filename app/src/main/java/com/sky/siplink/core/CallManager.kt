@@ -584,7 +584,9 @@ class CallManager(
     private fun partyOf(call: Call): SideCall {
         val party = CallSupport.party(call)
         val outgoing = call.dir == Call.Dir.Outgoing
-        return party.copy(name = PartyName.of(party.name, party.address, outgoing, settings.current.features, names::nameOf))
+        val line = call.params.account?.let(accounts::idOf)
+        val name = PartyName.of(party.name, party.address, outgoing, settings.current.features) { names.nameOf(it, !outgoing, line) }
+        return party.copy(name = name)
     }
 
     /** The directory found a name: show it on the call that is up, and where that call is being announced. */
