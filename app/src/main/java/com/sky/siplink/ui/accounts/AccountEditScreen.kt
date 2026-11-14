@@ -1,0 +1,258 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
+package com.sky.siplink.ui.accounts
+
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.Power
+import androidx.compose.material.icons.rounded.VerifiedUser
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
+import com.sky.siplink.core.logic.AccountRules
+import com.sky.siplink.core.model.AccountDraft
+import com.sky.siplink.core.model.SipTransport
+import com.sky.siplink.engine
+import com.sky.siplink.ui.components.FormField
+import com.sky.siplink.ui.components.LocalMessenger
+import com.sky.siplink.ui.components.NavRow
+import com.sky.siplink.ui.components.SectionCard
+import com.sky.siplink.ui.components.SubScreen
+import com.sky.siplink.ui.components.SwitchRow
+
+/** Adds a new account ([accountId] == null) or edits an existing one. */
+@Composable
+fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> Unit) {
+    val context = LocalContext.current
+    val manager = context.engine.accounts
+    val messenger = LocalMessenger.current
+    val existing = remember(accountId) { accountId?.let { id -> manager.accounts.value.firstOrNull { it.id == id } } }
+    val initial = existing?.toDraft() ?: AccountDraft()
+
+    var username by rememberSaveable { mutableStateOf(initial.username) }
+    var password by rememberSaveable { mutableStateOf("") }
+    var domain by rememberSaveable { mutableStateOf(initial.domain) }
+    var displayName by rememberSaveable { mutableStateOf(initial.displayName) }
+    var transport by rememberSaveable { mutableStateOf(initial.transport) }
+    var authUser by rememberSaveable { mutableStateOf(initial.authUser) }
+    var server by rememberSaveable { mutableStateOf(initial.server) }
+    var expires by rememberSaveable { mutableStateOf(initial.expires.toString()) }
+    var enabled by rememberSaveable { mutableStateOf(initial.enabled) }
+    var advancedOpen by rememberSaveable { mutableStateOf(initial.authUser.isNotEmpty() || initial.server.isNotEmpty()) }
+    var errors by remember { mutableStateOf(emptyList<AccountRules.Error>()) }
+    var confirmDelete by remember { mutableStateOf(false) }
+
+    fun error(vararg candidates: AccountRules.Error): String? = errors.firstOrNull { it in candidates }?.message
+
+    fun save() {
+        val draft = AccountDraft(
+            username = username,
+            password = password,
+            domain = domain,
+            displayName = displayName,
+            authUser = authUser,
+            server = server,
+            transport = transport,
+            // An unparseable value becomes 0 so validation reports it as out of range.
+            expires = expires.trim().toIntOrNull() ?: 0,
+            enabled = enabled,
+        )
+        errors = if (existing == null) manager.add(draft) else manager.update(existing.id, draft)
+        if (errors.isEmpty()) {
+            messenger(if (existing == null) "账号已添加" else "账号已保存")
+            onBack()
+        } else {
+            messenger(errors.first().message)
+        }
+    }
+
+    SubScreen(
+        title = if (existing == null) "添加账号" else "编辑账号",
+        onBack = onBack,
+        actions = { TextButton(onClick = ::save) { Text("保存") } },
+    ) {
+        SectionCard(title = "账号信息") {
+            Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                FormField(
+                    value = username,
+                    onValueChange = { username = it },
+                    label = "用户名",
+                    placeholder = "例如 1001",
+                    keyboardType = KeyboardType.Email,
+                    error = error(
+                        AccountRules.Error.USERNAME_EMPTY,
+                        AccountRules.Error.USERNAME_INVALID,
+                        AccountRules.Error.DUPLICATE,
+                        AccountRules.Error.LIMIT_REACHED,
+                    ),
+                )
+                FormField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = "密码",
+                    supporting = if (existing != null) "留空则不修改密码" else null,
+                    password = true,
+                    error = error(AccountRules.Error.PASSWORD_REQUIRED),
+                )
+                FormField(
+                    value = domain,
+                    onValueChange = { domain = it },
+                    label = "域名 / 服务器",
+                    placeholder = "pbx.example.com 或 192.168.1.10:5060",
+                    keyboardType = KeyboardType.Uri,
+                    error = error(
+                        AccountRules.Error.DOMAIN_EMPTY,
+                        AccountRules.Error.DOMAIN_INVALID,
+                        AccountRules.Error.ADDRESS_REJECTED,
+                    ),
+                )
+                FormField(
+                    value = displayName,
+                    onValueChange = { displayName = it },
+                    label = "显示名称（可选）",
+                )
+            }
+        }
+
+        SectionCard(title = "传输协议") {
+            SingleChoiceSegmentedButtonRow(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+            ) {
+                SipTransport.entries.forEachIndexed { index, option ->
+                    SegmentedButton(
+                        selected = transport == option,
+                        onClick = { transport = option },
+                        shape = SegmentedButtonDefaults.itemShape(index, SipTransport.entries.size),
+                    ) { Text(option.name) }
+                }
+            }
+            AnimatedVisibility(transport == SipTransport.TLS) {
+                NavRow(
+                    title = "TLS 与 CA 证书",
+                    subtitle = "信令将加密传输。服务器使用私有 CA 或自签名证书时，请先导入 CA",
+                    icon = Icons.Rounded.VerifiedUser,
+                    onClick = onOpenTls,
+                )
+            }
+        }
+
+        SectionCard(title = null) {
+            val rotation by animateFloatAsState(if (advancedOpen) 180f else 0f, label = "advancedChevron")
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clickable { advancedOpen = !advancedOpen }
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("高级设置", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                Icon(
+                    Icons.Rounded.ExpandMore,
+                    contentDescription = if (advancedOpen) "收起" else "展开",
+                    modifier = Modifier.graphicsLayer { rotationZ = rotation },
+                )
+            }
+            AnimatedVisibility(advancedOpen) {
+                Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    FormField(
+                        value = authUser,
+                        onValueChange = { authUser = it },
+                        label = "认证用户名（可选）",
+                        supporting = "与用户名不同时填写",
+                    )
+                    FormField(
+                        value = server,
+                        onValueChange = { server = it },
+                        label = "代理服务器（可选）",
+                        placeholder = "主机[:端口]",
+                        supporting = "留空则直接向域名注册",
+                        keyboardType = KeyboardType.Uri,
+                        error = error(AccountRules.Error.SERVER_INVALID),
+                    )
+                    FormField(
+                        value = expires,
+                        onValueChange = { expires = it },
+                        label = "注册有效期（秒）",
+                        keyboardType = KeyboardType.Number,
+                        error = error(AccountRules.Error.EXPIRES_OUT_OF_RANGE),
+                    )
+                }
+            }
+        }
+
+        SectionCard(title = null) {
+            SwitchRow(
+                title = "启用此账号",
+                subtitle = "停用后不再向服务器注册",
+                icon = Icons.Rounded.Power,
+                checked = enabled,
+                onCheckedChange = { enabled = it },
+            )
+        }
+
+        if (existing != null) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                FilledTonalButton(
+                    onClick = {
+                        manager.setDefault(existing.id)
+                        messenger("已设为默认账号")
+                    },
+                    enabled = !existing.isDefault,
+                    modifier = Modifier.weight(1f),
+                ) { Text(if (existing.isDefault) "当前默认账号" else "设为默认账号") }
+                OutlinedButton(onClick = { confirmDelete = true }, modifier = Modifier.weight(1f)) {
+                    Text("删除账号", color = MaterialTheme.colorScheme.error)
+                }
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+    }
+
+    if (confirmDelete && existing != null) {
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text("删除账号？") },
+            text = { Text("${existing.identity} 将从本机移除并注销。") },
+            confirmButton = {
+                TextButton(onClick = {
+                    manager.remove(existing.id)
+                    confirmDelete = false
+                    onBack()
+                }) { Text("删除", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("取消") } },
+        )
+    }
+}
