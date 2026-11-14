@@ -113,6 +113,12 @@ class AccountManager(private val core: Core) {
     fun find(id: String): Account? = core.accountList.firstOrNull { idOf(it) == id }
 
     /**
+     * The password saved for the account [id], to show it in its form. Empty where there is none:
+     * of the accounts saved by earlier versions only a digest of the password is left.
+     */
+    fun passwordOf(id: String): String = find(id)?.findAuthInfo()?.password.orEmpty()
+
+    /**
      * Whether calls may go out on [account]: it is switched on. That includes the moment in
      * which its registration waits for the address of its server.
      */
@@ -151,8 +157,12 @@ class AccountManager(private val core: Core) {
         val credentialsChanged = draft.username != before.username ||
             !draft.domain.equals(before.domain, ignoreCase = true) ||
             draft.authUser != before.authUser
-        // A stored digest (HA1) is bound to the user name and realm, so it cannot be reused.
-        if (credentialsChanged && draft.password.isEmpty()) errors += AccountRules.Error.PASSWORD_REQUIRED
+        val previousAuth = account.findAuthInfo()
+        val savedPassword = previousAuth?.password.orEmpty()
+        // An empty field keeps the saved password, also for another user name or server. Where only
+        // a digest (HA1) is saved there is nothing to keep: it is bound to the user name and realm.
+        val password = draft.password.ifEmpty { savedPassword }
+        if (credentialsChanged && password.isEmpty()) errors += AccountRules.Error.PASSWORD_REQUIRED
         if (errors.isNotEmpty()) return errors
 
         val identity = buildIdentity(draft) ?: return listOf(AccountRules.Error.ADDRESS_REJECTED)
@@ -166,14 +176,13 @@ class AccountManager(private val core: Core) {
             null
         }
 
-        val previousAuth = account.findAuthInfo()
         val params = account.params.clone()
         applyParams(id, params, draft, identity, server)
         account.params = params
         if (rerouted) router.begin(id)
         storeName(id, draft.name)
 
-        if (draft.password.isNotEmpty()) {
+        if (credentialsChanged || password != savedPassword) {
             if (credentialsChanged) {
                 previousAuth?.let { old ->
                     val entry = part(old, editingKey)
@@ -182,7 +191,7 @@ class AccountManager(private val core: Core) {
             } else {
                 previousAuth?.let(core::removeAuthInfo)
             }
-            addAuthInfo(draft, identity)
+            addAuthInfo(draft.copy(password = password), identity)
         }
         refresh()
         onEdited?.invoke(accountsBefore, state.value)

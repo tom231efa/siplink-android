@@ -176,6 +176,11 @@ class SipEngine(context: Context) {
         // has announced the parking slot, which the core's automatic hang-up would cut off.
         core.config.setInt("sip", "terminate_call_upon_transfer_completion", 0)
 
+        // The password of an account is kept as it was entered, so that it can be shown again and
+        // goes along when the account moves to another server. Left to itself the core keeps a
+        // digest of it only, which fits no other user name and no other server.
+        core.config.setInt("sip", "store_ha1_passwd", 0)
+
         // Let the SDK ring with the device ringtone and vibrate on incoming calls.
         core.isNativeRingingEnabled = true
         core.isVibrationOnIncomingCallEnabled = true

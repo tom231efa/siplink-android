@@ -143,6 +143,9 @@ class DirectoryManager(private val core: Core, private val cache: DirectoryCache
         return emptyList()
     }
 
+    /** The password saved for the directory [id], to show it in its form. */
+    fun passwordOf(id: String): String = store.passwordOf(id)
+
     fun remove(id: String) {
         val list = listState.value
         if (list.none { it.id == id }) return

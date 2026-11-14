@@ -85,6 +85,40 @@ class RegistrationTest : PbxTestBase() {
         assertEquals(RegState.FAILED, at(env.pbxName)?.state)
     }
 
+    @Test
+    fun anAccountMovedToAnotherServerKeepsItsPassword() {
+        // Both names lead to the one PBX here: what counts is that the account is not asked for its password.
+        assumeTrue("The device has no name for the PBX", env.pbxName != env.pbxHost)
+        val account = register(APP)
+        assertEquals(env.sipPassword, onMain { engine.accounts.passwordOf(account.id) })
+
+        val moved = draft(APP, domain = env.pbxName).copy(password = "")
+        assertEquals(emptyList<AccountRules.Error>(), onMain { engine.accounts.update(account.id, moved) })
+        // Without its password the account would be refused at once: the PBX asks for it with the first request.
+        never("refused at the other name of the PBX", QUIET_WINDOW_MS) { at(env.pbxName)?.state == RegState.FAILED }
+        assertEquals(RegState.OK, at(env.pbxName)?.state)
+        assertEquals(env.sipPassword, onMain { engine.accounts.passwordOf(account.id) })
+    }
+
+    @Test
+    fun anAccountWithOnlyADigestSavedNeedsItsPasswordToMove() {
+        assumeTrue("The device has no name for the PBX", env.pbxName != env.pbxHost)
+        // What earlier versions saved: once registered, the core kept a digest in place of the password.
+        onMain { engine.core.config.setInt("sip", "store_ha1_passwd", 1) }
+        try {
+            val account = register(APP)
+            await("the core to keep a digest only") { onMain { engine.accounts.passwordOf(account.id) }.isEmpty() }
+
+            val moved = draft(APP, domain = env.pbxName)
+            val errors = onMain { engine.accounts.update(account.id, moved.copy(password = "")) }
+            assertEquals(listOf(AccountRules.Error.PASSWORD_REQUIRED), errors)
+            assertEquals(emptyList<AccountRules.Error>(), onMain { engine.accounts.update(account.id, moved) })
+            await("the registration at the other name of the PBX") { at(env.pbxName)?.state == RegState.OK }
+        } finally {
+            onMain { engine.core.config.setInt("sip", "store_ha1_passwd", 0) }
+        }
+    }
+
     /** The account of [APP] at [domain]. */
     private fun at(domain: String) = accounts().firstOrNull { it.domain == domain }
 

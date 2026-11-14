@@ -29,7 +29,7 @@ object AccountRules {
         EXPIRES_OUT_OF_RANGE("注册有效期", "应为 $MIN_EXPIRES–$MAX_EXPIRES 秒"),
         DUPLICATE("", "账号已存在"),
 
-        /** A stored password belongs to the user name and domain it was entered for. */
+        /** No password is saved to go along, only a digest that belongs to the user name and domain it was made for. */
         PASSWORD_REQUIRED("密码", "必填（已改用户名或域名）"),
         ADDRESS_REJECTED("", "地址无法解析"),
         NOT_FOUND("", "账号不存在"),

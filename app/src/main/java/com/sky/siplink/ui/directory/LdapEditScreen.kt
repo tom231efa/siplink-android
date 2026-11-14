@@ -74,7 +74,8 @@ fun LdapEditScreen(directoryId: String?, onBack: () -> Unit, onOpenTls: () -> Un
     // Most servers want a user; a directory that is stored says for itself whether it has one.
     var logsIn by rememberSaveable { mutableStateOf(stored == null || stored.bindDn.isNotEmpty()) }
     var bindDn by rememberSaveable { mutableStateOf(initial.bindDn) }
-    var password by rememberSaveable { mutableStateOf("") }
+    // The saved password stands in the field, to look at or to change.
+    var password by rememberSaveable { mutableStateOf(stored?.let { manager.passwordOf(it.id) }.orEmpty()) }
     var line by rememberSaveable { mutableStateOf(initial.line) }
     var lookupIncoming by rememberSaveable { mutableStateOf(initial.lookupIncoming) }
     var lookupOutgoing by rememberSaveable { mutableStateOf(initial.lookupOutgoing) }

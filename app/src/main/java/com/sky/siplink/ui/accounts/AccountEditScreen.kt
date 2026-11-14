@@ -65,7 +65,8 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
 
     var name by rememberSaveable { mutableStateOf(initial.name) }
     var username by rememberSaveable { mutableStateOf(initial.username) }
-    var password by rememberSaveable { mutableStateOf("") }
+    // The saved password stands in the field, to look at or to change.
+    var password by rememberSaveable { mutableStateOf(existing?.let { manager.passwordOf(it.id) }.orEmpty()) }
     var domain by rememberSaveable { mutableStateOf(initial.domain) }
     var displayName by rememberSaveable { mutableStateOf(initial.displayName) }
     var transport by rememberSaveable { mutableStateOf(initial.transport) }
