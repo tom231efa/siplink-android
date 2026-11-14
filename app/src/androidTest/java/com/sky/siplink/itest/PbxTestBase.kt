@@ -201,6 +201,17 @@ abstract class PbxTestBase {
         assertTrue("Account rejected: $errors", errors.isEmpty())
     }
 
+    /** Adds an account from a draft of the test, for what [addAccount] has no parameter for. */
+    protected fun addAccount(draft: AccountDraft) {
+        val errors = onMain { engine.accounts.add(draft) }
+        assertTrue("Account rejected: $errors", errors.isEmpty())
+    }
+
+    protected fun awaitRegistered(extension: Int = APP, timeoutMs: Long = TIMEOUT_MS): SipAccount {
+        await("the registration of $extension", timeoutMs) { account(extension)?.state == RegState.OK }
+        return account(extension)!!
+    }
+
     protected fun register(
         extension: Int = APP,
         transport: SipTransport = SipTransport.UDP,

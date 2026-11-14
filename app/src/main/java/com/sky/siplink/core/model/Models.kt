@@ -15,8 +15,14 @@ data class AccountDraft(
     val authUser: String = "",
     /** Optional registrar / outbound proxy as host[:port]. Empty means "same as domain". */
     val server: String = "",
+    /** Optional second server as host[:port], used while [server] is out of reach. */
+    val backupServer: String = "",
+    /** Optional DNS server of this account as address[:port]; the servers are looked up there instead of by the system. */
+    val dnsServer: String = "",
     val transport: SipTransport = SipTransport.UDP,
     val expires: Int = 3600,
+    /** Ask the PBX to report new voicemail (SUBSCRIBE); a PBX that reports it unasked needs none. */
+    val subscribeMwi: Boolean = false,
     val enabled: Boolean = true,
 )
 
@@ -35,6 +41,11 @@ data class SipAccount(
     val isDefault: Boolean,
     val error: String? = null,
     val name: String = "",
+    val backupServer: String = "",
+    val dnsServer: String = "",
+    val subscribeMwi: Boolean = false,
+    /** The account is on its backup server at the moment. */
+    val onBackup: Boolean = false,
 ) {
     val identity: String get() = "$username@$domain"
 
@@ -53,8 +64,11 @@ data class SipAccount(
         displayName = displayName,
         authUser = authUser,
         server = server,
+        backupServer = backupServer,
+        dnsServer = dnsServer,
         transport = transport,
         expires = expires,
+        subscribeMwi = subscribeMwi,
         enabled = enabled,
     )
 }
@@ -198,6 +212,15 @@ enum class DndMode {
     SERVER,
 }
 
+/** How the keys pressed during a call reach the other side. */
+enum class DtmfMode {
+    /** As events in the audio stream (RFC 2833 / 4733): what nearly every PBX expects. */
+    RFC2833,
+
+    /** As SIP INFO requests, for a PBX or trunk that asks for those. */
+    SIP_INFO,
+}
+
 /** Where the strip that leads back to a running call sits on the main screens. */
 enum class BannerPosition { TOP, BOTTOM }
 
@@ -220,6 +243,9 @@ data class Settings(
     val doNotDisturb: Boolean = false,
     val dndMode: DndMode = DndMode.SOFTWARE,
     val callWaiting: Boolean = true,
+    /** Refuse callers who withhold their number. */
+    val rejectAnonymous: Boolean = false,
+    val dtmfMode: DtmfMode = DtmfMode.RFC2833,
     /** Forwarding targets; an empty string disables the rule. */
     val forwardAlways: String = "",
     val forwardBusy: String = "",

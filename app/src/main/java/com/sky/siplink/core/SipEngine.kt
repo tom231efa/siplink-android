@@ -2,6 +2,7 @@ package com.sky.siplink.core
 
 import android.content.Context
 import com.sky.siplink.BuildConfig
+import com.sky.siplink.core.model.DtmfMode
 import com.sky.siplink.core.model.Settings
 import com.sky.siplink.core.model.SipAccount
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -70,6 +71,10 @@ class SipEngine(context: Context) {
             message: String,
         ) = accounts.onRegistrationChanged(account)
 
+        override fun onNetworkReachable(core: Core, reachable: Boolean) {
+            if (reachable) accounts.onNetworkReachable()
+        }
+
         override fun onCallStateChanged(core: Core, call: Call, state: Call.State?, message: String) =
             calls.onCallStateChanged(call, state, message)
 
@@ -108,6 +113,7 @@ class SipEngine(context: Context) {
         configure()
 
         settings = SettingsStore(core.config)
+        applyDtmfMode(settings.current.dtmfMode)
         tls = TlsManager(appContext, core)
         tls.applySettings(settings.current)
         accounts = AccountManager(core)
@@ -141,6 +147,12 @@ class SipEngine(context: Context) {
         if (verificationChanged || before.mediaSecurity != after.mediaSecurity) tls.applySettings(after)
         if (verificationChanged) tls.reconnect()
         if (before.keepAlive != after.keepAlive) onKeepAliveChanged?.invoke()
+        if (before.dtmfMode != after.dtmfMode) applyDtmfMode(after.dtmfMode)
+    }
+
+    private fun applyDtmfMode(mode: DtmfMode) {
+        core.useRfc2833ForDtmf = mode == DtmfMode.RFC2833
+        core.useInfoForDtmf = mode == DtmfMode.SIP_INFO
     }
 
     private fun configure() {

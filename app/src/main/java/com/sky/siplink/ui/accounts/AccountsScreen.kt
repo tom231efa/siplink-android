@@ -344,7 +344,8 @@ private fun AccountRow(
                         Spacer(Modifier.width(3.dp))
                     }
                     Text(
-                        "${account.transport.name} · ${account.error ?: regStateLabel(account.state)}",
+                        "${account.transport.name} · ${account.error ?: regStateLabel(account.state)}" +
+                            if (account.onBackup) " · 备用服务器" else "",
                         style = MaterialTheme.typography.labelMedium,
                         color = regStateColor(account.state),
                         maxLines = 1,

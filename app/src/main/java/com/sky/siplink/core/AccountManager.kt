@@ -6,7 +6,6 @@ import com.sky.siplink.core.logic.AccountRules
 import com.sky.siplink.core.model.AccountDraft
 import com.sky.siplink.core.model.RegState
 import com.sky.siplink.core.model.SipAccount
-import com.sky.siplink.core.model.SipTransport
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,7 +16,6 @@ import org.linphone.core.AuthInfo
 import org.linphone.core.Core
 import org.linphone.core.Factory
 import org.linphone.core.RegistrationState
-import org.linphone.core.TransportType
 import java.util.UUID
 
 /**
@@ -29,11 +27,21 @@ class AccountManager(private val core: Core) {
     private val state = MutableStateFlow<List<SipAccount>>(emptyList())
     val accounts: StateFlow<List<SipAccount>> = state.asStateFlow()
 
-    /** Credentials of a removed account, kept until its unregistration went through. */
-    private class Retired(val auth: AuthInfo, val identityKey: String)
+    /**
+     * Credentials of an identity that is being unregistered, because its account was removed or
+     * moved to another address. The server challenges that request like any other, so they are
+     * kept for a moment: without them the registration would linger on the server.
+     */
+    private class Parting(val auth: AuthInfo, val identityKey: String)
 
     private val handler = Handler(Looper.getMainLooper())
-    private val retired = HashMap<Long, Retired>()
+    private val parting = ArrayList<Parting>()
+
+    /** The removed accounts that are still unregistering, by native pointer. */
+    private val retired = HashMap<Long, Parting>()
+
+    /** Backup servers and DNS servers of the accounts. */
+    private val router = AccountRouter(core, handler, ::find, ::idOf, ::noteChanged)
 
     /** Accounts whose registration state changed since the list was last published, by native pointer. */
     private val changed = LinkedHashMap<Long, Account>()
@@ -41,6 +49,7 @@ class AccountManager(private val core: Core) {
 
     init {
         refresh()
+        router.refresh()
     }
 
     fun refresh() {
@@ -63,8 +72,17 @@ class AccountManager(private val core: Core) {
             }
             return
         }
+        router.onRegistration(account)
+        noteChanged(account)
+    }
+
+    /** The network is back, maybe another one: the addresses of the servers may differ there. */
+    fun onNetworkReachable() = router.refresh()
+
+    /** Has [account] shown anew with the next list that is published. */
+    private fun noteChanged(account: Account) {
         if (changed.isEmpty()) handler.postDelayed(publisher, PUBLISH_DELAY_MS)
-        changed[pointer] = account
+        changed[account.nativePointer] = account
     }
 
     private fun publishChanged() {
@@ -93,6 +111,13 @@ class AccountManager(private val core: Core) {
     var onEdited: ((before: List<SipAccount>, after: List<SipAccount>) -> Unit)? = null
 
     fun find(id: String): Account? = core.accountList.firstOrNull { idOf(it) == id }
+
+    /**
+     * Whether calls may go out on [account]: it is switched on. That includes the moment in
+     * which its registration waits for the address of its server.
+     */
+    fun isSwitchedOn(account: Account): Boolean =
+        account.params.isRegisterEnabled || router.record(idOf(account))?.waiting == true
 
     fun add(input: AccountDraft): List<AccountRules.Error> {
         val draft = AccountRules.normalize(input)
@@ -131,19 +156,29 @@ class AccountManager(private val core: Core) {
         if (errors.isNotEmpty()) return errors
 
         val identity = buildIdentity(draft) ?: return listOf(AccountRules.Error.ADDRESS_REJECTED)
-        val server = Factory.instance().createAddress(AccountRules.serverUri(draft))
-            ?: return listOf(AccountRules.Error.ADDRESS_REJECTED)
+        // The account stays on the server it is on (which may be its backup) unless something about its servers changed.
+        val rerouted = before.server != draft.server || before.backupServer != draft.backupServer ||
+            before.dnsServer != draft.dnsServer || before.transport != draft.transport ||
+            !before.domain.equals(draft.domain, ignoreCase = true) || before.enabled != draft.enabled
+        val server = if (rerouted) {
+            Factory.instance().createAddress(AccountRules.serverUri(draft)) ?: return listOf(AccountRules.Error.ADDRESS_REJECTED)
+        } else {
+            null
+        }
 
         val previousAuth = account.findAuthInfo()
         val params = account.params.clone()
-        applyParams(params, draft, identity, server)
+        applyParams(id, params, draft, identity, server)
         account.params = params
+        if (rerouted) router.begin(id)
         storeName(id, draft.name)
 
         if (draft.password.isNotEmpty()) {
             if (credentialsChanged) {
-                // The old identity is unregistered now and still needs its credentials for that.
-                previousAuth?.let { old -> handler.postDelayed({ dropAuth(old, editingKey) }, UNREGISTER_GRACE_MS) }
+                previousAuth?.let { old ->
+                    val entry = part(old, editingKey)
+                    handler.postDelayed({ release(entry) }, UNREGISTER_GRACE_MS)
+                }
             } else {
                 previousAuth?.let(core::removeAuthInfo)
             }
@@ -159,20 +194,19 @@ class AccountManager(private val core: Core) {
         val accountsBefore = state.value
         val wasDefault = core.defaultAccount?.let(::idOf) == id
         val auth = account.findAuthInfo()
-        val identityKey = identityKeyOf(account)
+        val identityKey = identityKeyOf(account.params.identityAddress)
         val registered = account.state == RegistrationState.Ok || account.state == RegistrationState.Progress
         core.removeAccount(account)
         storeName(id, "")
+        router.forget(id)
         when {
             auth == null -> Unit
-            // The core now sends an un-REGISTER, which the server challenges like any other
-            // request: without the credentials the registration would linger on the server.
             registered -> {
                 val pointer = account.nativePointer
-                retired[pointer] = Retired(auth, identityKey)
+                retired[pointer] = part(auth, identityKey)
                 handler.postDelayed({ finishRetiring(pointer) }, UNREGISTER_GRACE_MS)
             }
-            else -> dropAuth(auth, identityKey)
+            else -> core.removeAuthInfo(auth)
         }
         if (wasDefault) core.defaultAccount = core.accountList.firstOrNull { idOf(it) != id }
         refresh()
@@ -180,26 +214,29 @@ class AccountManager(private val core: Core) {
     }
 
     private fun finishRetiring(pointer: Long) {
-        val entry = retired.remove(pointer) ?: return
-        dropAuth(entry.auth, entry.identityKey)
+        retired.remove(pointer)?.let(::release)
     }
 
-    private fun dropAuth(auth: AuthInfo, identityKey: String) {
-        // The same identity may have been added again meanwhile: then the credentials stay.
-        if (core.accountList.none { identityKeyOf(it) == identityKey }) core.removeAuthInfo(auth)
+    private fun part(auth: AuthInfo, identityKey: String) = Parting(auth, identityKey).also { parting += it }
+
+    /** Takes the credentials of [entry] out of the core, unless that happened already. */
+    private fun release(entry: Parting) {
+        if (parting.remove(entry)) core.removeAuthInfo(entry.auth)
     }
 
-    private fun identityKeyOf(account: Account): String {
-        val identity = account.params.identityAddress
-        return AccountRules.identityKey(identity?.username.orEmpty(), hostPort(identity))
-    }
+    private fun identityKeyOf(identity: Address?): String =
+        AccountRules.identityKey(identity?.username.orEmpty(), hostPortOf(identity))
 
     fun setEnabled(id: String, enabled: Boolean) {
         val account = find(id) ?: return
         val accountsBefore = state.value
-        val params = account.params.clone()
-        params.isRegisterEnabled = enabled
-        account.params = params
+        if (!enabled) router.disable(id)
+        // Switched on, an account whose server has to be looked up first is left to the router.
+        if (!enabled || router.enable(id)) {
+            val params = account.params.clone()
+            params.isRegisterEnabled = enabled
+            account.params = params
+        }
         // The switch the user just flipped should follow at once.
         onRegistrationChanged(account)
         handler.removeCallbacks(publisher)
@@ -223,13 +260,17 @@ class AccountManager(private val core: Core) {
         val params = core.createAccountParams()
         val id = UUID.randomUUID().toString()
         params.idkey = id
-        applyParams(params, draft, identity, server)
+        applyParams(id, params, draft, identity, server)
         storeName(id, draft.name)
 
         addAuthInfo(draft, identity)
         val account = core.createAccount(params)
-        if (core.addAccount(account) != 0) return false
+        if (core.addAccount(account) != 0) {
+            router.forget(id)
+            return false
+        }
         if (core.defaultAccount == null) core.defaultAccount = account
+        router.begin(id)
         return true
     }
 
@@ -239,15 +280,24 @@ class AccountManager(private val core: Core) {
         return identity
     }
 
-    private fun applyParams(params: AccountParams, draft: AccountDraft, identity: Address, server: Address) {
+    /** @param server the server the account starts on; null leaves the account on the server it is on */
+    private fun applyParams(id: String, params: AccountParams, draft: AccountDraft, identity: Address, server: Address?) {
         params.identityAddress = identity
-        params.serverAddress = server
-        params.isOutboundProxyEnabled = draft.server.isNotEmpty()
-        params.isRegisterEnabled = draft.enabled
         params.expires = draft.expires
+        // Asked for, the PBX reports the mailbox of the account itself.
+        params.mwiServerAddress = if (draft.subscribeMwi) Factory.instance().createAddress(AccountRules.identityUri(draft)) else null
+        if (server == null) return
+        params.serverAddress = server
+        // With a server of its own, calls take the way of the registration instead of looking the domain up.
+        params.isOutboundProxyEnabled = draft.server.isNotEmpty() || draft.backupServer.isNotEmpty() || draft.dnsServer.isNotEmpty()
+        params.isRegisterEnabled = router.configure(id, draft)
     }
 
     private fun addAuthInfo(draft: AccountDraft, identity: Address) {
+        // What this identity was unregistering with must not answer for it again: the core would
+        // prefer those credentials, which have been used before, to the ones entered now.
+        val identityKey = identityKeyOf(identity)
+        parting.filter { it.identityKey == identityKey }.forEach(::release)
         val authInfo = Factory.instance().createAuthInfo(
             draft.username,
             draft.authUser.ifEmpty { null },
@@ -274,11 +324,15 @@ class AccountManager(private val core: Core) {
         val identity = params.identityAddress
         val serverAddress = params.serverAddress
         val id = idOf(account)
-        val domain = hostPort(identity)
-        val server = hostPort(serverAddress)
+        val domain = hostPortOf(identity)
+        val server = hostPortOf(serverAddress)
+        val route = router.view(id, account)
+        val waiting = route?.record?.waiting == true
+        val enabled = params.isRegisterEnabled || waiting
         val registration = account.state
         val state = when {
-            !params.isRegisterEnabled -> RegState.DISABLED
+            !enabled -> RegState.DISABLED
+            waiting -> RegState.PROGRESS
             registration == RegistrationState.Ok -> RegState.OK
             registration == RegistrationState.Progress || registration == RegistrationState.Refreshing -> RegState.PROGRESS
             registration == RegistrationState.Failed -> RegState.FAILED
@@ -290,18 +344,23 @@ class AccountManager(private val core: Core) {
             domain = domain,
             displayName = identity?.displayName.orEmpty(),
             authUser = account.findAuthInfo()?.userid.orEmpty(),
-            server = if (server.equals(domain, ignoreCase = true)) "" else server,
-            transport = when (serverAddress?.transport) {
-                TransportType.Tcp -> SipTransport.TCP
-                TransportType.Tls -> SipTransport.TLS
-                else -> SipTransport.UDP
-            },
+            // What the core holds is the server in use, which may be the backup one.
+            server = route?.record?.primary ?: if (server.equals(domain, ignoreCase = true)) "" else server,
+            transport = transportOf(serverAddress),
             expires = params.expires,
-            enabled = params.isRegisterEnabled,
+            enabled = enabled,
             state = state,
             isDefault = id == defaultId,
-            error = if (state == RegState.FAILED) describeError(account) else null,
+            error = when {
+                state != RegState.FAILED -> null
+                route?.dnsFailed == true -> "DNS 解析失败"
+                else -> describeError(account)
+            },
             name = core.config.getString(NAMES_SECTION, id, null).orEmpty(),
+            backupServer = route?.record?.backup.orEmpty(),
+            dnsServer = route?.record?.dns.orEmpty(),
+            subscribeMwi = params.mwiServerAddress != null,
+            onBackup = route?.onBackup == true,
         )
     }
 
@@ -315,15 +374,6 @@ class AccountManager(private val core: Core) {
             code > 0 -> code.toString()
             else -> "注册失败"
         }
-    }
-
-    /** `host[:port]`, with IPv6 literals wrapped in brackets. */
-    private fun hostPort(address: Address?): String {
-        val host = address?.domain.orEmpty()
-        if (host.isEmpty()) return ""
-        val literal = if (':' in host && !host.startsWith("[")) "[$host]" else host
-        val port = address?.port ?: 0
-        return if (port > 0) "$literal:$port" else literal
     }
 
     private companion object {

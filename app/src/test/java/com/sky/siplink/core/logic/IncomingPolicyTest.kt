@@ -29,6 +29,16 @@ class IncomingPolicyTest {
     }
 
     @Test
+    fun `a caller without a number is refused only where that is asked for`() {
+        val strict = defaults.copy(rejectAnonymous = true, forwardAlways = "2000")
+        assertEquals(Decision.RejectAnonymous, IncomingPolicy.decide(strict, false, false, anonymous = true))
+        assertEquals(Decision.RejectAnonymous, IncomingPolicy.decide(strict, true, false, anonymous = true))
+        // A caller with a number is treated like before, and so is everybody where the rule is off.
+        assertEquals(Decision.Forward("2000"), IncomingPolicy.decide(strict, false, false, anonymous = false))
+        assertEquals(Decision.Ring(null, 20), IncomingPolicy.decide(defaults, false, false, anonymous = true))
+    }
+
+    @Test
     fun `unconditional forward applies idle or busy`() {
         val settings = defaults.copy(forwardAlways = " 2000 ", forwardBusy = "2001")
         assertEquals(Decision.Forward("2000"), IncomingPolicy.decide(settings, false, false))

@@ -7,6 +7,7 @@ import com.sky.siplink.core.model.RegState
 import com.sky.siplink.core.model.SipTransport
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.linphone.core.Factory
@@ -53,6 +54,41 @@ class RegistrationTest : PbxTestBase() {
     }
 
     @Test
+    fun anAccountAddedAgainUsesItsNewPassword() {
+        val first = register(APP)
+        // Removed and added again at once, while the first one is still unregistering.
+        onMain { engine.accounts.remove(first.id) }
+        addAccount(draft(APP).copy(password = WRONG_PASSWORD))
+        await("the registration with the wrong password to be refused") { account(APP)?.state == RegState.FAILED }
+        never("registered with the password of the removed account", QUIET_WINDOW_MS) { account(APP)?.state == RegState.OK }
+    }
+
+    @Test
+    fun accountsWithTheSameUserNameKeepTheirOwnPasswords() {
+        // The same number on two servers. Both names lead to the one PBX here, so the password
+        // of the other account is recognisable: it is the wrong one.
+        assumeTrue("The device has no name for the PBX", env.pbxName != env.pbxHost)
+        register(APP)
+        addAccount(draft(APP, domain = env.pbxName).copy(password = WRONG_PASSWORD))
+        await("the registration with the wrong password to be refused") { at(env.pbxName)?.state == RegState.FAILED }
+        never("registered with the password of the other account", QUIET_WINDOW_MS) { at(env.pbxName)?.state == RegState.OK }
+        assertEquals(RegState.OK, at(env.pbxHost)?.state)
+    }
+
+    @Test
+    fun anAccountIsNotRefusedOverThePasswordOfAnotherWithItsUserName() {
+        assumeTrue("The device has no name for the PBX", env.pbxName != env.pbxHost)
+        addAccount(draft(APP, domain = env.pbxName).copy(password = WRONG_PASSWORD))
+        await("the registration with the wrong password to be refused") { at(env.pbxName)?.state == RegState.FAILED }
+        addAccount(draft(APP))
+        await("the registration with the right password") { at(env.pbxHost)?.state == RegState.OK }
+        assertEquals(RegState.FAILED, at(env.pbxName)?.state)
+    }
+
+    /** The account of [APP] at [domain]. */
+    private fun at(domain: String) = accounts().firstOrNull { it.domain == domain }
+
+    @Test
     fun registersOneHundredAccountsAndRefusesOneMore() {
         // The debug build logs every SIP message. Without hardware acceleration that alone
         // makes the emulator too slow for the burst of 100 registrations, so it is turned down.
@@ -80,6 +116,7 @@ class RegistrationTest : PbxTestBase() {
     }
 
     private companion object {
+        const val WRONG_PASSWORD = "not the password"
         const val FIRST = 1001
         const val LAST = 1100
     }

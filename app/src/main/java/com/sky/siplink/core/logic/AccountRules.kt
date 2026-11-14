@@ -23,6 +23,9 @@ object AccountRules {
         DOMAIN_EMPTY("域名", "必填"),
         DOMAIN_INVALID("域名", "格式不正确"),
         SERVER_INVALID("代理服务器", "应为 主机[:端口]"),
+        BACKUP_INVALID("备用服务器", "应为 主机[:端口]"),
+        BACKUP_SAME("备用服务器", "与主服务器相同"),
+        DNS_INVALID("DNS 服务器", "应为 IP[:端口]"),
         EXPIRES_OUT_OF_RANGE("注册有效期", "应为 $MIN_EXPIRES–$MAX_EXPIRES 秒"),
         DUPLICATE("", "账号已存在"),
 
@@ -65,6 +68,8 @@ object AccountRules {
             displayName = draft.displayName.trim(),
             authUser = draft.authUser.trim(),
             server = draft.server.trim().removePrefix("sips:").removePrefix("sip:"),
+            backupServer = draft.backupServer.trim().removePrefix("sips:").removePrefix("sip:"),
+            dnsServer = draft.dnsServer.trim(),
         )
     }
 
@@ -94,6 +99,12 @@ object AccountRules {
             !isValidHostPort(draft.domain) -> errors += Error.DOMAIN_INVALID
         }
         if (draft.server.isNotEmpty() && !isValidHostPort(draft.server)) errors += Error.SERVER_INVALID
+        when {
+            draft.backupServer.isEmpty() -> Unit
+            !isValidHostPort(draft.backupServer) -> errors += Error.BACKUP_INVALID
+            draft.backupServer.equals(draft.server.ifEmpty { draft.domain }, ignoreCase = true) -> errors += Error.BACKUP_SAME
+        }
+        if (draft.dnsServer.isNotEmpty() && !AccountRoute.isValidDnsServer(draft.dnsServer)) errors += Error.DNS_INVALID
         if (draft.expires !in MIN_EXPIRES..MAX_EXPIRES) errors += Error.EXPIRES_OUT_OF_RANGE
 
         val key = identityKey(draft.username, draft.domain)
@@ -139,11 +150,8 @@ object AccountRules {
 
     fun identityUri(draft: AccountDraft): String = "sip:${draft.username}@${draft.domain}"
 
-    /** Registrar / proxy URI; the transport is carried as a URI parameter. */
-    fun serverUri(draft: AccountDraft): String {
-        val host = draft.server.ifEmpty { draft.domain }
-        return "sip:$host;transport=${transportParam(draft.transport)}"
-    }
+    /** URI of the registrar / proxy the account starts on; the transport is carried as a URI parameter. */
+    fun serverUri(draft: AccountDraft): String = AccountRoute.uri(draft.server.ifEmpty { draft.domain }, draft.transport)
 
     fun transportParam(transport: SipTransport): String = when (transport) {
         SipTransport.UDP -> "udp"

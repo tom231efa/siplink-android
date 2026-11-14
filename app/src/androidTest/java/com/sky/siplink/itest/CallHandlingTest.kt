@@ -191,6 +191,17 @@ class CallHandlingTest : PbxTestBase() {
         }
     }
 
+    @Test
+    fun theMailboxIsSubscribedToWhenTheAccountAsksForIt() {
+        addAccount(draft(APP).copy(subscribeMwi = true))
+        awaitRegistered()
+        assertTrue(account(APP)!!.subscribeMwi)
+        await("the PBX to have the subscription of the app") {
+            val subscriptions = pbx.command("pjsip show subscriptions inbound")
+            "message-summary" in subscriptions && Regex("\\b$APP\\b").containsMatchIn(subscriptions)
+        }
+    }
+
     /** A scripted party leaves a message (a tone) in the mailbox of the app's extension. */
     private fun leaveMessage() {
         val response = pbx.send(

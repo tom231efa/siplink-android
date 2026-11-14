@@ -10,6 +10,7 @@ import com.sky.siplink.core.logic.DialTarget
 import com.sky.siplink.core.logic.Formatters
 import com.sky.siplink.core.logic.IncomingPolicy
 import com.sky.siplink.core.logic.IntercomHeaders
+import com.sky.siplink.core.logic.NameLookup
 import com.sky.siplink.core.logic.PartyName
 import com.sky.siplink.core.model.AudioRoute
 import com.sky.siplink.core.model.CallInfo
@@ -24,6 +25,7 @@ import org.linphone.core.Account
 import org.linphone.core.Call
 import org.linphone.core.Conference
 import org.linphone.core.Core
+import org.linphone.core.Factory
 import org.linphone.core.Reason
 
 /**
@@ -120,7 +122,7 @@ class CallManager(
         if (cleaned.isEmpty()) return "请输入号码"
         if (account == null) return "请先添加 SIP 账号"
         // A line that is switched off stays out of use, even where the PBX would take its calls.
-        if (!account.params.isRegisterEnabled) return "线路已停用"
+        if (!accounts.isSwitchedOn(account)) return "线路已停用"
         val address = account.normalizeSipUri(cleaned) ?: return "号码或地址无效"
         val params = core.createCallParams(null) ?: return "无法创建呼叫"
         params.account = account
@@ -384,9 +386,16 @@ class CallManager(
             settings.current,
             hasActiveCall = active != null,
             hasSecondCall = other != null,
+            anonymous = NameLookup.isWithheld(CallSupport.party(call).address),
         )
         when (decision) {
             IncomingPolicy.Decision.RejectDoNotDisturb -> call.decline(Reason.DoNotDisturb)
+            IncomingPolicy.Decision.RejectAnonymous -> {
+                // 433 is what SIP has for exactly this (RFC 5079).
+                val refusal = Factory.instance().createErrorInfo()
+                refusal.set("SIP", Reason.Declined, ANONYMITY_DISALLOWED, "Anonymity Disallowed", null)
+                call.declineWithErrorInfo(refusal)
+            }
             IncomingPolicy.Decision.RejectBusy -> call.decline(Reason.Busy)
             is IncomingPolicy.Decision.Forward -> forward(call, decision.target)
 
@@ -629,5 +638,8 @@ class CallManager(
         const val END_LINGER_MS = 1400L
         const val AUTO_ANSWER_DELAY_MS = 400L
         const val PARK_ANNOUNCE_TIMEOUT_MS = 12_000L
+
+        /** SIP status for a caller who withholds the number where that is not accepted. */
+        const val ANONYMITY_DISALLOWED = 433
     }
 }

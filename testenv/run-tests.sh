@@ -38,10 +38,13 @@ if [ -n "${LAN_ADDRESS:-}" ]; then
   pbx_host=$LAN_ADDRESS ldap_host=$LAN_ADDRESS
   phones_ami_host=$LAN_ADDRESS phones_ami_port=5039
   pbx_name=${LAN_NAME:-$LAN_ADDRESS} ldap_name=${LAN_NAME:-}
+  # The name server of the environment is published on a port of this host; only it knows the name.
+  dns_server=$LAN_ADDRESS:5300 dns_name_is_private=1
 else
   pbx_host=172.31.250.10 ldap_host=172.31.250.11
   phones_ami_host=172.31.250.12 phones_ami_port=5038
   pbx_name=pbx.siplink.test ldap_name=ldap.siplink.test
+  dns_server=172.31.250.13 dns_name_is_private=0
 fi
 
 # Everything the tests need to know, handed over as a single instrumentation argument so that
@@ -54,6 +57,9 @@ phonesAmiPort=$phones_ami_port
 ldapHost=$ldap_host
 pbxName=$pbx_name
 ldapName=$ldap_name
+dnsServer=$dns_server
+dnsName=pbx.siplink.test
+dnsNameIsPrivate=$dns_name_is_private
 sipPassword=$SIP_PASSWORD
 amiUser=$AMI_USER
 amiSecret=$AMI_SECRET
@@ -100,7 +106,7 @@ fi
 # costs one class instead of the whole run.
 failed=()
 for class in RegistrationTest BasicCallTest TransferParkTest SupervisionTest CallHandlingTest \
-  CallerIdTest CodecTest DirectoryTest DirectoryTrustTest ShortcutStoreTest DirectoryCacheTest; do
+  CallerIdTest LineRoutingTest CodecTest DirectoryTest DirectoryTrustTest ShortcutStoreTest DirectoryCacheTest; do
   echo "=== $class" >&2
   run -e class "com.sky.siplink.itest.$class" || failed+=("$class")
 done

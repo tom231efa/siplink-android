@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Power
 import androidx.compose.material.icons.rounded.VerifiedUser
+import androidx.compose.material.icons.rounded.Voicemail
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
@@ -50,6 +51,15 @@ import com.sky.siplink.ui.components.SectionCard
 import com.sky.siplink.ui.components.SubScreen
 import com.sky.siplink.ui.components.SwitchRow
 
+/** The errors of the fields under "advanced settings". */
+private val advancedErrors = setOf(
+    AccountRules.Error.SERVER_INVALID,
+    AccountRules.Error.BACKUP_INVALID,
+    AccountRules.Error.BACKUP_SAME,
+    AccountRules.Error.DNS_INVALID,
+    AccountRules.Error.EXPIRES_OUT_OF_RANGE,
+)
+
 /** Adds a new account ([accountId] == null) or edits an existing one. */
 @Composable
 fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> Unit) {
@@ -67,9 +77,17 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
     var transport by rememberSaveable { mutableStateOf(initial.transport) }
     var authUser by rememberSaveable { mutableStateOf(initial.authUser) }
     var server by rememberSaveable { mutableStateOf(initial.server) }
+    var backupServer by rememberSaveable { mutableStateOf(initial.backupServer) }
+    var dnsServer by rememberSaveable { mutableStateOf(initial.dnsServer) }
     var expires by rememberSaveable { mutableStateOf(initial.expires.toString()) }
+    var subscribeMwi by rememberSaveable { mutableStateOf(initial.subscribeMwi) }
     var enabled by rememberSaveable { mutableStateOf(initial.enabled) }
-    var advancedOpen by rememberSaveable { mutableStateOf(initial.authUser.isNotEmpty() || initial.server.isNotEmpty()) }
+    var advancedOpen by rememberSaveable {
+        mutableStateOf(
+            initial.authUser.isNotEmpty() || initial.server.isNotEmpty() || initial.backupServer.isNotEmpty() ||
+                initial.dnsServer.isNotEmpty() || initial.subscribeMwi,
+        )
+    }
     var errors by remember { mutableStateOf(emptyList<AccountRules.Error>()) }
     var confirmDelete by remember { mutableStateOf(false) }
 
@@ -84,12 +102,17 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
             displayName = displayName,
             authUser = authUser,
             server = server,
+            backupServer = backupServer,
+            dnsServer = dnsServer,
             transport = transport,
             // An unparseable value becomes 0 so validation reports it as out of range.
             expires = expires.trim().toIntOrNull() ?: 0,
+            subscribeMwi = subscribeMwi,
             enabled = enabled,
         )
         errors = if (existing == null) manager.add(draft) else manager.update(existing.id, draft)
+        // An error in a field that is folded away would go unseen.
+        if (errors.any { it in advancedErrors }) advancedOpen = true
         if (errors.isEmpty()) {
             messenger(if (existing == null) "账号已添加" else "账号已保存")
             onBack()
@@ -201,6 +224,22 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
                         error = error(AccountRules.Error.SERVER_INVALID),
                     )
                     FormField(
+                        value = backupServer,
+                        onValueChange = { backupServer = it },
+                        label = "备用代理服务器（可选）",
+                        placeholder = "主机[:端口]",
+                        keyboardType = KeyboardType.Uri,
+                        error = error(AccountRules.Error.BACKUP_INVALID, AccountRules.Error.BACKUP_SAME),
+                    )
+                    FormField(
+                        value = dnsServer,
+                        onValueChange = { dnsServer = it },
+                        label = "DNS 服务器（可选）",
+                        placeholder = "IP[:端口]",
+                        keyboardType = KeyboardType.Uri,
+                        error = error(AccountRules.Error.DNS_INVALID),
+                    )
+                    FormField(
                         value = expires,
                         onValueChange = { expires = it },
                         label = "注册有效期（秒）",
@@ -208,6 +247,14 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
                         error = error(AccountRules.Error.EXPIRES_OUT_OF_RANGE),
                     )
                 }
+            }
+            AnimatedVisibility(advancedOpen) {
+                SwitchRow(
+                    title = "订阅语音留言",
+                    icon = Icons.Rounded.Voicemail,
+                    checked = subscribeMwi,
+                    onCheckedChange = { subscribeMwi = it },
+                )
             }
         }
 

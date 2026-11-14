@@ -36,8 +36,9 @@ start_pbx() {
     printf 'inbound_auth/password = %s\n\n' "$SIP_PASSWORD"
     i=1001
     while [ "$i" -le 1100 ]; do
-      printf '[%s](phone)\ninbound_auth/username = %s\nendpoint/callerid = Ext %s <%s>\nendpoint/mailboxes = %s@default\n\n' \
-        "$i" "$i" "$i" "$i" "$i"
+      # The mailbox is announced unasked (endpoint) and to a phone that subscribes to it (aor).
+      printf '[%s](phone)\ninbound_auth/username = %s\nendpoint/callerid = Ext %s <%s>\nendpoint/mailboxes = %s@default\naor/mailboxes = %s@default\n\n' \
+        "$i" "$i" "$i" "$i" "$i" "$i"
       i=$((i + 1))
     done
   } > "$conf/pjsip_wizard.conf"

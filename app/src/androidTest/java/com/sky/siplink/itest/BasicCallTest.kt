@@ -2,6 +2,7 @@ package com.sky.siplink.itest
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.sky.siplink.core.model.CallPhase
+import com.sky.siplink.core.model.DtmfMode
 import com.sky.siplink.core.model.MediaSecurity
 import com.sky.siplink.core.model.SipTransport
 import org.junit.Assert.assertEquals
@@ -27,6 +28,24 @@ class BasicCallTest : PbxTestBase() {
         val event = pbx.awaitEvent("UserEvent", mark) { it["UserEvent"] == "SipLinkDtmf" }
         assertEquals("1234", event["Digits"])
         awaitNoCall() // the PBX hangs up once it has the digits
+    }
+
+    @Test
+    fun dtmfCanBeSentAsSipInfo() {
+        // With events in the audio stream switched off, what the PBX gets came as INFO requests.
+        settings { it.copy(dtmfMode = DtmfMode.SIP_INFO) }
+        assertFalse(onMain { engine.core.useRfc2833ForDtmf })
+        register()
+        val mark = pbx.mark()
+        dial("2010") // reports the digits it receives
+        awaitConnected("2010")
+        "5678".forEach { digit ->
+            onMain { engine.calls.sendDtmf(digit) }
+            Thread.sleep(600)
+        }
+        val event = pbx.awaitEvent("UserEvent", mark) { it["UserEvent"] == "SipLinkDtmf" }
+        assertEquals("5678", event["Digits"])
+        awaitNoCall()
     }
 
     @Test

@@ -12,6 +12,9 @@ object IncomingPolicy {
         /** Refuse the call: do not disturb is on. */
         data object RejectDoNotDisturb : Decision
 
+        /** Refuse the call: the caller withholds the number, and such calls are not wanted. */
+        data object RejectAnonymous : Decision
+
         /** Refuse the call: the line is busy and nothing else applies. */
         data object RejectBusy : Decision
 
@@ -28,10 +31,12 @@ object IncomingPolicy {
     /**
      * @param hasActiveCall a call is already being set up or established
      * @param hasSecondCall a second (held or waiting) call already exists
+     * @param anonymous the caller withholds the number
      */
-    fun decide(settings: Settings, hasActiveCall: Boolean, hasSecondCall: Boolean): Decision {
+    fun decide(settings: Settings, hasActiveCall: Boolean, hasSecondCall: Boolean, anonymous: Boolean = false): Decision {
         // In server mode the PBX holds the callers back; what it still sends is meant to ring.
         if (settings.doNotDisturb && settings.dndMode == DndMode.SOFTWARE) return Decision.RejectDoNotDisturb
+        if (anonymous && settings.rejectAnonymous) return Decision.RejectAnonymous
 
         val always = settings.forwardAlways.trim()
         if (always.isNotEmpty()) return Decision.Forward(always)

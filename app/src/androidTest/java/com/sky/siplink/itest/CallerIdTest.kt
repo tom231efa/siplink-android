@@ -86,6 +86,27 @@ class CallerIdTest : PbxTestBase() {
     }
 
     @Test
+    fun aCallerWhoWithholdsTheNumberCanBeRefused() {
+        register()
+        settings { it.copy(rejectAnonymous = true) }
+        val response = pbx.send(
+            "Originate",
+            "Channel" to "PJSIP/$APP",
+            "CallerID" to "\"Anonymous\" <anonymous>",
+            "Application" to "Wait",
+            "Data" to "30",
+            "Async" to "true",
+        )
+        assertEquals("Originate refused: $response", "Success", response["Response"])
+        never("the anonymous call rang", QUIET_WINDOW_MS) { call() != null }
+        await("the PBX to have given the call up") { pbxChannel(pbxLeg(APP)) == null }
+
+        // A caller with a number still gets through.
+        assertEquals("1002", ringing("<1002>").remoteName)
+        decline()
+    }
+
+    @Test
     fun aFeatureCodeIsNamedAfterWhatItDoes() {
         register()
         val before = logged()

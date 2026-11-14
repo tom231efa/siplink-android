@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.PhonePaused
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -19,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sky.siplink.core.logic.IncomingPolicy
 import com.sky.siplink.core.model.DndMode
+import com.sky.siplink.core.model.DtmfMode
 import com.sky.siplink.engine
 import com.sky.siplink.ui.components.ChoiceRow
 import com.sky.siplink.ui.components.FormField
@@ -54,6 +56,23 @@ fun CallHandlingScreen(onBack: () -> Unit) {
                 icon = Icons.Rounded.PhonePaused,
                 checked = settings.callWaiting,
                 onCheckedChange = { value -> engine.updateSettings { it.copy(callWaiting = value) } },
+            )
+            SwitchRow(
+                title = "拒接匿名来电",
+                icon = Icons.Rounded.Block,
+                checked = settings.rejectAnonymous,
+                onCheckedChange = { value -> engine.updateSettings { it.copy(rejectAnonymous = value) } },
+            )
+            Text(
+                "DTMF 方式",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(start = 16.dp, top = 10.dp),
+            )
+            ChoiceRow(
+                options = listOf(DtmfMode.RFC2833 to "RFC 2833", DtmfMode.SIP_INFO to "SIP INFO"),
+                selected = settings.dtmfMode,
+                onSelect = { mode -> engine.updateSettings { it.copy(dtmfMode = mode) } },
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             )
         }
 

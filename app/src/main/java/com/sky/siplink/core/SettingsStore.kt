@@ -42,6 +42,8 @@ class SettingsStore(private val config: Config) {
             doNotDisturb = bool(KEY_DND, d.doNotDisturb),
             dndMode = enumOf(KEY_DND_MODE, d.dndMode),
             callWaiting = bool(KEY_CALL_WAITING, d.callWaiting),
+            rejectAnonymous = bool(KEY_REJECT_ANONYMOUS, d.rejectAnonymous),
+            dtmfMode = enumOf(KEY_DTMF_MODE, d.dtmfMode),
             forwardAlways = text(KEY_FORWARD_ALWAYS, d.forwardAlways),
             forwardBusy = text(KEY_FORWARD_BUSY, d.forwardBusy),
             forwardNoAnswer = text(KEY_FORWARD_NO_ANSWER, d.forwardNoAnswer),
@@ -75,6 +77,8 @@ class SettingsStore(private val config: Config) {
         config.setBool(SECTION, KEY_DND, value.doNotDisturb)
         config.setString(SECTION, KEY_DND_MODE, value.dndMode.name)
         config.setBool(SECTION, KEY_CALL_WAITING, value.callWaiting)
+        config.setBool(SECTION, KEY_REJECT_ANONYMOUS, value.rejectAnonymous)
+        config.setString(SECTION, KEY_DTMF_MODE, value.dtmfMode.name)
         config.setString(SECTION, KEY_FORWARD_ALWAYS, value.forwardAlways)
         config.setString(SECTION, KEY_FORWARD_BUSY, value.forwardBusy)
         config.setString(SECTION, KEY_FORWARD_NO_ANSWER, value.forwardNoAnswer)
@@ -135,6 +139,8 @@ class SettingsStore(private val config: Config) {
         private const val KEY_DND = "do_not_disturb"
         private const val KEY_DND_MODE = "do_not_disturb_mode"
         private const val KEY_CALL_WAITING = "call_waiting"
+        private const val KEY_REJECT_ANONYMOUS = "reject_anonymous"
+        private const val KEY_DTMF_MODE = "dtmf_mode"
         private const val KEY_FORWARD_ALWAYS = "forward_always"
         private const val KEY_FORWARD_BUSY = "forward_busy"
         private const val KEY_FORWARD_NO_ANSWER = "forward_no_answer"

@@ -75,6 +75,29 @@ class AccountRulesTest {
     }
 
     @Test
+    fun `a backup server is a second host that differs from the first`() {
+        fun errors(draft: AccountDraft) = AccountRules.validate(AccountRules.normalize(draft), emptyList())
+        assertEquals(emptyList<AccountRules.Error>(), errors(valid.copy(backupServer = " pbx2.example.com:5080 ")))
+        assertEquals(listOf(AccountRules.Error.BACKUP_INVALID), errors(valid.copy(backupServer = "pbx2 example")))
+        // Without a server of its own the account is on its domain.
+        assertEquals(listOf(AccountRules.Error.BACKUP_SAME), errors(valid.copy(backupServer = "PBX.example.com")))
+        assertEquals(
+            listOf(AccountRules.Error.BACKUP_SAME),
+            errors(valid.copy(server = "sbc.example.com", backupServer = "sbc.example.com")),
+        )
+        assertEquals(emptyList<AccountRules.Error>(), errors(valid.copy(server = "sbc.example.com", backupServer = "pbx.example.com")))
+    }
+
+    @Test
+    fun `a dns server is given by its address`() {
+        fun errors(dns: String) = AccountRules.validate(AccountRules.normalize(valid.copy(dnsServer = dns)), emptyList())
+        assertEquals(emptyList<AccountRules.Error>(), errors(" 192.0.2.53 "))
+        assertEquals(emptyList<AccountRules.Error>(), errors("192.0.2.53:5300"))
+        assertEquals(listOf(AccountRules.Error.DNS_INVALID), errors("dns.example.com"))
+        assertEquals(listOf(AccountRules.Error.DNS_INVALID), errors("192.0.2.53:99999"))
+    }
+
+    @Test
     fun `two accounts cannot have the same name`() {
         val named = valid.copy(name = "前台")
         assertEquals(emptyList<AccountRules.Error>(), AccountRules.validate(named, emptyList(), takenNames = listOf("销售", "")))

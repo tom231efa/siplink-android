@@ -29,6 +29,14 @@ class TestEnv private constructor(private val values: Map<String, String>) {
 
     /** DNS name in the certificate of the LDAP server; null when the device cannot resolve it. */
     val ldapName: String? get() = values["ldapName"]?.takeIf { it.isNotEmpty() }
+
+    /**
+     * The name server of the test environment, as `address[:port]`, and a name of the PBX that
+     * it knows. [dnsNameIsPrivate] says that the device itself cannot resolve that name.
+     */
+    val dnsServer: String get() = value("dnsServer")
+    val dnsName: String get() = value("dnsName")
+    val dnsNameIsPrivate: Boolean get() = values["dnsNameIsPrivate"] == "1"
     val sipPassword: String get() = value("sipPassword")
     val amiUser: String get() = value("amiUser")
     val amiSecret: String get() = value("amiSecret")

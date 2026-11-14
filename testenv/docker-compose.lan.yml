@@ -22,3 +22,14 @@ services:
   ldap:
     ports:
       - "${LAN_ADDRESS}:389:389/tcp"
+
+  # For the tests of an account with a DNS server of its own: the name server is published on a
+  # port of this host and answers with the published address. The device does not ask it by
+  # itself, so it stays a server only that account knows.
+  dns:
+    command:
+      - --listen-address=172.31.250.13
+      - --address=/pbx.siplink.test/${LAN_ADDRESS}
+      - --address=/ldap.siplink.test/${LAN_ADDRESS}
+    ports:
+      - "${LAN_ADDRESS}:5300:53/udp"
