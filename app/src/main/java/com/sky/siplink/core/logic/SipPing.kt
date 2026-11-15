@@ -10,8 +10,9 @@ object SipPing {
      * @param from `user@domain` of the account that asks
      * @param local address and port the request is sent from, where the answer is expected
      * @param token something random, to tell this exchange from any other
+     * @param userAgent what the app calls itself in its other requests
      */
-    fun options(server: String, from: String, local: String, token: String): String = listOf(
+    fun options(server: String, from: String, local: String, token: String, userAgent: String): String = listOf(
         "OPTIONS sip:$server SIP/2.0",
         "Via: SIP/2.0/UDP $local;branch=z9hG4bK$token;rport",
         "Max-Forwards: 70",
@@ -19,7 +20,7 @@ object SipPing {
         "To: <sip:$server>",
         "Call-ID: $token",
         "CSeq: 1 OPTIONS",
-        "User-Agent: SipLink",
+        "User-Agent: $userAgent",
         "Content-Length: 0",
         "",
         "",

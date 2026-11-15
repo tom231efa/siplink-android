@@ -157,7 +157,10 @@ class SipEngine(context: Context) {
     }
 
     private fun configure() {
-        core.setUserAgent(USER_AGENT, BuildConfig.VERSION_NAME)
+        // The SIP stack is named first and the app after it. Some services answer only clients
+        // whose name begins with one they know: a relay in front of hosted PBXs was seen to
+        // refuse "SipLink/…" with 403 before asking for any password, and to let "Linphone…" in.
+        core.setUserAgent(SDK_NAME, "${core.version} $APP_NAME/${BuildConfig.VERSION_NAME}")
         core.isAutoIterateEnabled = true
         // With the app off the screen the core looks at the network less often, and was seen to
         // take about one SIP message each time it does. At its usual half second an answer is
@@ -195,7 +198,8 @@ class SipEngine(context: Context) {
 
     private companion object {
         const val LOG_TAG = "SipLink"
-        const val USER_AGENT = "SipLink"
+        const val SDK_NAME = "LinphoneSDK"
+        const val APP_NAME = "SipLink"
         const val CONFIG_FILE = "linphonerc"
         const val SHORTCUTS_FILE = "shortcuts.csv"
         const val MAX_CALLS = 4

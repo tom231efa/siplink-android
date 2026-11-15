@@ -6,7 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SipPingTest {
-    private val request = SipPing.options("pbx.example.com:5080", "1001@example.com", "192.0.2.7:40000", "abc123")
+    private val request = SipPing.options("pbx.example.com:5080", "1001@example.com", "192.0.2.7:40000", "abc123", "LinphoneSDK/5.5.39 SipLink/0.1.1")
 
     @Test
     fun `the request is a complete options request`() {
@@ -17,6 +17,7 @@ class SipPingTest {
         assertTrue("To: <sip:pbx.example.com:5080>" in lines)
         assertTrue("Call-ID: abc123" in lines)
         assertTrue("CSeq: 1 OPTIONS" in lines)
+        assertTrue("User-Agent: LinphoneSDK/5.5.39 SipLink/0.1.1" in lines)
         assertTrue("Content-Length: 0" in lines)
         // Headers end with an empty line.
         assertTrue(request.endsWith("\r\n\r\n"))

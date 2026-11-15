@@ -58,10 +58,11 @@ internal object LineNetwork {
      *
      * @param server the server as the account knows it, `host[:port]`
      * @param from `user@domain` of the account that asks
+     * @param userAgent what the app calls itself in its other requests
      */
-    fun answers(host: String, port: Int, transport: SipTransport, server: String, from: String): Boolean = try {
+    fun answers(host: String, port: Int, transport: SipTransport, server: String, from: String, userAgent: String): Boolean = try {
         if (transport == SipTransport.UDP) {
-            answersOptions(host, port, server, from)
+            answersOptions(host, port, server, from, userAgent)
         } else {
             Socket().use { it.connect(InetSocketAddress(host, port), TIMEOUT_MS) }
             true
@@ -72,12 +73,12 @@ internal object LineNetwork {
         false
     }
 
-    private fun answersOptions(host: String, port: Int, server: String, from: String): Boolean = DatagramSocket().use { socket ->
+    private fun answersOptions(host: String, port: Int, server: String, from: String, userAgent: String): Boolean = DatagramSocket().use { socket ->
         socket.soTimeout = TIMEOUT_MS
         socket.connect(InetSocketAddress(host, port))
         val token = Random.nextLong().toULong().toString(16)
         val local = "${socket.localAddress.hostAddress}:${socket.localPort}"
-        val request = SipPing.options(server, from, local, token).toByteArray(Charsets.US_ASCII)
+        val request = SipPing.options(server, from, local, token, userAgent).toByteArray(Charsets.US_ASCII)
         repeat(ATTEMPTS) {
             socket.send(DatagramPacket(request, request.size))
             val packet = DatagramPacket(ByteArray(MAX_PACKET), MAX_PACKET)

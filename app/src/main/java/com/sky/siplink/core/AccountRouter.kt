@@ -237,6 +237,7 @@ internal class AccountRouter(
         val (host, port) = AccountRoute.split(server)
         val lookup = needsLookup(server, record)
         val from = account.params.identityAddress?.let { "${it.username}@${hostPortOf(it)}" }.orEmpty()
+        val userAgent = core.userAgent
         probes.ask("$server/$transport@${record.dns}", {
             val target = if (lookup) {
                 val (dnsAddress, dnsPort) = AccountRoute.dnsServer(record.dns)
@@ -244,7 +245,7 @@ internal class AccountRouter(
             } else {
                 host
             }
-            target != null && LineNetwork.answers(target, port ?: AccountRoute.defaultPort(transport), transport, server, from)
+            target != null && LineNetwork.answers(target, port ?: AccountRoute.defaultPort(transport), transport, server, from, userAgent)
         }) { alive ->
             val current = states[id]
             if (current == null || current.generation != generation) return@ask
