@@ -114,6 +114,7 @@ class SipEngine(context: Context) {
 
         settings = SettingsStore(core.config)
         applyDtmfMode(settings.current.dtmfMode)
+        CallVideoSupport.configure(core, settings.current.videoCalls)
         tls = TlsManager(appContext, core)
         tls.applySettings(settings.current)
         accounts = AccountManager(core)
@@ -149,6 +150,10 @@ class SipEngine(context: Context) {
         if (verificationChanged) tls.reconnect()
         if (before.keepAlive != after.keepAlive) onKeepAliveChanged?.invoke()
         if (before.dtmfMode != after.dtmfMode) applyDtmfMode(after.dtmfMode)
+        if (before.videoCalls != after.videoCalls) {
+            CallVideoSupport.setEnabled(core, after.videoCalls)
+            calls.onVideoAllowedChanged()
+        }
     }
 
     private fun applyDtmfMode(mode: DtmfMode) {
@@ -169,10 +174,9 @@ class SipEngine(context: Context) {
         core.autoIterateBackgroundSchedule = BACKGROUND_ITERATE_MS
         core.isKeepAliveEnabled = true
 
-        // Audio-only client. Two calls are shown to the user (current + held or waiting); the
-        // extra room is for the short overlaps while the PBX rearranges calls (REFER, replaces).
-        core.isVideoCaptureEnabled = false
-        core.isVideoDisplayEnabled = false
+        // Two calls are shown to the user (current + held or waiting); the extra room is for the
+        // short overlaps while the PBX rearranges calls (REFER, replaces). Video follows the
+        // settings, see CallVideoSupport.configure.
         core.maxCalls = MAX_CALLS
 
         // CallManager ends transferred calls itself: a parked call has to stay up until the PBX

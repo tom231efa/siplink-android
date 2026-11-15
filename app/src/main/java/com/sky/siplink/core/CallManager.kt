@@ -12,6 +12,7 @@ import com.sky.siplink.core.logic.IncomingPolicy
 import com.sky.siplink.core.logic.IntercomHeaders
 import com.sky.siplink.core.logic.NameLookup
 import com.sky.siplink.core.logic.PartyName
+import com.sky.siplink.core.logic.VideoRules
 import com.sky.siplink.core.model.AudioRoute
 import com.sky.siplink.core.model.CallInfo
 import com.sky.siplink.core.model.CallPhase
@@ -53,6 +54,9 @@ class CallManager(
         fun updateIncomingCall(info: CallInfo)
         fun dismissIncomingCall()
         fun onCallActivityChanged()
+
+        /** True when the app holds the camera permission. */
+        val canUseCamera: Boolean
     }
 
     var host: Host? = null
@@ -77,6 +81,8 @@ class CallManager(
         var connectedAt: Long? = null,
         var speakerApplied: Boolean = false,
         var endReason: String? = null,
+        /** The call had video the last time it was looked at (sound moves to the speaker as video starts). */
+        var hadVideo: Boolean = false,
     )
 
     /** What the next outgoing call started by [invite] is meant to be. */
@@ -99,13 +105,19 @@ class CallManager(
     private var autoAnswerPending = false
     private var generation = 0
 
+    private val video = VideoController(core, settings, { host?.canUseCamera == true }) { publish() }
+    private val videoAllowed: Boolean get() = settings.current.videoCalls
+
     // ---------------------------------------------------------------- placing calls
 
-    /** @return a user readable error, or null when the call was started */
-    fun dial(target: String, accountId: String?, supervision: SupervisionMode? = null): String? {
+    /**
+     * @param video a video call: the camera is sent if the app may use it, else the video is only received
+     * @return a user readable error, or null when the call was started
+     */
+    fun dial(target: String, accountId: String?, supervision: SupervisionMode? = null, video: Boolean = false): String? {
         if (live(current) != null || core.calls.any { !isEnded(it) }) return "已有通话正在进行"
         val account = accountId?.let(accounts::find) ?: core.defaultAccount
-        return invite(target, account, Pending(supervision, consultation = false))
+        return invite(target, account, Pending(supervision, consultation = false), video && videoAllowed)
     }
 
     /** Puts the current call on hold and calls [target]: first step of an attended transfer. */
@@ -117,7 +129,7 @@ class CallManager(
         return invite(target, active.params.account ?: core.defaultAccount, Pending(null, consultation = true))
     }
 
-    private fun invite(target: String, account: Account?, kind: Pending): String? {
+    private fun invite(target: String, account: Account?, kind: Pending, video: Boolean = false): String? {
         val cleaned = DialTarget.of(target)
         if (cleaned.isEmpty()) return "请输入号码"
         if (account == null) return "请先添加 SIP 账号"
@@ -126,7 +138,7 @@ class CallManager(
         val address = account.normalizeSipUri(cleaned) ?: return "号码或地址无效"
         val params = core.createCallParams(null) ?: return "无法创建呼叫"
         params.account = account
-        params.isVideoEnabled = false
+        this.video.prepare(params, video)
         // The core reports OutgoingInit from inside the invite call; `pending` tells it apart there.
         pending = kind
         val created = core.inviteAddressWithParams(address, params)
@@ -136,19 +148,34 @@ class CallManager(
 
     // ---------------------------------------------------------------- answering / ending
 
-    /** Answers the ringing call: the waiting one if there is one, else the current one. */
-    fun answer() {
+    /**
+     * Answers the ringing call: the waiting one if there is one, else the current one.
+     *
+     * @param video take the video the caller offers (the camera is sent if the app may use
+     *   it); without, the call is answered audio-only
+     */
+    fun answer(video: Boolean = false) {
         autoAnswerPending = false
         val waiting = other?.takeIf(::isRinging)
         if (waiting != null) {
             // The core puts the running call on hold by itself when another one is accepted.
             other = current
             current = waiting
-            waiting.accept()
+            accept(waiting, video)
             publish()
             return
         }
-        current?.takeIf(::isRinging)?.accept()
+        current?.takeIf(::isRinging)?.let { accept(it, video) }
+    }
+
+    private fun accept(call: Call, video: Boolean) {
+        val params = core.createCallParams(call)
+        if (params == null) {
+            call.accept()
+            return
+        }
+        this.video.prepare(params, video && CallVideoSupport.offered(call))
+        call.acceptWithParams(params)
     }
 
     /** Declines the ringing call: the waiting one if there is one, else the current one. */
@@ -232,6 +259,26 @@ class CallManager(
         held.resume()
         publish()
     }
+
+    // ---------------------------------------------------------------- video
+
+    /** Adds video to the current call, or ends it (re-INVITE). */
+    fun toggleVideo(): String? = video.toggleVideo(live(current), conference != null)
+
+    /** Stops or starts sending the own camera; the picture of the other side keeps coming. */
+    fun toggleCamera(): String? = video.toggleCamera(live(current))
+
+    /** Front and back camera, in turn. */
+    fun switchCamera() = video.switchCamera(live(current))
+
+    /** The user's answer to the other side's request to add video (see [CallInfo.videoOffer]). */
+    fun answerVideoRequest(accept: Boolean) = video.answerRequest(accept)
+
+    /** The call screen came to the front or left it: the camera is only used while it is in front. */
+    fun onCallScreenShown(shown: Boolean) = video.onCallScreenShown(shown)
+
+    /** Video calls were switched on or off in the settings; off, running video ends. */
+    fun onVideoAllowedChanged() = video.onAllowedChanged()
 
     // ---------------------------------------------------------------- transfer / park / merge
 
@@ -346,14 +393,18 @@ class CallManager(
     fun onCallStateChanged(call: Call, callState: Call.State?, message: String) {
         when (callState) {
             Call.State.IncomingReceived -> onIncomingReceived(call)
-            Call.State.OutgoingInit -> onOutgoingInit(call)
+            Call.State.OutgoingInit -> {
+                onOutgoingInit(call)
+                video.applyCamera(call)
+            }
 
             Call.State.Connected, Call.State.StreamsRunning -> {
                 val meta = metaOf(call)
                 if (meta.connectedAt == null) meta.connectedAt = SystemClock.elapsedRealtime()
                 if (same(call, current) || same(call, other)) host?.dismissIncomingCall()
-                if (callState == Call.State.StreamsRunning && same(call, current)) {
-                    onCurrentStreaming(call, meta)
+                if (callState == Call.State.StreamsRunning) {
+                    video.applyCamera(call)
+                    if (same(call, current)) onCurrentStreaming(call, meta)
                 }
                 publish()
             }
@@ -366,6 +417,7 @@ class CallManager(
                 publish()
             }
 
+            Call.State.UpdatedByRemote -> video.onUpdatedByRemote(call, onScreen = same(call, current) && conference == null)
             Call.State.Released -> onReleased(call)
             else -> publish()
         }
@@ -430,7 +482,7 @@ class CallManager(
         val autoAnswer = intercom && settings.current.intercomAutoAnswer
         if (autoAnswer && host?.isAppVisible == true) {
             // The microphone is only usable while the app is visible, so answer right away.
-            handler.postDelayed({ if (same(call, current) && isRinging(call)) call.accept() }, AUTO_ANSWER_DELAY_MS)
+            handler.postDelayed({ if (same(call, current) && isRinging(call)) accept(call, video = false) }, AUTO_ANSWER_DELAY_MS)
         } else {
             // Not visible: Android would mute the microphone. The call screen is brought up first
             // and the answer happens as soon as it is shown (see onCallUiVisible).
@@ -486,10 +538,19 @@ class CallManager(
             meta.speakerApplied = true
             CallSupport.applyRoute(core, call, AudioRoute.SPEAKER)
         }
+        val video = CallVideoSupport.hasVideo(call)
+        if (video && !meta.hadVideo) {
+            val route = CallSupport.routeOf(call.outputAudioDevice?.type) ?: AudioRoute.EARPIECE
+            if (VideoRules.speakerForVideo(route, CallSupport.availableRoutes(core))) {
+                CallSupport.applyRoute(core, call, AudioRoute.SPEAKER)
+            }
+        }
+        meta.hadVideo = video
     }
 
     private fun onReleased(call: Call) {
         val meta = metas.remove(call.nativePointer)
+        video.onReleased(call)
         when {
             same(call, current) -> {
                 host?.dismissIncomingCall()
@@ -601,6 +662,7 @@ class CallManager(
         val meta = metaOf(call)
         val party = partyOf(call)
         val account = call.params.account?.params?.identityAddress
+        val ringing = isRinging(call)
         return CallInfo(
             phase = phaseOf(call),
             remoteName = party.name,
@@ -614,6 +676,9 @@ class CallManager(
             connectedAt = meta.connectedAt,
             endReason = meta.endReason,
             supervision = meta.supervision,
+            video = if (videoAllowed && !ringing) CallVideoSupport.stateOf(call) else null,
+            videoOffer = videoAllowed && (if (ringing) CallVideoSupport.offered(call) else video.isRequesting(call)),
+            videoAllowed = videoAllowed && conference == null,
         )
     }
 

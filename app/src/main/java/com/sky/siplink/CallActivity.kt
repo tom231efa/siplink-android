@@ -22,9 +22,8 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import com.sky.siplink.core.model.AudioRoute
+import com.sky.siplink.core.logic.VideoRules
 import com.sky.siplink.core.model.CallInfo
-import com.sky.siplink.core.model.CallPhase
 import com.sky.siplink.core.model.ThemeMode
 import com.sky.siplink.ui.call.CallScreen
 import com.sky.siplink.ui.theme.SipLinkTheme
@@ -45,9 +44,15 @@ class CallActivity : ComponentActivity() {
     private var blurred by mutableStateOf(false)
     private val onBlurChanged = Consumer<Boolean> { blurred = it }
 
-    // Answer whatever the user decides: without the microphone the call is simply one-way.
-    private val microphonePermission =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { engine.calls.answer() }
+    /** Answering with video waits for the permissions; [answerWithVideo] remembers which way it was. */
+    private var answerWithVideo = false
+
+    // Answer whatever the user decides: without the microphone the call is simply one-way, and
+    // without the camera the video only comes in.
+    private val answerPermissions =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+            engine.calls.answer(answerWithVideo)
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge(
@@ -84,6 +89,11 @@ class CallActivity : ComponentActivity() {
         handleIntent(intent)
     }
 
+    override fun onStart() {
+        super.onStart()
+        engine.calls.onCallScreenShown(true)
+    }
+
     override fun onResume() {
         super.onResume()
         engine.calls.onCallUiVisible()
@@ -91,6 +101,7 @@ class CallActivity : ComponentActivity() {
 
     override fun onStop() {
         releaseProximityLock()
+        engine.calls.onCallScreenShown(false)
         super.onStop()
     }
 
@@ -111,20 +122,28 @@ class CallActivity : ComponentActivity() {
     private fun handleIntent(intent: Intent?) {
         if (intent?.action == ACTION_ANSWER) {
             intent.action = null
-            answer()
+            // From the notification: audio-only, the camera is only started from the call screen.
+            answer(video = false)
         }
     }
 
-    private fun answer() {
-        val granted = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) ==
-            PackageManager.PERMISSION_GRANTED
-        if (granted) engine.calls.answer() else microphonePermission.launch(Manifest.permission.RECORD_AUDIO)
+    /** @param video answer with the video the caller offers, the own camera included */
+    private fun answer(video: Boolean) {
+        val missing = buildList {
+            add(Manifest.permission.RECORD_AUDIO)
+            if (video) add(Manifest.permission.CAMERA)
+        }.filter { ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED }
+        if (missing.isEmpty()) {
+            engine.calls.answer(video)
+        } else {
+            answerWithVideo = video
+            answerPermissions.launch(missing.toTypedArray())
+        }
     }
 
-    /** Turns the screen off against the ear while the earpiece is in use. */
+    /** Turns the screen off against the ear while the earpiece is in use, and never over video. */
     private fun updateProximityLock(info: CallInfo?) {
-        val wanted = info != null && info.route == AudioRoute.EARPIECE &&
-            (info.phase == CallPhase.OUTGOING || info.phase == CallPhase.CONNECTED || info.phase == CallPhase.HELD)
+        val wanted = info != null && VideoRules.proximityWanted(info.phase, info.route, info.video != null)
         if (!wanted) {
             releaseProximityLock()
             return

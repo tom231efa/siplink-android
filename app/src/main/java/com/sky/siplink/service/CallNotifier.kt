@@ -74,7 +74,7 @@ class CallNotifier(private val context: Context) {
         val notification = NotificationCompat.Builder(context, CHANNEL_INCOMING)
             .setSmallIcon(R.drawable.ic_stat_call)
             .setContentTitle(info.remoteName)
-            .setContentText(if (info.intercom) "对讲呼叫 · ${info.remoteAddress}" else "来电 · ${info.remoteAddress}")
+            .setContentText("${incomingLabel(info)} · ${info.remoteAddress}")
             .setStyle(
                 NotificationCompat.CallStyle.forIncomingCall(
                     person(info),
@@ -93,6 +93,12 @@ class CallNotifier(private val context: Context) {
             .setOnlyAlertOnce(true)
             .build()
         post(ID_INCOMING, notification)
+    }
+
+    private fun incomingLabel(info: CallInfo): String = when {
+        info.intercom -> "对讲呼叫"
+        info.videoOffer -> "视频来电"
+        else -> "来电"
     }
 
     fun cancelIncomingCall() {

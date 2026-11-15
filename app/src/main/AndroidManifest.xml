@@ -31,11 +31,15 @@
     <!-- Prerequisite of the phoneCall foreground service type. -->
     <uses-permission android:name="android.permission.MANAGE_OWN_CALLS" />
 
-    <!-- Audio-only client: drop the video related permissions merged from the Linphone SDK. -->
-    <uses-permission
-        android:name="android.permission.CAMERA"
-        tools:ignore="PermissionImpliesUnsupportedChromeOsHardware"
-        tools:node="remove" />
+    <!-- Video calls; asked for when video is first used, not at start. -->
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <!--
+        The camera only runs while the call screen is in front (see core/VideoController.kt), so
+        the service never needs the camera type: drop it, and data sync, merged from the SDK.
+    -->
     <uses-permission
         android:name="android.permission.FOREGROUND_SERVICE_CAMERA"
         tools:node="remove" />

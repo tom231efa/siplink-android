@@ -115,6 +115,22 @@ data class CallInfo(
     /** True when both calls were merged into a local three-way conference. */
     val conference: Boolean = false,
     val supervision: SupervisionMode? = null,
+    /** Video of this call; null while it has none, and always while video calls are switched off. */
+    val video: CallVideo? = null,
+    /**
+     * The other side wants video: the incoming call offers it, or (once connected) the other
+     * side asks to add it and waits for the user's answer.
+     */
+    val videoOffer: Boolean = false,
+    /** Video can be switched on in this call (video calls are on in the settings, no three-way call). */
+    val videoAllowed: Boolean = false,
+)
+
+/** Which ways the video of a call goes. */
+data class CallVideo(
+    /** The own camera is meant to be sent (it is replaced by a still picture while the call screen is not shown). */
+    val sending: Boolean,
+    val receiving: Boolean,
 )
 
 enum class HistoryKind { OUTGOING, INCOMING, MISSED, FAILED }
@@ -258,8 +274,8 @@ enum class DtmfMode {
 /** Where the strip that leads back to a running call sits on the main screens. */
 enum class BannerPosition { TOP, BOTTOM }
 
-/** An audio codec of the SIP core; the list order is the order of preference. */
-data class AudioCodec(val mime: String, val clockRate: Int, val channels: Int, val enabled: Boolean) {
+/** An audio or video codec of the SIP core; the list order is the order of preference. */
+data class Codec(val mime: String, val clockRate: Int, val channels: Int, val enabled: Boolean, val isVideo: Boolean = false) {
     val key: String get() = "$mime/$clockRate/$channels"
 }
 
@@ -286,6 +302,8 @@ data class Settings(
     val forwardNoAnswer: String = "",
     val forwardNoAnswerSeconds: Int = 20,
     val features: FeatureCodes = FeatureCodes(),
+    /** Video calls can be placed and accepted; off, the app is audio-only and declines video. */
+    val videoCalls: Boolean = true,
     /** The user does not want to be asked again to let calls show on the lock screen. */
     val lockScreenPromptDeclined: Boolean = false,
 )

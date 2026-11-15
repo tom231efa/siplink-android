@@ -37,6 +37,7 @@ import androidx.compose.material.icons.rounded.MicOff
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.SwapCalls
+import androidx.compose.material.icons.rounded.Videocam
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
@@ -49,6 +50,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -66,16 +68,23 @@ import com.sky.siplink.core.model.SupervisionMode
 import com.sky.siplink.ui.components.ChoiceRow
 import com.sky.siplink.ui.theme.Brand
 
+/** @param videoOffered the caller offers video: a switch above the slider says whether to answer with it */
 @Composable
-internal fun IncomingControls(onAnswer: () -> Unit, onDecline: () -> Unit) {
-    Box(
+internal fun IncomingControls(videoOffered: Boolean, onAnswer: (video: Boolean) -> Unit, onDecline: () -> Unit) {
+    var withVideo by rememberSaveable { mutableStateOf(false) }
+    Column(
         Modifier
             .fillMaxWidth()
             .height(150.dp)
             .padding(horizontal = 24.dp),
-        contentAlignment = Alignment.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
     ) {
-        SlideToAnswer(onAnswer = onAnswer, onDecline = onDecline)
+        if (videoOffered) {
+            AnswerWithVideoToggle(on = withVideo, onChange = { withVideo = it })
+            Spacer(Modifier.height(14.dp))
+        }
+        SlideToAnswer(onAnswer = { onAnswer(videoOffered && withVideo) }, onDecline = onDecline)
     }
 }
 
@@ -86,6 +95,7 @@ internal fun ActiveControls(
     onOpenKeypad: () -> Unit,
     onOpenTransfer: () -> Unit,
     onOpenShortcuts: () -> Unit,
+    onToggleVideo: () -> Unit,
     onNotice: (String) -> Unit,
 ) {
     val established = info.phase == CallPhase.CONNECTED || info.phase == CallPhase.HELD
@@ -162,7 +172,18 @@ internal fun ActiveControls(
                 ControlToggle(Icons.Rounded.Apps, "快捷键", active = false, onClick = onOpenShortcuts)
             }
             RoundAction(Brand.HangUpRed, Icons.Rounded.CallEnd, if (info.conference) "结束全部" else "挂断", calls::hangUp, size = 72.dp)
-            Spacer(Modifier.weight(1f))
+            Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                // Nothing of video is shown while video calls are switched off.
+                if (info.videoAllowed || info.video != null) {
+                    ControlToggle(
+                        Icons.Rounded.Videocam,
+                        "视频",
+                        active = info.video != null,
+                        enabled = info.phase == CallPhase.CONNECTED && info.videoAllowed && !info.videoOffer,
+                        onClick = onToggleVideo,
+                    )
+                }
+            }
         }
     }
 }

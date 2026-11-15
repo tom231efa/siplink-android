@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -36,21 +37,28 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.sky.siplink.core.model.AudioCodec
+import com.sky.siplink.core.model.Codec
 import com.sky.siplink.engine
 import com.sky.siplink.ui.components.LocalMessenger
 
-/** Audio codecs: which ones are offered, and in which order of preference. */
+/**
+ * Audio and video codecs: which ones are offered, and in which order of preference. The video
+ * ones are only listed while video calls are on, and only those the SDK provides on the device.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CodecsScreen(onBack: () -> Unit) {
-    val manager = LocalContext.current.engine.codecs
+    val engine = LocalContext.current.engine
+    val manager = engine.codecs
     val codecs by manager.codecs.collectAsStateWithLifecycle()
+    val videoCodecs by manager.videoCodecs.collectAsStateWithLifecycle()
+    val settings by engine.settings.settings.collectAsStateWithLifecycle()
     val messenger = LocalMessenger.current
+    val video = settings.videoCalls && videoCodecs.isNotEmpty()
 
     Column(Modifier.fillMaxSize()) {
         TopAppBar(
-            title = { Text("音频编码") },
+            title = { Text(if (video) "编码" else "音频编码") },
             navigationIcon = {
                 IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回") }
             },
@@ -70,26 +78,51 @@ fun CodecsScreen(onBack: () -> Unit) {
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            itemsIndexed(codecs, key = { _, codec -> codec.key }, contentType = { _, _ -> "codec" }) { index, codec ->
-                CodecRow(
-                    codec = codec,
-                    position = index + 1,
-                    canMoveUp = index > 0,
-                    canMoveDown = index < codecs.lastIndex,
-                    onMove = { offset -> manager.move(codec.key, offset) },
-                    onEnabledChange = { enabled ->
-                        if (!manager.setEnabled(codec.key, enabled)) messenger("至少保留一种编码")
-                    },
-                    modifier = Modifier.animateItem(),
-                )
+            if (video) item(key = "audioTitle", contentType = "title") { KindTitle("音频") }
+            codecRows(codecs, onMove = manager::move) { key, enabled ->
+                if (!manager.setEnabled(key, enabled)) messenger("至少保留一种音频编码")
+            }
+            if (video) {
+                item(key = "videoTitle", contentType = "title") { KindTitle("视频") }
+                codecRows(videoCodecs, onMove = manager::move) { key, enabled ->
+                    if (!manager.setEnabled(key, enabled)) messenger("至少保留一种视频编码")
+                }
             }
         }
     }
 }
 
+private fun LazyListScope.codecRows(
+    codecs: List<Codec>,
+    onMove: (key: String, offset: Int) -> Unit,
+    onEnabledChange: (key: String, enabled: Boolean) -> Unit,
+) {
+    itemsIndexed(codecs, key = { _, codec -> codec.key }, contentType = { _, _ -> "codec" }) { index, codec ->
+        CodecRow(
+            codec = codec,
+            position = index + 1,
+            canMoveUp = index > 0,
+            canMoveDown = index < codecs.lastIndex,
+            onMove = { offset -> onMove(codec.key, offset) },
+            onEnabledChange = { enabled -> onEnabledChange(codec.key, enabled) },
+            modifier = Modifier.animateItem(),
+        )
+    }
+}
+
+@Composable
+private fun KindTitle(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(start = 12.dp, top = 8.dp, bottom = 2.dp),
+    )
+}
+
 @Composable
 private fun CodecRow(
-    codec: AudioCodec,
+    codec: Codec,
     position: Int,
     canMoveUp: Boolean,
     canMoveDown: Boolean,
@@ -115,11 +148,14 @@ private fun CodecRow(
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(codec.mime, style = MaterialTheme.typography.titleMedium)
-                Text(
-                    "${codec.clockRate} Hz" + if (codec.channels > 1) " · ${codec.channels} 声道" else "",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                // A video codec's clock rate (90 kHz for all of them) says nothing to the user.
+                if (!codec.isVideo) {
+                    Text(
+                        "${codec.clockRate} Hz" + if (codec.channels > 1) " · ${codec.channels} 声道" else "",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
             IconButton(onClick = { onMove(-1) }, enabled = canMoveUp) {
                 Icon(Icons.Rounded.KeyboardArrowUp, contentDescription = "提高 ${codec.mime} 的优先级")

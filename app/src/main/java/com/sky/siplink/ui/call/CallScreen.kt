@@ -1,6 +1,10 @@
 package com.sky.siplink.ui.call
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.SystemClock
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
@@ -61,6 +65,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sky.siplink.core.CallManager
 import com.sky.siplink.core.logic.Formatters
@@ -81,8 +86,9 @@ internal enum class Controls { INCOMING, ACTIVE, ENDED }
  *   may let it shine through; without the blur it has to cover more to keep the text readable
  */
 @Composable
-fun CallScreen(onAnswer: () -> Unit, onFinished: () -> Unit, glass: Boolean = false) {
-    val calls = LocalContext.current.engine.calls
+fun CallScreen(onAnswer: (video: Boolean) -> Unit, onFinished: () -> Unit, glass: Boolean = false) {
+    val context = LocalContext.current
+    val calls = context.engine.calls
     val live by calls.call.collectAsStateWithLifecycle()
     // Keep showing the last known call while the screen animates away.
     var shown by remember { mutableStateOf(live) }
@@ -90,6 +96,24 @@ fun CallScreen(onAnswer: () -> Unit, onFinished: () -> Unit, glass: Boolean = fa
     var transferOpen by remember { mutableStateOf(false) }
     var shortcutsOpen by remember { mutableStateOf(false) }
     var notice by remember { mutableStateOf<String?>(null) }
+    // Hidden by tapping the video, so that the picture is seen whole.
+    var chromeHidden by remember { mutableStateOf(false) }
+
+    // The camera permission is asked for where video is first wanted. Whatever the answer, the
+    // action goes on: without the camera the video is only received (the call manager decides).
+    var afterCameraPermission by remember { mutableStateOf<(() -> Unit)?>(null) }
+    val cameraPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        afterCameraPermission?.invoke()
+        afterCameraPermission = null
+    }
+    fun withCamera(action: () -> Unit) {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            action()
+        } else {
+            afterCameraPermission = action
+            cameraPermission.launch(Manifest.permission.CAMERA)
+        }
+    }
 
     // The screen fades in over what was there before, and out again once the call is gone.
     val presence = remember { Animatable(0f) }
@@ -110,29 +134,50 @@ fun CallScreen(onAnswer: () -> Unit, onFinished: () -> Unit, glass: Boolean = fa
     }
 
     val info = shown
+    val video = info?.video?.takeIf { info.phase == CallPhase.CONNECTED }
+    LaunchedEffect(video == null) { chromeHidden = false }
     Box(
         Modifier
             .fillMaxSize()
             .graphicsLayer { alpha = presence.value },
     ) {
         CallBackground(ringingIn = info?.phase == CallPhase.INCOMING, glass = glass)
+        if (video != null) {
+            VideoStage(
+                video = video,
+                chrome = !chromeHidden,
+                onTap = { chromeHidden = !chromeHidden },
+                onSwitchCamera = calls::switchCamera,
+                onToggleCamera = { withCamera { calls.toggleCamera()?.let { notice = it } } },
+            )
+        }
         if (info != null) {
             val controls = when (info.phase) {
                 CallPhase.INCOMING -> Controls.INCOMING
                 CallPhase.ENDED -> Controls.ENDED
                 else -> Controls.ACTIVE
             }
-            CallContent(
-                info = info,
-                controls = controls,
-                calls = calls,
-                notice = notice,
-                onAnswer = onAnswer,
-                onOpenKeypad = { keypadOpen = true },
-                onOpenTransfer = { transferOpen = true },
-                onOpenShortcuts = { shortcutsOpen = true },
-                onNotice = { notice = it },
-            )
+            AnimatedVisibility(!chromeHidden || video == null, enter = fadeIn(tween(180)), exit = fadeOut(tween(160))) {
+                CallContent(
+                    info = info,
+                    controls = controls,
+                    calls = calls,
+                    notice = notice,
+                    videoMode = video != null,
+                    // The call activity asks for the microphone and, to answer with video, the camera.
+                    onAnswer = onAnswer,
+                    onToggleVideo = {
+                        val toggle = { calls.toggleVideo()?.let { notice = it } }
+                        // Ending video needs no camera.
+                        if (info.video != null) toggle() else withCamera { toggle() }
+                    },
+                    onAcceptVideo = { withCamera { calls.answerVideoRequest(true) } },
+                    onOpenKeypad = { keypadOpen = true },
+                    onOpenTransfer = { transferOpen = true },
+                    onOpenShortcuts = { shortcutsOpen = true },
+                    onNotice = { notice = it },
+                )
+            }
             AnimatedVisibility(
                 visible = keypadOpen && controls == Controls.ACTIVE,
                 modifier = Modifier.align(Alignment.BottomCenter),
@@ -207,7 +252,10 @@ private fun CallContent(
     controls: Controls,
     calls: CallManager,
     notice: String?,
-    onAnswer: () -> Unit,
+    videoMode: Boolean,
+    onAnswer: (video: Boolean) -> Unit,
+    onToggleVideo: () -> Unit,
+    onAcceptVideo: () -> Unit,
     onOpenKeypad: () -> Unit,
     onOpenTransfer: () -> Unit,
     onOpenShortcuts: () -> Unit,
@@ -228,7 +276,8 @@ private fun CallContent(
         ) {
             Spacer(Modifier.height(16.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                if (info.accountLabel.isNotEmpty()) Chip(text = info.accountLabel)
+                // Over video the corner belongs to the own picture: the line is left out there.
+                if (info.accountLabel.isNotEmpty() && !videoMode) Chip(text = info.accountLabel)
                 if (info.intercom) Chip(text = "对讲", icon = Icons.Rounded.Campaign, highlighted = true)
                 if (info.conference) Chip(text = "三方通话", icon = Icons.Rounded.Groups, highlighted = true)
             }
@@ -247,15 +296,27 @@ private fun CallContent(
             ) {
                 HeldCallBanner(info, onSwap = calls::swap)
             }
+            AnimatedVisibility(
+                visible = info.videoOffer && info.phase != CallPhase.INCOMING,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut(),
+            ) {
+                VideoRequestBanner(onAccept = onAcceptVideo, onDecline = { calls.answerVideoRequest(false) })
+            }
 
-            Spacer(Modifier.weight(0.4f))
-            CallAvatar(
-                name = info.remoteName,
-                beating = info.phase == CallPhase.INCOMING || info.phase == CallPhase.OUTGOING,
-                size = avatarSize,
-                haloSize = ringSize,
-            )
-            Spacer(Modifier.height(4.dp))
+            // Over video the picture is what matters: the name and the time go to the top.
+            if (videoMode) {
+                Spacer(Modifier.height(12.dp))
+            } else {
+                Spacer(Modifier.weight(0.4f))
+                CallAvatar(
+                    name = info.remoteName,
+                    beating = info.phase == CallPhase.INCOMING || info.phase == CallPhase.OUTGOING,
+                    size = avatarSize,
+                    haloSize = ringSize,
+                )
+                Spacer(Modifier.height(4.dp))
+            }
             Text(
                 info.remoteName,
                 style = MaterialTheme.typography.headlineMedium,
@@ -263,7 +324,7 @@ private fun CallContent(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            if (info.remoteAddress != info.remoteName) {
+            if (info.remoteAddress != info.remoteName && !videoMode) {
                 Spacer(Modifier.height(2.dp))
                 Text(
                     info.remoteAddress,
@@ -287,8 +348,8 @@ private fun CallContent(
                 label = "callControls",
             ) { mode ->
                 when (mode) {
-                    Controls.INCOMING -> IncomingControls(onAnswer = onAnswer, onDecline = calls::decline)
-                    Controls.ACTIVE -> ActiveControls(info, calls, onOpenKeypad, onOpenTransfer, onOpenShortcuts, onNotice)
+                    Controls.INCOMING -> IncomingControls(videoOffered = info.videoOffer, onAnswer = onAnswer, onDecline = calls::decline)
+                    Controls.ACTIVE -> ActiveControls(info, calls, onOpenKeypad, onOpenTransfer, onOpenShortcuts, onToggleVideo, onNotice)
                     Controls.ENDED -> Spacer(Modifier.fillMaxWidth())
                 }
             }
@@ -424,7 +485,11 @@ private fun StatusLine(info: CallInfo) {
         label = "callStatus",
     ) { phase ->
         val text = when (phase) {
-            CallPhase.INCOMING -> if (info.intercom) "对讲呼叫" else "来电"
+            CallPhase.INCOMING -> when {
+                info.intercom -> "对讲呼叫"
+                info.videoOffer -> "视频来电"
+                else -> "来电"
+            }
             CallPhase.OUTGOING -> "正在呼叫…"
             CallPhase.CONNECTED -> callTimer(info.connectedAt)
             CallPhase.HELD -> "通话已保留"

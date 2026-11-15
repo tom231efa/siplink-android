@@ -1,0 +1,71 @@
+package com.sky.siplink.core.logic
+
+import com.sky.siplink.core.model.AudioRoute
+import com.sky.siplink.core.model.CallPhase
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class VideoRulesTest {
+    /** What the SDK lists on the test phone (Samsung, Android 16). */
+    private val devices = listOf("FrontFacingCamera", "BackFacingCamera", VideoRules.STATIC_PICTURE)
+
+    @Test
+    fun theStillPictureIsNoCamera() {
+        assertEquals(listOf("FrontFacingCamera", "BackFacingCamera"), VideoRules.cameras(devices))
+    }
+
+    @Test
+    fun videoStartsWithTheFrontCamera() {
+        assertEquals("FrontFacingCamera", VideoRules.startCamera(devices))
+        assertEquals("FrontFacingCamera", VideoRules.startCamera(devices.reversed()))
+        assertEquals("Back", VideoRules.startCamera(listOf("Back", VideoRules.STATIC_PICTURE)))
+        assertNull(VideoRules.startCamera(listOf(VideoRules.STATIC_PICTURE)))
+    }
+
+    @Test
+    fun switchingGoesRoundTheCameras() {
+        assertEquals("BackFacingCamera", VideoRules.nextCamera(devices, "FrontFacingCamera"))
+        assertEquals("FrontFacingCamera", VideoRules.nextCamera(devices, "BackFacingCamera"))
+        // From the still picture (or anything unknown) to the first camera.
+        assertEquals("FrontFacingCamera", VideoRules.nextCamera(devices, VideoRules.STATIC_PICTURE))
+        assertNull(VideoRules.nextCamera(listOf("FrontFacingCamera", VideoRules.STATIC_PICTURE), "FrontFacingCamera"))
+    }
+
+    @Test
+    fun videoMovesTheSoundFromTheEarpieceToTheSpeaker() {
+        val builtIn = listOf(AudioRoute.EARPIECE, AudioRoute.SPEAKER)
+        assertTrue(VideoRules.speakerForVideo(AudioRoute.EARPIECE, builtIn))
+        assertFalse(VideoRules.speakerForVideo(AudioRoute.SPEAKER, builtIn))
+        assertFalse(VideoRules.speakerForVideo(AudioRoute.EARPIECE, builtIn + AudioRoute.HEADSET))
+        assertFalse(VideoRules.speakerForVideo(AudioRoute.EARPIECE, builtIn + AudioRoute.BLUETOOTH))
+        assertFalse(VideoRules.speakerForVideo(AudioRoute.BLUETOOTH, builtIn + AudioRoute.BLUETOOTH))
+        assertFalse(VideoRules.speakerForVideo(AudioRoute.EARPIECE, listOf(AudioRoute.EARPIECE)))
+    }
+
+    @Test
+    fun theProximitySensorStaysOffOverVideo() {
+        assertTrue(VideoRules.proximityWanted(CallPhase.CONNECTED, AudioRoute.EARPIECE, video = false))
+        assertTrue(VideoRules.proximityWanted(CallPhase.OUTGOING, AudioRoute.EARPIECE, video = false))
+        assertTrue(VideoRules.proximityWanted(CallPhase.HELD, AudioRoute.EARPIECE, video = false))
+        assertFalse(VideoRules.proximityWanted(CallPhase.CONNECTED, AudioRoute.EARPIECE, video = true))
+        assertFalse(VideoRules.proximityWanted(CallPhase.CONNECTED, AudioRoute.SPEAKER, video = false))
+        assertFalse(VideoRules.proximityWanted(CallPhase.INCOMING, AudioRoute.EARPIECE, video = false))
+        assertFalse(VideoRules.proximityWanted(CallPhase.ENDED, AudioRoute.EARPIECE, video = false))
+    }
+
+    @Test
+    fun addingVideoIsAskedOnlyWhereItCanBeShown() {
+        fun update(allowed: Boolean = true, hasVideo: Boolean = false, offersVideo: Boolean = true, onScreen: Boolean = true) =
+            VideoRules.remoteUpdate(allowed, hasVideo, offersVideo, onScreen)
+        assertEquals(VideoRules.Update.ASK, update())
+        assertEquals(VideoRules.Update.DECLINE, update(allowed = false))
+        assertEquals(VideoRules.Update.DECLINE, update(onScreen = false))
+        // Nothing to decide: no video in the request, or video there already.
+        assertEquals(VideoRules.Update.ACCEPT, update(offersVideo = false))
+        assertEquals(VideoRules.Update.ACCEPT, update(offersVideo = false, allowed = false))
+        assertEquals(VideoRules.Update.ACCEPT, update(hasVideo = true))
+    }
+}

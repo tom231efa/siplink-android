@@ -28,6 +28,7 @@ import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.ScreenLockPortrait
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material.icons.rounded.VerifiedUser
+import androidx.compose.material.icons.rounded.Videocam
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -96,9 +97,15 @@ fun SettingsScreen(
                     checked = settings.doNotDisturb,
                     onCheckedChange = { value -> launcher.doNotDisturb(value) },
                 )
+                SwitchRow(
+                    title = "视频通话",
+                    icon = Icons.Rounded.Videocam,
+                    checked = settings.videoCalls,
+                    onCheckedChange = { value -> engine.updateSettings { it.copy(videoCalls = value) } },
+                )
                 NavRow(title = "呼叫处理", icon = Icons.AutoMirrored.Rounded.PhoneForwarded, onClick = onOpenCallHandling)
                 NavRow(title = "功能码", icon = Icons.Rounded.Dialpad, onClick = onOpenFeatureCodes)
-                NavRow(title = "音频编码", icon = Icons.Rounded.GraphicEq, onClick = onOpenCodecs)
+                NavRow(title = if (settings.videoCalls) "编码" else "音频编码", icon = Icons.Rounded.GraphicEq, onClick = onOpenCodecs)
             }
 
             SectionCard(title = "对讲来电") {

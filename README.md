@@ -4,18 +4,19 @@
 
 <h1 align="center">SipLink</h1>
 
-<p align="center">Android 上的 SIP 语音软电话，面向接入 IP PBX 的日常办公使用。</p>
+<p align="center">Android 上的 SIP 软电话，面向接入 IP PBX 的日常办公使用。</p>
 
-基于 [Linphone SDK](https://www.linphone.org/en/liblinphone-voip-sdk)，界面用 Jetpack Compose 编写。只做语音通话，不含视频和即时消息。
+基于 [Linphone SDK](https://www.linphone.org/en/liblinphone-voip-sdk)，界面用 Jetpack Compose 编写。语音通话为主，可选一对一视频通话，不含即时消息。
 
 ## 功能
 
 - **线路**：最多 100 个 SIP 账号，UDP / TCP / TLS，SRTP；每条线路可单独设置代理、备用代理和 DNS 服务器，支持批量导入
 - **通话**：保留、盲转、咨询转、合并、呼叫等待、呼叫前转、免打扰、对讲自动接听、语音留言订阅
+- **视频**：一对一视频通话，可在设置中关闭；摄像头只在用户选择视频且通话界面在前台时开启
 - **功能码**：驻留、代接、监听、耳语、强插、强拆等，按 PBX 的功能码配置
 - **快捷键**：速拨、转接、发送按键等，可分类，支持 CSV 导入导出
 - **通讯录**：最多 50 个 LDAP 通讯录，来电和去电显示姓名
-- **其它**：通话记录、音频编码选择、CA 证书管理、后台保持注册（不依赖推送）
+- **其它**：通话记录、音视频编码选择、CA 证书管理、后台保持注册（不依赖推送）
 
 ## 运行要求
 

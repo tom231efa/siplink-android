@@ -1,6 +1,7 @@
 package com.sky.siplink.ui.components
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -28,7 +29,8 @@ class CallLauncher(
 ) {
     private fun codes(): FeatureCodes = engine.settings.current.features
 
-    fun call(target: String, accountId: String? = null) = launch(CallRequest(target, accountId))
+    /** @param video a video call; the camera permission is asked for first, refusing it leaves the video incoming only */
+    fun call(target: String, accountId: String? = null, video: Boolean = false) = launch(CallRequest(target, accountId, video = video))
 
     /**
      * Switches do not disturb on or off. In [DndMode.SOFTWARE] that is a switch of this app; in
@@ -76,6 +78,7 @@ class CallRequest(
     val accountId: String?,
     val supervision: SupervisionMode? = null,
     val onStarted: (() -> Unit)? = null,
+    val video: Boolean = false,
 )
 
 @Composable
@@ -85,7 +88,7 @@ fun rememberCallLauncher(): CallLauncher {
     var pending by remember { mutableStateOf<CallRequest?>(null) }
 
     fun start(request: CallRequest) {
-        val error = context.engine.calls.dial(request.target, request.accountId, request.supervision)
+        val error = context.engine.calls.dial(request.target, request.accountId, request.supervision, request.video)
         if (error != null) {
             messenger(error)
         } else {
@@ -94,12 +97,14 @@ fun rememberCallLauncher(): CallLauncher {
         }
     }
 
-    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+    // The camera is optional: a video call goes ahead without it, as long as the microphone is there.
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
         val request = pending
         pending = null
+        val microphone = result[Manifest.permission.RECORD_AUDIO] ?: granted(context, Manifest.permission.RECORD_AUDIO)
         when {
             request == null -> Unit
-            granted -> start(request)
+            microphone -> start(request)
             else -> messenger("需要麦克风权限")
         }
     }
@@ -107,13 +112,15 @@ fun rememberCallLauncher(): CallLauncher {
     return remember {
         CallLauncher(
             launch = { request ->
-                val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
-                    PackageManager.PERMISSION_GRANTED
-                if (granted) {
+                val missing = buildList {
+                    add(Manifest.permission.RECORD_AUDIO)
+                    if (request.video) add(Manifest.permission.CAMERA)
+                }.filterNot { granted(context, it) }
+                if (missing.isEmpty()) {
                     start(request)
                 } else {
                     pending = request
-                    permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                    permissionLauncher.launch(missing.toTypedArray())
                 }
             },
             notify = { messenger(it) },
@@ -121,3 +128,6 @@ fun rememberCallLauncher(): CallLauncher {
         )
     }
 }
+
+private fun granted(context: Context, permission: String): Boolean =
+    ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED

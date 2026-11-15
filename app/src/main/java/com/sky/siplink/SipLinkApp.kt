@@ -1,10 +1,13 @@
 package com.sky.siplink
 
+import android.Manifest
 import android.app.Activity
 import android.app.Application
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
+import androidx.core.content.ContextCompat
 import com.sky.siplink.core.CallManager
 import com.sky.siplink.core.SipEngine
 import com.sky.siplink.core.model.CallInfo
@@ -20,6 +23,9 @@ class SipLinkApp : Application(), CallManager.Host {
     private var startedActivities = 0
 
     override val isAppVisible: Boolean get() = startedActivities > 0
+
+    override val canUseCamera: Boolean
+        get() = ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
 
     override fun onCreate() {
         super.onCreate()

@@ -47,6 +47,7 @@ import androidx.compose.material.icons.automirrored.rounded.Backspace
 import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.ArrowDropDown
 import androidx.compose.material.icons.rounded.Call
+import androidx.compose.material.icons.rounded.Videocam
 import androidx.compose.material.icons.rounded.Dialpad
 import androidx.compose.material.icons.rounded.DoNotDisturbOn
 import androidx.compose.material.icons.rounded.Keyboard
@@ -121,11 +122,11 @@ fun DialerScreen(onAddAccount: () -> Unit, onOpenShortcuts: (accountId: String?)
     val selected = accounts.firstOrNull { it.id == selectedId }
     val active = selected ?: accounts.firstOrNull { it.isDefault } ?: accounts.firstOrNull()
 
-    fun place() {
+    fun place(video: Boolean = false) {
         when {
             active == null -> onAddAccount()
             number.isBlank() -> messenger("请输入号码")
-            else -> launcher.call(number, selected?.id)
+            else -> launcher.call(number, selected?.id, video)
         }
     }
 
@@ -182,7 +183,7 @@ fun DialerScreen(onAddAccount: () -> Unit, onOpenShortcuts: (accountId: String?)
             label = "dialInput",
         ) { keyboard ->
             if (keyboard) {
-                AddressInput(number, onChange = { number = it }, onCall = ::place)
+                AddressInput(number, onChange = { number = it }, onCall = { place() })
             } else {
                 DialPad(
                     onDigit = {
@@ -203,12 +204,26 @@ fun DialerScreen(onAddAccount: () -> Unit, onOpenShortcuts: (accountId: String?)
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Left: the shortcut keys. Right: delete, there only while a number is being typed
-            // (it keeps its place, so the call button stays in the middle).
-            SideAction(onClick = { onOpenShortcuts(selected?.id) }) {
-                Icon(Icons.Rounded.Apps, contentDescription = "快捷键")
+            // Left: the shortcut keys, or a video call while a number is typed and video calls are
+            // on. Right: delete, there only while a number is being typed (both keep their place,
+            // so the call button stays in the middle).
+            val videoKey = settings.videoCalls && number.isNotBlank() && active != null
+            AnimatedContent(
+                targetState = videoKey,
+                transitionSpec = { fadeIn(tween(140)) togetherWith fadeOut(tween(100)) },
+                label = "leftKey",
+            ) { video ->
+                if (video) {
+                    SideAction(onClick = { place(video = true) }) {
+                        Icon(Icons.Rounded.Videocam, contentDescription = "视频呼叫")
+                    }
+                } else {
+                    SideAction(onClick = { onOpenShortcuts(selected?.id) }) {
+                        Icon(Icons.Rounded.Apps, contentDescription = "快捷键")
+                    }
+                }
             }
-            CallButton(enabled = number.isNotBlank() || active == null, onClick = ::place)
+            CallButton(enabled = number.isNotBlank() || active == null, onClick = { place() })
             Box(Modifier.size(SideActionSize)) {
                 androidx.compose.animation.AnimatedVisibility(
                     visible = number.isNotEmpty(),
