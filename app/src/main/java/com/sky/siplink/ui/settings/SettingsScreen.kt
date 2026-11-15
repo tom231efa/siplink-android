@@ -25,6 +25,7 @@ import androidx.compose.material.icons.rounded.DoNotDisturbOn
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.ManageAccounts
 import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.ScreenLockPortrait
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material.icons.rounded.VerifiedUser
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -47,7 +48,9 @@ import com.sky.siplink.ui.components.LocalMessenger
 import com.sky.siplink.ui.components.NavRow
 import com.sky.siplink.ui.components.SectionCard
 import com.sky.siplink.ui.components.SwitchRow
+import com.sky.siplink.ui.components.openLockScreenCallSettings
 import com.sky.siplink.ui.components.rememberCallLauncher
+import com.sky.siplink.ui.components.rememberLockScreenCallAccess
 
 @Composable
 fun SettingsScreen(
@@ -145,6 +148,16 @@ fun SettingsScreen(
                             runCatching { context.startActivity(intent) }
                                 .onFailure { messenger("无法打开电池优化设置") }
                         },
+                    )
+                }
+                // Before Android 14 the system has no switch for this: it is always allowed.
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    val lockScreenCalls by rememberLockScreenCallAccess()
+                    NavRow(
+                        title = "锁屏显示来电",
+                        trailing = if (lockScreenCalls) "已允许" else "未允许",
+                        icon = Icons.Rounded.ScreenLockPortrait,
+                        onClick = { if (!context.openLockScreenCallSettings()) messenger("无法打开全屏通知设置") },
                     )
                 }
             }

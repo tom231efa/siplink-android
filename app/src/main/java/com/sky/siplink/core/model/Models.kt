@@ -286,4 +286,6 @@ data class Settings(
     val forwardNoAnswer: String = "",
     val forwardNoAnswerSeconds: Int = 20,
     val features: FeatureCodes = FeatureCodes(),
+    /** The user does not want to be asked again to let calls show on the lock screen. */
+    val lockScreenPromptDeclined: Boolean = false,
 )

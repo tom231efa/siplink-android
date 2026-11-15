@@ -32,7 +32,7 @@ class CallNotifier(private val context: Context) {
     fun keepAlive(registered: Int, enabled: Int): Notification =
         NotificationCompat.Builder(context, CHANNEL_SERVICE)
             .setSmallIcon(R.drawable.ic_stat_call)
-            .setContentTitle("SipLink 正在后台保持在线")
+            .setContentTitle("SipLink 运行中")
             .setContentText(
                 if (enabled == 0) "没有启用的 SIP 账号" else "$registered / $enabled 个账号已注册",
             )

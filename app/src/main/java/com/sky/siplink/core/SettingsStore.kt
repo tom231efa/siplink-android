@@ -61,6 +61,7 @@ class SettingsStore(private val config: Config) {
                 dndOn = text(KEY_CODE_DND_ON, f.dndOn),
                 dndOff = text(KEY_CODE_DND_OFF, f.dndOff),
             ),
+            lockScreenPromptDeclined = bool(KEY_LOCK_SCREEN_PROMPT_DECLINED, d.lockScreenPromptDeclined),
         )
     }
 
@@ -95,6 +96,7 @@ class SettingsStore(private val config: Config) {
         config.setString(SECTION, KEY_CODE_INTERCOM, f.intercom)
         config.setString(SECTION, KEY_CODE_DND_ON, f.dndOn)
         config.setString(SECTION, KEY_CODE_DND_OFF, f.dndOff)
+        config.setBool(SECTION, KEY_LOCK_SCREEN_PROMPT_DECLINED, value.lockScreenPromptDeclined)
         // Writing the file means writing every account in it as well, and a text field changes
         // the settings with each key stroke: one write once the changes have stopped coming.
         unsaved = true
@@ -156,5 +158,6 @@ class SettingsStore(private val config: Config) {
         private const val KEY_CODE_INTERCOM = "code_intercom"
         private const val KEY_CODE_DND_ON = "code_dnd_on"
         private const val KEY_CODE_DND_OFF = "code_dnd_off"
+        private const val KEY_LOCK_SCREEN_PROMPT_DECLINED = "lock_screen_prompt_declined"
     }
 }
