@@ -46,7 +46,9 @@ import com.sky.siplink.core.model.ThemeMode
 import com.sky.siplink.engine
 import com.sky.siplink.ui.components.ChoiceRow
 import com.sky.siplink.ui.components.LocalMessenger
+import com.sky.siplink.ui.components.ManagedNotice
 import com.sky.siplink.ui.components.NavRow
+import com.sky.siplink.ui.components.Personal
 import com.sky.siplink.ui.components.SectionCard
 import com.sky.siplink.ui.components.SwitchRow
 import com.sky.siplink.ui.components.openLockScreenCallSettings
@@ -80,6 +82,7 @@ fun SettingsScreen(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            ManagedNotice()
             SectionCard(title = "账号") {
                 NavRow(
                     title = "SIP 账号",
@@ -91,12 +94,15 @@ fun SettingsScreen(
             }
 
             SectionCard(title = "呼叫与话务功能") {
-                SwitchRow(
-                    title = "免打扰",
-                    icon = Icons.Rounded.DoNotDisturbOn,
-                    checked = settings.doNotDisturb,
-                    onCheckedChange = { value -> launcher.doNotDisturb(value) },
-                )
+                // Whether to be disturbed stays the user's own switch under a managed configuration.
+                Personal {
+                    SwitchRow(
+                        title = "免打扰",
+                        icon = Icons.Rounded.DoNotDisturbOn,
+                        checked = settings.doNotDisturb,
+                        onCheckedChange = { value -> launcher.doNotDisturb(value) },
+                    )
+                }
                 SwitchRow(
                     title = "视频通话",
                     icon = Icons.Rounded.Videocam,
@@ -169,38 +175,41 @@ fun SettingsScreen(
                 }
             }
 
-            SectionCard(title = "外观") {
-                Text(
-                    "主题",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(start = 16.dp, top = 10.dp),
-                )
-                val themes = listOf(ThemeMode.SYSTEM to "跟随系统", ThemeMode.LIGHT to "浅色", ThemeMode.DARK to "深色")
-                ChoiceRow(
-                    options = themes,
-                    selected = settings.themeMode,
-                    onSelect = { mode -> engine.updateSettings { it.copy(themeMode = mode) } },
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                )
-                Text(
-                    "通话横幅位置",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(start = 16.dp, top = 10.dp),
-                )
-                val positions = listOf(BannerPosition.TOP to "顶部", BannerPosition.BOTTOM to "底部")
-                ChoiceRow(
-                    options = positions,
-                    selected = settings.callBannerPosition,
-                    onSelect = { position -> engine.updateSettings { it.copy(callBannerPosition = position) } },
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                )
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    SwitchRow(
-                        title = "动态配色",
-                        icon = Icons.Rounded.Palette,
-                        checked = settings.dynamicColor,
-                        onCheckedChange = { value -> engine.updateSettings { it.copy(dynamicColor = value) } },
+            // The look of the app stays the user's own under a managed configuration.
+            Personal {
+                SectionCard(title = "外观") {
+                    Text(
+                        "主题",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(start = 16.dp, top = 10.dp),
                     )
+                    val themes = listOf(ThemeMode.SYSTEM to "跟随系统", ThemeMode.LIGHT to "浅色", ThemeMode.DARK to "深色")
+                    ChoiceRow(
+                        options = themes,
+                        selected = settings.themeMode,
+                        onSelect = { mode -> engine.updateSettings { it.copy(themeMode = mode) } },
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
+                    Text(
+                        "通话横幅位置",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(start = 16.dp, top = 10.dp),
+                    )
+                    val positions = listOf(BannerPosition.TOP to "顶部", BannerPosition.BOTTOM to "底部")
+                    ChoiceRow(
+                        options = positions,
+                        selected = settings.callBannerPosition,
+                        onSelect = { position -> engine.updateSettings { it.copy(callBannerPosition = position) } },
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        SwitchRow(
+                            title = "动态配色",
+                            icon = Icons.Rounded.Palette,
+                            checked = settings.dynamicColor,
+                            onCheckedChange = { value -> engine.updateSettings { it.copy(dynamicColor = value) } },
+                        )
+                    }
                 }
             }
 

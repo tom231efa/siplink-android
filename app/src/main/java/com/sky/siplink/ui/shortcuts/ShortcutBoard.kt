@@ -40,6 +40,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -68,7 +69,10 @@ internal fun ShortcutBoard(
     onKey: (Shortcut) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val settings by LocalContext.current.engine.settings.settings.collectAsStateWithLifecycle()
+    val engine = LocalContext.current.engine
+    val settings by engine.settings.settings.collectAsStateWithLifecycle()
+    // Read from the engine rather than the screen: the board is also shown during a call.
+    val managed by engine.lock.managed.collectAsStateWithLifecycle()
     var query by rememberSaveable { mutableStateOf("") }
 
     // 2000 keys filter quickly, but not on every recomposition.
@@ -144,6 +148,8 @@ internal fun ShortcutBoard(
                             ShortcutAction.FORWARD -> settings.forwardAlways == shortcut.number
                             else -> false
                         },
+                        // Forwarding belongs to a managed configuration: the key is grey, and a tap says why.
+                        dimmed = managed && shortcut.action == ShortcutAction.FORWARD,
                         onClick = { onKey(shortcut) },
                         modifier = Modifier.animateItem(),
                     )
@@ -156,12 +162,15 @@ internal fun ShortcutBoard(
 /**
  * One key of the board: its picture and the name the user gave it, nothing else. A lit key is a
  * switch that is currently on (do not disturb, forwarding).
+ *
+ * @param dimmed drawn grey although it can be tapped: the key has nothing to do, and the tap says why
  */
 @Composable
 private fun ShortcutKey(
     shortcut: Shortcut,
     editing: Boolean,
     lit: Boolean,
+    dimmed: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -181,6 +190,7 @@ private fun ShortcutKey(
             Column(
                 Modifier
                     .fillMaxSize()
+                    .graphicsLayer { alpha = if (dimmed) 0.38f else 1f }
                     .padding(horizontal = 8.dp, vertical = 10.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,

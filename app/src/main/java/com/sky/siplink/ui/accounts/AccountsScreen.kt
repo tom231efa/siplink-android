@@ -75,17 +75,21 @@ import com.sky.siplink.engine
 import com.sky.siplink.ui.Motion
 import com.sky.siplink.ui.components.Avatar
 import com.sky.siplink.ui.components.EmptyState
+import com.sky.siplink.ui.components.LocalConfigLocked
 import com.sky.siplink.ui.components.LocalMessenger
+import com.sky.siplink.ui.components.ManagedNotice
 import com.sky.siplink.ui.components.StatusDot
 import com.sky.siplink.ui.components.regStateColor
 import com.sky.siplink.ui.components.regStateLabel
 
+/** The accounts and their registrations. Where the configuration is locked they are only listed: nothing adds, imports or switches one. */
 @Composable
 fun AccountsScreen(onBack: () -> Unit, onAdd: () -> Unit, onEdit: (String) -> Unit) {
     val context = LocalContext.current
     val manager = context.engine.accounts
     val accounts by manager.accounts.collectAsStateWithLifecycle()
     val messenger = LocalMessenger.current
+    val locked = LocalConfigLocked.current
     val focusManager = LocalFocusManager.current
     var query by rememberSaveable { mutableStateOf("") }
     var searching by rememberSaveable { mutableStateOf(false) }
@@ -129,8 +133,10 @@ fun AccountsScreen(onBack: () -> Unit, onAdd: () -> Unit, onEdit: (String) -> Un
                     IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回") }
                 },
                 actions = {
-                    IconButton(onClick = { if (full) messenger(AccountRules.Error.LIMIT_REACHED.message) else importOpen = true }) {
-                        Icon(Icons.Rounded.UploadFile, contentDescription = "批量导入账号")
+                    if (!locked) {
+                        IconButton(onClick = { if (full) messenger(AccountRules.Error.LIMIT_REACHED.message) else importOpen = true }) {
+                            Icon(Icons.Rounded.UploadFile, contentDescription = "批量导入账号")
+                        }
                     }
                     IconButton(
                         onClick = { if (searching) closeSearch() else openSearch() },
@@ -170,14 +176,14 @@ fun AccountsScreen(onBack: () -> Unit, onAdd: () -> Unit, onEdit: (String) -> Un
                     shape = CircleShape,
                 )
             }
+            ManagedNotice(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp))
             if (accounts.isEmpty()) {
                 EmptyState(
                     icon = Icons.Rounded.ManageAccounts,
-                    title = "添加第一个 SIP 账号",
+                    title = if (locked) "没有 SIP 账号" else "添加第一个 SIP 账号",
                     modifier = Modifier.fillMaxSize(),
-                ) {
-                    Button(onClick = ::add) { Text("添加账号") }
-                }
+                    action = if (locked) null else ({ Button(onClick = ::add) { Text("添加账号") } }),
+                )
             } else {
                 LazyColumn(
                     state = listState,
@@ -203,6 +209,7 @@ fun AccountsScreen(onBack: () -> Unit, onAdd: () -> Unit, onEdit: (String) -> Un
                             account = account,
                             onClick = { onEdit(account.id) },
                             onToggle = { manager.setEnabled(account.id, it) },
+                            canToggle = !locked,
                             modifier = Modifier.animateItem(),
                         )
                     }
@@ -210,7 +217,7 @@ fun AccountsScreen(onBack: () -> Unit, onAdd: () -> Unit, onEdit: (String) -> Un
             }
         }
 
-        if (accounts.isNotEmpty()) {
+        if (accounts.isNotEmpty() && !locked) {
             ExtendedFloatingActionButton(
                 onClick = ::add,
                 expanded = fabExpanded,
@@ -223,7 +230,7 @@ fun AccountsScreen(onBack: () -> Unit, onAdd: () -> Unit, onEdit: (String) -> Un
         }
     }
 
-    if (importOpen) {
+    if (importOpen && !locked) {
         AccountImportSheet(onDismiss = { importOpen = false })
     }
 }
@@ -280,6 +287,7 @@ private fun AccountRow(
     account: SipAccount,
     onClick: () -> Unit,
     onToggle: (Boolean) -> Unit,
+    canToggle: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -354,7 +362,7 @@ private fun AccountRow(
                 }
             }
             Spacer(Modifier.width(8.dp))
-            Switch(checked = account.enabled, onCheckedChange = onToggle)
+            Switch(checked = account.enabled, onCheckedChange = onToggle, enabled = canToggle)
         }
     }
 }

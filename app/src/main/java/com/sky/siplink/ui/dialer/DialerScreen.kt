@@ -51,6 +51,7 @@ import androidx.compose.material.icons.rounded.Dialpad
 import androidx.compose.material.icons.rounded.DoNotDisturbOn
 import androidx.compose.material.icons.rounded.Keyboard
 import androidx.compose.material.icons.rounded.PersonAdd
+import androidx.compose.material.icons.rounded.PersonOff
 import androidx.compose.material.icons.rounded.SupportAgent
 import androidx.compose.material.icons.rounded.Videocam
 import androidx.compose.material.icons.rounded.Voicemail
@@ -90,6 +91,7 @@ import com.sky.siplink.core.model.SipAccount
 import com.sky.siplink.engine
 import com.sky.siplink.ui.components.FeatureSheet
 import com.sky.siplink.ui.components.AccountPickerSheet
+import com.sky.siplink.ui.components.LocalConfigLocked
 import com.sky.siplink.ui.components.LocalMessenger
 import com.sky.siplink.ui.components.StatusDot
 import com.sky.siplink.ui.components.pressScale
@@ -144,7 +146,7 @@ fun DialerScreen(onAddAccount: () -> Unit, onOpenShortcuts: (accountId: String?)
                 Icon(Icons.Rounded.SupportAgent, contentDescription = "话务功能")
             }
             Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                AccountChip(active, onClick = { if (active == null) onAddAccount() else pickerOpen = true })
+                AccountChip(active, canAdd = !LocalConfigLocked.current, onClick = { if (active == null) onAddAccount() else pickerOpen = true })
             }
             IconButton(onClick = { keyboardMode = !keyboardMode }) {
                 AnimatedContent(keyboardMode, label = "inputMode") { keyboard ->
@@ -269,8 +271,9 @@ fun DialerScreen(onAddAccount: () -> Unit, onOpenShortcuts: (accountId: String?)
     }
 }
 
+/** @param canAdd without an account the chip offers to add one; false where the configuration is locked, it then only says there is none */
 @Composable
-private fun AccountChip(account: SipAccount?, onClick: () -> Unit) {
+private fun AccountChip(account: SipAccount?, canAdd: Boolean, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
         shape = CircleShape,
@@ -281,9 +284,9 @@ private fun AccountChip(account: SipAccount?, onClick: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (account == null) {
-                Icon(Icons.Rounded.PersonAdd, contentDescription = null, modifier = Modifier.size(18.dp))
+                Icon(if (canAdd) Icons.Rounded.PersonAdd else Icons.Rounded.PersonOff, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("添加 SIP 账号", style = MaterialTheme.typography.labelLarge)
+                Text(if (canAdd) "添加 SIP 账号" else "没有 SIP 账号", style = MaterialTheme.typography.labelLarge)
                 Spacer(Modifier.width(8.dp))
             } else {
                 StatusDot(account.state)

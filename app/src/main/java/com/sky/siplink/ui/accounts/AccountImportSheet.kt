@@ -18,6 +18,8 @@ fun AccountImportSheet(onDismiss: () -> Unit) {
         formatHint = AccountImport.FORMAT_HINT,
         placeholder = "1001,password,pbx.example.com,tls,张三,,前台",
         onImport = { text ->
+            // The accounts screen does not offer the import where the configuration is locked; the
+            // manager refuses it all the same and then reports that it created none.
             val existing = manager.accounts.value.map { AccountRules.identityKey(it.username, it.domain) }
             val result = AccountImport.parse(text, existing, manager.accounts.value.map { it.name })
             val created = if (result.drafts.isEmpty()) 0 else manager.addAll(result.drafts)

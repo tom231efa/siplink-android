@@ -36,7 +36,8 @@ import kotlin.math.roundToInt
 
 /**
  * A row of options of which exactly one is chosen. The chosen one is told apart by colour
- * alone: a filled pill that glides over to it, without a check mark.
+ * alone: a filled pill that glides over to it, without a check mark. Where the configuration is
+ * locked ([LocalConfigLocked]) the row is grey, still shows the choice, and takes no tap.
  *
  * @param options each value with the text it is shown as
  * @param dimmed options drawn grey: they can still be tapped, and [onSelect] decides what a tap does
@@ -55,6 +56,9 @@ fun <T> ChoiceRow(
     selectedContent: Color = MaterialTheme.colorScheme.onPrimary,
     dimmed: (T) -> Boolean = { false },
 ) {
+    val locked = LocalConfigLocked.current
+    val pill = if (locked) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f) else thumb
+    val onPill = if (locked) content else selectedContent
     val index = options.indexOfFirst { it.first == selected }.coerceAtLeast(0)
     // Straight there, without a bounce. Read while placing, so the glide does not recompose.
     val position by animateFloatAsState(index.toFloat(), spring(dampingRatio = 1f, stiffness = 600f), label = "choice")
@@ -75,7 +79,7 @@ fun <T> ChoiceRow(
                 .width(cell)
                 .fillMaxHeight()
                 .clip(CircleShape)
-                .background(thumb),
+                .background(pill),
         )
         Row(
             Modifier
@@ -83,7 +87,7 @@ fun <T> ChoiceRow(
                 .selectableGroup(),
         ) {
             options.forEachIndexed { at, (value, label) ->
-                val color by animateColorAsState(if (at == index) selectedContent else content, label = "choiceText")
+                val color by animateColorAsState(if (at == index) onPill else content, label = "choiceText")
                 Box(
                     Modifier
                         .weight(1f)
@@ -91,6 +95,7 @@ fun <T> ChoiceRow(
                         .clip(CircleShape)
                         .selectable(
                             selected = at == index,
+                            enabled = !locked,
                             role = Role.RadioButton,
                             interactionSource = remember { MutableInteractionSource() },
                             // The pill is the feedback.
@@ -101,7 +106,7 @@ fun <T> ChoiceRow(
                 ) {
                     Text(
                         label,
-                        color = if (dimmed(value)) color.copy(alpha = 0.38f) else color,
+                        color = if (dimmed(value) || (locked && at != index)) color.copy(alpha = 0.38f) else color,
                         style = MaterialTheme.typography.labelLarge,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,

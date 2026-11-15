@@ -37,6 +37,7 @@ import com.sky.siplink.ui.components.ChoiceRow
 import com.sky.siplink.ui.components.DropdownField
 import com.sky.siplink.ui.components.FoldingCard
 import com.sky.siplink.ui.components.FormField
+import com.sky.siplink.ui.components.LocalConfigLocked
 import com.sky.siplink.ui.components.LocalMessenger
 import com.sky.siplink.ui.components.NavRow
 import com.sky.siplink.ui.components.SectionCard
@@ -55,6 +56,8 @@ private val advancedErrors = setOf(
 /**
  * One LDAP directory. The server, the log-in and what the directory does for calls come first;
  * what has a default that fits most servers (attributes, filters, result limit) is folded away.
+ * Where the configuration is locked the directory is only shown: its fields take no input, and
+ * nothing saves or deletes it.
  *
  * @param directoryId the directory to edit, null for a new one
  */
@@ -63,6 +66,7 @@ fun LdapEditScreen(directoryId: String?, onBack: () -> Unit, onOpenTls: () -> Un
     val engine = LocalContext.current.engine
     val manager = engine.directory
     val messenger = LocalMessenger.current
+    val locked = LocalConfigLocked.current
     val accounts by engine.accounts.accounts.collectAsStateWithLifecycle()
     val stored = remember { manager.directories.value.firstOrNull { it.id == directoryId } }
     val initial = stored ?: LdapDirectory()
@@ -130,7 +134,11 @@ fun LdapEditScreen(directoryId: String?, onBack: () -> Unit, onOpenTls: () -> Un
     }
 
     SubScreen(
-        title = if (stored == null) "添加通讯录" else "编辑通讯录",
+        title = when {
+            stored == null -> "添加通讯录"
+            locked -> "通讯录详情"
+            else -> "编辑通讯录"
+        },
         onBack = onBack,
         actions = { TextButton(onClick = ::save) { Text("保存") } },
     ) {
@@ -299,7 +307,7 @@ fun LdapEditScreen(directoryId: String?, onBack: () -> Unit, onOpenTls: () -> Un
             )
         }
 
-        if (stored != null) {
+        if (stored != null && !locked) {
             OutlinedButton(onClick = { confirmDelete = true }, modifier = Modifier.fillMaxWidth()) {
                 Text("删除通讯录", color = MaterialTheme.colorScheme.error)
             }
@@ -307,7 +315,7 @@ fun LdapEditScreen(directoryId: String?, onBack: () -> Unit, onOpenTls: () -> Un
         Spacer(Modifier.height(8.dp))
     }
 
-    if (confirmDelete && stored != null) {
+    if (confirmDelete && stored != null && !locked) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
             title = { Text("删除“${stored.title}”？") },

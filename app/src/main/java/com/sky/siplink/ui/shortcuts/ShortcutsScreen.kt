@@ -48,7 +48,9 @@ import com.sky.siplink.engine
 import com.sky.siplink.openCallScreen
 import com.sky.siplink.ui.components.CsvImportSheet
 import com.sky.siplink.ui.components.ImportOutcome
+import com.sky.siplink.ui.components.LocalConfigLocked
 import com.sky.siplink.ui.components.LocalMessenger
+import com.sky.siplink.ui.components.ManagedNotice
 import com.sky.siplink.ui.components.importReport
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -57,7 +59,8 @@ import kotlinx.coroutines.withContext
 /**
  * The shortcut keys, reached from the dial pad: a searchable, grouped board of programmable
  * keys like the function keys of a desk phone. Tapping a key runs it; in edit mode it opens the
- * key instead.
+ * key instead. Where the configuration is locked the keys only run (and can be exported): there
+ * is no edit mode, and nothing adds or imports a key or changes a category.
  *
  * @param accountId the account chosen on the dial pad, offered first when a key asks for its line
  */
@@ -69,6 +72,7 @@ fun ShortcutsScreen(accountId: String?, onBack: () -> Unit) {
     val all by manager.shortcuts.collectAsStateWithLifecycle()
     val loaded by manager.loaded.collectAsStateWithLifecycle()
     val messenger = LocalMessenger.current
+    val locked = LocalConfigLocked.current
     val scope = rememberCoroutineScope()
     val runner = rememberShortcutRunner(accountId) { outcome ->
         if (outcome.showCall) context.openCallScreen()
@@ -76,7 +80,8 @@ fun ShortcutsScreen(accountId: String?, onBack: () -> Unit) {
     }
 
     var category by rememberSaveable { mutableStateOf<String?>(null) }
-    var editing by rememberSaveable { mutableStateOf(false) }
+    var editMode by rememberSaveable { mutableStateOf(false) }
+    val editing = editMode && !locked
     var edited by remember { mutableStateOf<Shortcut?>(null) }
     var importOpen by remember { mutableStateOf(false) }
     var menuOpen by remember { mutableStateOf(false) }
@@ -109,25 +114,29 @@ fun ShortcutsScreen(accountId: String?, onBack: () -> Unit) {
                 IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回") }
             },
             actions = {
-                TextButton(onClick = { editing = !editing }, enabled = all.isNotEmpty() || editing) {
-                    AnimatedContent(editing, label = "editMode") { on -> Text(if (on) "完成" else "编辑") }
-                }
-                IconButton(
-                    onClick = { edited = Shortcut(id = NEW_KEY, label = "", category = category.orEmpty()) },
-                    enabled = loaded,
-                ) {
-                    Icon(Icons.Rounded.Add, contentDescription = "新建快捷键")
+                if (!locked) {
+                    TextButton(onClick = { editMode = !editMode }, enabled = all.isNotEmpty() || editing) {
+                        AnimatedContent(editing, label = "editMode") { on -> Text(if (on) "完成" else "编辑") }
+                    }
+                    IconButton(
+                        onClick = { edited = Shortcut(id = NEW_KEY, label = "", category = category.orEmpty()) },
+                        enabled = loaded,
+                    ) {
+                        Icon(Icons.Rounded.Add, contentDescription = "新建快捷键")
+                    }
                 }
                 IconButton(onClick = { menuOpen = true }) { Icon(Icons.Rounded.MoreVert, contentDescription = "更多") }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    DropdownMenuItem(
-                        text = { Text("批量导入") },
-                        enabled = loaded,
-                        onClick = {
-                            menuOpen = false
-                            importOpen = true
-                        },
-                    )
+                    if (!locked) {
+                        DropdownMenuItem(
+                            text = { Text("批量导入") },
+                            enabled = loaded,
+                            onClick = {
+                                menuOpen = false
+                                importOpen = true
+                            },
+                        )
+                    }
                     DropdownMenuItem(
                         text = { Text("导出为 CSV") },
                         enabled = all.isNotEmpty(),
@@ -137,7 +146,7 @@ fun ShortcutsScreen(accountId: String?, onBack: () -> Unit) {
                         },
                     )
                     val selected = category
-                    if (!selected.isNullOrEmpty()) {
+                    if (!selected.isNullOrEmpty() && !locked) {
                         DropdownMenuItem(
                             text = { Text("编辑分类“$selected”") },
                             onClick = {
@@ -150,9 +159,11 @@ fun ShortcutsScreen(accountId: String?, onBack: () -> Unit) {
             },
         )
 
+        ManagedNotice(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp))
         when {
             !loaded -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
             all.isEmpty() -> EmptyBoard(
+                canAdd = !locked,
                 onAdd = { edited = Shortcut(id = NEW_KEY, label = "") },
                 onImport = { importOpen = true },
             )
@@ -169,7 +180,7 @@ fun ShortcutsScreen(accountId: String?, onBack: () -> Unit) {
 
     edited?.let { shortcut -> ShortcutEditSheet(shortcut, onDismiss = { edited = null }) }
 
-    if (importOpen) {
+    if (importOpen && !locked) {
         CsvImportSheet(
             title = "批量导入快捷键",
             formatHint = ShortcutRules.FORMAT_HINT +
@@ -198,7 +209,7 @@ fun ShortcutsScreen(accountId: String?, onBack: () -> Unit) {
         )
     }
 
-    renaming?.let { old ->
+    renaming?.takeUnless { locked }?.let { old ->
         CategoryNameDialog(
             title = "分类",
             initial = old,
@@ -219,8 +230,9 @@ fun ShortcutsScreen(accountId: String?, onBack: () -> Unit) {
     }
 }
 
+/** @param canAdd false where the configuration is locked: the board then offers nothing to fill it with */
 @Composable
-private fun EmptyBoard(onAdd: () -> Unit, onImport: () -> Unit) {
+private fun EmptyBoard(canAdd: Boolean, onAdd: () -> Unit, onImport: () -> Unit) {
     Column(
         Modifier
             .fillMaxSize()
@@ -236,10 +248,12 @@ private fun EmptyBoard(onAdd: () -> Unit, onImport: () -> Unit) {
         )
         Spacer(Modifier.height(12.dp))
         Text("还没有快捷键", style = MaterialTheme.typography.titleMedium)
-        Spacer(Modifier.height(20.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedButton(onClick = onImport) { Text("批量导入") }
-            Button(onClick = onAdd) { Text("新建快捷键") }
+        if (canAdd) {
+            Spacer(Modifier.height(20.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedButton(onClick = onImport) { Text("批量导入") }
+                Button(onClick = onAdd) { Text("新建快捷键") }
+            }
         }
     }
 }

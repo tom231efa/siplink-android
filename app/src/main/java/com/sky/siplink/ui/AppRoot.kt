@@ -63,6 +63,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.sky.siplink.core.logic.ManagedConfig
 import com.sky.siplink.core.model.BannerPosition
 import com.sky.siplink.core.model.CallInfo
 import com.sky.siplink.core.model.CallPhase
@@ -70,6 +71,7 @@ import com.sky.siplink.engine
 import com.sky.siplink.openCallScreen
 import com.sky.siplink.ui.accounts.AccountEditScreen
 import com.sky.siplink.ui.accounts.AccountsScreen
+import com.sky.siplink.ui.components.LocalConfigLocked
 import com.sky.siplink.ui.components.LocalMessenger
 import com.sky.siplink.ui.components.pressScale
 import com.sky.siplink.ui.dialer.DialerScreen
@@ -128,6 +130,8 @@ fun AppRoot() {
     val route = backStackEntry?.destination?.route
     val topLevel = route == null || isTab(route)
     val call by engine.calls.call.collectAsStateWithLifecycle()
+    // A managed configuration is only looked at: the screens below read this through LocalConfigLocked.
+    val managed by engine.lock.managed.collectAsStateWithLifecycle()
     // Only the one setting this screen depends on, so that other settings do not recompose it.
     val bannerAtTop by remember(engine) {
         engine.settings.settings.map { it.callBannerPosition == BannerPosition.TOP }.distinctUntilChanged()
@@ -148,7 +152,7 @@ fun AppRoot() {
         }
     }
 
-    CompositionLocalProvider(LocalMessenger provides messenger) {
+    CompositionLocalProvider(LocalMessenger provides messenger, LocalConfigLocked provides managed) {
         StartupPermissions()
         Scaffold(
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -197,7 +201,8 @@ fun AppRoot() {
             ) {
                 composable(Tab.DIALER.route) {
                     DialerScreen(
-                        onAddAccount = { navController.navigate(Routes.ACCOUNT_NEW) },
+                        // Without an account the dial pad leads to the form for one, which a managed configuration has no use for.
+                        onAddAccount = { if (managed) messenger(ManagedConfig.NOTICE) else navController.navigate(Routes.ACCOUNT_NEW) },
                         onOpenShortcuts = { accountId -> navController.navigate(Routes.shortcuts(accountId)) },
                     )
                 }

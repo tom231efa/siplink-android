@@ -26,6 +26,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -103,17 +104,18 @@ fun SwitchRow(
     icon: ImageVector? = null,
     enabled: Boolean = true,
 ) {
+    val usable = enabled && !LocalConfigLocked.current
     Row(
         modifier
             .fillMaxWidth()
-            .clickable(enabled = enabled) { onCheckedChange(!checked) }
+            .clickable(enabled = usable) { onCheckedChange(!checked) }
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         RowIcon(icon)
         RowText(title, subtitle, Modifier.weight(1f))
         Spacer(Modifier.width(12.dp))
-        Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled)
+        Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = usable)
     }
 }
 
@@ -165,7 +167,12 @@ private fun RowText(title: String, subtitle: String?, modifier: Modifier) {
     }
 }
 
-/** Outlined text field with the app's rounded shape and an optional error line. */
+/**
+ * Outlined text field with the app's rounded shape and an optional error line.
+ *
+ * Where the configuration is locked ([LocalConfigLocked]) it shows its value and takes no input;
+ * a password field then shows neither the password nor how long it is.
+ */
 @Composable
 fun FormField(
     value: String,
@@ -179,23 +186,26 @@ fun FormField(
     singleLine: Boolean = true,
     password: Boolean = false,
 ) {
+    val locked = LocalConfigLocked.current
     var revealed by remember { mutableStateOf(false) }
     OutlinedTextField(
-        value = value,
+        value = if (password && locked) LOCKED_PASSWORD else value,
         onValueChange = onValueChange,
         modifier = modifier.fillMaxWidth(),
+        enabled = !locked,
         label = { Text(label) },
         placeholder = placeholder?.let { { Text(it) } },
         supportingText = (error ?: supporting)?.let { { Text(it) } },
         isError = error != null,
         singleLine = singleLine,
         shape = MaterialTheme.shapes.medium,
-        visualTransformation = if (password && !revealed) PasswordVisualTransformation() else VisualTransformation.None,
+        colors = lockedFieldColors(),
+        visualTransformation = if (password && (locked || !revealed)) PasswordVisualTransformation() else VisualTransformation.None,
         keyboardOptions = KeyboardOptions(
             keyboardType = if (password) KeyboardType.Password else keyboardType,
             autoCorrectEnabled = false,
         ),
-        trailingIcon = if (password) {
+        trailingIcon = if (password && !locked) {
             {
                 IconButton(onClick = { revealed = !revealed }) {
                     Icon(
@@ -210,8 +220,16 @@ fun FormField(
     )
 }
 
+/** Stands in a password field where the configuration is locked: eight dots, whatever the password. */
+private const val LOCKED_PASSWORD = "········"
+
+/** A field is only ever disabled where the configuration is locked. It is then there to be read: its value stays darker than the frame around it. */
+@Composable
+private fun lockedFieldColors() = OutlinedTextFieldDefaults.colors(disabledTextColor = MaterialTheme.colorScheme.onSurfaceVariant)
+
 /**
- * A field that opens a list to choose from, in the shape of [FormField].
+ * A field that opens a list to choose from, in the shape of [FormField]. Where the configuration
+ * is locked ([LocalConfigLocked]) it shows the choice made and does not open.
  *
  * @param value text of the choice made
  * @param selected the choice made, shown in the accent colour in the list
@@ -230,23 +248,26 @@ fun <T> DropdownField(
     error: String? = null,
     leading: (@Composable (T) -> Unit)? = null,
 ) {
+    val locked = LocalConfigLocked.current
     var expanded by remember { mutableStateOf(false) }
-    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }, modifier = modifier) {
+    ExposedDropdownMenuBox(expanded = expanded && !locked, onExpandedChange = { expanded = it && !locked }, modifier = modifier) {
         OutlinedTextField(
             value = value,
             onValueChange = {},
             modifier = Modifier
                 .fillMaxWidth()
-                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = options.isNotEmpty()),
+                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = options.isNotEmpty() && !locked),
+            enabled = !locked,
             readOnly = true,
             label = { Text(label, maxLines = 1) },
             supportingText = error?.let { { Text(it) } },
             isError = error != null,
             singleLine = true,
             shape = MaterialTheme.shapes.medium,
+            colors = lockedFieldColors(),
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
         )
-        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        ExposedDropdownMenu(expanded = expanded && !locked, onDismissRequest = { expanded = false }) {
             options.forEach { option ->
                 DropdownMenuItem(
                     text = {

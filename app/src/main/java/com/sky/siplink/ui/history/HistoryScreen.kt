@@ -56,6 +56,7 @@ import com.sky.siplink.engine
 import com.sky.siplink.ui.components.Avatar
 import com.sky.siplink.ui.components.EmptyState
 import com.sky.siplink.ui.components.FeatureSheet
+import com.sky.siplink.ui.components.LocalConfigLocked
 import com.sky.siplink.ui.components.rememberCallLauncher
 import com.sky.siplink.ui.shortcuts.NewShortcutSheet
 import com.sky.siplink.ui.theme.Brand
@@ -97,6 +98,8 @@ fun HistoryScreen() {
     var confirmClear by remember { mutableStateOf(false) }
     var featuresFor by remember { mutableStateOf<HistoryEntry?>(null) }
     var shortcutFor by remember { mutableStateOf<HistoryEntry?>(null) }
+    // The history stays the user's own under a managed configuration; a new shortcut key is not.
+    val canAddShortcut = !LocalConfigLocked.current
 
     Column(Modifier.fillMaxSize()) {
         TopAppBar(
@@ -135,7 +138,7 @@ fun HistoryScreen() {
                             entry = entry,
                             time = row.text,
                             onCall = { launcher.call(entry.address) },
-                            onAddShortcut = { shortcutFor = entry },
+                            onAddShortcut = if (canAddShortcut) ({ shortcutFor = entry }) else null,
                             onMore = { featuresFor = entry },
                             onDelete = { history.remove(entry.id) },
                             modifier = Modifier.animateItem(),
@@ -152,10 +155,10 @@ fun HistoryScreen() {
             onDismiss = { featuresFor = null },
             name = entry.name,
             target = entry.address,
-            onAddShortcut = { shortcutFor = entry },
+            onAddShortcut = if (canAddShortcut) ({ shortcutFor = entry }) else null,
         )
     }
-    shortcutFor?.let { entry ->
+    shortcutFor?.takeIf { canAddShortcut }?.let { entry ->
         NewShortcutSheet(name = entry.name, number = entry.address, onDismiss = { shortcutFor = null })
     }
 
@@ -182,12 +185,13 @@ private fun dayLabel(day: LocalDate, today: LocalDate): String = when {
     else -> day.format(dayWithYearFormat)
 }
 
+/** @param onAddShortcut null leaves the entry for it out of the menu */
 @Composable
 private fun HistoryRow(
     entry: HistoryEntry,
     time: String,
     onCall: () -> Unit,
-    onAddShortcut: () -> Unit,
+    onAddShortcut: (() -> Unit)?,
     onMore: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
@@ -250,14 +254,16 @@ private fun HistoryRow(
             }
         }
         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-            DropdownMenuItem(
-                text = { Text("添加到快捷键") },
-                leadingIcon = { Icon(Icons.Rounded.Apps, contentDescription = null) },
-                onClick = {
-                    menuOpen = false
-                    onAddShortcut()
-                },
-            )
+            if (onAddShortcut != null) {
+                DropdownMenuItem(
+                    text = { Text("添加到快捷键") },
+                    leadingIcon = { Icon(Icons.Rounded.Apps, contentDescription = null) },
+                    onClick = {
+                        menuOpen = false
+                        onAddShortcut()
+                    },
+                )
+            }
             DropdownMenuItem(
                 text = { Text("话务功能…") },
                 leadingIcon = { Icon(Icons.Rounded.SupportAgent, contentDescription = null) },

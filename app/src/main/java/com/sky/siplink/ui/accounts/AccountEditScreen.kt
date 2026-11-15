@@ -41,6 +41,7 @@ import com.sky.siplink.engine
 import com.sky.siplink.ui.components.ChoiceRow
 import com.sky.siplink.ui.components.FoldingCard
 import com.sky.siplink.ui.components.FormField
+import com.sky.siplink.ui.components.LocalConfigLocked
 import com.sky.siplink.ui.components.LocalMessenger
 import com.sky.siplink.ui.components.NavRow
 import com.sky.siplink.ui.components.SectionCard
@@ -60,12 +61,17 @@ private val PORT_FIELD_WIDTH = 124.dp
 
 private fun defaultPort(transport: SipTransport): String = AccountRoute.defaultPort(transport).toString()
 
-/** Adds a new account ([accountId] == null) or edits an existing one. */
+/**
+ * Adds a new account ([accountId] == null) or edits an existing one. Where the configuration is
+ * locked the account is only shown: its fields take no input, and nothing saves, deletes or
+ * makes it the default one.
+ */
 @Composable
 fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> Unit) {
     val context = LocalContext.current
     val manager = context.engine.accounts
     val messenger = LocalMessenger.current
+    val locked = LocalConfigLocked.current
     val existing = remember(accountId) { accountId?.let { id -> manager.accounts.value.firstOrNull { it.id == id } } }
     // Normalized, the draft has the port of the account apart from its domain.
     val initial = existing?.toDraft()?.let(AccountRules::normalize) ?: AccountDraft()
@@ -129,7 +135,11 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
     }
 
     SubScreen(
-        title = if (existing == null) "添加账号" else "编辑账号",
+        title = when {
+            existing == null -> "添加账号"
+            locked -> "账号详情"
+            else -> "编辑账号"
+        },
         onBack = onBack,
         actions = { TextButton(onClick = ::save) { Text("保存") } },
     ) {
@@ -270,7 +280,7 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
             )
         }
 
-        if (existing != null) {
+        if (existing != null && !locked) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 FilledTonalButton(
                     onClick = {
@@ -288,7 +298,7 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
         Spacer(Modifier.height(8.dp))
     }
 
-    if (confirmDelete && existing != null) {
+    if (confirmDelete && existing != null && !locked) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
             title = { Text("删除账号？") },

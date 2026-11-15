@@ -53,7 +53,9 @@ import com.sky.siplink.engine
 import com.sky.siplink.ui.components.AppBottomSheet
 import com.sky.siplink.ui.components.DropdownField
 import com.sky.siplink.ui.components.FormField
+import com.sky.siplink.ui.components.LocalConfigLocked
 import com.sky.siplink.ui.components.LocalMessenger
+import com.sky.siplink.ui.components.ManagedNotice
 import com.sky.siplink.ui.components.pressScale
 
 /** Offers to make a new key of a contact or a call log entry. */
@@ -68,6 +70,9 @@ fun NewShortcutSheet(name: String, number: String, onDismiss: () -> Unit) {
 /**
  * Creates a key ([NEW_KEY]) or changes / deletes an existing one. Laid out like the function
  * key table of a desk phone: name, value, type and line, each a plain field or a list.
+ *
+ * The screens do not open it where the configuration is locked; should that happen while it is
+ * open, it goes on showing the key and can no longer save or delete it.
  */
 @Composable
 internal fun ShortcutEditSheet(shortcut: Shortcut, onDismiss: () -> Unit) {
@@ -77,6 +82,7 @@ internal fun ShortcutEditSheet(shortcut: Shortcut, onDismiss: () -> Unit) {
     val accounts by engine.accounts.accounts.collectAsStateWithLifecycle()
     val settings by engine.settings.settings.collectAsStateWithLifecycle()
     val messenger = LocalMessenger.current
+    val locked = LocalConfigLocked.current
     val isNew = shortcut.id == NEW_KEY
     val categories = remember(all) { ShortcutRules.categories(all).map { it.first }.filter { it.isNotEmpty() } }
 
@@ -125,6 +131,8 @@ internal fun ShortcutEditSheet(shortcut: Shortcut, onDismiss: () -> Unit) {
         if (errors.isEmpty()) {
             messenger(if (isNew) "快捷键已添加" else "快捷键已保存")
             onDismiss()
+        } else if (ShortcutRules.Error.MANAGED in errors) {
+            messenger(ShortcutRules.Error.MANAGED.full)
         }
     }
 
@@ -137,6 +145,7 @@ internal fun ShortcutEditSheet(shortcut: Shortcut, onDismiss: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(if (isNew) "新建快捷键" else "编辑快捷键", style = MaterialTheme.typography.titleLarge)
+            ManagedNotice()
 
             FormField(
                 value = label,
@@ -216,10 +225,10 @@ internal fun ShortcutEditSheet(shortcut: Shortcut, onDismiss: () -> Unit) {
             ) {
                 // First the picture of the type, which is what a key shows when none is chosen.
                 item(key = "type") {
-                    IconChoice(shortcutIcon(action), "默认（随类型）", selected = icon == null) { icon = null }
+                    IconChoice(shortcutIcon(action), "默认（随类型）", selected = icon == null, enabled = !locked) { icon = null }
                 }
                 items(ShortcutIcon.entries, key = { it.name }) { choice ->
-                    IconChoice(shortcutIcon(choice), choice.label, selected = icon == choice) { icon = choice }
+                    IconChoice(shortcutIcon(choice), choice.label, selected = icon == choice, enabled = !locked) { icon = choice }
                 }
             }
 
@@ -235,24 +244,26 @@ internal fun ShortcutEditSheet(shortcut: Shortcut, onDismiss: () -> Unit) {
                 leading = { Icon(categoryIcon(it), contentDescription = null, modifier = Modifier.size(20.dp)) },
             )
 
-            Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                if (!isNew) {
-                    OutlinedButton(
-                        onClick = {
-                            if (confirmDelete) {
-                                manager.remove(listOf(shortcut.id))
-                                messenger("快捷键已删除")
-                                onDismiss()
-                            } else {
-                                confirmDelete = true
-                            }
-                        },
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Text(if (confirmDelete) "再点一次确认删除" else "删除", color = MaterialTheme.colorScheme.error)
+            if (!locked) {
+                Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    if (!isNew) {
+                        OutlinedButton(
+                            onClick = {
+                                if (confirmDelete) {
+                                    manager.remove(listOf(shortcut.id))
+                                    messenger("快捷键已删除")
+                                    onDismiss()
+                                } else {
+                                    confirmDelete = true
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Text(if (confirmDelete) "再点一次确认删除" else "删除", color = MaterialTheme.colorScheme.error)
+                        }
                     }
+                    Button(onClick = ::save, modifier = Modifier.weight(1f)) { Text("保存") }
                 }
-                Button(onClick = ::save, modifier = Modifier.weight(1f)) { Text("保存") }
             }
             Spacer(Modifier.height(12.dp))
         }
@@ -298,7 +309,7 @@ private val IconChoiceSize = 46.dp
 
 /** One picture of the icon list; the chosen one is filled in the accent colour. */
 @Composable
-private fun IconChoice(icon: ImageVector, name: String, selected: Boolean, onClick: () -> Unit) {
+private fun IconChoice(icon: ImageVector, name: String, selected: Boolean, enabled: Boolean, onClick: () -> Unit) {
     val container by animateColorAsState(
         if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest,
         label = "iconChoice",
@@ -313,7 +324,7 @@ private fun IconChoice(icon: ImageVector, name: String, selected: Boolean, onCli
             .pressScale()
             .clip(CircleShape)
             .background(container)
-            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick),
+            .selectable(selected = selected, enabled = enabled, role = Role.RadioButton, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Icon(icon, contentDescription = name, tint = content, modifier = Modifier.size(24.dp))

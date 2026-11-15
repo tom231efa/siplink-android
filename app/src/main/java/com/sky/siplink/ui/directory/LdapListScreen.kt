@@ -21,17 +21,22 @@ import com.sky.siplink.core.logic.LdapRules
 import com.sky.siplink.core.model.LdapDirectory
 import com.sky.siplink.engine
 import com.sky.siplink.ui.components.EmptyState
+import com.sky.siplink.ui.components.LocalConfigLocked
 import com.sky.siplink.ui.components.LocalMessenger
 import com.sky.siplink.ui.components.NavRow
 import com.sky.siplink.ui.components.SectionCard
 import com.sky.siplink.ui.components.SubScreen
 import java.util.Locale
 
-/** The LDAP directories, and the local copy of what their servers returned. */
+/**
+ * The LDAP directories, and the local copy of what their servers returned. Where the configuration
+ * is locked none can be added; the local copy can be emptied all the same.
+ */
 @Composable
 fun LdapListScreen(onBack: () -> Unit, onAdd: () -> Unit, onEdit: (String) -> Unit) {
     val manager = LocalContext.current.engine.directory
     val messenger = LocalMessenger.current
+    val locked = LocalConfigLocked.current
     val directories by manager.directories.collectAsStateWithLifecycle()
     val cache by manager.cacheStats.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { manager.refreshCacheStats() }
@@ -46,9 +51,12 @@ fun LdapListScreen(onBack: () -> Unit, onAdd: () -> Unit, onEdit: (String) -> Un
         },
     ) {
         if (directories.isEmpty()) {
-            EmptyState(icon = Icons.Rounded.Dns, title = "尚未配置 LDAP 通讯录", modifier = Modifier.padding(vertical = 48.dp)) {
-                Button(onClick = onAdd) { Text("添加通讯录") }
-            }
+            EmptyState(
+                icon = Icons.Rounded.Dns,
+                title = "尚未配置 LDAP 通讯录",
+                modifier = Modifier.padding(vertical = 48.dp),
+                action = if (locked) null else ({ Button(onClick = onAdd) { Text("添加通讯录") } }),
+            )
         } else {
             SectionCard(title = "${directories.size} / ${LdapRules.MAX_DIRECTORIES} 个通讯录") {
                 directories.forEach { directory ->

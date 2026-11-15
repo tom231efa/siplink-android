@@ -23,7 +23,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
-/** Second-level screen: back arrow, title, and a scrolling column that avoids the keyboard. */
+/**
+ * Second-level screen: back arrow, title, and a scrolling column that avoids the keyboard.
+ *
+ * These screens show configuration. Where that is locked ([LocalConfigLocked]) the screen says
+ * so at its top and leaves its [actions] out.
+ *
+ * @param actions what changes the configuration shown as a whole: save, add, restore defaults
+ */
 @Composable
 fun SubScreen(
     title: String,
@@ -31,6 +38,7 @@ fun SubScreen(
     actions: @Composable RowScope.() -> Unit = {},
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    val locked = LocalConfigLocked.current
     Column(Modifier.fillMaxSize()) {
         TopAppBar(
             title = { Text(title) },
@@ -39,7 +47,7 @@ fun SubScreen(
                     Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
                 }
             },
-            actions = actions,
+            actions = { if (!locked) actions() },
         )
         Column(
             modifier = Modifier
@@ -49,7 +57,9 @@ fun SubScreen(
                 .navigationBarsPadding()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
-            content = content,
-        )
+        ) {
+            ManagedNotice()
+            content()
+        }
     }
 }

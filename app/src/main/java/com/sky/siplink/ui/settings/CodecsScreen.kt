@@ -39,11 +39,14 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sky.siplink.core.model.Codec
 import com.sky.siplink.engine
+import com.sky.siplink.ui.components.LocalConfigLocked
 import com.sky.siplink.ui.components.LocalMessenger
+import com.sky.siplink.ui.components.ManagedNotice
 
 /**
  * Audio and video codecs: which ones are offered, and in which order of preference. The video
  * ones are only listed while video calls are on, and only those the SDK provides on the device.
+ * Where the configuration is locked the list is only shown: no switch, arrow or "restore defaults".
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,6 +57,7 @@ fun CodecsScreen(onBack: () -> Unit) {
     val videoCodecs by manager.videoCodecs.collectAsStateWithLifecycle()
     val settings by engine.settings.settings.collectAsStateWithLifecycle()
     val messenger = LocalMessenger.current
+    val locked = LocalConfigLocked.current
     val video = settings.videoCalls && videoCodecs.isNotEmpty()
 
     Column(Modifier.fillMaxSize()) {
@@ -63,12 +67,14 @@ fun CodecsScreen(onBack: () -> Unit) {
                 IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回") }
             },
             actions = {
-                TextButton(
-                    onClick = {
-                        manager.restoreDefaults()
-                        messenger("已恢复默认的编码与顺序")
-                    },
-                ) { Text("恢复默认") }
+                if (!locked) {
+                    TextButton(
+                        onClick = {
+                            manager.restoreDefaults()
+                            messenger("已恢复默认的编码与顺序")
+                        },
+                    ) { Text("恢复默认") }
+                }
             },
         )
         LazyColumn(
@@ -78,6 +84,7 @@ fun CodecsScreen(onBack: () -> Unit) {
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            if (locked) item(key = "managed", contentType = "notice") { ManagedNotice() }
             if (video) item(key = "audioTitle", contentType = "title") { KindTitle("音频") }
             codecRows(codecs, onMove = manager::move) { key, enabled ->
                 if (!manager.setEnabled(key, enabled)) messenger("至少保留一种音频编码")
@@ -138,6 +145,7 @@ private fun CodecRow(
         if (codec.enabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
         label = "codecBadgeText",
     )
+    val locked = LocalConfigLocked.current
     Surface(modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainerLow) {
         Row(Modifier.padding(start = 14.dp, end = 10.dp, top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             Surface(shape = CircleShape, color = badge, modifier = Modifier.size(28.dp)) {
@@ -157,14 +165,14 @@ private fun CodecRow(
                     )
                 }
             }
-            IconButton(onClick = { onMove(-1) }, enabled = canMoveUp) {
+            IconButton(onClick = { onMove(-1) }, enabled = canMoveUp && !locked) {
                 Icon(Icons.Rounded.KeyboardArrowUp, contentDescription = "提高 ${codec.mime} 的优先级")
             }
-            IconButton(onClick = { onMove(1) }, enabled = canMoveDown) {
+            IconButton(onClick = { onMove(1) }, enabled = canMoveDown && !locked) {
                 Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = "降低 ${codec.mime} 的优先级")
             }
             Spacer(Modifier.width(4.dp))
-            Switch(checked = codec.enabled, onCheckedChange = onEnabledChange)
+            Switch(checked = codec.enabled, onCheckedChange = onEnabledChange, enabled = !locked)
         }
     }
 }

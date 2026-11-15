@@ -51,6 +51,7 @@ import com.sky.siplink.core.model.MediaSecurity
 import com.sky.siplink.engine
 import com.sky.siplink.restartApp
 import com.sky.siplink.ui.components.ChoiceRow
+import com.sky.siplink.ui.components.LocalConfigLocked
 import com.sky.siplink.ui.components.LocalMessenger
 import com.sky.siplink.ui.components.SectionCard
 import com.sky.siplink.ui.components.SubScreen
@@ -74,6 +75,7 @@ fun TlsScreen(onBack: () -> Unit) {
     val settings by engine.settings.settings.collectAsStateWithLifecycle()
     val certificates by engine.tls.certificates.collectAsStateWithLifecycle()
     val messenger = LocalMessenger.current
+    val locked = LocalConfigLocked.current
     val scope = rememberCoroutineScope()
     var pendingRemoval by remember { mutableStateOf<CertInfo?>(null) }
     var restartPrompt by remember { mutableStateOf(false) }
@@ -124,17 +126,19 @@ fun TlsScreen(onBack: () -> Unit) {
                 )
             }
             certificates.forEach { certificate ->
-                CertificateRow(certificate, onRemove = { pendingRemoval = certificate })
+                CertificateRow(certificate, onRemove = if (locked) null else ({ pendingRemoval = certificate }))
             }
-            Button(
-                onClick = { picker.launch(arrayOf("*/*")) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-            ) {
-                Icon(Icons.Rounded.FileOpen, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
-                Text("导入 CA 证书")
+            if (!locked) {
+                Button(
+                    onClick = { picker.launch(arrayOf("*/*")) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                ) {
+                    Icon(Icons.Rounded.FileOpen, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("导入 CA 证书")
+                }
             }
         }
 
@@ -222,13 +226,14 @@ fun TlsScreen(onBack: () -> Unit) {
     }
 }
 
+/** @param onRemove null where the certificate cannot be removed: the row then has no button for it */
 @Composable
-private fun CertificateRow(certificate: CertInfo, onRemove: () -> Unit) {
+private fun CertificateRow(certificate: CertInfo, onRemove: (() -> Unit)?) {
     val zone = remember { ZoneId.systemDefault() }
     Row(
         Modifier
             .fillMaxWidth()
-            .padding(start = 16.dp, end = 4.dp, top = 10.dp, bottom = 10.dp),
+            .padding(start = 16.dp, end = if (onRemove == null) 16.dp else 4.dp, top = 10.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
@@ -268,8 +273,10 @@ private fun CertificateRow(certificate: CertInfo, onRemove: () -> Unit) {
                 maxLines = 1,
             )
         }
-        IconButton(onClick = onRemove) {
-            Icon(Icons.Rounded.Delete, contentDescription = "移除证书")
+        if (onRemove != null) {
+            IconButton(onClick = onRemove) {
+                Icon(Icons.Rounded.Delete, contentDescription = "移除证书")
+            }
         }
     }
 }
