@@ -20,6 +20,7 @@ import com.sky.siplink.core.model.Shortcut
 import com.sky.siplink.core.model.ShortcutAction
 import com.sky.siplink.core.model.SipAccount
 import com.sky.siplink.core.model.ThemeMode
+import com.sky.siplink.core.model.VideoSize
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -350,6 +351,8 @@ class ManagedLockTest : PbxTestBase() {
             { it.copy(forwardNoAnswerSeconds = it.forwardNoAnswerSeconds + 5) },
             { it.copy(features = it.features.copy(park = "", voicemail = "*98")) },
             { it.copy(videoCalls = !it.videoCalls) },
+            { it.copy(videoSize = VideoSize.HD) },
+            { it.copy(videoFrameRate = 30) },
             { Settings() },
         )
     }

@@ -3,6 +3,7 @@ package com.sky.siplink.core
 import android.os.Handler
 import android.os.Looper
 import com.sky.siplink.core.logic.ManagedConfig
+import com.sky.siplink.core.logic.VideoRules
 import com.sky.siplink.core.model.FeatureCodes
 import com.sky.siplink.core.model.Settings
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,7 +28,8 @@ class SettingsStore(private val config: Config, private val lock: ConfigLock) {
      * @return false when part of the change was refused for that reason
      */
     fun update(transform: (Settings) -> Settings): Boolean {
-        val wanted = transform(state.value)
+        // A frame rate that cannot be chosen is no rate of its own, here as when it is read back.
+        val wanted = transform(state.value).let { it.copy(videoFrameRate = VideoRules.frameRate(it.videoFrameRate)) }
         val next = if (lock.refuses) ManagedConfig.localUpdate(state.value, wanted) else wanted
         if (next != state.value) {
             save(next)
@@ -72,6 +74,8 @@ class SettingsStore(private val config: Config, private val lock: ConfigLock) {
                 dndOff = text(KEY_CODE_DND_OFF, f.dndOff),
             ),
             videoCalls = bool(KEY_VIDEO_CALLS, d.videoCalls),
+            videoSize = enumOf(KEY_VIDEO_SIZE, d.videoSize),
+            videoFrameRate = VideoRules.frameRate(config.getInt(SECTION, KEY_VIDEO_FRAME_RATE, d.videoFrameRate)),
             lockScreenPromptDeclined = bool(KEY_LOCK_SCREEN_PROMPT_DECLINED, d.lockScreenPromptDeclined),
         )
     }
@@ -108,6 +112,8 @@ class SettingsStore(private val config: Config, private val lock: ConfigLock) {
         config.setString(SECTION, KEY_CODE_DND_ON, f.dndOn)
         config.setString(SECTION, KEY_CODE_DND_OFF, f.dndOff)
         config.setBool(SECTION, KEY_VIDEO_CALLS, value.videoCalls)
+        config.setString(SECTION, KEY_VIDEO_SIZE, value.videoSize.name)
+        config.setInt(SECTION, KEY_VIDEO_FRAME_RATE, value.videoFrameRate)
         config.setBool(SECTION, KEY_LOCK_SCREEN_PROMPT_DECLINED, value.lockScreenPromptDeclined)
         // Writing the file means writing every account in it as well, and a text field changes
         // the settings with each key stroke: one write once the changes have stopped coming.
@@ -171,6 +177,8 @@ class SettingsStore(private val config: Config, private val lock: ConfigLock) {
         private const val KEY_CODE_DND_ON = "code_dnd_on"
         private const val KEY_CODE_DND_OFF = "code_dnd_off"
         private const val KEY_VIDEO_CALLS = "video_calls"
+        private const val KEY_VIDEO_SIZE = "video_size"
+        private const val KEY_VIDEO_FRAME_RATE = "video_frame_rate"
         private const val KEY_LOCK_SCREEN_PROMPT_DECLINED = "lock_screen_prompt_declined"
     }
 }

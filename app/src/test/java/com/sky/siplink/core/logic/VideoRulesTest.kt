@@ -13,6 +13,13 @@ class VideoRulesTest {
     private val devices = listOf("FrontFacingCamera", "BackFacingCamera", VideoRules.STATIC_PICTURE)
 
     @Test
+    fun aFrameRateThatCannotBeChosenIsLeftToTheCore() {
+        assertEquals(listOf(0, 15, 24, 30), VideoRules.FRAME_RATES)
+        VideoRules.FRAME_RATES.forEach { assertEquals(it, VideoRules.frameRate(it)) }
+        listOf(-1, 1, 20, 25, 60).forEach { assertEquals(VideoRules.AUTO_FRAME_RATE, VideoRules.frameRate(it)) }
+    }
+
+    @Test
     fun theStillPictureIsNoCamera() {
         assertEquals(listOf("FrontFacingCamera", "BackFacingCamera"), VideoRules.cameras(devices))
     }

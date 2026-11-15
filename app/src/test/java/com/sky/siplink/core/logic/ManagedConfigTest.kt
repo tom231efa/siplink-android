@@ -7,6 +7,7 @@ import com.sky.siplink.core.model.FeatureCodes
 import com.sky.siplink.core.model.MediaSecurity
 import com.sky.siplink.core.model.Settings
 import com.sky.siplink.core.model.ThemeMode
+import com.sky.siplink.core.model.VideoSize
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Test
@@ -37,6 +38,8 @@ class ManagedConfigTest {
         forwardNoAnswerSeconds = current.forwardNoAnswerSeconds + 10,
         features = FeatureCodes(park = "702", voicemail = "", dndOn = "*76"),
         videoCalls = !current.videoCalls,
+        videoSize = VideoSize.HD,
+        videoFrameRate = 30,
         lockScreenPromptDeclined = !current.lockScreenPromptDeclined,
     )
 
@@ -99,6 +102,8 @@ class ManagedConfigTest {
             { it.copy(features = it.features.copy(intercom = "")) },
             { it.copy(features = FeatureCodes()) },
             { it.copy(videoCalls = !it.videoCalls) },
+            { it.copy(videoSize = VideoSize.QVGA) },
+            { it.copy(videoFrameRate = 24) },
         )
         locked.forEachIndexed { index, change ->
             val wanted = change(current)

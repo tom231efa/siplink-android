@@ -2,6 +2,7 @@ package com.sky.siplink.core
 
 import com.sky.siplink.core.logic.VideoRules
 import com.sky.siplink.core.model.CallVideo
+import com.sky.siplink.core.model.VideoSize
 import org.linphone.core.Call
 import org.linphone.core.CallParams
 import org.linphone.core.Core
@@ -22,6 +23,21 @@ internal object CallVideoSupport {
     fun setEnabled(core: Core, enabled: Boolean) {
         core.isVideoCaptureEnabled = enabled
         core.isVideoDisplayEnabled = enabled
+    }
+
+    /**
+     * The size and the frame rate the camera is sent with. They hold for the video that starts
+     * after this; what really goes out is still up to the camera, the codec and the network.
+     *
+     * @param frameRate frames per second, or [VideoRules.AUTO_FRAME_RATE]
+     */
+    fun setQuality(core: Core, size: VideoSize, frameRate: Int) {
+        core.setPreferredVideoDefinitionByName(size.definition)
+        // The core picks a rate of its own (about 15 on a phone) unless its preset is "custom";
+        // only then does it go by the preferred one.
+        val fixed = frameRate != VideoRules.AUTO_FRAME_RATE
+        core.videoPreset = if (fixed) CUSTOM_PRESET else null
+        core.preferredFramerate = if (fixed) frameRate.toFloat() else 0f
     }
 
     /**
@@ -73,4 +89,7 @@ internal object CallVideoSupport {
         core.videoDevice = next
         return true
     }
+
+    /** The video preset of the SIP core under which its preferred frame rate counts. */
+    private const val CUSTOM_PRESET = "custom"
 }

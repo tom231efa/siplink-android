@@ -274,6 +274,17 @@ enum class DtmfMode {
 /** Where the strip that leads back to a running call sits on the main screens. */
 enum class BannerPosition { TOP, BOTTOM }
 
+/**
+ * How large the picture is that the camera is sent with.
+ *
+ * @param definition what the SIP core calls the size
+ */
+enum class VideoSize(val definition: String, val width: Int, val height: Int) {
+    QVGA("qvga", 320, 240),
+    VGA("vga", 640, 480),
+    HD("720p", 1280, 720),
+}
+
 /** An audio or video codec of the SIP core; the list order is the order of preference. */
 data class Codec(val mime: String, val clockRate: Int, val channels: Int, val enabled: Boolean, val isVideo: Boolean = false) {
     val key: String get() = "$mime/$clockRate/$channels"
@@ -304,6 +315,9 @@ data class Settings(
     val features: FeatureCodes = FeatureCodes(),
     /** Video calls can be placed and accepted; off, the app is audio-only and declines video. */
     val videoCalls: Boolean = true,
+    val videoSize: VideoSize = VideoSize.VGA,
+    /** Frames per second the camera is sent with, one of [com.sky.siplink.core.logic.VideoRules.FRAME_RATES]; 0 leaves the rate to the SIP core. */
+    val videoFrameRate: Int = 0,
     /** The user does not want to be asked again to let calls show on the lock screen. */
     val lockScreenPromptDeclined: Boolean = false,
 )

@@ -14,6 +14,13 @@ object VideoRules {
      */
     const val STATIC_PICTURE = "StaticImage: Static picture"
 
+    /** The frame rates that can be chosen; [AUTO_FRAME_RATE] leaves the rate to the SIP core. */
+    val FRAME_RATES = listOf(0, 15, 24, 30)
+    const val AUTO_FRAME_RATE = 0
+
+    /** [value] when it is one of [FRAME_RATES], else [AUTO_FRAME_RATE]: what a stored or handed out rate comes to. */
+    fun frameRate(value: Int): Int = if (value in FRAME_RATES) value else AUTO_FRAME_RATE
+
     /** The cameras among the video devices of the SDK, in its order. */
     fun cameras(devices: List<String>): List<String> = devices.filter { it != STATIC_PICTURE }
 

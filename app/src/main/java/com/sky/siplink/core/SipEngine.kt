@@ -119,6 +119,7 @@ class SipEngine(context: Context) {
         settings = SettingsStore(core.config, lock)
         applyDtmfMode(settings.current.dtmfMode)
         CallVideoSupport.configure(core, settings.current.videoCalls)
+        CallVideoSupport.setQuality(core, settings.current.videoSize, settings.current.videoFrameRate)
         tls = TlsManager(appContext, core, lock)
         tls.applySettings(settings.current)
         accounts = AccountManager(core, lock)
@@ -162,6 +163,9 @@ class SipEngine(context: Context) {
         if (before.videoCalls != after.videoCalls) {
             CallVideoSupport.setEnabled(core, after.videoCalls)
             calls.onVideoAllowedChanged()
+        }
+        if (before.videoSize != after.videoSize || before.videoFrameRate != after.videoFrameRate) {
+            CallVideoSupport.setQuality(core, after.videoSize, after.videoFrameRate)
         }
         return taken
     }

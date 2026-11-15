@@ -6,6 +6,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.sky.siplink.core.logic.VideoRules
 import com.sky.siplink.core.model.AudioRoute
 import com.sky.siplink.core.model.CallPhase
+import com.sky.siplink.core.model.VideoSize
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -269,7 +270,47 @@ class VideoCallTest : VideoTestBase() {
         await("the camera to be released") { !cameraInUse() }
     }
 
+    @Test
+    fun theCameraIsSentInTheSizeAndAtTheRateThatWereChosen() {
+        register()
+        // Neither is what the SDK starts with (VGA, and a rate of its own of about 15), so each shows.
+        for ((size, rate) in listOf(VideoSize.QVGA to 24, VideoSize.HD to VideoRules.AUTO_FRAME_RATE)) {
+            settings { it.copy(videoSize = size, videoFrameRate = rate) }
+            // What the SIP core is told. A rate of the app's choosing only counts under its preset "custom".
+            val told = onMain { Triple(engine.core.preferredVideoDefinition?.name, engine.core.preferredFramerate, engine.core.videoPreset) }
+            assertEquals(Triple(size.definition, rate.toFloat(), if (rate == VideoRules.AUTO_FRAME_RATE) null else "custom"), told)
+
+            dialVideo("2000")
+            awaitConnected("2000")
+            // It is the camera that is to be measured, which only runs while the call screen is shown;
+            // without it the SDK sends its still picture, one frame a second.
+            openCallScreen()
+            await("the camera to start") { cameraInUse() }
+            await("the camera to be sent as ${size.width}x${size.height}") {
+                videoSent()?.let { (long, short, frames) -> long == size.width && short == size.height && frames > 1 } == true
+            }
+            // What comes back from the PBX is what really went out, whatever the app says it sends.
+            await("the picture to come back as ${size.width}x${size.height}, not ${videoReceived()}") {
+                videoReceived() == (size.width to size.height)
+            }
+            // How many frames the camera gives is up to the light as well: in the dark the one of
+            // the test phone gives 15 whatever it is asked for. So the chosen rate is only an upper limit here.
+            if (rate != VideoRules.AUTO_FRAME_RATE) {
+                never("the camera to be sent faster than at $rate frames per second", QUIET_WINDOW_MS) {
+                    (videoSent()?.third ?: 0f) > rate + FRAME_RATE_TOLERANCE
+                }
+            }
+            Log.i(TAG, "Chosen $size at $rate, sent ${videoSent()}, received ${videoReceived()}")
+            onMain { engine.calls.hangUp() }
+            awaitNoCall()
+            await("the PBX to release the call") { pbxChannel(pbxLeg(APP)) == null }
+        }
+    }
+
     private companion object {
         const val TAG = "VideoCallTest"
+
+        /** How far the measured frame rate may be above the chosen one: it is counted over a short while. */
+        const val FRAME_RATE_TOLERANCE = 3f
     }
 }

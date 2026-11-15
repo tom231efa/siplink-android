@@ -36,6 +36,19 @@ abstract class VideoTestBase : PbxTestBase() {
         await("video packets to be sent") { videoPackets().second > start + VIDEO_PACKETS }
     }
 
+    /** What the app sends its video with right now: the longer and the shorter side of the picture, and the frames per second. */
+    protected fun videoSent(): Triple<Int, Int, Float>? = onMain {
+        val params = engine.core.currentCall?.currentParams ?: return@onMain null
+        val size = params.sentVideoDefinition ?: return@onMain null
+        Triple(maxOf(size.width, size.height), minOf(size.width, size.height), params.sentFramerate)
+    }
+
+    /** The longer and the shorter side of the picture the app receives right now; number 2000 of the PBX sends back what it gets. */
+    protected fun videoReceived(): Pair<Int, Int>? = onMain {
+        val size = engine.core.currentCall?.currentParams?.receivedVideoDefinition ?: return@onMain null
+        maxOf(size.width, size.height) to minOf(size.width, size.height)
+    }
+
     /** True when the PBX leg of [extension] carries a video format. */
     protected fun pbxHasVideo(extension: Int): Boolean {
         val channel = pbxChannel(pbxLeg(extension))?.get("Channel") ?: return false
