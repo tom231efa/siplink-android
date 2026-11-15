@@ -41,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sky.siplink.core.logic.ManagedConfig
 import com.sky.siplink.core.logic.ShortcutRules
 import com.sky.siplink.core.model.Shortcut
 import com.sky.siplink.engine
@@ -178,16 +179,20 @@ fun ShortcutsScreen(accountId: String?, onBack: () -> Unit) {
             placeholder = "前台,1001,speed,常用,,reception\n对讲仓库,*801005,speed,对讲,,warehouse\n开门,#9,dtmf,门禁,,door\n转总机,1000,bxfer,转接",
             onImport = { text ->
                 val result = manager.import(text)
-                ImportOutcome(
-                    finished = result.errors.isEmpty() && result.skippedForLimit == 0 && result.shortcuts.isNotEmpty(),
-                    message = importReport(
-                        result.shortcuts.size,
-                        "快捷键",
-                        result.skippedForLimit,
-                        ShortcutRules.MAX_SHORTCUTS,
-                        result.errors,
-                    ),
-                )
+                if (result == null) {
+                    ImportOutcome(finished = false, message = ManagedConfig.NOTICE)
+                } else {
+                    ImportOutcome(
+                        finished = result.errors.isEmpty() && result.skippedForLimit == 0 && result.shortcuts.isNotEmpty(),
+                        message = importReport(
+                            result.shortcuts.size,
+                            "快捷键",
+                            result.skippedForLimit,
+                            ShortcutRules.MAX_SHORTCUTS,
+                            result.errors,
+                        ),
+                    )
+                }
             },
             onDismiss = { importOpen = false },
         )

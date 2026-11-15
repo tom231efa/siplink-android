@@ -342,7 +342,7 @@ class DirectoryTest : DirectoryTestBase() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val cache = DirectoryCache(context, fileName = OTHER_CACHE)
         try {
-            return onMain { look(DirectoryManager(engine.core, cache)) }
+            return onMain { look(DirectoryManager(engine.core, cache, engine.lock)) }
         } finally {
             cache.close()
             context.deleteDatabase(OTHER_CACHE)

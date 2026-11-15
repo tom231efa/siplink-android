@@ -22,8 +22,11 @@ import java.util.UUID
  * SIP accounts (up to [AccountRules.MAX_ACCOUNTS]). The SIP core configuration is the single
  * source of truth; this class validates input and publishes immutable snapshots for the UI.
  * Must be used from the thread that owns the core (the main thread).
+ *
+ * While the configuration is managed ([ConfigLock]) the accounts cannot be changed here, which
+ * each function reports in its own way, and their passwords are not handed out.
  */
-class AccountManager(private val core: Core) {
+class AccountManager(private val core: Core, private val lock: ConfigLock) {
     private val state = MutableStateFlow<List<SipAccount>>(emptyList())
     val accounts: StateFlow<List<SipAccount>> = state.asStateFlow()
 
@@ -114,9 +117,10 @@ class AccountManager(private val core: Core) {
 
     /**
      * The password saved for the account [id], to show it in its form. Empty where there is none:
-     * of the accounts saved by earlier versions only a digest of the password is left.
+     * of the accounts saved by earlier versions only a digest of the password is left. Empty as
+     * well while the configuration is managed: a password that was handed out is not shown.
      */
-    fun passwordOf(id: String): String = find(id)?.findAuthInfo()?.password.orEmpty()
+    fun passwordOf(id: String): String = if (lock.refuses) "" else find(id)?.findAuthInfo()?.password.orEmpty()
 
     /**
      * Whether calls may go out on [account]: it is switched on. That includes the moment in
@@ -126,6 +130,7 @@ class AccountManager(private val core: Core) {
         account.params.isRegisterEnabled || router.record(idOf(account))?.waiting == true
 
     fun add(input: AccountDraft): List<AccountRules.Error> {
+        if (lock.refuses) return listOf(AccountRules.Error.MANAGED)
         val draft = AccountRules.normalize(input)
         val errors = AccountRules.validate(draft, existingKeys(), takenNames = state.value.map { it.name })
         if (errors.isNotEmpty()) return errors
@@ -134,8 +139,9 @@ class AccountManager(private val core: Core) {
         return emptyList()
     }
 
-    /** Adds already validated drafts (bulk import); returns how many were really created. */
+    /** Adds already validated drafts (bulk import); returns how many were really created (none while the configuration is managed). */
     fun addAll(drafts: List<AccountDraft>): Int {
+        if (lock.refuses) return 0
         var created = 0
         for (input in drafts) {
             val draft = AccountRules.normalize(input)
@@ -146,6 +152,7 @@ class AccountManager(private val core: Core) {
     }
 
     fun update(id: String, input: AccountDraft): List<AccountRules.Error> {
+        if (lock.refuses) return listOf(AccountRules.Error.MANAGED)
         val account = find(id) ?: return listOf(AccountRules.Error.NOT_FOUND)
         val accountsBefore = state.value
         val before = snapshot(account, null)
@@ -203,8 +210,10 @@ class AccountManager(private val core: Core) {
         return emptyList()
     }
 
-    fun remove(id: String) {
-        val account = find(id) ?: return
+    /** @return whether the account was removed: not when there is none with this id, nor while the configuration is managed */
+    fun remove(id: String): Boolean {
+        if (lock.refuses) return false
+        val account = find(id) ?: return false
         val accountsBefore = state.value
         val wasDefault = core.defaultAccount?.let(::idOf) == id
         val auth = account.findAuthInfo()
@@ -225,6 +234,7 @@ class AccountManager(private val core: Core) {
         if (wasDefault) core.defaultAccount = core.accountList.firstOrNull { idOf(it) != id }
         refresh()
         onEdited?.invoke(accountsBefore, state.value)
+        return true
     }
 
     private fun finishRetiring(pointer: Long) {
@@ -241,8 +251,10 @@ class AccountManager(private val core: Core) {
     private fun identityKeyOf(identity: Address?): String =
         AccountRules.identityKey(identity?.username.orEmpty(), hostPortOf(identity))
 
-    fun setEnabled(id: String, enabled: Boolean) {
-        val account = find(id) ?: return
+    /** @return whether the account was switched: not when there is none with this id, nor while the configuration is managed */
+    fun setEnabled(id: String, enabled: Boolean): Boolean {
+        if (lock.refuses) return false
+        val account = find(id) ?: return false
         val accountsBefore = state.value
         if (!enabled) router.disable(id)
         // Switched on, an account whose server has to be looked up first is left to the router.
@@ -256,12 +268,16 @@ class AccountManager(private val core: Core) {
         handler.removeCallbacks(publisher)
         publishChanged()
         onEdited?.invoke(accountsBefore, state.value)
+        return true
     }
 
-    fun setDefault(id: String) {
-        val account = find(id) ?: return
+    /** @return whether the account is the default one now: not when there is none with this id, nor while the configuration is managed */
+    fun setDefault(id: String): Boolean {
+        if (lock.refuses) return false
+        val account = find(id) ?: return false
         core.defaultAccount = account
         refresh()
+        return true
     }
 
     private fun existingKeys(): List<String> =

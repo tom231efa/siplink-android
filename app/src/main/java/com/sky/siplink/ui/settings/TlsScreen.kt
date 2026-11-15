@@ -45,6 +45,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sky.siplink.core.TlsManager
+import com.sky.siplink.core.logic.ManagedConfig
 import com.sky.siplink.core.model.CertInfo
 import com.sky.siplink.core.model.MediaSecurity
 import com.sky.siplink.engine
@@ -105,6 +106,7 @@ fun TlsScreen(onBack: () -> Unit) {
                     }
                     TlsManager.ImportResult.AlreadyTrusted -> "证书已导入过"
                     is TlsManager.ImportResult.Invalid -> result.reason
+                    TlsManager.ImportResult.Managed -> ManagedConfig.NOTICE
                 }
             }
             messenger(message)

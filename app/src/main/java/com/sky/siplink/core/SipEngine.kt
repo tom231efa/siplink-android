@@ -28,18 +28,21 @@ import java.io.File
 class SipEngine(context: Context) {
     private val appContext: Context = context.applicationContext
     val core: Core
+
+    /** Whether the configuration is managed, and with that closed to changes made on the phone. */
+    val lock: ConfigLock
     val settings: SettingsStore
     val tls: TlsManager
     val accounts: AccountManager
     val calls: CallManager
     val history: HistoryManager
     val directory: DirectoryManager by lazy {
-        DirectoryManager(core, DirectoryCache(appContext)).also { it.onChanged = names::clear }
+        DirectoryManager(core, DirectoryCache(appContext), lock).also { it.onChanged = names::clear }
     }
 
     /** Directory names for the numbers of calls; sets the directory up when the first call needs it. */
     val names = NameResolver { directory }
-    val codecs: CodecManager by lazy { CodecManager(core) }
+    val codecs: CodecManager by lazy { CodecManager(core, lock) }
     val shortcuts: ShortcutManager
 
     val sdkVersion: String get() = core.version
@@ -112,15 +115,16 @@ class SipEngine(context: Context) {
         core = factory.createCore(File(appContext.filesDir, CONFIG_FILE).absolutePath, null, appContext)
         configure()
 
-        settings = SettingsStore(core.config)
+        lock = ConfigLock(core.config)
+        settings = SettingsStore(core.config, lock)
         applyDtmfMode(settings.current.dtmfMode)
         CallVideoSupport.configure(core, settings.current.videoCalls)
-        tls = TlsManager(appContext, core)
+        tls = TlsManager(appContext, core, lock)
         tls.applySettings(settings.current)
-        accounts = AccountManager(core)
+        accounts = AccountManager(core, lock)
         calls = CallManager(core, settings, accounts, names)
         history = HistoryManager(core, names) { settings.current.features }
-        shortcuts = ShortcutManager(File(appContext.filesDir, SHORTCUTS_FILE))
+        shortcuts = ShortcutManager(File(appContext.filesDir, SHORTCUTS_FILE), lock)
         accounts.onEdited = ::onAccountsEdited
 
         core.addListener(listener)
@@ -137,12 +141,17 @@ class SipEngine(context: Context) {
         if (mailboxes.values.removeAll { it.user !in users }) voicemailState.value = mailboxes.values.sumOf { it.count }
     }
 
-    /** Persists a settings change and applies its side effects to the SIP core. */
-    fun updateSettings(transform: (Settings) -> Settings) {
+    /**
+     * Persists a settings change and applies its side effects to the SIP core.
+     *
+     * @return false when part of the change was refused because the configuration is managed
+     *   ([SettingsStore.update])
+     */
+    fun updateSettings(transform: (Settings) -> Settings): Boolean {
         val before = settings.current
-        settings.update(transform)
+        val taken = settings.update(transform)
         val after = settings.current
-        if (before == after) return
+        if (before == after) return taken
 
         val verificationChanged = before.verifyTlsCertificate != after.verifyTlsCertificate ||
             before.verifyTlsHostname != after.verifyTlsHostname
@@ -154,6 +163,7 @@ class SipEngine(context: Context) {
             CallVideoSupport.setEnabled(core, after.videoCalls)
             calls.onVideoAllowedChanged()
         }
+        return taken
     }
 
     private fun applyDtmfMode(mode: DtmfMode) {

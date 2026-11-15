@@ -32,6 +32,9 @@ object LdapRules {
         NUMBER_ATTRIBUTES_EMPTY("号码属性", "必填"),
         NAME_FILTER_NO_PLACEHOLDER("姓名过滤器", "需包含 %"),
         NUMBER_FILTER_NO_PLACEHOLDER("号码过滤器", "需包含 %"),
+
+        /** Not a fault of the directory: the configuration is managed and takes no change from the phone. */
+        MANAGED("", ManagedConfig.NOTICE),
         ;
 
         /** The error where no field stands next to it: in a notice. */

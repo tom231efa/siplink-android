@@ -17,8 +17,11 @@ import java.util.concurrent.Executors
  * The shortcut keys (up to [ShortcutRules.MAX_SHORTCUTS]), kept in a CSV file of their own:
  * thousands of them would only slow down the SIP core configuration. Used from the main thread;
  * the file is read and written on a background thread.
+ *
+ * While the configuration is managed ([ConfigLock]) the keys cannot be changed here; they still
+ * run, and can be exported.
  */
-class ShortcutManager(private val file: File) {
+class ShortcutManager(private val file: File, private val lock: ConfigLock) {
     private val state = MutableStateFlow<List<Shortcut>>(emptyList())
     val shortcuts: StateFlow<List<Shortcut>> = state.asStateFlow()
 
@@ -46,6 +49,7 @@ class ShortcutManager(private val file: File) {
 
     /** Adds a key; returns what is wrong with it, or nothing when it was added. */
     fun add(draft: Shortcut): List<ShortcutRules.Error> {
+        if (lock.refuses) return listOf(ShortcutRules.Error.MANAGED)
         if (!ready.value) return emptyList()
         if (!ShortcutRules.canAdd(state.value.size)) return listOf(ShortcutRules.Error.LIMIT_REACHED)
         val shortcut = ShortcutRules.normalize(draft).copy(id = nextId)
@@ -58,6 +62,7 @@ class ShortcutManager(private val file: File) {
 
     /** Replaces the key with the same id. */
     fun update(changed: Shortcut): List<ShortcutRules.Error> {
+        if (lock.refuses) return listOf(ShortcutRules.Error.MANAGED)
         val normalized = ShortcutRules.normalize(changed)
         val errors = ShortcutRules.validate(normalized)
         if (errors.isNotEmpty()) return errors
@@ -66,17 +71,25 @@ class ShortcutManager(private val file: File) {
         return emptyList()
     }
 
-    fun remove(ids: Collection<Long>) {
-        if (ids.isEmpty()) return
+    /** @return false when no key was removed: none was named, or the configuration is managed */
+    fun remove(ids: Collection<Long>): Boolean {
+        if (lock.refuses || !ready.value || ids.isEmpty()) return false
         val gone = ids.toHashSet()
         publish(state.value.filterNot { it.id in gone })
+        return true
     }
 
-    /** Gives every key of [category] the category [renamed]; an empty one ungroups them. */
-    fun renameCategory(category: String, renamed: String) {
+    /**
+     * Gives every key of [category] the category [renamed]; an empty one ungroups them.
+     *
+     * @return false when nothing was changed: that is its name already, or the configuration is managed
+     */
+    fun renameCategory(category: String, renamed: String): Boolean {
+        if (lock.refuses || !ready.value) return false
         val target = renamed.trim().take(ShortcutRules.MAX_CATEGORY_LENGTH)
-        if (target == category) return
+        if (target == category) return false
         publish(state.value.map { if (it.category == category) it.copy(category = target) else it })
+        return true
     }
 
     /**
@@ -84,12 +97,18 @@ class ShortcutManager(private val file: File) {
      * or removed: see [ShortcutLines.follow].
      */
     fun followAccounts(before: List<SipAccount>, after: List<SipAccount>) {
+        if (lock.refuses) return
         val followed = ShortcutLines.follow(state.value, before, after)
         if (followed !== state.value) publish(followed)
     }
 
-    /** Adds the keys of a CSV text ([ShortcutRules.FORMAT_HINT]) as far as the limit allows. */
-    fun import(text: String): ShortcutRules.Parsed {
+    /**
+     * Adds the keys of a CSV text ([ShortcutRules.FORMAT_HINT]) as far as the limit allows.
+     *
+     * @return what was read and added; null when the configuration is managed, and nothing was
+     */
+    fun import(text: String): ShortcutRules.Parsed? {
+        if (lock.refuses) return null
         if (!ready.value) return ShortcutRules.Parsed(emptyList(), emptyList(), 0)
         val parsed = ShortcutRules.decode(text, ShortcutRules.MAX_SHORTCUTS - state.value.size, nextId)
         if (parsed.shortcuts.isNotEmpty()) {

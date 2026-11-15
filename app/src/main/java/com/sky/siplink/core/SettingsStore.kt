@@ -2,6 +2,7 @@ package com.sky.siplink.core
 
 import android.os.Handler
 import android.os.Looper
+import com.sky.siplink.core.logic.ManagedConfig
 import com.sky.siplink.core.model.FeatureCodes
 import com.sky.siplink.core.model.Settings
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -10,7 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import org.linphone.core.Config
 
 /** App preferences, persisted in their own section of the SIP core configuration file. */
-class SettingsStore(private val config: Config) {
+class SettingsStore(private val config: Config, private val lock: ConfigLock) {
     private val state = MutableStateFlow(load())
     val settings: StateFlow<Settings> = state.asStateFlow()
     val current: Settings get() = state.value
@@ -19,11 +20,20 @@ class SettingsStore(private val config: Config) {
     private var unsaved = false
     private val writeToDisk = Runnable { flush() }
 
-    fun update(transform: (Settings) -> Settings) {
-        val next = transform(state.value)
-        if (next == state.value) return
-        save(next)
-        state.value = next
+    /**
+     * Changes the settings. While the configuration is managed only the user's own settings
+     * change ([ManagedConfig.localUpdate]).
+     *
+     * @return false when part of the change was refused for that reason
+     */
+    fun update(transform: (Settings) -> Settings): Boolean {
+        val wanted = transform(state.value)
+        val next = if (lock.refuses) ManagedConfig.localUpdate(state.value, wanted) else wanted
+        if (next != state.value) {
+            save(next)
+            state.value = next
+        }
+        return next == wanted
     }
 
     private fun load(): Settings {

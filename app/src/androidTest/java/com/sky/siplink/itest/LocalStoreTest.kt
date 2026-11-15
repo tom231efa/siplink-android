@@ -3,6 +3,7 @@ package com.sky.siplink.itest
 import android.content.Context
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.sky.siplink.SipLinkApp
 import com.sky.siplink.core.DirectoryCache
 import com.sky.siplink.core.ShortcutManager
 import com.sky.siplink.core.logic.ShortcutRules
@@ -48,7 +49,7 @@ class ShortcutStoreTest {
 
     /** A manager on the test file, as the app creates one at start. */
     private fun open(): ShortcutManager {
-        val manager = onMain { ShortcutManager(file) }
+        val manager = onMain { ShortcutManager(file, (context.applicationContext as SipLinkApp).engine.lock) }
         await("the shortcut keys to be read") { manager.loaded.value }
         return manager
     }
@@ -93,7 +94,7 @@ class ShortcutStoreTest {
     fun neverHoldsMoreThanTwoThousandKeys() {
         val manager = open()
         val text = (1..ShortcutRules.MAX_SHORTCUTS + 5).joinToString("\n") { "键$it,${10_000 + it},speed,组${it % 20}" }
-        val parsed = onMain { manager.import(text) }
+        val parsed = onMain { manager.import(text) }!!
         assertEquals(ShortcutRules.MAX_SHORTCUTS, parsed.shortcuts.size)
         assertEquals(5, parsed.skippedForLimit)
         assertEquals(listOf(ShortcutRules.Error.LIMIT_REACHED), onMain { manager.add(Shortcut(0, "多一个", "1")) })

@@ -1,0 +1,124 @@
+package com.sky.siplink.core.logic
+
+import com.sky.siplink.core.model.BannerPosition
+import com.sky.siplink.core.model.DndMode
+import com.sky.siplink.core.model.DtmfMode
+import com.sky.siplink.core.model.FeatureCodes
+import com.sky.siplink.core.model.MediaSecurity
+import com.sky.siplink.core.model.Settings
+import com.sky.siplink.core.model.ThemeMode
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
+import org.junit.Test
+
+class ManagedConfigTest {
+    /** What was handed out; the defaults would do, a few values of its own make mix-ups show. */
+    private val current = Settings(forwardBusy = "1002", features = FeatureCodes(park = "701"), videoCalls = false)
+
+    /** [current] with every setting changed. */
+    private val everythingChanged = Settings(
+        keepAlive = !current.keepAlive,
+        intercomAutoAnswer = !current.intercomAutoAnswer,
+        intercomSpeaker = !current.intercomSpeaker,
+        themeMode = ThemeMode.DARK,
+        dynamicColor = !current.dynamicColor,
+        callBannerPosition = BannerPosition.TOP,
+        verifyTlsCertificate = !current.verifyTlsCertificate,
+        verifyTlsHostname = !current.verifyTlsHostname,
+        mediaSecurity = MediaSecurity.SRTP_MANDATORY,
+        doNotDisturb = !current.doNotDisturb,
+        dndMode = DndMode.SERVER,
+        callWaiting = !current.callWaiting,
+        rejectAnonymous = !current.rejectAnonymous,
+        dtmfMode = DtmfMode.SIP_INFO,
+        forwardAlways = "1003",
+        forwardBusy = "1004",
+        forwardNoAnswer = "1005",
+        forwardNoAnswerSeconds = current.forwardNoAnswerSeconds + 10,
+        features = FeatureCodes(park = "702", voicemail = "", dndOn = "*76"),
+        videoCalls = !current.videoCalls,
+        lockScreenPromptDeclined = !current.lockScreenPromptDeclined,
+    )
+
+    /** The settings that stay the user's own, taken from [everythingChanged]. */
+    private val personalChanged = current.copy(
+        doNotDisturb = everythingChanged.doNotDisturb,
+        themeMode = everythingChanged.themeMode,
+        dynamicColor = everythingChanged.dynamicColor,
+        callBannerPosition = everythingChanged.callBannerPosition,
+        lockScreenPromptDeclined = everythingChanged.lockScreenPromptDeclined,
+    )
+
+    /** The values of a data class in the order of its properties. */
+    private fun components(settings: Settings): List<Any?> = Settings::class.java.declaredMethods
+        .filter { it.name.matches(Regex("component\\d+")) }
+        .sortedBy { it.name.removePrefix("component").toInt() }
+        .map { it.invoke(settings) }
+
+    @Test
+    fun `the test changes every setting`() {
+        // A setting added later has to be changed above as well, or its place among the locked
+        // or the personal ones goes untested.
+        val before = components(current)
+        val after = components(everythingChanged)
+        assertEquals(before.size, after.size)
+        before.zip(after).forEachIndexed { index, (old, new) -> assertNotEquals("Setting ${index + 1} is not changed by the test", old, new) }
+    }
+
+    @Test
+    fun `only the user's own settings are taken from a local change`() {
+        assertEquals(personalChanged, ManagedConfig.localUpdate(current, everythingChanged))
+    }
+
+    @Test
+    fun `a change of personal settings is taken in full`() {
+        assertEquals(personalChanged, ManagedConfig.localUpdate(current, personalChanged))
+        val dnd = current.copy(doNotDisturb = true)
+        assertEquals(dnd, ManagedConfig.localUpdate(current, dnd))
+        val declined = current.copy(lockScreenPromptDeclined = true)
+        assertEquals(declined, ManagedConfig.localUpdate(current, declined))
+    }
+
+    @Test
+    fun `a change of locked settings comes to nothing`() {
+        val locked = listOf<(Settings) -> Settings>(
+            { it.copy(keepAlive = !it.keepAlive) },
+            { it.copy(intercomAutoAnswer = !it.intercomAutoAnswer) },
+            { it.copy(intercomSpeaker = !it.intercomSpeaker) },
+            { it.copy(verifyTlsCertificate = false) },
+            { it.copy(verifyTlsHostname = false) },
+            { it.copy(mediaSecurity = MediaSecurity.SRTP_OPTIONAL) },
+            { it.copy(dndMode = DndMode.SERVER) },
+            { it.copy(callWaiting = !it.callWaiting) },
+            { it.copy(rejectAnonymous = !it.rejectAnonymous) },
+            { it.copy(dtmfMode = DtmfMode.SIP_INFO) },
+            { it.copy(forwardAlways = "1003") },
+            { it.copy(forwardBusy = "") },
+            { it.copy(forwardNoAnswer = "1003") },
+            { it.copy(forwardNoAnswerSeconds = 45) },
+            { it.copy(features = it.features.copy(intercom = "")) },
+            { it.copy(features = FeatureCodes()) },
+            { it.copy(videoCalls = !it.videoCalls) },
+        )
+        locked.forEachIndexed { index, change ->
+            val wanted = change(current)
+            assertNotEquals("Change $index changes nothing", current, wanted)
+            assertEquals("Change $index was taken", current, ManagedConfig.localUpdate(current, wanted))
+        }
+    }
+
+    @Test
+    fun `who keeps do not disturb is locked while its switch is not`() {
+        // What the call handling screen does when the mode is changed: the mode stays, the switch follows.
+        val server = current.copy(dndMode = DndMode.SERVER, doNotDisturb = true)
+        val wanted = server.copy(dndMode = DndMode.SOFTWARE, doNotDisturb = false)
+        val taken = ManagedConfig.localUpdate(server, wanted)
+        assertEquals(server.copy(doNotDisturb = false), taken)
+        assertNotEquals("The refusal does not show", wanted, taken)
+    }
+
+    @Test
+    fun `nothing changes when nothing is asked for`() {
+        assertEquals(current, ManagedConfig.localUpdate(current, current))
+    }
+}

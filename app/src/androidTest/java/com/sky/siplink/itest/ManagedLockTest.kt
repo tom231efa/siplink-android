@@ -1,0 +1,356 @@
+package com.sky.siplink.itest
+
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import com.sky.siplink.core.ConfigLock
+import com.sky.siplink.core.TlsManager
+import com.sky.siplink.core.logic.AccountRules
+import com.sky.siplink.core.logic.LdapRules
+import com.sky.siplink.core.logic.ShortcutLines
+import com.sky.siplink.core.logic.ShortcutRules
+import com.sky.siplink.core.model.BannerPosition
+import com.sky.siplink.core.model.CallPhase
+import com.sky.siplink.core.model.DndMode
+import com.sky.siplink.core.model.DtmfMode
+import com.sky.siplink.core.model.LdapDirectory
+import com.sky.siplink.core.model.MediaSecurity
+import com.sky.siplink.core.model.RegState
+import com.sky.siplink.core.model.Settings
+import com.sky.siplink.core.model.Shortcut
+import com.sky.siplink.core.model.ShortcutAction
+import com.sky.siplink.core.model.SipAccount
+import com.sky.siplink.core.model.ThemeMode
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+import org.junit.runner.RunWith
+import java.io.File
+
+/**
+ * A managed configuration: once the state is switched on, no function of the engine takes a
+ * change made on the phone. What stays the user's own goes on working, the remote side has its
+ * own way in, and switching the state off gives everything back.
+ */
+@RunWith(AndroidJUnit4::class)
+class ManagedLockTest : PbxTestBase() {
+    private lateinit var directory: LdapDirectory
+    private lateinit var key: Shortcut
+
+    private val first: SipAccount get() = account(APP)!!
+    private val second: SipAccount get() = account(SECOND)!!
+    private val shortcuts: List<Shortcut> get() = engine.shortcuts.shortcuts.value
+    private val fingerprint: String get() = engine.tls.certificates.value.single().fingerprint
+
+    /** What a remote side could have handed out: something of everything that can be configured. */
+    @Before
+    fun handOut() {
+        await("the shortcut keys to be read") { engine.shortcuts.loaded.value }
+        onMain { engine.shortcuts.remove(shortcuts.map { it.id }) }
+        addAccount(draft(APP).copy(name = MAIN_LINE))
+        addAccount(SECOND)
+        onMain {
+            val errors = engine.directory.save(
+                LdapDirectory(
+                    name = "总部",
+                    host = env.ldapHost,
+                    bindDn = env.ldapBindDn,
+                    password = env.ldapPassword,
+                    baseDn = env.ldapBaseDn,
+                    line = first.id,
+                ),
+            )
+            assertTrue("LDAP directory rejected: $errors", errors.isEmpty())
+            assertEquals(TlsManager.ImportResult.Added(1), engine.tls.import(env.caPem))
+            assertTrue(engine.shortcuts.add(Shortcut(0, "前台", "$AGENT", category = "常用", line = ShortcutLines.of(first))).isEmpty())
+            assertTrue(engine.updateSettings { it.copy(forwardBusy = "$CUSTOMER", rejectAnonymous = true) })
+            // Codecs that are not as the SDK ships them, so that restoring the defaults would show.
+            val codecs = engine.codecs
+            assertTrue(codecs.move(codecs.codecs.value.first().key, 1))
+            assertTrue(codecs.setEnabled(codecs.codecs.value.last().key, !codecs.codecs.value.last().enabled))
+        }
+        directory = engine.directory.directories.value.single()
+        key = shortcuts.single()
+    }
+
+    @After
+    fun takeBack() {
+        onMain {
+            engine.lock.setManaged(false)
+            engine.shortcuts.remove(shortcuts.map { it.id })
+            engine.codecs.restoreDefaults()
+        }
+    }
+
+    private fun manage(on: Boolean) = onMain { engine.lock.setManaged(on) }
+
+    /** Everything that is configured, without what the registrations are doing at the moment. */
+    private fun configuration(): List<Any> = onMain {
+        listOf(
+            engine.settings.current,
+            engine.accounts.accounts.value.map { it.copy(state = RegState.NONE, error = null, onBackup = false) },
+            engine.directory.directories.value,
+            engine.tls.certificates.value,
+            engine.codecs.codecs.value,
+            engine.codecs.videoCodecs.value,
+            shortcuts,
+        )
+    }
+
+    @Test
+    fun refusesEveryChangeMadeOnThePhone() {
+        val before = configuration()
+        manage(true)
+        assertTrue(engine.lock.managed.value)
+        onMain {
+            lockedSettings.forEachIndexed { index, change -> assertFalse("Settings change $index was taken", engine.updateSettings(change)) }
+
+            val accounts = engine.accounts
+            assertEquals(listOf(AccountRules.Error.MANAGED), accounts.add(draft(THIRD)))
+            assertEquals(0, accounts.addAll(listOf(draft(THIRD), draft(FOURTH))))
+            assertEquals(listOf(AccountRules.Error.MANAGED), accounts.update(first.id, draft(APP).copy(name = "前台")))
+            assertFalse(accounts.remove(first.id))
+            assertFalse(accounts.setEnabled(first.id, false))
+            assertFalse(accounts.setDefault(second.id))
+            assertEquals("The password of a managed account was handed out", "", accounts.passwordOf(first.id))
+
+            val directories = engine.directory
+            assertEquals(listOf(LdapRules.Error.MANAGED), directories.save(LdapDirectory(host = env.ldapHost, baseDn = env.ldapBaseDn)))
+            assertEquals(listOf(LdapRules.Error.MANAGED), directories.save(directory.copy(name = "分公司", enabled = false)))
+            assertFalse(directories.remove(directory.id))
+            assertEquals("The password of a managed directory was handed out", "", directories.passwordOf(directory.id))
+
+            assertEquals(TlsManager.ImportResult.Managed, engine.tls.import(env.caPem))
+            assertFalse(engine.tls.remove(fingerprint))
+
+            val codecs = engine.codecs
+            val audio = codecs.codecs.value
+            assertFalse(codecs.setEnabled(audio.first().key, !audio.first().enabled))
+            assertFalse(codecs.move(audio.first().key, 1))
+            codecs.videoCodecs.value.firstOrNull()?.let { assertFalse(codecs.setEnabled(it.key, !it.enabled)) }
+            assertFalse(codecs.restoreDefaults())
+
+            val keys = engine.shortcuts
+            assertEquals(listOf(ShortcutRules.Error.MANAGED), keys.add(Shortcut(0, "仓库", "$RINGING_PHONE")))
+            assertEquals(listOf(ShortcutRules.Error.MANAGED), keys.update(key.copy(number = "$CUSTOMER")))
+            assertFalse(keys.remove(listOf(key.id)))
+            assertFalse(keys.renameCategory(key.category, "总机"))
+            assertNull(keys.import("仓库,$RINGING_PHONE,speed"))
+        }
+        assertEquals(before, configuration())
+    }
+
+    @Test
+    fun whatIsTheUsersOwnStillChanges() {
+        awaitRegistered(APP)
+        manage(true)
+
+        // The look of the app and the answer to the lock screen question.
+        assertTrue(settings { it.copy(themeMode = ThemeMode.DARK, dynamicColor = true, callBannerPosition = BannerPosition.TOP) })
+        assertTrue(settings { it.copy(lockScreenPromptDeclined = true) })
+        val look = engine.settings.current
+        assertEquals(ThemeMode.DARK, look.themeMode)
+        assertTrue(look.dynamicColor)
+        assertEquals(BannerPosition.TOP, look.callBannerPosition)
+        assertTrue(look.lockScreenPromptDeclined)
+
+        // The do not disturb switch, which does what it says.
+        assertTrue(settings { it.copy(doNotDisturb = true) })
+        val mark = phones.mark()
+        phoneCalls(AGENT, "$APP")
+        awaitPhoneCallReleased(AGENT, mark)
+        assertNull("A call was shown although do not disturb is on", call())
+        assertTrue(settings { it.copy(doNotDisturb = false) })
+
+        // A change that reaches further is taken as far as it is the user's own, and says so.
+        assertFalse(settings { it.copy(doNotDisturb = true, forwardAlways = "$CUSTOMER") })
+        assertTrue(engine.settings.current.doNotDisturb)
+        assertEquals("", engine.settings.current.forwardAlways)
+        assertTrue(settings { it.copy(doNotDisturb = false) })
+
+        // Calls go on as ever, and their history is the user's to delete.
+        dial("2000")
+        awaitConnected("2000")
+        onMain { engine.calls.hangUp() }
+        awaitNoCall()
+        await("the call in the history") { engine.history.entries.value.any { it.address.startsWith("2000") } }
+        val entry = engine.history.entries.value.first { it.address.startsWith("2000") }
+        onMain { engine.history.remove(entry.id) }
+        assertTrue(engine.history.entries.value.none { it.id == entry.id })
+        onMain { engine.history.clear() }
+        assertTrue(engine.history.entries.value.isEmpty())
+
+        // The local copy of the directories can be emptied, the keys exported.
+        onMain { engine.directory.clearCache() }
+        assertTrue(key.label in onMain { engine.shortcuts.export() })
+    }
+
+    @Test
+    fun doNotDisturbKeptByThePbxCanStillBeSwitched() {
+        awaitRegistered(APP)
+        settings { it.copy(dndMode = DndMode.SERVER) }
+        manage(true)
+        val codes = engine.settings.current.features
+        try {
+            // What the switch does in this mode: a call to the feature code, which the switch follows.
+            dial(codes.dndOn)
+            awaitCall("the PBX to take the code") { it.phase == CallPhase.CONNECTED }
+            awaitNoCall()
+            assertTrue(settings { it.copy(doNotDisturb = true) })
+            assertTrue(engine.settings.current.doNotDisturb)
+            val mark = phones.mark()
+            phoneCalls(AGENT, "$APP")
+            awaitPhoneCallReleased(AGENT, mark)
+            assertNull("The PBX sent a call although it was told not to", call())
+
+            dial(codes.dndOff)
+            awaitCall("the PBX to take the code") { it.phase == CallPhase.CONNECTED }
+            awaitNoCall()
+            assertTrue(settings { it.copy(doNotDisturb = false) })
+            phoneCalls(AGENT, "$APP")
+            awaitCall("calls to arrive again") { it.phase == CallPhase.INCOMING }
+
+            // Who keeps do not disturb is not the user's to change.
+            assertFalse(settings { it.copy(dndMode = DndMode.SOFTWARE) })
+            assertEquals(DndMode.SERVER, engine.settings.current.dndMode)
+        } finally {
+            pbx.command("database deltree DND")
+        }
+    }
+
+    @Test
+    fun switchedOffEverythingCanBeChangedAgain() {
+        manage(true)
+        manage(false)
+        assertFalse(engine.lock.managed.value)
+        onMain {
+            assertTrue(engine.updateSettings { it.copy(callWaiting = false, forwardAlways = "$CUSTOMER", dtmfMode = DtmfMode.SIP_INFO) })
+
+            val accounts = engine.accounts
+            assertEquals(env.sipPassword, accounts.passwordOf(first.id))
+            assertTrue(accounts.update(first.id, draft(APP).copy(name = "前台")).isEmpty())
+            assertTrue(accounts.setEnabled(first.id, false))
+            assertTrue(accounts.setDefault(second.id))
+            assertTrue(accounts.add(draft(THIRD)).isEmpty())
+            assertEquals(1, accounts.addAll(listOf(draft(FOURTH))))
+            assertTrue(accounts.remove(first.id))
+
+            val directories = engine.directory
+            assertEquals(env.ldapPassword, directories.passwordOf(directory.id))
+            assertTrue(directories.save(directory.copy(name = "分公司")).isEmpty())
+            assertTrue(directories.save(LdapDirectory(name = "门店", host = env.ldapHost, baseDn = env.ldapBaseDn)).isEmpty())
+            assertTrue(directories.remove(directory.id))
+
+            assertTrue(engine.tls.remove(fingerprint))
+            assertEquals(TlsManager.ImportResult.Added(1), engine.tls.import(env.caPem))
+
+            val codecs = engine.codecs
+            val audio = codecs.codecs.value
+            assertTrue(codecs.setEnabled(audio.first().key, !audio.first().enabled))
+            assertTrue(codecs.move(audio.first().key, 1))
+            assertTrue(codecs.restoreDefaults())
+
+            val keys = engine.shortcuts
+            assertTrue(keys.add(Shortcut(0, "仓库", "$RINGING_PHONE")).isEmpty())
+            assertTrue(keys.update(key.copy(number = "$CUSTOMER")).isEmpty())
+            assertTrue(keys.renameCategory(key.category, "总机"))
+            assertEquals(1, keys.import("开门,#9,dtmf")?.shortcuts?.size)
+            assertTrue(keys.remove(listOf(key.id)))
+        }
+        val now = engine.settings.current
+        assertFalse(now.callWaiting)
+        assertEquals("$CUSTOMER", now.forwardAlways)
+        assertEquals(DtmfMode.SIP_INFO, now.dtmfMode)
+        assertEquals(setOf("$SECOND", "$THIRD", "$FOURTH"), accounts().map { it.username }.toSet())
+        assertTrue(second.isDefault)
+        assertEquals(listOf("门店"), engine.directory.directories.value.map { it.name })
+        assertEquals(1, engine.tls.certificates.value.size)
+        assertEquals(setOf("仓库", "开门"), shortcuts.map { it.label }.toSet())
+    }
+
+    @Test
+    fun theRemoteSideChangesAManagedConfiguration() {
+        manage(true)
+        val removed = first.id
+        onMain {
+            engine.lock.fromRemote {
+                assertTrue(engine.updateSettings { it.copy(forwardAlways = "$CUSTOMER", mediaSecurity = MediaSecurity.SRTP_OPTIONAL) })
+                assertTrue(engine.accounts.add(draft(THIRD)).isEmpty())
+                assertTrue(engine.accounts.setDefault(second.id))
+                // What refers to an account follows when the remote side takes the account away.
+                assertTrue(engine.accounts.remove(removed))
+                assertTrue(engine.directory.save(LdapDirectory(name = "门店", host = env.ldapHost, baseDn = env.ldapBaseDn)).isEmpty())
+                assertTrue(engine.tls.remove(fingerprint))
+                assertTrue(engine.codecs.restoreDefaults())
+                assertTrue(engine.shortcuts.add(Shortcut(0, "呼叫前转", "$CUSTOMER", ShortcutAction.FORWARD)).isEmpty())
+            }
+        }
+        assertTrue("The remote change switched the state off", engine.lock.managed.value)
+        assertEquals("$CUSTOMER", engine.settings.current.forwardAlways)
+        assertEquals(MediaSecurity.SRTP_OPTIONAL, engine.settings.current.mediaSecurity)
+        assertEquals(setOf("$SECOND", "$THIRD"), accounts().map { it.username }.toSet())
+        assertTrue(second.isDefault)
+        assertEquals(listOf("总部" to "", "门店" to ""), engine.directory.directories.value.map { it.name to it.line })
+        assertTrue(engine.tls.certificates.value.isEmpty())
+        assertEquals(listOf("前台" to "", "呼叫前转" to ""), shortcuts.map { it.label to it.line })
+
+        // Once the remote side is done the phone is refused again, also after a change that failed half-way.
+        assertFalse(onMain { engine.accounts.remove(second.id) })
+        assertTrue(runCatching { onMain { engine.lock.fromRemote { error("the remote change failed") } } }.isFailure)
+        assertEquals(listOf(AccountRules.Error.MANAGED), onMain { engine.accounts.add(draft(FOURTH)) })
+        assertFalse(settings { it.copy(forwardAlways = "") })
+    }
+
+    @Test
+    fun theStateIsKeptInTheConfigurationFile() {
+        val file = File(InstrumentationRegistry.getInstrumentation().targetContext.filesDir, CONFIG_FILE)
+        /** What the app finds at its next start. */
+        fun stored(): Boolean = onMain { ConfigLock(engine.core.config).managed.value }
+
+        assertFalse(stored())
+        manage(true)
+        assertTrue(stored())
+        assertNotNull("Not written to the file", MANAGED_ENTRY.find(file.readText()))
+        manage(false)
+        assertFalse(stored())
+        assertNull("Still in the file", MANAGED_ENTRY.find(file.readText()))
+    }
+
+    private companion object {
+        /** Extensions of the PBX that no scripted phone uses, for further accounts of the app. */
+        const val SECOND = 1006
+        const val THIRD = 1007
+        const val FOURTH = 1008
+
+        const val MAIN_LINE = "总机"
+        const val CONFIG_FILE = "linphonerc"
+
+        /** The state as the configuration file has it while it is on, inside the section of the app. */
+        val MANAGED_ENTRY = Regex("""\[siplink][^\[]*^managed=1$""", RegexOption.MULTILINE)
+
+        /** A change of every setting that is not the user's own. */
+        val lockedSettings = listOf<(Settings) -> Settings>(
+            { it.copy(keepAlive = !it.keepAlive) },
+            { it.copy(intercomAutoAnswer = !it.intercomAutoAnswer) },
+            { it.copy(intercomSpeaker = !it.intercomSpeaker) },
+            { it.copy(verifyTlsCertificate = !it.verifyTlsCertificate) },
+            { it.copy(verifyTlsHostname = !it.verifyTlsHostname) },
+            { it.copy(mediaSecurity = MediaSecurity.SRTP_MANDATORY) },
+            { it.copy(dndMode = DndMode.SERVER) },
+            { it.copy(callWaiting = !it.callWaiting) },
+            { it.copy(rejectAnonymous = !it.rejectAnonymous) },
+            { it.copy(dtmfMode = DtmfMode.SIP_INFO) },
+            { it.copy(forwardAlways = "1003") },
+            { it.copy(forwardBusy = "") },
+            { it.copy(forwardNoAnswer = "1003") },
+            { it.copy(forwardNoAnswerSeconds = it.forwardNoAnswerSeconds + 5) },
+            { it.copy(features = it.features.copy(park = "", voicemail = "*98")) },
+            { it.copy(videoCalls = !it.videoCalls) },
+            { Settings() },
+        )
+    }
+}

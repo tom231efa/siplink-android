@@ -49,6 +49,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sky.siplink.core.SipEngine
+import com.sky.siplink.core.logic.ManagedConfig
 import com.sky.siplink.core.logic.ShortcutLines
 import com.sky.siplink.core.logic.ShortcutRules
 import com.sky.siplink.core.model.CallPhase
@@ -204,7 +205,8 @@ private fun press(engine: SipEngine, launcher: CallLauncher, shortcut: Shortcut,
         ShortcutAction.DTMF -> return calls.sendDtmfs(number)?.let(::ShortcutOutcome) ?: ShortcutOutcome("已发送 $number", showCall = true)
         ShortcutAction.FORWARD -> {
             val on = engine.settings.current.forwardAlways != number
-            engine.updateSettings { it.copy(forwardAlways = if (on) number else "") }
+            // Forwarding is part of a managed configuration: the key then has nothing to switch.
+            if (!engine.updateSettings { it.copy(forwardAlways = if (on) number else "") }) return ShortcutOutcome(ManagedConfig.NOTICE)
             return ShortcutOutcome(if (on) "全部来电将前转到 $number" else "已关闭呼叫前转")
         }
         ShortcutAction.DND -> {

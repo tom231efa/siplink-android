@@ -49,6 +49,9 @@ object ShortcutRules {
         CATEGORY_EMPTY("分类", "必填"),
         CATEGORY_RESERVED("分类", "名称不可用"),
         CATEGORY_TAKEN("分类", "已存在"),
+
+        /** Not a fault of the key: the configuration is managed and takes no change from the phone. */
+        MANAGED("", ManagedConfig.NOTICE),
         ;
 
         /** The error where no field stands next to it: in a list of import errors. */

@@ -33,8 +33,11 @@ import java.util.concurrent.Executors
  * What the servers return is also kept in a local copy ([DirectoryCache]). A search shows the
  * matches of that copy at once, and keeps them when the server has nothing to say - be it
  * because nothing matches there or because it cannot be reached, which the core does not tell apart.
+ *
+ * While the configuration is managed ([ConfigLock]) the directories cannot be changed here and
+ * their passwords are not handed out; searching and the local copy go on as ever.
  */
-class DirectoryManager(private val core: Core, private val cache: DirectoryCache) {
+class DirectoryManager(private val core: Core, private val cache: DirectoryCache, private val lock: ConfigLock) {
     private val store = LdapStore(core.config)
     private val listState = MutableStateFlow(emptyList<LdapDirectory>())
 
@@ -113,9 +116,11 @@ class DirectoryManager(private val core: Core, private val cache: DirectoryCache
     /**
      * Adds [input] when it has no id, else replaces the directory with that id.
      *
-     * @return validation errors, empty when the directory was saved
+     * @return validation errors, empty when the directory was saved; [LdapRules.Error.MANAGED]
+     *   while the configuration is managed
      */
     fun save(input: LdapDirectory): List<LdapRules.Error> {
+        if (lock.refuses) return listOf(LdapRules.Error.MANAGED)
         val directory = LdapRules.normalize(input)
         val list = listState.value
         val before = list.firstOrNull { it.id == directory.id }
@@ -143,12 +148,14 @@ class DirectoryManager(private val core: Core, private val cache: DirectoryCache
         return emptyList()
     }
 
-    /** The password saved for the directory [id], to show it in its form. */
-    fun passwordOf(id: String): String = store.passwordOf(id)
+    /** The password saved for the directory [id], to show it in its form; empty while the configuration is managed. */
+    fun passwordOf(id: String): String = if (lock.refuses) "" else store.passwordOf(id)
 
-    fun remove(id: String) {
+    /** @return whether the directory was removed: not when there is none with this id, nor while the configuration is managed */
+    fun remove(id: String): Boolean {
+        if (lock.refuses) return false
         val list = listState.value
-        if (list.none { it.id == id }) return
+        if (list.none { it.id == id }) return false
         store.save(list.filter { it.id != id })
         listState.value = store.load()
         if (listState.value.isEmpty()) forgetServer()
@@ -158,6 +165,7 @@ class DirectoryManager(private val core: Core, private val cache: DirectoryCache
         }
         dropCopy(id)
         onChanged?.invoke()
+        return true
     }
 
     /**
@@ -165,6 +173,7 @@ class DirectoryManager(private val core: Core, private val cache: DirectoryCache
      * back to being for every line.
      */
     fun followAccounts(accounts: Set<String>) {
+        if (lock.refuses) return
         val list = listState.value
         val followed = list.map { if (it.line.isEmpty() || it.line in accounts) it else it.copy(line = "") }
         if (followed == list) return

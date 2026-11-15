@@ -10,8 +10,10 @@ import org.linphone.core.PayloadType
 /**
  * The audio and the video codecs of the SIP core: which ones are offered and in which order of
  * preference. The core keeps both in its configuration file. Use from the main thread.
+ *
+ * While the configuration is managed ([ConfigLock]) neither can be changed here.
  */
-class CodecManager(private val core: Core) {
+class CodecManager(private val core: Core, private val lock: ConfigLock) {
     /** One kind of codecs: how the core lists and stores them, and where their defaults are remembered. */
     private inner class Kind(
         private val get: () -> Array<PayloadType>,
@@ -39,13 +41,14 @@ class CodecManager(private val core: Core) {
             return true
         }
 
-        fun move(key: String, offset: Int) {
+        fun move(key: String, offset: Int): Boolean {
             val types = get().toMutableList()
             val from = types.indexOfFirst { keyOf(it) == key }
             val to = from + offset
-            if (from < 0 || to !in types.indices) return
+            if (from < 0 || to !in types.indices) return false
             types.add(to, types.removeAt(from))
             commit(types.toTypedArray())
+            return true
         }
 
         fun restoreDefaults() {
@@ -77,16 +80,30 @@ class CodecManager(private val core: Core) {
 
     private fun kindOf(key: String): Kind = if (audio.has(key)) audio else video
 
-    /** Turns a codec on or off. The last one of its kind that is on stays on: a call needs a codec. */
-    fun setEnabled(key: String, enabled: Boolean): Boolean = kindOf(key).setEnabled(key, enabled)
+    /**
+     * Turns a codec on or off. The last one of its kind that is on stays on: a call needs a codec.
+     *
+     * @return whether it was done: not for that last codec, nor while the configuration is managed
+     */
+    fun setEnabled(key: String, enabled: Boolean): Boolean = !lock.refuses && kindOf(key).setEnabled(key, enabled)
 
-    /** Moves a codec [offset] places in the order of preference of its kind (negative: more preferred). */
-    fun move(key: String, offset: Int) = kindOf(key).move(key, offset)
+    /**
+     * Moves a codec [offset] places in the order of preference of its kind (negative: more preferred).
+     *
+     * @return whether it moved: not past either end of the list, nor while the configuration is managed
+     */
+    fun move(key: String, offset: Int): Boolean = !lock.refuses && kindOf(key).move(key, offset)
 
-    /** Back to the order and the selection the SDK came with, for audio and video. */
-    fun restoreDefaults() {
+    /**
+     * Back to the order and the selection the SDK came with, for audio and video.
+     *
+     * @return false when the configuration is managed: nothing was changed
+     */
+    fun restoreDefaults(): Boolean {
+        if (lock.refuses) return false
         audio.restoreDefaults()
         video.restoreDefaults()
+        return true
     }
 
     private fun keyOf(type: PayloadType): String = "${type.mimeType}/${type.clockRate}/${type.channels}"

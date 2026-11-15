@@ -94,6 +94,8 @@ abstract class PbxTestBase {
     /** Ends every call and removes every account of the app. */
     private fun release() {
         onMain {
+            // A configuration that a test left managed would refuse to be cleared.
+            engine.lock.setManaged(false)
             engine.core.terminateAllCalls()
             engine.accounts.accounts.value.forEach { engine.accounts.remove(it.id) }
         }

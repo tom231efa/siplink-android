@@ -34,6 +34,9 @@ object AccountRules {
         PASSWORD_REQUIRED("密码", "必填（已改用户名、域名或端口）"),
         ADDRESS_REJECTED("", "地址无法解析"),
         NOT_FOUND("", "账号不存在"),
+
+        /** Not a fault of the account: the configuration is managed and takes no change from the phone. */
+        MANAGED("", ManagedConfig.NOTICE),
         ;
 
         /** The error where no field stands next to it: in a notice, or in a list of import errors. */

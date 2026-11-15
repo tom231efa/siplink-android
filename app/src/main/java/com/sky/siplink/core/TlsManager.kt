@@ -20,12 +20,17 @@ import java.security.cert.X509Certificate
  * User imported CA certificates are stored as PEM in the app's private files. The SIP core is
  * pointed at a single bundle file made of its stock root CAs followed by the user CAs; the same
  * file is used by the core for SIP over TLS and for LDAP StartTLS.
+ *
+ * While the configuration is managed ([ConfigLock]) no CA can be added or removed here.
  */
-class TlsManager(context: Context, private val core: Core) {
+class TlsManager(context: Context, private val core: Core, private val lock: ConfigLock) {
     sealed interface ImportResult {
         data class Added(val count: Int) : ImportResult
         data object AlreadyTrusted : ImportResult
         data class Invalid(val reason: String) : ImportResult
+
+        /** Nothing was looked at: the configuration is managed. */
+        data object Managed : ImportResult
     }
 
     private val directory = File(context.filesDir, "tls")
@@ -47,6 +52,7 @@ class TlsManager(context: Context, private val core: Core) {
 
     /** Parses PEM / DER / PKCS#7 data and trusts every certificate found in it. */
     fun import(data: ByteArray): ImportResult {
+        if (lock.refuses) return ImportResult.Managed
         val parsed = try {
             CertificateTools.parse(data)
         } catch (e: Exception) {
@@ -64,9 +70,12 @@ class TlsManager(context: Context, private val core: Core) {
         }
     }
 
-    fun remove(fingerprint: String) {
+    /** @return false when the configuration is managed: nothing was removed */
+    fun remove(fingerprint: String): Boolean {
+        if (lock.refuses) return false
         userCertificates = userCertificates.filterNot { CertificateTools.fingerprint(it) == fingerprint }
         applyTrust(reconnect = true)
+        return true
     }
 
     /** Applies certificate verification and media encryption preferences to the core. */
