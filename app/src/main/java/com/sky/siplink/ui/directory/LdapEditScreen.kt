@@ -34,6 +34,7 @@ import com.sky.siplink.core.model.LdapSecurity
 import com.sky.siplink.core.model.SipAccount
 import com.sky.siplink.engine
 import com.sky.siplink.ui.components.ChoiceRow
+import com.sky.siplink.ui.components.ConfigPasswordDialog
 import com.sky.siplink.ui.components.DropdownField
 import com.sky.siplink.ui.components.FoldingCard
 import com.sky.siplink.ui.components.FormField
@@ -80,6 +81,10 @@ fun LdapEditScreen(directoryId: String?, onBack: () -> Unit, onOpenTls: () -> Un
     var bindDn by rememberSaveable { mutableStateOf(initial.bindDn) }
     // The saved password stands in the field, to look at or to change.
     var password by rememberSaveable { mutableStateOf(stored?.let { manager.passwordOf(it.id) }.orEmpty()) }
+    // A managed configuration with a password of its own keeps the saved one back until that is typed in.
+    val passwordsProtected by engine.lock.passwordsProtected.collectAsStateWithLifecycle()
+    var passwordOpened by rememberSaveable { mutableStateOf(false) }
+    var askConfigPassword by remember { mutableStateOf(false) }
     var line by rememberSaveable { mutableStateOf(initial.line) }
     var lookupIncoming by rememberSaveable { mutableStateOf(initial.lookupIncoming) }
     var lookupOutgoing by rememberSaveable { mutableStateOf(initial.lookupOutgoing) }
@@ -208,8 +213,9 @@ fun LdapEditScreen(directoryId: String?, onBack: () -> Unit, onOpenTls: () -> Un
                             value = password,
                             onValueChange = { password = it },
                             label = "密码",
-                            placeholder = if (stored != null && stored.bindDn.isNotEmpty()) "留空则保持已保存的密码" else null,
+                            placeholder = if (stored != null && stored.bindDn.isNotEmpty() && !locked) "留空则保持已保存的密码" else null,
                             password = true,
+                            onUnlock = if (stored != null && passwordsProtected && !passwordOpened) ({ askConfigPassword = true }) else null,
                         )
                     }
                 }
@@ -313,6 +319,14 @@ fun LdapEditScreen(directoryId: String?, onBack: () -> Unit, onOpenTls: () -> Un
             }
         }
         Spacer(Modifier.height(8.dp))
+    }
+
+    if (askConfigPassword && stored != null) {
+        ConfigPasswordDialog(onDismiss = { askConfigPassword = false }) { typed ->
+            password = manager.passwordOf(stored.id, typed)
+            passwordOpened = true
+            askConfigPassword = false
+        }
     }
 
     if (confirmDelete && stored != null && !locked) {

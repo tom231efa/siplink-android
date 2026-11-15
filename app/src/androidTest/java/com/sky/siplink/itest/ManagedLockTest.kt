@@ -31,6 +31,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
+import java.security.MessageDigest
 
 /**
  * A managed configuration: once the state is switched on, no function of the engine takes a
@@ -117,13 +118,14 @@ class ManagedLockTest : PbxTestBase() {
             assertFalse(accounts.remove(first.id))
             assertFalse(accounts.setEnabled(first.id, false))
             assertFalse(accounts.setDefault(second.id))
-            assertEquals("The password of a managed account was handed out", "", accounts.passwordOf(first.id))
+            // Without a password of its own the configuration lets the stored ones be looked at.
+            assertEquals(env.sipPassword, accounts.passwordOf(first.id))
 
             val directories = engine.directory
             assertEquals(listOf(LdapRules.Error.MANAGED), directories.save(LdapDirectory(host = env.ldapHost, baseDn = env.ldapBaseDn)))
             assertEquals(listOf(LdapRules.Error.MANAGED), directories.save(directory.copy(name = "分公司", enabled = false)))
             assertFalse(directories.remove(directory.id))
-            assertEquals("The password of a managed directory was handed out", "", directories.passwordOf(directory.id))
+            assertEquals(env.ldapPassword, directories.passwordOf(directory.id))
 
             assertEquals(TlsManager.ImportResult.Managed, engine.tls.import(env.caPem))
             assertFalse(engine.tls.remove(fingerprint))
@@ -307,6 +309,49 @@ class ManagedLockTest : PbxTestBase() {
     }
 
     @Test
+    fun aPasswordOfTheConfigurationKeepsTheStoredOnesBack() {
+        val lock = engine.lock
+        onMain { lock.setManaged(true, sha256(CONFIG_PASSWORD)) }
+        assertTrue(lock.passwordsProtected.value)
+        onMain {
+            val accounts = engine.accounts
+            val directories = engine.directory
+            assertFalse(lock.showsPasswords())
+            assertFalse(lock.showsPasswords(""))
+            assertFalse(lock.showsPasswords("$CONFIG_PASSWORD "))
+            assertFalse("The hash itself was taken for the password", lock.showsPasswords(sha256(CONFIG_PASSWORD)))
+            assertTrue(lock.showsPasswords(CONFIG_PASSWORD))
+            assertEquals("A kept password was handed out", "", accounts.passwordOf(first.id))
+            assertEquals("A kept password was handed out", "", accounts.passwordOf(first.id, "not the password"))
+            assertEquals(env.sipPassword, accounts.passwordOf(first.id, CONFIG_PASSWORD))
+            assertEquals("A kept password was handed out", "", directories.passwordOf(directory.id))
+            assertEquals("A kept password was handed out", "", directories.passwordOf(directory.id, env.ldapPassword))
+            assertEquals(env.ldapPassword, directories.passwordOf(directory.id, CONFIG_PASSWORD))
+            // The remote side is handed them whatever it is.
+            lock.fromRemote {
+                assertEquals(env.sipPassword, accounts.passwordOf(first.id))
+                assertEquals(env.ldapPassword, directories.passwordOf(directory.id))
+            }
+            // Who knows the password gets to see, not to change.
+            assertEquals(listOf(AccountRules.Error.MANAGED), accounts.update(first.id, draft(APP).copy(name = "前台")))
+        }
+
+        // Handed out again without one, the configuration keeps nothing back.
+        manage(true)
+        assertFalse(lock.passwordsProtected.value)
+        assertEquals(env.sipPassword, onMain { engine.accounts.passwordOf(first.id) })
+
+        // Switched off, the password goes with the state: it is not asked for by what is handed out next.
+        onMain { lock.setManaged(true, sha256(CONFIG_PASSWORD)) }
+        assertTrue(lock.passwordsProtected.value)
+        manage(false)
+        assertFalse(lock.passwordsProtected.value)
+        assertEquals(env.sipPassword, onMain { engine.accounts.passwordOf(first.id) })
+        manage(true)
+        assertFalse("The password of an earlier configuration is still asked for", lock.passwordsProtected.value)
+    }
+
+    @Test
     fun theStateIsKeptInTheConfigurationFile() {
         val file = File(InstrumentationRegistry.getInstrumentation().targetContext.filesDir, CONFIG_FILE)
         /** What the app finds at its next start. */
@@ -319,7 +364,26 @@ class ManagedLockTest : PbxTestBase() {
         manage(false)
         assertFalse(stored())
         assertNull("Still in the file", MANAGED_ENTRY.find(file.readText()))
+
+        // The password of the configuration is kept as the hash that was handed out, and found again at the next start.
+        val hash = sha256(CONFIG_PASSWORD)
+        onMain { engine.lock.setManaged(true, hash) }
+        assertTrue("The hash is not in the file", hash in file.readText())
+        assertFalse("The password itself is in the file", CONFIG_PASSWORD in file.readText())
+        onMain {
+            val next = ConfigLock(engine.core.config)
+            assertTrue(next.managed.value)
+            assertTrue(next.passwordsProtected.value)
+            assertFalse(next.showsPasswords())
+            assertTrue(next.showsPasswords(CONFIG_PASSWORD))
+        }
+        manage(false)
+        assertFalse("The hash is still in the file", hash in file.readText())
+        assertFalse(onMain { ConfigLock(engine.core.config).passwordsProtected.value })
     }
+
+    private fun sha256(text: String): String =
+        MessageDigest.getInstance("SHA-256").digest(text.toByteArray()).joinToString("") { "%02x".format(it) }
 
     private companion object {
         /** Extensions of the PBX that no scripted phone uses, for further accounts of the app. */
@@ -328,6 +392,9 @@ class ManagedLockTest : PbxTestBase() {
         const val FOURTH = 1008
 
         const val MAIN_LINE = "总机"
+
+        /** The password a managed configuration of the tests has: made up here, and only its hash is handed out. */
+        const val CONFIG_PASSWORD = "itest-config-password"
         const val CONFIG_FILE = "linphonerc"
 
         /** The state as the configuration file has it while it is on, inside the section of the app. */

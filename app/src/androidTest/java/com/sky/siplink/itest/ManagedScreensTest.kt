@@ -4,6 +4,7 @@ import android.accessibilityservice.AccessibilityService
 import android.graphics.Bitmap
 import android.graphics.Rect
 import android.os.Build
+import android.os.Bundle
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -21,6 +22,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
+import java.security.MessageDigest
 
 /**
  * The screens of a managed configuration, as the user gets them. The tests hand out a
@@ -167,13 +169,36 @@ class ManagedScreensTest : PbxTestBase() {
         settle()
     }
 
-    /** The password field of the form on screen shows a row of dots that is not the password, and no way to reveal it. */
-    private fun passwordIsHidden(password: String) {
+    private fun passwordOnScreen(password: String): Boolean = nodes().any { it.text?.contains(password) == true }
+
+    /** The password field of the form on screen shows a row of dots that says nothing about the password, and an eye to ask for it. */
+    private fun passwordIsKeptBack(password: String) {
         val field = chain(see("密码")).first { it.isPassword }
         assertEquals("The field shows the password, or how long it is", "•".repeat(MASK_LENGTH), field.text?.toString())
-        assertTrue("The password is on the screen", nodes().none { it.text?.contains(password) == true })
-        absent("显示密码", "隐藏密码")
+        assertFalse("The password is on the screen", passwordOnScreen(password))
+        see("显示密码")
     }
+
+    /** The eye of the form on screen shows [password] in the clear. */
+    private fun passwordIsShown(password: String) {
+        if (!settles(SCREEN_TIMEOUT_MS) { passwordOnScreen(password) }) {
+            throw AssertionError("The password is not shown. The screen says: ${screenText().replace(password, "<the password>")}")
+        }
+        see("隐藏密码")
+    }
+
+    /** Types [text] into the one field of what is in front that takes input: the field of a dialog. */
+    private fun type(text: String) {
+        val arguments = Bundle().apply { putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text) }
+        val done = settles(SCREEN_TIMEOUT_MS) {
+            nodes().singleOrNull { it.isEditable && it.isEnabled }?.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments) == true
+        }
+        assertTrue("Nothing takes the text. The screen says: ${screenText()}", done)
+        settle()
+    }
+
+    private fun sha256(text: String): String =
+        MessageDigest.getInstance("SHA-256").digest(text.toByteArray()).joinToString("") { "%02x".format(it) }
 
     /** Saves what the display shows as [name].png. */
     private fun picture(name: String) {
@@ -244,7 +269,9 @@ class ManagedScreensTest : PbxTestBase() {
         see("账号详情")
         see(ManagedConfig.NOTICE)
         locked("账号名称（可选）", "用户名", "密码", "域名 / 服务器", "端口", "显示名称（可选）", "UDP", "TLS", "启用此账号")
-        passwordIsHidden(env.sipPassword)
+        // Without a password of its own the configuration lets the stored ones be looked at.
+        assertFalse("The password is on the screen", passwordOnScreen(env.sipPassword))
+        see("显示密码")
         absent("保存", "删除账号", "设为默认账号", "当前默认账号")
         see("账号详情")
         picture("account")
@@ -302,7 +329,8 @@ class ManagedScreensTest : PbxTestBase() {
         see("通讯录详情")
         see(ManagedConfig.NOTICE)
         locked("名称（可选）", "服务器地址", "搜索基准", "不加密", "StartTLS", "匿名", "用户名", "密码", "线路", "来电显示姓名", "启用此通讯录")
-        passwordIsHidden(env.ldapPassword)
+        assertFalse("The password is on the screen", passwordOnScreen(env.ldapPassword))
+        see("显示密码")
         absent("保存", "删除通讯录")
         see("通讯录详情")
         picture("directory")
@@ -386,6 +414,69 @@ class ManagedScreensTest : PbxTestBase() {
     }
 
     @Test
+    fun theStoredPasswordsAreShownAsTheConfigurationHasIt() {
+        addAccount(draft(APP).copy(name = LINE))
+        onMain {
+            assertTrue(engine.updateSettings { it.copy(lockScreenPromptDeclined = true) })
+            val directory = LdapDirectory(name = DIRECTORY, host = env.ldapHost, bindDn = env.ldapBindDn, password = env.ldapPassword, baseDn = env.ldapBaseDn)
+            assertTrue(engine.directory.save(directory).isEmpty())
+            // With a password of its own the configuration keeps the stored ones back.
+            engine.lock.setManaged(true, sha256(CONFIG_PASSWORD))
+        }
+        showApp()
+
+        // The account: dots that say nothing, until the password of the configuration is typed in.
+        tap("设置")
+        tap("SIP 账号")
+        tap(LINE)
+        see("账号详情")
+        passwordIsKeptBack(env.sipPassword)
+        tap("显示密码")
+        see("配置密码")
+        picture("config-password")
+        type("$CONFIG_PASSWORD?")
+        tap("查看")
+        see("密码不正确")
+        tap("取消")
+        passwordIsKeptBack(env.sipPassword)
+        tap("显示密码")
+        type(CONFIG_PASSWORD)
+        tap("查看")
+        passwordIsShown(env.sipPassword)
+        // Shown is not changeable.
+        locked("用户名", "密码")
+        absent("保存")
+        back()
+        back()
+
+        // The directory likewise.
+        tap("LDAP 通讯录")
+        tap(DIRECTORY)
+        see("通讯录详情")
+        passwordIsKeptBack(env.ldapPassword)
+        tap("显示密码")
+        type(CONFIG_PASSWORD)
+        tap("查看")
+        passwordIsShown(env.ldapPassword)
+        absent("保存")
+        back()
+        back()
+
+        // Without a password of its own they are there to be looked at like the rest: the eye just shows them.
+        onMain { engine.lock.setManaged(true) }
+        tap("SIP 账号")
+        tap(LINE)
+        see("账号详情")
+        assertFalse("The password is on the screen", passwordOnScreen(env.sipPassword))
+        tap("显示密码")
+        passwordIsShown(env.sipPassword)
+        locked("用户名", "密码")
+        absent("保存")
+        tap("隐藏密码")
+        await("the password to be hidden again") { !passwordOnScreen(env.sipPassword) }
+    }
+
+    @Test
     fun anEmptyManagedConfigurationOffersNothingToAdd() {
         await("the shortcut keys to be read") { engine.shortcuts.loaded.value }
         onMain {
@@ -448,8 +539,11 @@ class ManagedScreensTest : PbxTestBase() {
         const val SPEED_KEY = "前台"
         const val FORWARD_KEY = "转总机"
 
-        /** How many dots a locked password field shows, whatever the password. */
+        /** How many dots a password field shows that keeps its password back, whatever the password. */
         const val MASK_LENGTH = 8
+
+        /** The password a managed configuration of the tests has: made up here, and only its hash is handed out. */
+        const val CONFIG_PASSWORD = "itest-config-password"
 
         /** How far apart the looks are that have to find the screen unchanged, and how long it gets to come to rest. */
         const val LOOK_INTERVAL_MS = 120L

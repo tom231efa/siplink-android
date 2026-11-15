@@ -1,5 +1,6 @@
 package com.sky.siplink.core
 
+import com.sky.siplink.core.logic.ManagedConfig
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -9,6 +10,10 @@ import org.linphone.core.Config
  * Whether the configuration is managed: handed out by a remote side, and then not to be changed
  * on the phone. The settings store and every manager ask [refuses] before they change anything,
  * so a control that should not have been offered still changes nothing.
+ *
+ * A managed configuration may bring the hash of a password of its own. With one, the passwords
+ * stored in it (of the accounts, of the directories) are shown only to who types that password
+ * ([showsPasswords]); without one they can be looked at like everything else.
  *
  * The state is kept in the app's section of the SIP core configuration file. Nothing in the app
  * switches it on yet: [setManaged] and [fromRemote] are for the loader of remote configurations.
@@ -20,6 +25,14 @@ class ConfigLock(private val config: Config) {
     /** True while the configuration is managed. */
     val managed: StateFlow<Boolean> = state.asStateFlow()
 
+    /** Hash of the password of the managed configuration ([ManagedConfig.isPassword]); empty: it has none. */
+    private var passwordHash = if (state.value) config.getString(SettingsStore.SECTION, KEY_PASSWORD_HASH, "").orEmpty() else ""
+
+    private val protectedState = MutableStateFlow(passwordHash.isNotEmpty())
+
+    /** True while the stored passwords are kept from being shown: the configuration is managed and has a password. */
+    val passwordsProtected: StateFlow<Boolean> = protectedState.asStateFlow()
+
     /** How many [fromRemote] calls are running, one inside the other. */
     private var remoteChanges = 0
 
@@ -27,14 +40,30 @@ class ConfigLock(private val config: Config) {
     val refuses: Boolean get() = state.value && remoteChanges == 0
 
     /**
+     * Whether a stored password may be handed out: always, unless the configuration is managed
+     * with a password of its own, which [typed] then has to be (null: nobody typed one). The
+     * remote side is handed them in any case.
+     */
+    fun showsPasswords(typed: String? = null): Boolean =
+        passwordHash.isEmpty() || remoteChanges > 0 || (typed != null && ManagedConfig.isPassword(passwordHash, typed))
+
+    /**
      * Makes the configuration managed, or the phone's own again. Neither changes what is
      * configured: switched off, what was handed out stays and can be changed on the phone.
+     *
+     * @param passwordHash hash of the password that the stored passwords are shown to
+     *   ([ManagedConfig.isPassword]); empty: they are not kept from being shown. It goes with
+     *   the managed state: switched off, there is none.
      */
-    internal fun setManaged(on: Boolean) {
-        if (state.value == on) return
+    internal fun setManaged(on: Boolean, passwordHash: String = "") {
+        val hash = if (on) passwordHash.trim() else ""
+        if (state.value == on && this.passwordHash == hash) return
         config.setBool(SettingsStore.SECTION, KEY_MANAGED, on)
+        config.setString(SettingsStore.SECTION, KEY_PASSWORD_HASH, hash)
         config.sync()
+        this.passwordHash = hash
         state.value = on
+        protectedState.value = hash.isNotEmpty()
     }
 
     /** Runs [changes] as the remote side: nothing they change is refused, managed or not. */
@@ -49,5 +78,6 @@ class ConfigLock(private val config: Config) {
 
     private companion object {
         const val KEY_MANAGED = "managed"
+        const val KEY_PASSWORD_HASH = "managed_password_hash"
     }
 }

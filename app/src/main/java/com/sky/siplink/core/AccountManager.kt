@@ -24,7 +24,8 @@ import java.util.UUID
  * Must be used from the thread that owns the core (the main thread).
  *
  * While the configuration is managed ([ConfigLock]) the accounts cannot be changed here, which
- * each function reports in its own way, and their passwords are not handed out.
+ * each function reports in its own way; where it has a password of its own, theirs are handed
+ * out only to who typed it.
  */
 class AccountManager(private val core: Core, private val lock: ConfigLock) {
     private val state = MutableStateFlow<List<SipAccount>>(emptyList())
@@ -118,9 +119,11 @@ class AccountManager(private val core: Core, private val lock: ConfigLock) {
     /**
      * The password saved for the account [id], to show it in its form. Empty where there is none:
      * of the accounts saved by earlier versions only a digest of the password is left. Empty as
-     * well while the configuration is managed: a password that was handed out is not shown.
+     * well where a managed configuration keeps its passwords from being shown and [typed] is not
+     * its password ([ConfigLock.showsPasswords]).
      */
-    fun passwordOf(id: String): String = if (lock.refuses) "" else find(id)?.findAuthInfo()?.password.orEmpty()
+    fun passwordOf(id: String, typed: String? = null): String =
+        if (lock.showsPasswords(typed)) find(id)?.findAuthInfo()?.password.orEmpty() else ""
 
     /**
      * Whether calls may go out on [account]: it is switched on. That includes the moment in

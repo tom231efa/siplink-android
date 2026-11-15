@@ -171,7 +171,12 @@ private fun RowText(title: String, subtitle: String?, modifier: Modifier) {
  * Outlined text field with the app's rounded shape and an optional error line.
  *
  * Where the configuration is locked ([LocalConfigLocked]) it shows its value and takes no input;
- * a password field then shows neither the password nor how long it is.
+ * the eye of a password field goes on working.
+ *
+ * @param onUnlock for a password field whose password is kept from the screen (a managed
+ *   configuration with a password of its own, see [ConfigPasswordDialog]): the field then shows
+ *   dots that say nothing about it, not even how long it is, and its eye calls this to ask for
+ *   it. Null: the field shows [value].
  */
 @Composable
 fun FormField(
@@ -185,11 +190,13 @@ fun FormField(
     keyboardType: KeyboardType = KeyboardType.Text,
     singleLine: Boolean = true,
     password: Boolean = false,
+    onUnlock: (() -> Unit)? = null,
 ) {
     val locked = LocalConfigLocked.current
+    val kept = password && onUnlock != null
     var revealed by remember { mutableStateOf(false) }
     OutlinedTextField(
-        value = if (password && locked) LOCKED_PASSWORD else value,
+        value = if (kept) KEPT_PASSWORD else value,
         onValueChange = onValueChange,
         modifier = modifier.fillMaxWidth(),
         enabled = !locked,
@@ -200,17 +207,28 @@ fun FormField(
         singleLine = singleLine,
         shape = MaterialTheme.shapes.medium,
         colors = lockedFieldColors(),
-        visualTransformation = if (password && (locked || !revealed)) PasswordVisualTransformation() else VisualTransformation.None,
+        visualTransformation = if (password && (kept || !revealed)) PasswordVisualTransformation() else VisualTransformation.None,
         keyboardOptions = KeyboardOptions(
             keyboardType = if (password) KeyboardType.Password else keyboardType,
             autoCorrectEnabled = false,
         ),
-        trailingIcon = if (password && !locked) {
+        trailingIcon = if (password) {
             {
-                IconButton(onClick = { revealed = !revealed }) {
+                val shown = revealed && !kept
+                IconButton(
+                    onClick = {
+                        if (kept) {
+                            // Asked for, the password shows as soon as it is handed over.
+                            revealed = true
+                            onUnlock?.invoke()
+                        } else {
+                            revealed = !revealed
+                        }
+                    },
+                ) {
                     Icon(
-                        if (revealed) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
-                        contentDescription = if (revealed) "隐藏密码" else "显示密码",
+                        if (shown) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
+                        contentDescription = if (shown) "隐藏密码" else "显示密码",
                     )
                 }
             }
@@ -220,12 +238,16 @@ fun FormField(
     )
 }
 
-/** Stands in a password field where the configuration is locked: eight dots, whatever the password. */
-private const val LOCKED_PASSWORD = "········"
+/** Stands in a password field whose password is kept from the screen: eight dots, whatever the password. */
+private const val KEPT_PASSWORD = "········"
 
 /** A field is only ever disabled where the configuration is locked. It is then there to be read: its value stays darker than the frame around it. */
 @Composable
-private fun lockedFieldColors() = OutlinedTextFieldDefaults.colors(disabledTextColor = MaterialTheme.colorScheme.onSurfaceVariant)
+private fun lockedFieldColors() = OutlinedTextFieldDefaults.colors(
+    disabledTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+    // The eye of a password field still works there.
+    disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+)
 
 /**
  * A field that opens a list to choose from, in the shape of [FormField]. Where the configuration

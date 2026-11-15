@@ -1,6 +1,7 @@
 package com.sky.siplink.core.logic
 
 import com.sky.siplink.core.model.Settings
+import java.security.MessageDigest
 
 /**
  * Rules of a managed configuration: one that a remote side hands out, and that can be looked at
@@ -25,4 +26,18 @@ object ManagedConfig {
         callBannerPosition = wanted.callBannerPosition,
         lockScreenPromptDeclined = wanted.lockScreenPromptDeclined,
     )
+
+    /**
+     * Whether [typed] is the password of a managed configuration: the one its stored passwords
+     * are shown to. [hash] is what the configuration brought of it, the SHA-256 of the password
+     * (as UTF-8) in hex, in either case of the letters. Anything else is the hash of no password,
+     * and an empty one stands for "no password was set", which nothing typed can be.
+     */
+    fun isPassword(hash: String, typed: String): Boolean {
+        val expected = hash.trim().lowercase()
+        if (expected.isEmpty()) return false
+        val actual = MessageDigest.getInstance("SHA-256").digest(typed.toByteArray())
+            .joinToString("") { byte -> "%02x".format(byte) }
+        return MessageDigest.isEqual(expected.toByteArray(), actual.toByteArray())
+    }
 }

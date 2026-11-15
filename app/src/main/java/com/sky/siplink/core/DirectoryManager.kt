@@ -34,8 +34,9 @@ import java.util.concurrent.Executors
  * matches of that copy at once, and keeps them when the server has nothing to say - be it
  * because nothing matches there or because it cannot be reached, which the core does not tell apart.
  *
- * While the configuration is managed ([ConfigLock]) the directories cannot be changed here and
- * their passwords are not handed out; searching and the local copy go on as ever.
+ * While the configuration is managed ([ConfigLock]) the directories cannot be changed here, and
+ * where it has a password of its own, theirs are handed out only to who typed it; searching and
+ * the local copy go on as ever.
  */
 class DirectoryManager(private val core: Core, private val cache: DirectoryCache, private val lock: ConfigLock) {
     private val store = LdapStore(core.config)
@@ -148,8 +149,12 @@ class DirectoryManager(private val core: Core, private val cache: DirectoryCache
         return emptyList()
     }
 
-    /** The password saved for the directory [id], to show it in its form; empty while the configuration is managed. */
-    fun passwordOf(id: String): String = if (lock.refuses) "" else store.passwordOf(id)
+    /**
+     * The password saved for the directory [id], to show it in its form. Empty where a managed
+     * configuration keeps its passwords from being shown and [typed] is not its password
+     * ([ConfigLock.showsPasswords]).
+     */
+    fun passwordOf(id: String, typed: String? = null): String = if (lock.showsPasswords(typed)) store.passwordOf(id) else ""
 
     /** @return whether the directory was removed: not when there is none with this id, nor while the configuration is managed */
     fun remove(id: String): Boolean {

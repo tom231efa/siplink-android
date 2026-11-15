@@ -39,6 +39,7 @@ import com.sky.siplink.core.model.AccountDraft
 import com.sky.siplink.core.model.SipTransport
 import com.sky.siplink.engine
 import com.sky.siplink.ui.components.ChoiceRow
+import com.sky.siplink.ui.components.ConfigPasswordDialog
 import com.sky.siplink.ui.components.FoldingCard
 import com.sky.siplink.ui.components.FormField
 import com.sky.siplink.ui.components.LocalConfigLocked
@@ -80,6 +81,10 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
     var username by rememberSaveable { mutableStateOf(initial.username) }
     // The saved password stands in the field, to look at or to change.
     var password by rememberSaveable { mutableStateOf(existing?.let { manager.passwordOf(it.id) }.orEmpty()) }
+    // A managed configuration with a password of its own keeps the saved one back until that is typed in.
+    val passwordsProtected by context.engine.lock.passwordsProtected.collectAsStateWithLifecycle()
+    var passwordOpened by rememberSaveable { mutableStateOf(false) }
+    var askConfigPassword by remember { mutableStateOf(false) }
     var domain by rememberSaveable { mutableStateOf(initial.domain) }
     // Without a port of its own the account shows the one its protocol has by itself.
     var port by rememberSaveable { mutableStateOf(initial.port.ifEmpty { defaultPort(initial.transport) }) }
@@ -169,9 +174,10 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
                     value = password,
                     onValueChange = { password = it },
                     label = "密码",
-                    placeholder = if (existing != null) "留空则不修改密码" else null,
+                    placeholder = if (existing != null && !locked) "留空则不修改密码" else null,
                     password = true,
                     error = error(AccountRules.Error.PASSWORD_REQUIRED),
+                    onUnlock = if (existing != null && passwordsProtected && !passwordOpened) ({ askConfigPassword = true }) else null,
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FormField(
@@ -296,6 +302,14 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
             }
         }
         Spacer(Modifier.height(8.dp))
+    }
+
+    if (askConfigPassword && existing != null) {
+        ConfigPasswordDialog(onDismiss = { askConfigPassword = false }) { typed ->
+            password = manager.passwordOf(existing.id, typed)
+            passwordOpened = true
+            askConfigPassword = false
+        }
     }
 
     if (confirmDelete && existing != null && !locked) {

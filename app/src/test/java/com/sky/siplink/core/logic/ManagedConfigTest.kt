@@ -9,7 +9,9 @@ import com.sky.siplink.core.model.Settings
 import com.sky.siplink.core.model.ThemeMode
 import com.sky.siplink.core.model.VideoSize
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ManagedConfigTest {
@@ -125,5 +127,29 @@ class ManagedConfigTest {
     @Test
     fun `nothing changes when nothing is asked for`() {
         assertEquals(current, ManagedConfig.localUpdate(current, current))
+    }
+
+    @Test
+    fun `the password of the configuration is the one its hash was made of`() {
+        // `printf 'abc' | sha256sum`, and the same for a password that is not ASCII.
+        val abc = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        val chinese = "6608321b199d7bba1d7fd8c4dc6daf3c808e1b05598c8607898061dab35fa667"
+        assertTrue(ManagedConfig.isPassword(abc, "abc"))
+        assertTrue(ManagedConfig.isPassword(abc.uppercase(), "abc"))
+        assertTrue(ManagedConfig.isPassword("  $abc\n", "abc"))
+        assertTrue(ManagedConfig.isPassword(chinese, "查看密码1"))
+        assertFalse(ManagedConfig.isPassword(abc, "abd"))
+        assertFalse(ManagedConfig.isPassword(abc, "ABC"))
+        assertFalse(ManagedConfig.isPassword(abc, ""))
+        assertFalse(ManagedConfig.isPassword(abc, abc))
+    }
+
+    @Test
+    fun `without a hash, or with something that is none, nothing is the password`() {
+        assertFalse(ManagedConfig.isPassword("", ""))
+        assertFalse(ManagedConfig.isPassword("", "abc"))
+        assertFalse(ManagedConfig.isPassword("   ", "abc"))
+        assertFalse(ManagedConfig.isPassword("abc", "abc"))
+        assertFalse(ManagedConfig.isPassword("not a hash", "not a hash"))
     }
 }
