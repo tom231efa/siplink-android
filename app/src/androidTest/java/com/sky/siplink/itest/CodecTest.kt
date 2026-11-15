@@ -1,6 +1,7 @@
 package com.sky.siplink.itest
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.sky.siplink.core.model.CallPhase
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -68,6 +69,28 @@ class CodecTest : PbxTestBase() {
             codecs.restoreDefaults()
         }
         assertEquals(initial, engine.codecs.codecs.value)
+    }
+
+    @Test
+    fun aVideoCodecThatIsSwitchedOffIsNotUsed() {
+        register()
+        // The PBX takes VP8 and H.264; the SDK prefers H.264 of the two.
+        val codecs = engine.codecs
+        val h264 = codecs.videoCodecs.value.first { it.mime == "H264" }.key
+        assertTrue(codecs.videoCodecs.value.indexOfFirst { it.mime == "H264" } < codecs.videoCodecs.value.indexOfFirst { it.mime == "VP8" })
+        assertEquals("H264", callAndReadVideoCodec())
+        onMain { assertTrue(codecs.setEnabled(h264, false)) }
+        assertEquals("VP8", callAndReadVideoCodec())
+    }
+
+    private fun callAndReadVideoCodec(): String? {
+        ok(onMain { engine.calls.dial("2000", null, video = true) })
+        awaitCall("a video call") { it.video != null && it.phase == CallPhase.CONNECTED }
+        val codec = onMain { engine.core.currentCall?.currentParams?.usedVideoPayloadType?.mimeType }
+        onMain { engine.calls.hangUp() }
+        awaitNoCall()
+        await("the PBX to release the call") { pbxChannel(pbxLeg(APP)) == null }
+        return codec
     }
 
     private companion object {

@@ -4,7 +4,8 @@ type = wizard
 accepts_auth = yes
 accepts_registrations = yes
 endpoint/context = internal
-endpoint/allow = !all,ulaw,alaw,g722
+endpoint/allow = !all,ulaw,alaw,g722,vp8,h264
+; Video codecs are offered to the phones (VideoCallTest); a call is audio-only unless one side asks.
 ; Take the codecs in the order the phone offers them, so that the codec priority set in the app
 ; decides (CodecTest). With the default, "local", the order of the allow line above would.
 endpoint/incoming_call_offer_pref = remote

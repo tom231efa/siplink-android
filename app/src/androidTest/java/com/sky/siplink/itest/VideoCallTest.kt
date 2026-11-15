@@ -1,0 +1,275 @@
+package com.sky.siplink.itest
+
+import android.Manifest
+import android.util.Log
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.sky.siplink.core.logic.VideoRules
+import com.sky.siplink.core.model.AudioRoute
+import com.sky.siplink.core.model.CallPhase
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.linphone.core.Call
+
+/**
+ * Video calls against the test PBX: number 2000 echoes what it gets, video included; calls the
+ * PBX places to the app (AMI Originate, context "videotests") offer video, and one of them asks
+ * to add video after it was answered audio-only.
+ *
+ * The camera permission is granted here. The tests run with the app in the background, where
+ * the app sends the SDK's still picture instead of the camera (see VideoController): video
+ * flows all the same. [theCameraOnlyRunsWhileTheCallScreenIsShown] brings up the call screen.
+ */
+@RunWith(AndroidJUnit4::class)
+class VideoCallTest : VideoTestBase() {
+    @Before
+    fun grantCamera() = grant(Manifest.permission.CAMERA)
+
+    @Test
+    fun theSdkProvidesVideoCodecsAndCameras() {
+        val codecs = engine.codecs.videoCodecs.value
+        val devices = onMain { engine.core.videoDevicesList.toList() }
+        Log.i(TAG, "Video codecs: $codecs; video devices: $devices; current: ${onMain { engine.core.videoDevice }}")
+        assertTrue("No video codec", codecs.isNotEmpty())
+        assertTrue("No camera among $devices", VideoRules.cameras(devices).isNotEmpty())
+        assertTrue("The still picture is not listed as ${VideoRules.STATIC_PICTURE}: $devices", VideoRules.STATIC_PICTURE in devices)
+        assertNotNull(VideoRules.startCamera(devices))
+    }
+
+    @Test
+    fun anAudioCallHasNoVideo() {
+        register()
+        dial("2000")
+        val call = awaitConnected("2000")
+        assertNull(call.video)
+        assertFalse(onMain { engine.core.currentCall!!.currentParams.isVideoEnabled })
+        assertFalse("The PBX was offered video", pbxHasVideo(APP))
+        awaitAppHearsAudio()
+    }
+
+    @Test
+    fun aVideoCallSendsAndReceivesVideo() {
+        register()
+        dialVideo("2000")
+        awaitConnected("2000")
+        awaitVideo { it.sending && it.receiving }
+        awaitVideoReceived()
+        awaitAppHearsAudio()
+        assertTrue("The PBX has no video stream", pbxHasVideo(APP))
+    }
+
+    @Test
+    fun theSoundOfAVideoCallGoesToTheSpeaker() {
+        // With file audio the SDK reports no output device: use the real ones, with a party
+        // that stays silent (2002), so that nothing is echoed out of the loudspeaker.
+        onMain { engine.core.useFiles = false }
+        register()
+        dial("2002")
+        val audio = awaitConnected("2002")
+        assertEquals(AudioRoute.EARPIECE, audio.route)
+        ok(onMain { engine.calls.toggleVideo() })
+        awaitVideo { it.sending }
+        if (AudioRoute.HEADSET in audio.availableRoutes || AudioRoute.BLUETOOTH in audio.availableRoutes) {
+            never("the speaker with a headset connected", QUIET_WINDOW_MS) { call()?.route == AudioRoute.SPEAKER }
+        } else {
+            awaitCall("the speaker to be used") { it.route == AudioRoute.SPEAKER }
+        }
+    }
+
+    @Test
+    fun videoCanBeAddedAndEndedDuringACall() {
+        register()
+        dial("2000")
+        awaitConnected("2000")
+        assertNull(call()?.video)
+        ok(onMain { engine.calls.toggleVideo() })
+        awaitVideo { it.sending && it.receiving }
+        awaitVideoReceived()
+        ok(onMain { engine.calls.toggleVideo() })
+        awaitCall("the video to end") { it.phase == CallPhase.CONNECTED && it.video == null }
+        assertFalse(onMain { engine.core.currentCall!!.currentParams.isVideoEnabled })
+        awaitAppHearsAudio()
+    }
+
+    @Test
+    fun theOwnCameraCanBeSwitchedOffAndOnWhileTheCallGoesOn() {
+        register()
+        dialVideo("2000")
+        awaitConnected("2000")
+        awaitVideo { it.sending && it.receiving }
+        ok(onMain { engine.calls.toggleCamera() })
+        awaitVideo { !it.sending && it.receiving }
+        val sent = videoPacketsSent()
+        Thread.sleep(QUIET_WINDOW_MS)
+        assertEquals("Video was still sent", sent, videoPacketsSent())
+        ok(onMain { engine.calls.toggleCamera() })
+        awaitVideo { it.sending && it.receiving }
+        awaitVideoReceived()
+    }
+
+    @Test
+    fun theCameraCanBeSwitched() {
+        register()
+        dialVideo("2000")
+        awaitConnected("2000")
+        awaitVideo { it.sending }
+        val devices = onMain { engine.core.videoDevicesList.toList() }
+        val before = onMain { engine.core.videoDevice }
+        assertEquals(VideoRules.startCamera(devices), before)
+        onMain { engine.calls.switchCamera() }
+        assertEquals(VideoRules.nextCamera(devices, before), onMain { engine.core.videoDevice })
+        awaitConnected("2000")
+        awaitVideoReceived()
+    }
+
+    @Test
+    fun anIncomingVideoCallCanBeAnsweredWithVideo() {
+        register()
+        pbxCallsApp("echo")
+        val ringing = awaitCall("the incoming video call") { it.phase == CallPhase.INCOMING }
+        assertTrue("The offer of video is not shown", ringing.videoOffer)
+        onMain { engine.calls.answer(video = true) }
+        awaitVideo { it.sending && it.receiving }
+        awaitVideoReceived()
+    }
+
+    @Test
+    fun anIncomingVideoCallCanBeAnsweredAudioOnly() {
+        register()
+        pbxCallsApp("echo")
+        awaitCall("the incoming video call") { it.phase == CallPhase.INCOMING && it.videoOffer }
+        onMain { engine.calls.answer() }
+        val call = awaitCall("the answered call") { it.phase == CallPhase.CONNECTED }
+        assertNull(call.video)
+        never("video in an audio-only answer", QUIET_WINDOW_MS) { call()?.video != null }
+        assertFalse(onMain { engine.core.currentCall!!.currentParams.isVideoEnabled })
+        awaitAppHearsAudio()
+    }
+
+    @Test
+    fun aRequestToAddVideoIsAskedAndCanBeAccepted() {
+        register()
+        pbxCallsApp("upgrade")
+        awaitCall("the incoming call") { it.phase == CallPhase.INCOMING }
+        onMain { engine.calls.answer() }
+        awaitCall("the request to add video") { it.phase == CallPhase.CONNECTED && it.videoOffer }
+        // Nothing starts before the user answers.
+        assertNull(call()?.video)
+        onMain { engine.calls.answerVideoRequest(true) }
+        awaitVideo { it.sending && it.receiving }
+        assertFalse(call()!!.videoOffer)
+        awaitVideoReceived()
+    }
+
+    @Test
+    fun aRequestToAddVideoCanBeDeclined() {
+        register()
+        pbxCallsApp("upgrade")
+        awaitCall("the incoming call") { it.phase == CallPhase.INCOMING }
+        onMain { engine.calls.answer() }
+        awaitCall("the request to add video") { it.phase == CallPhase.CONNECTED && it.videoOffer }
+        onMain { engine.calls.answerVideoRequest(false) }
+        awaitCall("the request to be answered") { it.phase == CallPhase.CONNECTED && !it.videoOffer }
+        never("video after declining", QUIET_WINDOW_MS) { call()?.video != null }
+        awaitAppHearsAudio()
+    }
+
+    @Test
+    fun withVideoCallsSwitchedOffVideoIsDeclined() {
+        settings { it.copy(videoCalls = false) }
+        register()
+        // Asked for or offered, there is no video.
+        dialVideo("2000")
+        awaitConnected("2000")
+        assertNull(call()?.video)
+        assertFalse(onMain { engine.core.currentCall!!.currentParams.isVideoEnabled })
+        assertNotNull("Video was switched on while video calls are off", onMain { engine.calls.toggleVideo() })
+        onMain { engine.calls.hangUp() }
+        awaitNoCall()
+        await("the PBX to release the call") { pbxChannel(pbxLeg(APP)) == null }
+
+        pbxCallsApp("upgrade")
+        val ringing = awaitCall("the incoming call") { it.phase == CallPhase.INCOMING }
+        assertFalse(ringing.videoOffer)
+        onMain { engine.calls.answer(video = true) }
+        awaitConnected()
+        never("video while video calls are off", 3 * QUIET_WINDOW_MS / 2) { call()?.video != null || call()?.videoOffer == true }
+        assertFalse(onMain { engine.core.currentCall!!.currentParams.isVideoEnabled })
+        awaitAppHearsAudio()
+    }
+
+    @Test
+    fun anAutoAnsweredIntercomCallStaysAudio() {
+        settings { it.copy(intercomAutoAnswer = true) }
+        register()
+        showApp()
+        pbxCallsApp(channel = "Local/$APP@videointercom", exten = "echo")
+        val call = awaitCall("the intercom call to be answered") { it.phase == CallPhase.CONNECTED }
+        assertTrue(call.intercom)
+        assertNull(call.video)
+        assertFalse(onMain { engine.core.currentCall!!.currentParams.isVideoEnabled })
+    }
+
+    @Test
+    fun aVideoCallCanBeHeldAndResumed() {
+        register()
+        dialVideo("2000")
+        awaitConnected("2000")
+        awaitVideo { it.sending && it.receiving }
+        onMain { engine.calls.toggleHold() }
+        // A paused call is not the core's current call any more.
+        await("the call to be held") { onMain { engine.core.calls.firstOrNull()?.state } == Call.State.Paused }
+        onMain { engine.calls.toggleHold() }
+        awaitCall("the call to be resumed") { it.phase == CallPhase.CONNECTED && it.video?.sending == true && it.video.receiving }
+        awaitVideoReceived()
+        awaitAppHearsAudio()
+    }
+
+    @Test
+    fun aSecondCallNextToAVideoCall() {
+        register()
+        dialVideo("2000")
+        awaitConnected("2000")
+        awaitVideo { it.sending && it.receiving }
+        // Consultation: the video call is held, the new one is audio-only.
+        ok(onMain { engine.calls.startConsultation("2002") })
+        val second = awaitCall("the second call") { it.phase == CallPhase.CONNECTED && it.remoteAddress.startsWith("2002@") }
+        assertNull(second.video)
+        assertNotNull(second.heldCall)
+        onMain { engine.calls.hangUp() }
+        awaitCall("the video call to come back") { it.remoteAddress.startsWith("2000@") && it.phase == CallPhase.CONNECTED }
+        awaitVideo { it.sending && it.receiving }
+        awaitVideoReceived()
+    }
+
+    @Test
+    fun theCameraOnlyRunsWhileTheCallScreenIsShown() {
+        register()
+        dialVideo("2000")
+        awaitConnected("2000")
+        awaitVideo { it.sending }
+        assertFalse("The camera runs without the call screen", cameraInUse())
+        openCallScreen()
+        await("the camera to start") { cameraInUse() }
+        leaveCallScreen()
+        await("the camera to stop") { !cameraInUse() }
+        // The call and its video go on: the still picture is sent in place of the camera.
+        awaitConnected("2000")
+        awaitVideo { it.sending && it.receiving }
+        awaitVideoSent()
+        openCallScreen()
+        await("the camera to start again") { cameraInUse() }
+        onMain { engine.calls.hangUp() }
+        awaitNoCall()
+        await("the camera to be released") { !cameraInUse() }
+    }
+
+    private companion object {
+        const val TAG = "VideoCallTest"
+    }
+}

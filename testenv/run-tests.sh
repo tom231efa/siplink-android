@@ -92,6 +92,9 @@ run() {
   local output
   # Start from empty app data: an aborted run may have left accounts behind (up to 100 of them).
   "$adb" shell pm clear com.sky.siplink > /dev/null
+  # Every class starts without the camera permission, as a new installation does; the video
+  # tests grant it where they need it. Taking it away inside a test would kill the app process.
+  "$adb" shell pm revoke com.sky.siplink android.permission.CAMERA > /dev/null 2>&1 || true
   output=$("$adb" shell am instrument -w -e siplinkEnv "$env_blob" "$@" \
     com.sky.siplink.test/androidx.test.runner.AndroidJUnitRunner | tr -d '\r')
   printf '%s\n' "$output" >&2
@@ -108,7 +111,8 @@ fi
 # costs one class instead of the whole run.
 failed=()
 for class in RegistrationTest BasicCallTest TransferParkTest SupervisionTest CallHandlingTest \
-  CallerIdTest LineRoutingTest CodecTest DirectoryTest DirectoryTrustTest ShortcutStoreTest DirectoryCacheTest; do
+  CallerIdTest LineRoutingTest CodecTest DirectoryTest DirectoryTrustTest ShortcutStoreTest DirectoryCacheTest \
+  VideoCallTest VideoNoCameraTest; do
   echo "=== $class" >&2
   run -e class "com.sky.siplink.itest.$class" || failed+=("$class")
 done
