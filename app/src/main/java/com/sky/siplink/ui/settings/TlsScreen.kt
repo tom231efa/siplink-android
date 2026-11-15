@@ -266,11 +266,15 @@ private fun CertificateRow(certificate: CertInfo, onRemove: (() -> Unit)?) {
                 color = if (certificate.expired) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
-                "SHA-256 ${certificate.fingerprint.take(29)}…",
+                "SHA-256 ${certificate.fingerprint}",
                 style = MaterialTheme.typography.labelSmall,
                 fontFamily = FontFamily.Monospace,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
                 maxLines = 1,
+                // As much of the fingerprint as the row has room for. Left to wrap, it would go
+                // to a second line as a whole, which the one line allowed here does not show.
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis,
             )
         }
         if (onRemove != null) {
