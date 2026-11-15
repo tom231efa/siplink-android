@@ -3,7 +3,10 @@ package com.sky.siplink.core.logic
 import com.sky.siplink.core.model.AudioRoute
 import com.sky.siplink.core.model.CallPhase
 
-/** Decisions about the video of a call that do not need the SIP core; it applies them in core/CallVideo.kt. */
+/**
+ * Decisions about the video of a call that do not need the SIP core; core/VideoController.kt
+ * and core/CallVideoSupport.kt apply them.
+ */
 object VideoRules {
     /**
      * The video device the SDK lists next to the cameras: a still picture it can send instead
