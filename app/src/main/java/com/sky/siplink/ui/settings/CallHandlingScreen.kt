@@ -18,12 +18,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sky.siplink.core.logic.FeatureDial
 import com.sky.siplink.core.logic.IncomingPolicy
 import com.sky.siplink.core.model.DndMode
 import com.sky.siplink.core.model.DtmfMode
 import com.sky.siplink.engine
 import com.sky.siplink.ui.components.ChoiceRow
 import com.sky.siplink.ui.components.FormField
+import com.sky.siplink.ui.components.LocalMessenger
 import com.sky.siplink.ui.components.SectionCard
 import com.sky.siplink.ui.components.SubScreen
 import com.sky.siplink.ui.components.SwitchRow
@@ -32,7 +34,10 @@ import com.sky.siplink.ui.components.SwitchRow
 @Composable
 fun CallHandlingScreen(onBack: () -> Unit) {
     val engine = LocalContext.current.engine
+    val messenger = LocalMessenger.current
     val settings by engine.settings.settings.collectAsStateWithLifecycle()
+    // Leaving do not disturb to the PBX works through its two codes: without them it is not in use.
+    val serverDnd = FeatureDial.serverDndConfigured(settings.features)
     // Typed text is kept locally so an out-of-range number can be shown with its error.
     var seconds by remember { mutableStateOf(settings.forwardNoAnswerSeconds.toString()) }
     val range = IncomingPolicy.MIN_NO_ANSWER_SECONDS..IncomingPolicy.MAX_NO_ANSWER_SECONDS
@@ -47,9 +52,16 @@ fun CallHandlingScreen(onBack: () -> Unit) {
             ChoiceRow(
                 options = listOf(DndMode.SOFTWARE to "软件", DndMode.SERVER to "服务器"),
                 selected = settings.dndMode,
-                // What the other side was last told says nothing about this one: start switched off.
-                onSelect = { mode -> engine.updateSettings { it.copy(dndMode = mode, doNotDisturb = false) } },
+                onSelect = { mode ->
+                    if (mode == DndMode.SERVER && !serverDnd) {
+                        messenger(FeatureDial.missingCode("开启免打扰 / 关闭免打扰"))
+                    } else {
+                        // What the other side was last told says nothing about this one: start switched off.
+                        engine.updateSettings { it.copy(dndMode = mode, doNotDisturb = false) }
+                    }
+                },
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                dimmed = { it == DndMode.SERVER && !serverDnd },
             )
             SwitchRow(
                 title = "呼叫等待",

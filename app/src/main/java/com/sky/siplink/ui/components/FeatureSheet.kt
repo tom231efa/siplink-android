@@ -42,13 +42,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sky.siplink.core.logic.FeatureDial
+import com.sky.siplink.engine
 
 /**
  * Bottom sheet with the PBX features that act on an extension: intercom, listen, whisper,
- * barge, force hang up and pickup, plus group pickup and voicemail.
+ * barge, force hang up and pickup, plus group pickup and voicemail. A feature whose code is
+ * left empty is not in use: its row is grey, and a tap says that the code is missing.
  *
  * @param name contact the sheet was opened for; null lets the user type the extension
  * @param target number or SIP address of that contact, or the initial value of the input
@@ -67,6 +71,9 @@ fun FeatureSheet(
     var extension by remember { mutableStateOf(FeatureDial.extensionOf(target)) }
     var confirmForce by remember { mutableStateOf(false) }
     val hasTarget = extension.isNotBlank()
+    val settings by LocalContext.current.engine.settings.settings.collectAsStateWithLifecycle()
+    val codes = settings.features
+    val forceConfigured = FeatureDial.isConfigured(FeatureDial.Action.FORCE_HANG_UP, codes)
 
     fun run(action: () -> Unit) {
         onDismiss()
@@ -76,7 +83,11 @@ fun FeatureSheet(
     /** A feature that is dialled as its code followed by the extension. */
     @Composable
     fun DialRow(action: FeatureDial.Action, icon: ImageVector) {
-        FeatureRow(icon, action.label, hasTarget) { run { launcher.feature(action, extension, accountId) } }
+        // The launcher answers a feature without a code with the notice, whatever the target.
+        val configured = FeatureDial.isConfigured(action, codes)
+        FeatureRow(icon, action.label, enabled = hasTarget || !configured, dimmed = !configured) {
+            run { launcher.feature(action, extension, accountId) }
+        }
     }
 
     AppBottomSheet(onDismiss) {
@@ -125,11 +136,12 @@ fun FeatureSheet(
             FeatureRow(
                 icon = Icons.Rounded.PhoneDisabled,
                 title = if (confirmForce) "再点一次确认强拆 $extension" else FeatureDial.Action.FORCE_HANG_UP.label,
-                enabled = hasTarget,
+                enabled = hasTarget || !forceConfigured,
                 destructive = true,
+                dimmed = !forceConfigured,
             ) {
                 // Cutting someone's call off cannot be undone, so it takes two taps.
-                if (confirmForce) {
+                if (confirmForce || !forceConfigured) {
                     run { launcher.feature(FeatureDial.Action.FORCE_HANG_UP, extension, accountId) }
                 } else {
                     confirmForce = true
@@ -138,19 +150,25 @@ fun FeatureSheet(
             DialRow(FeatureDial.Action.PICKUP, Icons.AutoMirrored.Rounded.PhoneCallback)
 
             HorizontalDivider(Modifier.padding(horizontal = 24.dp, vertical = 6.dp))
-            FeatureRow(Icons.Rounded.Groups, "同组代接", true) { run { launcher.groupPickup(accountId) } }
-            FeatureRow(Icons.Rounded.Voicemail, "语音信箱", true) { run { launcher.voicemail(accountId) } }
+            FeatureRow(Icons.Rounded.Groups, "同组代接", true, dimmed = codes.groupPickup.isBlank()) {
+                run { launcher.groupPickup(accountId) }
+            }
+            FeatureRow(Icons.Rounded.Voicemail, "语音信箱", true, dimmed = codes.voicemail.isBlank()) {
+                run { launcher.voicemail(accountId) }
+            }
             Spacer(Modifier.height(12.dp))
         }
     }
 }
 
+/** @param dimmed drawn grey although it can be tapped: the feature has no code, the tap says so */
 @Composable
 private fun FeatureRow(
     icon: ImageVector,
     title: String,
     enabled: Boolean,
     destructive: Boolean = false,
+    dimmed: Boolean = false,
     onClick: () -> Unit,
 ) {
     val accent by animateColorAsState(
@@ -160,7 +178,7 @@ private fun FeatureRow(
     Row(
         Modifier
             .fillMaxWidth()
-            .graphicsLayer { alpha = if (enabled) 1f else 0.38f }
+            .graphicsLayer { alpha = if (enabled && !dimmed) 1f else 0.38f }
             .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 24.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,

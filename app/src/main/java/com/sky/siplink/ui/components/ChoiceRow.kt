@@ -39,6 +39,7 @@ import kotlin.math.roundToInt
  * alone: a filled pill that glides over to it, without a check mark.
  *
  * @param options each value with the text it is shown as
+ * @param dimmed options drawn grey: they can still be tapped, and [onSelect] decides what a tap does
  * @param track colour of the row, [thumb] of the pill, [content] of the texts and
  *   [selectedContent] of the text on the pill
  */
@@ -52,6 +53,7 @@ fun <T> ChoiceRow(
     thumb: Color = MaterialTheme.colorScheme.primary,
     content: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     selectedContent: Color = MaterialTheme.colorScheme.onPrimary,
+    dimmed: (T) -> Boolean = { false },
 ) {
     val index = options.indexOfFirst { it.first == selected }.coerceAtLeast(0)
     // Straight there, without a bounce. Read while placing, so the glide does not recompose.
@@ -99,7 +101,7 @@ fun <T> ChoiceRow(
                 ) {
                     Text(
                         label,
-                        color = color,
+                        color = if (dimmed(value)) color.copy(alpha = 0.38f) else color,
                         style = MaterialTheme.typography.labelLarge,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,

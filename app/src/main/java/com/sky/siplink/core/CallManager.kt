@@ -7,6 +7,7 @@ import com.sky.siplink.core.CallSupport.isEnded
 import com.sky.siplink.core.CallSupport.isRinging
 import com.sky.siplink.core.CallSupport.phaseOf
 import com.sky.siplink.core.logic.DialTarget
+import com.sky.siplink.core.logic.FeatureDial
 import com.sky.siplink.core.logic.Formatters
 import com.sky.siplink.core.logic.IncomingPolicy
 import com.sky.siplink.core.logic.IntercomHeaders
@@ -306,7 +307,7 @@ class CallManager(
     /** Parks the current call: a blind transfer to the PBX parking extension. */
     fun park(): String? {
         val extension = settings.current.features.park.trim()
-        if (extension.isEmpty()) return "尚未配置驻留号码"
+        if (extension.isEmpty()) return FeatureDial.missingCode("驻留")
         val error = blindTransfer(extension)
         parking = error == null
         return error

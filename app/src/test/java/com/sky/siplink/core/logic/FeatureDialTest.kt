@@ -56,6 +56,21 @@ class FeatureDialTest {
     }
 
     @Test
+    fun `a feature without a code is not in use`() {
+        assertTrue(Action.entries.all { FeatureDial.isConfigured(it, codes) })
+        assertFalse(FeatureDial.isConfigured(Action.INTERCOM, codes.copy(intercom = "")))
+        assertFalse(FeatureDial.isConfigured(Action.PICKUP, codes.copy(pickup = "  ")))
+        assertTrue(FeatureDial.isConfigured(Action.LISTEN, codes.copy(intercom = "")))
+    }
+
+    @Test
+    fun `do not disturb by the pbx needs both of its codes`() {
+        assertTrue(FeatureDial.serverDndConfigured(codes))
+        assertFalse(FeatureDial.serverDndConfigured(codes.copy(dndOn = "")))
+        assertFalse(FeatureDial.serverDndConfigured(codes.copy(dndOff = " ")))
+    }
+
+    @Test
     fun `supervision modes and their dtmf switches`() {
         assertEquals(SupervisionMode.LISTEN, FeatureDial.supervisionOf(Action.LISTEN))
         assertEquals(SupervisionMode.WHISPER, FeatureDial.supervisionOf(Action.WHISPER))

@@ -58,13 +58,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sky.siplink.core.CallManager
 import com.sky.siplink.core.model.AudioRoute
 import com.sky.siplink.core.model.CallInfo
 import com.sky.siplink.core.model.CallPhase
 import com.sky.siplink.core.model.SupervisionMode
+import com.sky.siplink.engine
 import com.sky.siplink.ui.components.ChoiceRow
 import com.sky.siplink.ui.theme.Brand
 
@@ -100,6 +103,7 @@ internal fun ActiveControls(
 ) {
     val established = info.phase == CallPhase.CONNECTED || info.phase == CallPhase.HELD
     val twoCalls = info.heldCall != null
+    val settings by LocalContext.current.engine.settings.settings.collectAsStateWithLifecycle()
     Column(
         Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -149,6 +153,8 @@ internal fun ActiveControls(
                 "驻留",
                 active = false,
                 enabled = established && !twoCalls,
+                // Without a parking code the key is grey, and park() answers the tap with the notice.
+                dimmed = settings.features.park.isBlank(),
                 onClick = { calls.park()?.let(onNotice) },
             )
             ControlToggle(
@@ -259,6 +265,7 @@ private fun routeName(route: AudioRoute): String = when (route) {
     AudioRoute.HEADSET -> "有线耳机"
 }
 
+/** @param dimmed drawn like a disabled key although it can be tapped (the tap explains why it does nothing) */
 @Composable
 internal fun ControlToggle(
     icon: ImageVector,
@@ -266,6 +273,7 @@ internal fun ControlToggle(
     active: Boolean,
     onClick: () -> Unit,
     enabled: Boolean = true,
+    dimmed: Boolean = false,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
@@ -276,7 +284,7 @@ internal fun ControlToggle(
     )
     val container by animateColorAsState(if (active) Color.White else Color.White.copy(alpha = 0.16f), label = "toggleBg")
     val content by animateColorAsState(if (active) Brand.CallSurface else Color.White, label = "toggleFg")
-    val alpha by animateFloatAsState(if (enabled) 1f else 0.34f, label = "toggleAlpha")
+    val alpha by animateFloatAsState(if (enabled && !dimmed) 1f else 0.34f, label = "toggleAlpha")
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.graphicsLayer { this.alpha = alpha },

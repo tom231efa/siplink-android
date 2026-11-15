@@ -70,6 +70,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
@@ -158,6 +159,7 @@ fun DialerScreen(onAddAccount: () -> Unit, onOpenShortcuts: (accountId: String?)
         StatusChips(
             doNotDisturb = settings.doNotDisturb,
             voicemail = voicemail,
+            voicemailConfigured = settings.features.voicemail.isNotBlank(),
             onDisableDnd = { launcher.doNotDisturb(false, selected?.id) },
             onVoicemail = { launcher.voicemail(selected?.id) },
         )
@@ -299,9 +301,19 @@ private fun AccountChip(account: SipAccount?, onClick: () -> Unit) {
     }
 }
 
-/** Reminders shown under the account chip: do not disturb is on, new voicemail is waiting. */
+/**
+ * Reminders shown under the account chip: do not disturb is on, new voicemail is waiting.
+ *
+ * @param voicemailConfigured the voicemail code is set; without it the reminder is grey and a tap says so
+ */
 @Composable
-private fun StatusChips(doNotDisturb: Boolean, voicemail: Int, onDisableDnd: () -> Unit, onVoicemail: () -> Unit) {
+private fun StatusChips(
+    doNotDisturb: Boolean,
+    voicemail: Int,
+    voicemailConfigured: Boolean,
+    onDisableDnd: () -> Unit,
+    onVoicemail: () -> Unit,
+) {
     AnimatedVisibility(doNotDisturb || voicemail > 0, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
         Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (doNotDisturb) {
@@ -316,6 +328,7 @@ private fun StatusChips(doNotDisturb: Boolean, voicemail: Int, onDisableDnd: () 
             if (voicemail > 0) {
                 AssistChip(
                     onClick = onVoicemail,
+                    modifier = Modifier.alpha(if (voicemailConfigured) 1f else 0.38f),
                     label = { Text("$voicemail 条新留言") },
                     leadingIcon = { Icon(Icons.Rounded.Voicemail, contentDescription = null, modifier = Modifier.size(18.dp)) },
                 )

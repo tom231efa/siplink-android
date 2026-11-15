@@ -59,6 +59,15 @@ object FeatureDial {
         else -> null
     }
 
+    /** A feature works through its code: while the code is left empty the feature is not in use. */
+    fun isConfigured(action: Action, codes: FeatureCodes): Boolean = codeOf(action, codes).isNotEmpty()
+
+    /** Do not disturb can only be left to the PBX while both of its codes are set. */
+    fun serverDndConfigured(codes: FeatureCodes): Boolean = codes.dndOn.isNotBlank() && codes.dndOff.isNotBlank()
+
+    /** What a tap on a feature without a code is answered with; [label] is the name of the feature. */
+    fun missingCode(label: String): String = "未配置“$label”功能码"
+
     /** Supervision mode a call starts in, null for actions that are not supervision calls. */
     fun supervisionOf(action: Action): SupervisionMode? = when (action) {
         Action.LISTEN -> SupervisionMode.LISTEN

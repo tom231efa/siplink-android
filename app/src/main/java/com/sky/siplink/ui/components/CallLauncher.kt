@@ -44,7 +44,7 @@ class CallLauncher(
         }
         val code = (if (on) settings.features.dndOn else settings.features.dndOff).trim()
         if (code.isEmpty()) {
-            notify("未配置“${if (on) "开启" else "关闭"}免打扰”功能码")
+            notify(FeatureDial.missingCode(if (on) "开启免打扰" else "关闭免打扰"))
         } else {
             // The switch follows once the call to the code is on its way.
             launch(CallRequest(code, accountId, onStarted = { engine.updateSettings { it.copy(doNotDisturb = on) } }))
@@ -55,7 +55,7 @@ class CallLauncher(
     fun feature(action: FeatureDial.Action, target: String, accountId: String? = null) {
         val number = FeatureDial.compose(action, target, codes())
         if (number == null) {
-            notify("未配置“${action.label}”功能码")
+            notify(FeatureDial.missingCode(action.label))
         } else {
             launch(CallRequest(number, accountId, supervision = FeatureDial.supervisionOf(action)))
         }
@@ -68,7 +68,7 @@ class CallLauncher(
     fun voicemail(accountId: String? = null) = code(codes().voicemail, "语音信箱", accountId)
 
     private fun code(code: String, label: String, accountId: String?) {
-        if (code.isBlank()) notify("未配置“$label”功能码") else launch(CallRequest(code.trim(), accountId))
+        if (code.isBlank()) notify(FeatureDial.missingCode(label)) else launch(CallRequest(code.trim(), accountId))
     }
 }
 
