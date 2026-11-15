@@ -59,8 +59,9 @@ import kotlinx.coroutines.withContext
 /**
  * The shortcut keys, reached from the dial pad: a searchable, grouped board of programmable
  * keys like the function keys of a desk phone. Tapping a key runs it; in edit mode it opens the
- * key instead. Where the configuration is locked the keys only run (and can be exported): there
- * is no edit mode, and nothing adds or imports a key or changes a category.
+ * key instead. Where the configuration is locked the keys that were handed out only run (and
+ * can be exported); the user makes, changes and removes keys of their own next to them
+ * ([Shortcut.own]), nothing is imported, and only a category of their own keys is renamed.
  *
  * @param accountId the account chosen on the dial pad, offered first when a key asks for its line
  */
@@ -80,12 +81,21 @@ fun ShortcutsScreen(accountId: String?, onBack: () -> Unit) {
     }
 
     var category by rememberSaveable { mutableStateOf<String?>(null) }
-    var editMode by rememberSaveable { mutableStateOf(false) }
-    val editing = editMode && !locked
+    var editing by rememberSaveable { mutableStateOf(false) }
+    val ownCount = remember(all) { all.count { it.own } }
+    // What edit mode has to work on: every key, or under a managed configuration the user's own ones.
+    val editable = if (locked) ownCount > 0 else all.isNotEmpty()
     var edited by remember { mutableStateOf<Shortcut?>(null) }
     var importOpen by remember { mutableStateOf(false) }
     var menuOpen by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf<String?>(null) }
+    val newKey = {
+        if (locked && !ShortcutRules.canAddOwn(all)) {
+            messenger(ShortcutRules.Error.OWN_LIMIT_REACHED.full)
+        } else {
+            edited = Shortcut(id = NEW_KEY, label = "", category = category.orEmpty())
+        }
+    }
 
     val exporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
@@ -114,16 +124,11 @@ fun ShortcutsScreen(accountId: String?, onBack: () -> Unit) {
                 IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回") }
             },
             actions = {
-                if (!locked) {
-                    TextButton(onClick = { editMode = !editMode }, enabled = all.isNotEmpty() || editing) {
-                        AnimatedContent(editing, label = "editMode") { on -> Text(if (on) "完成" else "编辑") }
-                    }
-                    IconButton(
-                        onClick = { edited = Shortcut(id = NEW_KEY, label = "", category = category.orEmpty()) },
-                        enabled = loaded,
-                    ) {
-                        Icon(Icons.Rounded.Add, contentDescription = "新建快捷键")
-                    }
+                TextButton(onClick = { editing = !editing }, enabled = editable || editing) {
+                    AnimatedContent(editing, label = "editMode") { on -> Text(if (on) "完成" else "编辑") }
+                }
+                IconButton(onClick = newKey, enabled = loaded) {
+                    Icon(Icons.Rounded.Add, contentDescription = "新建快捷键")
                 }
                 IconButton(onClick = { menuOpen = true }) { Icon(Icons.Rounded.MoreVert, contentDescription = "更多") }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
@@ -146,7 +151,7 @@ fun ShortcutsScreen(accountId: String?, onBack: () -> Unit) {
                         },
                     )
                     val selected = category
-                    if (!selected.isNullOrEmpty() && !locked) {
+                    if (!selected.isNullOrEmpty() && (!locked || ShortcutRules.ownsCategory(all, selected))) {
                         DropdownMenuItem(
                             text = { Text("编辑分类“$selected”") },
                             onClick = {
@@ -159,11 +164,14 @@ fun ShortcutsScreen(accountId: String?, onBack: () -> Unit) {
             },
         )
 
-        ManagedNotice(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp))
+        ManagedNotice(
+            Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
+            text = "远程下发的快捷键不能修改，可另外自建 $ownCount / ${ShortcutRules.MAX_OWN} 个",
+        )
         when {
             !loaded -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
             all.isEmpty() -> EmptyBoard(
-                canAdd = !locked,
+                canImport = !locked,
                 onAdd = { edited = Shortcut(id = NEW_KEY, label = "") },
                 onImport = { importOpen = true },
             )
@@ -172,7 +180,14 @@ fun ShortcutsScreen(accountId: String?, onBack: () -> Unit) {
                 category = category,
                 onCategoryChange = { category = it },
                 editing = editing,
-                onKey = { if (editing) edited = it else runner(it) },
+                onKey = { key ->
+                    when {
+                        !editing -> runner(key)
+                        // A key that was handed out is not the user's to open.
+                        locked && !key.own -> messenger(ManagedConfig.NOTICE)
+                        else -> edited = key
+                    }
+                },
                 modifier = Modifier.fillMaxSize(),
             )
         }
@@ -209,7 +224,7 @@ fun ShortcutsScreen(accountId: String?, onBack: () -> Unit) {
         )
     }
 
-    renaming?.takeUnless { locked }?.let { old ->
+    renaming?.takeIf { !locked || ShortcutRules.ownsCategory(all, it) }?.let { old ->
         CategoryNameDialog(
             title = "分类",
             initial = old,
@@ -230,9 +245,9 @@ fun ShortcutsScreen(accountId: String?, onBack: () -> Unit) {
     }
 }
 
-/** @param canAdd false where the configuration is locked: the board then offers nothing to fill it with */
+/** @param canImport false where the configuration is locked: keys are then made one by one, as the user's own */
 @Composable
-private fun EmptyBoard(canAdd: Boolean, onAdd: () -> Unit, onImport: () -> Unit) {
+private fun EmptyBoard(canImport: Boolean, onAdd: () -> Unit, onImport: () -> Unit) {
     Column(
         Modifier
             .fillMaxSize()
@@ -248,12 +263,10 @@ private fun EmptyBoard(canAdd: Boolean, onAdd: () -> Unit, onImport: () -> Unit)
         )
         Spacer(Modifier.height(12.dp))
         Text("还没有快捷键", style = MaterialTheme.typography.titleMedium)
-        if (canAdd) {
-            Spacer(Modifier.height(20.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedButton(onClick = onImport) { Text("批量导入") }
-                Button(onClick = onAdd) { Text("新建快捷键") }
-            }
+        Spacer(Modifier.height(20.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (canImport) OutlinedButton(onClick = onImport) { Text("批量导入") }
+            Button(onClick = onAdd) { Text("新建快捷键") }
         }
     }
 }

@@ -3,6 +3,7 @@ package com.sky.siplink.itest
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.sky.siplink.core.ConfigLock
+import com.sky.siplink.core.ShortcutManager
 import com.sky.siplink.core.TlsManager
 import com.sky.siplink.core.logic.AccountRules
 import com.sky.siplink.core.logic.LdapRules
@@ -137,8 +138,8 @@ class ManagedLockTest : PbxTestBase() {
             codecs.videoCodecs.value.firstOrNull()?.let { assertFalse(codecs.setEnabled(it.key, !it.enabled)) }
             assertFalse(codecs.restoreDefaults())
 
+            // The keys that were handed out; keys of the user's own are another matter, and another test.
             val keys = engine.shortcuts
-            assertEquals(listOf(ShortcutRules.Error.MANAGED), keys.add(Shortcut(0, "仓库", "$RINGING_PHONE")))
             assertEquals(listOf(ShortcutRules.Error.MANAGED), keys.update(key.copy(number = "$CUSTOMER")))
             assertFalse(keys.remove(listOf(key.id)))
             assertFalse(keys.renameCategory(key.category, "总机"))
@@ -309,6 +310,78 @@ class ManagedLockTest : PbxTestBase() {
     }
 
     @Test
+    fun theUserMakesKeysOfTheirOwnNextToAManagedConfiguration() {
+        val keys = engine.shortcuts
+        val files = InstrumentationRegistry.getInstrumentation().targetContext.filesDir
+        val ownFile = File(files, OWN_SHORTCUTS_FILE)
+        manage(true)
+        onMain {
+            // As many as the limit allows, each of them the user's own.
+            repeat(ShortcutRules.MAX_OWN) { index ->
+                assertTrue(keys.add(Shortcut(0, "自建$index", "${3000 + index}", category = OWN_CATEGORY)).isEmpty())
+            }
+            assertEquals(listOf(ShortcutRules.Error.OWN_LIMIT_REACHED), keys.add(Shortcut(0, "多一个", "$RINGING_PHONE")))
+        }
+        val own = shortcuts.filter { it.own }
+        assertEquals(ShortcutRules.MAX_OWN, own.size)
+        assertEquals("What was handed out changed", listOf(key), shortcuts.filterNot { it.own })
+        onMain {
+            // They are the user's to change and to remove; what was handed out still is not.
+            assertTrue(keys.update(own[0].copy(label = CHANGED_KEY, number = "$CUSTOMER")).isEmpty())
+            val changed = shortcuts.first { it.id == own[0].id }
+            assertEquals(CHANGED_KEY to "$CUSTOMER", changed.label to changed.number)
+            assertTrue("A key that was changed is no longer the user's own", changed.own)
+            assertEquals(listOf(ShortcutRules.Error.MANAGED), keys.update(key.copy(number = "$CUSTOMER")))
+            // Of the keys named, the user's own are removed.
+            assertTrue(keys.remove(listOf(key.id, own[1].id)))
+            assertEquals(listOf(key), shortcuts.filterNot { it.own })
+            assertTrue(shortcuts.none { it.id == own[1].id })
+            assertFalse(keys.remove(listOf(key.id)))
+            // One less, so there is room for one more.
+            assertTrue(keys.add(Shortcut(0, "补一个", "$AGENT", category = OWN_CATEGORY)).isEmpty())
+            assertEquals(listOf(ShortcutRules.Error.OWN_LIMIT_REACHED), keys.add(Shortcut(0, "多一个", "$RINGING_PHONE")))
+            // A category of nothing but their own keys is theirs to rename; one with a key that was handed out is not.
+            assertTrue(keys.renameCategory(OWN_CATEGORY, "自用"))
+            assertEquals(ShortcutRules.MAX_OWN, shortcuts.count { it.category == "自用" })
+            assertFalse(keys.renameCategory(key.category, "总机"))
+            // Importing stays closed, and what the remote side adds is handed out, not the user's own.
+            assertNull(keys.import("仓库,$RINGING_PHONE,speed"))
+            engine.lock.fromRemote { assertTrue(keys.add(Shortcut(0, REMOTE_KEY, "$CUSTOMER")).isEmpty()) }
+            assertFalse(shortcuts.first { it.label == REMOTE_KEY }.own)
+            // The export has all of them.
+            val exported = keys.export()
+            listOf(key.label, CHANGED_KEY, REMOTE_KEY).forEach { assertTrue("$it is not exported", it in exported) }
+        }
+
+        // The user's own keys are kept in a file of their own, and are theirs again at the next start.
+        val mainFile = File(files, SHORTCUTS_FILE)
+        await("the keys to be written") {
+            ownFile.isFile && CHANGED_KEY in ownFile.readText() && "自用" in ownFile.readText() && REMOTE_KEY in mainFile.readText()
+        }
+        assertFalse("A key of the user's own is in the file of those handed out", CHANGED_KEY in mainFile.readText())
+        val restarted = onMain { ShortcutManager(mainFile, engine.lock) }
+        await("the keys to be read again") { restarted.loaded.value }
+        fun List<Shortcut>.withoutIds() = map { it.copy(id = 0) }.toSet()
+        assertEquals(shortcuts.withoutIds(), restarted.shortcuts.value.withoutIds())
+        assertEquals(ShortcutRules.MAX_OWN, restarted.shortcuts.value.count { it.own })
+
+        // When the managed configuration goes they go with it; what was handed out stays, and can be changed again.
+        manage(false)
+        assertEquals(setOf(key.label, REMOTE_KEY), shortcuts.map { it.label }.toSet())
+        assertTrue(shortcuts.none { it.own })
+        await("the file of the user's own keys to be gone") { !ownFile.exists() }
+        onMain { assertTrue(keys.add(Shortcut(0, "仓库", "$RINGING_PHONE")).isEmpty()) }
+        assertFalse("A key made without a managed configuration counts as one made next to it", shortcuts.first { it.label == "仓库" }.own)
+
+        // Keys of the user's own that are found without a managed configuration, left behind by one, are not taken up.
+        ownFile.writeText("遗留,$AGENT,speed")
+        val later = onMain { ShortcutManager(mainFile, engine.lock) }
+        await("the keys to be read once more") { later.loaded.value }
+        assertTrue(later.shortcuts.value.none { it.label == "遗留" || it.own })
+        await("the file that was left behind to be gone") { !ownFile.exists() }
+    }
+
+    @Test
     fun aPasswordOfTheConfigurationKeepsTheStoredOnesBack() {
         val lock = engine.lock
         onMain { lock.setManaged(true, sha256(CONFIG_PASSWORD)) }
@@ -392,6 +465,14 @@ class ManagedLockTest : PbxTestBase() {
         const val FOURTH = 1008
 
         const val MAIN_LINE = "总机"
+
+        /** The files of the shortcut keys in the app's files: those handed out or made without a managed configuration, and the user's own next to one. */
+        const val SHORTCUTS_FILE = "shortcuts.csv"
+        const val OWN_SHORTCUTS_FILE = "shortcuts-own.csv"
+
+        const val OWN_CATEGORY = "我的"
+        const val CHANGED_KEY = "改过的自建键"
+        const val REMOTE_KEY = "远程加的键"
 
         /** The password a managed configuration of the tests has: made up here, and only its hash is handed out. */
         const val CONFIG_PASSWORD = "itest-config-password"

@@ -10,6 +10,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.sky.siplink.core.TlsManager
 import com.sky.siplink.core.logic.ManagedConfig
+import com.sky.siplink.core.logic.ShortcutRules
 import com.sky.siplink.core.model.BannerPosition
 import com.sky.siplink.core.model.LdapDirectory
 import com.sky.siplink.core.model.Shortcut
@@ -187,15 +188,22 @@ class ManagedScreensTest : PbxTestBase() {
         see("隐藏密码")
     }
 
-    /** Types [text] into the one field of what is in front that takes input: the field of a dialog. */
-    private fun type(text: String) {
+    /** Sets the text of the field that [field] finds; a screen that is still moving may not have it at once. */
+    private fun setText(text: String, field: () -> AccessibilityNodeInfo?) {
         val arguments = Bundle().apply { putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text) }
-        val done = settles(SCREEN_TIMEOUT_MS) {
-            nodes().singleOrNull { it.isEditable && it.isEnabled }?.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments) == true
-        }
+        val done = settles(SCREEN_TIMEOUT_MS) { field()?.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments) == true }
         assertTrue("Nothing takes the text. The screen says: ${screenText()}", done)
         settle()
     }
+
+    /** Types [text] into the one field of what is in front that takes input: the field of a dialog. */
+    private fun type(text: String) = setText(text) { nodes().singleOrNull { it.isEditable && it.isEnabled } }
+
+    /** Types [text] into the field with the label [label]. */
+    private fun typeInto(label: String, text: String) = setText(text) { chain(see(label)).firstOrNull { it.isEditable && it.isEnabled } }
+
+    /** What the shortcut screen says at its top while the configuration is managed and the user has [count] keys of their own. */
+    private fun ownKeysNotice(count: Int): String = "远程下发的快捷键不能修改，可另外自建 $count / ${ShortcutRules.MAX_OWN} 个"
 
     private fun sha256(text: String): String =
         MessageDigest.getInstance("SHA-256").digest(text.toByteArray()).joinToString("") { "%02x".format(it) }
@@ -337,23 +345,23 @@ class ManagedScreensTest : PbxTestBase() {
         back()
         back()
 
-        // The history is the user's own: an entry can be deleted, but not be made a shortcut key.
+        // The history is the user's own: an entry can be deleted, and be made a shortcut key of their own.
         tap("记录")
         val entries = engine.history.entries.value.size
         assertTrue("No call in the history", entries > 0)
         act(engine.history.entries.value.first().name, AccessibilityNodeInfo.ACTION_LONG_CLICK)
         see("话务功能…")
-        absent("添加到快捷键")
+        see("添加到快捷键")
         picture("history-menu")
         tap("删除记录")
         await("the entry to be deleted") { engine.history.entries.value.size == entries - 1 }
 
-        // The shortcut keys run, and can be exported; nothing edits, adds or imports one.
+        // The shortcut keys that were handed out run, and can be exported; nothing opens or imports one.
         tap("拨号")
         tap("快捷键")
         see(SPEED_KEY)
-        see(ManagedConfig.NOTICE)
-        absent("编辑", "新建快捷键")
+        see(ownKeysNotice(0))
+        locked("编辑")
         picture("shortcuts")
         tap("更多")
         see("导出为 CSV")
@@ -361,8 +369,31 @@ class ManagedScreensTest : PbxTestBase() {
         back()
         // Forwarding is part of what was handed out: its key says so and switches nothing.
         tap(FORWARD_KEY)
-        await("the key to say why it does nothing") { shown(ManagedConfig.NOTICE).size == 2 }
+        await("the key to say why it does nothing") { shown(ManagedConfig.NOTICE).isNotEmpty() }
         assertEquals("", engine.settings.current.forwardAlways)
+        await("the notice to go") { shown(ManagedConfig.NOTICE).isEmpty() }
+
+        // Next to them the user makes keys of their own, which stay theirs to open and to remove.
+        tap("新建快捷键")
+        typeInto("名称", OWN_KEY)
+        typeInto("号码或功能码", "$AGENT")
+        tap("保存")
+        await("the key of the user's own") { engine.shortcuts.shortcuts.value.any { it.own && it.label == OWN_KEY } }
+        see(OWN_KEY)
+        see(ownKeysNotice(1))
+        picture("shortcuts-own")
+        tap("编辑")
+        tap(SPEED_KEY)
+        await("the key that was handed out to say why it does not open") { shown(ManagedConfig.NOTICE).isNotEmpty() }
+        absent("编辑快捷键")
+        tap(OWN_KEY)
+        see("编辑快捷键")
+        usable("名称")
+        tap("删除")
+        tap("再点一次确认删除")
+        await("the key to be removed") { engine.shortcuts.shortcuts.value.none { it.own } }
+        see(ownKeysNotice(0))
+        tap("完成")
         back()
 
         // Switched off while the app is shown, the screens take input again and everything that
@@ -477,7 +508,7 @@ class ManagedScreensTest : PbxTestBase() {
     }
 
     @Test
-    fun anEmptyManagedConfigurationOffersNothingToAdd() {
+    fun anEmptyManagedConfigurationOffersOnlyKeysOfTheUsersOwnToAdd() {
         await("the shortcut keys to be read") { engine.shortcuts.loaded.value }
         onMain {
             assertTrue(engine.updateSettings { it.copy(lockScreenPromptDeclined = true) })
@@ -494,8 +525,10 @@ class ManagedScreensTest : PbxTestBase() {
         await("the dial pad to say why") { shown(ManagedConfig.NOTICE).isNotEmpty() }
         tap("快捷键")
         see("还没有快捷键")
-        see(ManagedConfig.NOTICE)
-        absent("新建快捷键", "批量导入")
+        see(ownKeysNotice(0))
+        // Keys of the user's own are made one by one; nothing is imported.
+        see("新建快捷键")
+        absent("批量导入")
         picture("empty-shortcuts")
         back()
 
@@ -538,6 +571,7 @@ class ManagedScreensTest : PbxTestBase() {
         const val DIRECTORY = "总部"
         const val SPEED_KEY = "前台"
         const val FORWARD_KEY = "转总机"
+        const val OWN_KEY = "我的自建键"
 
         /** How many dots a password field shows that keeps its password back, whatever the password. */
         const val MASK_LENGTH = 8

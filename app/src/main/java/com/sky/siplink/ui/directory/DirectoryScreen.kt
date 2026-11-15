@@ -62,7 +62,6 @@ import com.sky.siplink.engine
 import com.sky.siplink.ui.components.Avatar
 import com.sky.siplink.ui.components.EmptyState
 import com.sky.siplink.ui.components.FeatureSheet
-import com.sky.siplink.ui.components.LocalConfigLocked
 import com.sky.siplink.ui.components.rememberCallLauncher
 import com.sky.siplink.ui.shortcuts.NewShortcutSheet
 import kotlinx.coroutines.delay
@@ -86,8 +85,6 @@ fun DirectoryScreen(onOpenSettings: () -> Unit) {
     var chosen by rememberSaveable { mutableStateOf("") }
     var featuresFor by remember { mutableStateOf<DirectoryContact?>(null) }
     var shortcutFor by remember { mutableStateOf<DirectoryContact?>(null) }
-    // A managed configuration takes no new shortcut key.
-    val canAddShortcut = !LocalConfigLocked.current
 
     val usable = remember(directories) { directories.filter { it.enabled } }
     val current = usable.firstOrNull { it.id == chosen } ?: usable.firstOrNull()
@@ -233,10 +230,10 @@ fun DirectoryScreen(onOpenSettings: () -> Unit) {
             onDismiss = { featuresFor = null },
             name = contact.name,
             target = contact.callTarget,
-            onAddShortcut = if (canAddShortcut) ({ shortcutFor = contact }) else null,
+            onAddShortcut = { shortcutFor = contact },
         )
     }
-    shortcutFor?.takeIf { canAddShortcut }?.let { contact ->
+    shortcutFor?.let { contact ->
         NewShortcutSheet(name = contact.name, number = contact.callTarget, onDismiss = { shortcutFor = null })
     }
 }

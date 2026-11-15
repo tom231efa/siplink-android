@@ -83,9 +83,13 @@ fun ConfigPasswordDialog(onDismiss: () -> Unit, onOpened: (String) -> Unit) {
     )
 }
 
-/** The line at the top of a screen that takes no changes, saying why; nothing where the configuration is not locked. */
+/**
+ * The line at the top of a screen that takes no changes, saying why; nothing where the configuration is not locked.
+ *
+ * @param text what it says, for a screen where not everything is locked
+ */
 @Composable
-fun ManagedNotice(modifier: Modifier = Modifier) {
+fun ManagedNotice(modifier: Modifier = Modifier, text: String = ManagedConfig.NOTICE) {
     if (!LocalConfigLocked.current) return
     Row(
         modifier
@@ -100,6 +104,6 @@ fun ManagedNotice(modifier: Modifier = Modifier) {
             modifier = Modifier.size(16.dp),
         )
         Spacer(Modifier.width(8.dp))
-        Text(ManagedConfig.NOTICE, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

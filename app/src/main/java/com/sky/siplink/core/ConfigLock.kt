@@ -33,6 +33,9 @@ class ConfigLock(private val config: Config) {
     /** True while the stored passwords are kept from being shown: the configuration is managed and has a password. */
     val passwordsProtected: StateFlow<Boolean> = protectedState.asStateFlow()
 
+    /** Called when a managed configuration is gone: what belonged to it and was not handed out goes as well. */
+    var onReleased: (() -> Unit)? = null
+
     /** How many [fromRemote] calls are running, one inside the other. */
     private var remoteChanges = 0
 
@@ -48,8 +51,10 @@ class ConfigLock(private val config: Config) {
         passwordHash.isEmpty() || remoteChanges > 0 || (typed != null && ManagedConfig.isPassword(passwordHash, typed))
 
     /**
-     * Makes the configuration managed, or the phone's own again. Neither changes what is
-     * configured: switched off, what was handed out stays and can be changed on the phone.
+     * Makes the configuration managed, or the phone's own again. Neither changes what was
+     * handed out: switched off, it stays and can be changed on the phone. What the user added
+     * of their own next to it (the shortcut keys of [com.sky.siplink.core.model.Shortcut.own])
+     * goes with it ([onReleased]).
      *
      * @param passwordHash hash of the password that the stored passwords are shown to
      *   ([ManagedConfig.isPassword]); empty: they are not kept from being shown. It goes with
@@ -58,12 +63,14 @@ class ConfigLock(private val config: Config) {
     internal fun setManaged(on: Boolean, passwordHash: String = "") {
         val hash = if (on) passwordHash.trim() else ""
         if (state.value == on && this.passwordHash == hash) return
+        val released = state.value && !on
         config.setBool(SettingsStore.SECTION, KEY_MANAGED, on)
         config.setString(SettingsStore.SECTION, KEY_PASSWORD_HASH, hash)
         config.sync()
         this.passwordHash = hash
         state.value = on
         protectedState.value = hash.isNotEmpty()
+        if (released) onReleased?.invoke()
     }
 
     /** Runs [changes] as the remote side: nothing they change is refused, managed or not. */

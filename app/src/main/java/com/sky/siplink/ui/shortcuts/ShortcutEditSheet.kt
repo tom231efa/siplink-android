@@ -29,6 +29,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -71,8 +72,10 @@ fun NewShortcutSheet(name: String, number: String, onDismiss: () -> Unit) {
  * Creates a key ([NEW_KEY]) or changes / deletes an existing one. Laid out like the function
  * key table of a desk phone: name, value, type and line, each a plain field or a list.
  *
- * The screens do not open it where the configuration is locked; should that happen while it is
- * open, it goes on showing the key and can no longer save or delete it.
+ * Where the configuration is locked it is for the user's own keys ([Shortcut.own]) and for new
+ * ones, which become such. The screens do not open it for a key that was handed out; should
+ * the configuration be locked while it shows one, it goes on showing the key and can no longer
+ * save or delete it.
  */
 @Composable
 internal fun ShortcutEditSheet(shortcut: Shortcut, onDismiss: () -> Unit) {
@@ -82,8 +85,8 @@ internal fun ShortcutEditSheet(shortcut: Shortcut, onDismiss: () -> Unit) {
     val accounts by engine.accounts.accounts.collectAsStateWithLifecycle()
     val settings by engine.settings.settings.collectAsStateWithLifecycle()
     val messenger = LocalMessenger.current
-    val locked = LocalConfigLocked.current
     val isNew = shortcut.id == NEW_KEY
+    val locked = LocalConfigLocked.current && !isNew && !shortcut.own
     val categories = remember(all) { ShortcutRules.categories(all).map { it.first }.filter { it.isNotEmpty() } }
 
     var label by remember { mutableStateOf(shortcut.label) }
@@ -131,141 +134,145 @@ internal fun ShortcutEditSheet(shortcut: Shortcut, onDismiss: () -> Unit) {
         if (errors.isEmpty()) {
             messenger(if (isNew) "快捷键已添加" else "快捷键已保存")
             onDismiss()
-        } else if (ShortcutRules.Error.MANAGED in errors) {
-            messenger(ShortcutRules.Error.MANAGED.full)
+        } else {
+            // What has no field of the sheet to stand under.
+            errors.firstOrNull { it == ShortcutRules.Error.MANAGED || it == ShortcutRules.Error.OWN_LIMIT_REACHED }?.let { messenger(it.full) }
         }
     }
 
     AppBottomSheet(onDismiss) {
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(if (isNew) "新建快捷键" else "编辑快捷键", style = MaterialTheme.typography.titleLarge)
-            ManagedNotice()
-
-            FormField(
-                value = label,
-                onValueChange = { label = it },
-                label = "名称",
-                error = error(ShortcutRules.Error.LABEL_TOO_LONG),
-            )
-            AnimatedVisibility(action.hasNumber) {
-                FormField(
-                    value = number,
-                    onValueChange = { number = it },
-                    label = when (action) {
-                        ShortcutAction.DTMF -> "按键"
-                        ShortcutAction.FORWARD -> "前转到"
-                        else -> "号码或功能码"
-                    },
-                    keyboardType = KeyboardType.Phone,
-                    error = error(
-                        ShortcutRules.Error.NUMBER_EMPTY,
-                        ShortcutRules.Error.NUMBER_INVALID,
-                        ShortcutRules.Error.NUMBER_TOO_LONG,
-                        ShortcutRules.Error.DTMF_INVALID,
-                        ShortcutRules.Error.LIMIT_REACHED,
-                    ),
-                )
-            }
-
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                DropdownField(
-                    value = action.label,
-                    label = "类型",
-                    options = ShortcutAction.entries,
-                    optionLabel = { it.label },
-                    onSelect = {
-                        action = it
-                        errors = emptyList()
-                    },
-                    modifier = Modifier.weight(1f),
-                    selected = action,
-                    leading = { Icon(shortcutIcon(it), contentDescription = null, modifier = Modifier.size(20.dp)) },
-                )
-                if (usesLine) {
-                    DropdownField(
-                        value = lineModeLabel(fixedLine),
-                        label = "出局线路",
-                        options = listOf(false, true),
-                        optionLabel = ::lineModeLabel,
-                        onSelect = {
-                            fixedLine = it
-                            lineChecked = false
-                        },
-                        modifier = Modifier.weight(1f),
-                        selected = fixedLine,
-                    )
-                }
-            }
-            AnimatedVisibility(usesLine && fixedLine) {
-                DropdownField(
-                    value = lineAccount?.let(::lineLabel) ?: line,
-                    label = "线路",
-                    options = accounts,
-                    optionLabel = ::lineLabel,
-                    onSelect = { line = ShortcutLines.of(it) },
-                    selected = lineAccount,
-                    error = lineError,
-                )
-            }
-
-            Text("图标", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 4.dp))
-            LazyHorizontalGrid(
-                rows = GridCells.Fixed(2),
-                modifier = Modifier
+        // The fields go by what this key is, not by the screen the sheet stands on.
+        CompositionLocalProvider(LocalConfigLocked provides locked) {
+            Column(
+                Modifier
                     .fillMaxWidth()
-                    .height(IconChoiceSize * 2 + 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                // First the picture of the type, which is what a key shows when none is chosen.
-                item(key = "type") {
-                    IconChoice(shortcutIcon(action), "默认（随类型）", selected = icon == null, enabled = !locked) { icon = null }
-                }
-                items(ShortcutIcon.entries, key = { it.name }) { choice ->
-                    IconChoice(shortcutIcon(choice), choice.label, selected = icon == choice, enabled = !locked) { icon = choice }
-                }
-            }
+                Text(if (isNew) "新建快捷键" else "编辑快捷键", style = MaterialTheme.typography.titleLarge)
+                ManagedNotice()
 
-            // No category, the ones there are, and (null) the way to make another.
-            DropdownField(
-                value = categoryLabel(category),
-                label = "分类",
-                options = listOf("") + (categories + madeCategories).distinct() + null,
-                optionLabel = ::categoryLabel,
-                onSelect = { if (it == null) makingCategory = true else category = it },
-                selected = category,
-                error = error(ShortcutRules.Error.CATEGORY_TOO_LONG),
-                leading = { Icon(categoryIcon(it), contentDescription = null, modifier = Modifier.size(20.dp)) },
-            )
+                FormField(
+                    value = label,
+                    onValueChange = { label = it },
+                    label = "名称",
+                    error = error(ShortcutRules.Error.LABEL_TOO_LONG),
+                )
+                AnimatedVisibility(action.hasNumber) {
+                    FormField(
+                        value = number,
+                        onValueChange = { number = it },
+                        label = when (action) {
+                            ShortcutAction.DTMF -> "按键"
+                            ShortcutAction.FORWARD -> "前转到"
+                            else -> "号码或功能码"
+                        },
+                        keyboardType = KeyboardType.Phone,
+                        error = error(
+                            ShortcutRules.Error.NUMBER_EMPTY,
+                            ShortcutRules.Error.NUMBER_INVALID,
+                            ShortcutRules.Error.NUMBER_TOO_LONG,
+                            ShortcutRules.Error.DTMF_INVALID,
+                            ShortcutRules.Error.LIMIT_REACHED,
+                        ),
+                    )
+                }
 
-            if (!locked) {
-                Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    if (!isNew) {
-                        OutlinedButton(
-                            onClick = {
-                                if (confirmDelete) {
-                                    manager.remove(listOf(shortcut.id))
-                                    messenger("快捷键已删除")
-                                    onDismiss()
-                                } else {
-                                    confirmDelete = true
-                                }
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    DropdownField(
+                        value = action.label,
+                        label = "类型",
+                        options = ShortcutAction.entries,
+                        optionLabel = { it.label },
+                        onSelect = {
+                            action = it
+                            errors = emptyList()
+                        },
+                        modifier = Modifier.weight(1f),
+                        selected = action,
+                        leading = { Icon(shortcutIcon(it), contentDescription = null, modifier = Modifier.size(20.dp)) },
+                    )
+                    if (usesLine) {
+                        DropdownField(
+                            value = lineModeLabel(fixedLine),
+                            label = "出局线路",
+                            options = listOf(false, true),
+                            optionLabel = ::lineModeLabel,
+                            onSelect = {
+                                fixedLine = it
+                                lineChecked = false
                             },
                             modifier = Modifier.weight(1f),
-                        ) {
-                            Text(if (confirmDelete) "再点一次确认删除" else "删除", color = MaterialTheme.colorScheme.error)
-                        }
+                            selected = fixedLine,
+                        )
                     }
-                    Button(onClick = ::save, modifier = Modifier.weight(1f)) { Text("保存") }
                 }
+                AnimatedVisibility(usesLine && fixedLine) {
+                    DropdownField(
+                        value = lineAccount?.let(::lineLabel) ?: line,
+                        label = "线路",
+                        options = accounts,
+                        optionLabel = ::lineLabel,
+                        onSelect = { line = ShortcutLines.of(it) },
+                        selected = lineAccount,
+                        error = lineError,
+                    )
+                }
+
+                Text("图标", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 4.dp))
+                LazyHorizontalGrid(
+                    rows = GridCells.Fixed(2),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(IconChoiceSize * 2 + 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    // First the picture of the type, which is what a key shows when none is chosen.
+                    item(key = "type") {
+                        IconChoice(shortcutIcon(action), "默认（随类型）", selected = icon == null, enabled = !locked) { icon = null }
+                    }
+                    items(ShortcutIcon.entries, key = { it.name }) { choice ->
+                        IconChoice(shortcutIcon(choice), choice.label, selected = icon == choice, enabled = !locked) { icon = choice }
+                    }
+                }
+
+                // No category, the ones there are, and (null) the way to make another.
+                DropdownField(
+                    value = categoryLabel(category),
+                    label = "分类",
+                    options = listOf("") + (categories + madeCategories).distinct() + null,
+                    optionLabel = ::categoryLabel,
+                    onSelect = { if (it == null) makingCategory = true else category = it },
+                    selected = category,
+                    error = error(ShortcutRules.Error.CATEGORY_TOO_LONG),
+                    leading = { Icon(categoryIcon(it), contentDescription = null, modifier = Modifier.size(20.dp)) },
+                )
+
+                if (!locked) {
+                    Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        if (!isNew) {
+                            OutlinedButton(
+                                onClick = {
+                                    if (confirmDelete) {
+                                        manager.remove(listOf(shortcut.id))
+                                        messenger("快捷键已删除")
+                                        onDismiss()
+                                    } else {
+                                        confirmDelete = true
+                                    }
+                                },
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                Text(if (confirmDelete) "再点一次确认删除" else "删除", color = MaterialTheme.colorScheme.error)
+                            }
+                        }
+                        Button(onClick = ::save, modifier = Modifier.weight(1f)) { Text("保存") }
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
             }
-            Spacer(Modifier.height(12.dp))
         }
     }
 

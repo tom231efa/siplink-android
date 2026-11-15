@@ -7,6 +7,9 @@ import com.sky.siplink.core.model.ShortcutIcon
 /** Pure rules of the shortcut keys: limits, validation, searching, grouping and CSV exchange. */
 object ShortcutRules {
     const val MAX_SHORTCUTS = 2000
+
+    /** How many keys of their own the user may make next to a managed configuration ([Shortcut.own]). */
+    const val MAX_OWN = 50
     const val MAX_LABEL_LENGTH = 24
     const val MAX_NUMBER_LENGTH = 128
     const val MAX_CATEGORY_LENGTH = 16
@@ -40,6 +43,7 @@ object ShortcutRules {
      */
     enum class Error(val subject: String, val message: String) {
         LIMIT_REACHED("", "最多 $MAX_SHORTCUTS 个快捷键"),
+        OWN_LIMIT_REACHED("", "最多自建 $MAX_OWN 个快捷键"),
         NUMBER_EMPTY("号码", "必填"),
         NUMBER_INVALID("号码", "不能有空格"),
         DTMF_INVALID("按键", "仅限 0-9 * #"),
@@ -59,6 +63,15 @@ object ShortcutRules {
     }
 
     fun canAdd(count: Int): Boolean = count < MAX_SHORTCUTS
+
+    /** Whether the user may make one more key of their own next to a managed configuration. */
+    fun canAddOwn(all: List<Shortcut>): Boolean = all.count { it.own } < MAX_OWN
+
+    /**
+     * Whether the keys of [category] are the user's to rename as a group while the
+     * configuration is managed: every one of them is their own.
+     */
+    fun ownsCategory(all: List<Shortcut>, category: String): Boolean = all.none { it.category == category && !it.own }
 
     /**
      * Whether keys of this type ever call out, and so have a line to choose.

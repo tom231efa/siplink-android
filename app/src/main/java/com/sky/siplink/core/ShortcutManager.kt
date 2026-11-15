@@ -18,8 +18,11 @@ import java.util.concurrent.Executors
  * thousands of them would only slow down the SIP core configuration. Used from the main thread;
  * the file is read and written on a background thread.
  *
- * While the configuration is managed ([ConfigLock]) the keys cannot be changed here; they still
- * run, and can be exported.
+ * While the configuration is managed ([ConfigLock]) the keys that were handed out cannot be
+ * changed here; they still run, and can be exported. Next to them the user may make up to
+ * [ShortcutRules.MAX_OWN] keys of their own ([Shortcut.own]), which stay theirs to change and to
+ * remove. Those are kept in a file of their own beside [file], and go when the managed
+ * configuration goes ([dropOwn]).
  */
 class ShortcutManager(private val file: File, private val lock: ConfigLock) {
     private val state = MutableStateFlow<List<Shortcut>>(emptyList())
@@ -30,29 +33,43 @@ class ShortcutManager(private val file: File, private val lock: ConfigLock) {
     /** False while the file is still being read; nothing can be changed until then. */
     val loaded: StateFlow<Boolean> = ready.asStateFlow()
 
+    /** The user's own keys next to a managed configuration, in the format of [file]. */
+    private val ownFile = File(file.parentFile, file.nameWithoutExtension + OWN_SUFFIX + "." + file.extension)
+
     private val io = Executors.newSingleThreadExecutor { Thread(it, "shortcuts-io") }
     private val main = Handler(Looper.getMainLooper())
     private var nextId = 1L
 
     init {
         io.execute {
-            val stored = runCatching { if (file.isFile) ShortcutRules.decode(file.readText()).shortcuts else emptyList() }
-                .onFailure { Log.e(TAG, "Unable to read the shortcut keys", it) }
-                .getOrDefault(emptyList())
+            val stored = read(file, firstId = 1)
+            val own = read(ownFile, firstId = stored.size + 1L).map { it.copy(own = true) }
             main.post {
-                state.value = stored
-                nextId = stored.size + 1L
+                val kept = if (lock.managed.value) own else emptyList()
+                state.value = stored + kept
+                nextId = stored.size + own.size + 1L
                 ready.value = true
+                // Keys of the user's own that outlived their managed configuration go now.
+                if (kept.size != own.size) io.execute { ownFile.delete() }
             }
         }
     }
 
-    /** Adds a key; returns what is wrong with it, or nothing when it was added. */
+    private fun read(from: File, firstId: Long): List<Shortcut> =
+        runCatching { if (from.isFile) ShortcutRules.decode(from.readText(), firstId = firstId).shortcuts else emptyList() }
+            .onFailure { Log.e(TAG, "Unable to read the shortcut keys of ${from.name}", it) }
+            .getOrDefault(emptyList())
+
+    /**
+     * Adds a key; returns what is wrong with it, or nothing when it was added. While the
+     * configuration is managed the key becomes one of the user's own, of which there is a limit.
+     */
     fun add(draft: Shortcut): List<ShortcutRules.Error> {
-        if (lock.refuses) return listOf(ShortcutRules.Error.MANAGED)
+        val own = lock.refuses
         if (!ready.value) return emptyList()
+        if (own && !ShortcutRules.canAddOwn(state.value)) return listOf(ShortcutRules.Error.OWN_LIMIT_REACHED)
         if (!ShortcutRules.canAdd(state.value.size)) return listOf(ShortcutRules.Error.LIMIT_REACHED)
-        val shortcut = ShortcutRules.normalize(draft).copy(id = nextId)
+        val shortcut = ShortcutRules.normalize(draft).copy(id = nextId, own = own)
         val errors = ShortcutRules.validate(shortcut)
         if (errors.isNotEmpty()) return errors
         nextId++
@@ -60,10 +77,12 @@ class ShortcutManager(private val file: File, private val lock: ConfigLock) {
         return emptyList()
     }
 
-    /** Replaces the key with the same id. */
+    /** Replaces the key with the same id. While the configuration is managed that has to be one of the user's own. */
     fun update(changed: Shortcut): List<ShortcutRules.Error> {
-        if (lock.refuses) return listOf(ShortcutRules.Error.MANAGED)
-        val normalized = ShortcutRules.normalize(changed)
+        val stored = state.value.firstOrNull { it.id == changed.id }
+        if (lock.refuses && stored?.own != true) return listOf(ShortcutRules.Error.MANAGED)
+        // Whose key it is does not change with it.
+        val normalized = ShortcutRules.normalize(changed).copy(own = stored?.own == true)
         val errors = ShortcutRules.validate(normalized)
         if (errors.isNotEmpty()) return errors
         val shortcut = ShortcutRules.joinCategories(listOf(normalized), state.value.filter { it.id != normalized.id }).single()
@@ -71,25 +90,43 @@ class ShortcutManager(private val file: File, private val lock: ConfigLock) {
         return emptyList()
     }
 
-    /** @return false when no key was removed: none was named, or the configuration is managed */
+    /**
+     * Removes the keys with these ids; while the configuration is managed only those of them
+     * that are the user's own.
+     *
+     * @return false when no key was removed
+     */
     fun remove(ids: Collection<Long>): Boolean {
-        if (lock.refuses || !ready.value || ids.isEmpty()) return false
+        if (!ready.value || ids.isEmpty()) return false
         val gone = ids.toHashSet()
-        publish(state.value.filterNot { it.id in gone })
+        val ownOnly = lock.refuses
+        val kept = state.value.filterNot { it.id in gone && (it.own || !ownOnly) }
+        if (kept.size == state.value.size) return false
+        publish(kept)
         return true
     }
 
     /**
-     * Gives every key of [category] the category [renamed]; an empty one ungroups them.
+     * Gives every key of [category] the category [renamed]; an empty one ungroups them. While
+     * the configuration is managed that takes a category of nothing but the user's own keys.
      *
-     * @return false when nothing was changed: that is its name already, or the configuration is managed
+     * @return false when nothing was changed: that is its name already, or the category is not the user's to rename
      */
     fun renameCategory(category: String, renamed: String): Boolean {
-        if (lock.refuses || !ready.value) return false
+        if (!ready.value) return false
+        if (lock.refuses && !ShortcutRules.ownsCategory(state.value, category)) return false
         val target = renamed.trim().take(ShortcutRules.MAX_CATEGORY_LENGTH)
         if (target == category) return false
         publish(state.value.map { if (it.category == category) it.copy(category = target) else it })
         return true
+    }
+
+    /**
+     * Removes the keys the user made next to a managed configuration: called when that
+     * configuration is gone ([ConfigLock.onReleased]).
+     */
+    fun dropOwn() {
+        if (state.value.any { it.own }) publish(state.value.filterNot { it.own })
     }
 
     /**
@@ -123,18 +160,31 @@ class ShortcutManager(private val file: File, private val lock: ConfigLock) {
 
     private fun publish(list: List<Shortcut>) {
         if (!ready.value) return
+        val before = state.value
         state.value = list
+        val (own, handedOut) = list.partition { it.own }
+        val ownChanged = own != before.filter { it.own }
         io.execute {
-            // Written next to the file and then moved over it, so a crash never leaves half a file.
             runCatching {
-                val draft = File(file.parentFile, file.name + ".tmp")
-                draft.writeText(ShortcutRules.encode(list))
-                if (!draft.renameTo(file)) error("rename failed")
+                write(file, handedOut)
+                if (ownChanged) {
+                    if (own.isEmpty()) ownFile.delete() else write(ownFile, own)
+                }
             }.onFailure { Log.e(TAG, "Unable to store the shortcut keys", it) }
         }
     }
 
+    /** Written next to the file and then moved over it, so a crash never leaves half a file. */
+    private fun write(to: File, keys: List<Shortcut>) {
+        val draft = File(to.parentFile, to.name + ".tmp")
+        draft.writeText(ShortcutRules.encode(keys))
+        if (!draft.renameTo(to)) error("rename failed")
+    }
+
     private companion object {
         const val TAG = "SipLink.Shortcuts"
+
+        /** What the name of the file of the user's own keys has after the name of the main one. */
+        const val OWN_SUFFIX = "-own"
     }
 }

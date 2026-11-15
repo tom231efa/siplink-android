@@ -57,4 +57,10 @@ data class Shortcut(
     val line: String = "",
     /** The picture on the key; null shows the one of its [action]. */
     val icon: ShortcutIcon? = null,
+    /**
+     * The user made the key themselves next to a managed configuration. Such a key stays theirs
+     * to change, and goes when that configuration goes. Never set while the configuration is
+     * the phone's own, and no part of the CSV format.
+     */
+    val own: Boolean = false,
 )

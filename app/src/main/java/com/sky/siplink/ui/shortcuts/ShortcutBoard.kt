@@ -148,8 +148,9 @@ internal fun ShortcutBoard(
                             ShortcutAction.FORWARD -> settings.forwardAlways == shortcut.number
                             else -> false
                         },
-                        // Forwarding belongs to a managed configuration: the key is grey, and a tap says why.
-                        dimmed = managed && shortcut.action == ShortcutAction.FORWARD,
+                        // Under a managed configuration forwarding belongs to it, and in edit mode so does
+                        // every key that is not the user's own: such a key is grey, and a tap says why.
+                        dimmed = managed && (shortcut.action == ShortcutAction.FORWARD || (editing && !shortcut.own)),
                         onClick = { onKey(shortcut) },
                         modifier = Modifier.animateItem(),
                     )

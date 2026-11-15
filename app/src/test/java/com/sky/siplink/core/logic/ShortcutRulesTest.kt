@@ -233,4 +233,35 @@ class ShortcutRulesTest {
         // The feature code is a call of its own even while another one is up: the key then says so.
         assertTrue(ShortcutRules.placesCall(dnd, inCall = true, serverDnd = true))
     }
+
+    @Test
+    fun `next to a managed configuration the user makes fifty keys of their own`() {
+        assertEquals(50, ShortcutRules.MAX_OWN)
+        val handedOut = List(300) { Shortcut(it + 1L, "总机$it", "1000") }
+        fun own(count: Int) = List(count) { Shortcut(1000L + it, "自建$it", "2000", own = true) }
+        // The keys that were handed out do not count, however many there are.
+        assertTrue(ShortcutRules.canAddOwn(handedOut))
+        assertTrue(ShortcutRules.canAddOwn(handedOut + own(49)))
+        assertFalse(ShortcutRules.canAddOwn(handedOut + own(50)))
+        assertFalse(ShortcutRules.canAddOwn(own(50)))
+    }
+
+    @Test
+    fun `a category is the user's to rename when every key in it is their own`() {
+        val keys = listOf(
+            Shortcut(1, "前台", "1001", category = "常用"),
+            Shortcut(2, "家", "1002", category = "常用", own = true),
+            Shortcut(3, "车库", "1003", category = "我的", own = true),
+            Shortcut(4, "门卫", "1004", category = "我的", own = true),
+        )
+        assertTrue(ShortcutRules.ownsCategory(keys, "我的"))
+        assertFalse(ShortcutRules.ownsCategory(keys, "常用"))
+    }
+
+    @Test
+    fun `whose key it is is no part of the csv format`() {
+        val own = Shortcut(1, "家", "1002", category = "我的", own = true)
+        assertEquals(ShortcutRules.encode(listOf(own.copy(own = false))), ShortcutRules.encode(listOf(own)))
+        assertFalse(ShortcutRules.decode(ShortcutRules.encode(listOf(own))).shortcuts.single().own)
+    }
 }

@@ -127,6 +127,7 @@ class SipEngine(context: Context) {
         history = HistoryManager(core, names) { settings.current.features }
         shortcuts = ShortcutManager(File(appContext.filesDir, SHORTCUTS_FILE), lock)
         accounts.onEdited = ::onAccountsEdited
+        lock.onReleased = shortcuts::dropOwn
 
         core.addListener(listener)
         core.start()
