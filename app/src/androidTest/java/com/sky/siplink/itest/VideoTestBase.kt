@@ -43,6 +43,9 @@ abstract class VideoTestBase : PbxTestBase() {
         Triple(maxOf(size.width, size.height), minOf(size.width, size.height), params.sentFramerate)
     }
 
+    /** The bit rate the app sends its video with right now, in kbit/s. */
+    protected fun videoUpload(): Float = onMain { engine.core.currentCall?.videoStats?.uploadBandwidth ?: 0f }
+
     /** The longer and the shorter side of the picture the app receives right now; number 2000 of the PBX sends back what it gets. */
     protected fun videoReceived(): Pair<Int, Int>? = onMain {
         val size = engine.core.currentCall?.currentParams?.receivedVideoDefinition ?: return@onMain null

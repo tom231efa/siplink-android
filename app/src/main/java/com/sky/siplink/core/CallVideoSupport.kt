@@ -38,6 +38,8 @@ internal object CallVideoSupport {
         val fixed = frameRate != VideoRules.AUTO_FRAME_RATE
         core.videoPreset = if (fixed) CUSTOM_PRESET else null
         core.preferredFramerate = if (fixed) frameRate.toFloat() else 0f
+        // Under that preset the core sends with all the bits it is allowed.
+        core.uploadBandwidth = VideoRules.uploadLimit(size, frameRate)
     }
 
     /**

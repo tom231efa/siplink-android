@@ -295,9 +295,19 @@ class VideoCallTest : VideoTestBase() {
             }
             // How many frames the camera gives is up to the light as well: in the dark the one of
             // the test phone gives 15 whatever it is asked for. So the chosen rate is only an upper limit here.
+            val limit = VideoRules.uploadLimit(size, rate)
+            assertEquals("The limit the SIP core is told", limit, onMain { engine.core.uploadBandwidth })
             if (rate != VideoRules.AUTO_FRAME_RATE) {
+                // The camera starts at a rate of its own and takes a moment to come to the chosen one.
+                await("the camera to come down to $rate frames per second") {
+                    (videoSent()?.third ?: Float.MAX_VALUE) <= rate + FRAME_RATE_TOLERANCE
+                }
                 never("the camera to be sent faster than at $rate frames per second", QUIET_WINDOW_MS) {
                     (videoSent()?.third ?: 0f) > rate + FRAME_RATE_TOLERANCE
+                }
+                // Told a frame rate and no limit, the SIP core once sent 4 Mbit/s of this small picture.
+                never("the picture to be sent with far more than the $limit kbit/s it is allowed", QUIET_WINDOW_MS) {
+                    videoUpload() > 2 * limit
                 }
             }
             Log.i(TAG, "Chosen $size at $rate, sent ${videoSent()}, received ${videoReceived()}")
@@ -310,7 +320,10 @@ class VideoCallTest : VideoTestBase() {
     private companion object {
         const val TAG = "VideoCallTest"
 
-        /** How far the measured frame rate may be above the chosen one: it is counted over a short while. */
-        const val FRAME_RATE_TOLERANCE = 3f
+        /**
+         * How far the measured frame rate may be above the chosen one: it is counted over a short
+         * while and wanders by two or three frames. Still below the 30 the camera gives unasked.
+         */
+        const val FRAME_RATE_TOLERANCE = 5f
     }
 }

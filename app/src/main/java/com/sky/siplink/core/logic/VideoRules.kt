@@ -2,6 +2,7 @@ package com.sky.siplink.core.logic
 
 import com.sky.siplink.core.model.AudioRoute
 import com.sky.siplink.core.model.CallPhase
+import com.sky.siplink.core.model.VideoSize
 
 /**
  * Decisions about the video of a call that do not need the SIP core; core/VideoController.kt
@@ -20,6 +21,27 @@ object VideoRules {
 
     /** [value] when it is one of [FRAME_RATES], else [AUTO_FRAME_RATE]: what a stored or handed out rate comes to. */
     fun frameRate(value: Int): Int = if (value in FRAME_RATES) value else AUTO_FRAME_RATE
+
+    /**
+     * How much the app sends at most, in kbit/s and the sound included, while the camera goes
+     * out at a frame rate of the app's choosing; [NO_UPLOAD_LIMIT] with the rate left to the
+     * SIP core, which then picks a modest bit rate of its own.
+     *
+     * Told a frame rate, the core would otherwise send the picture with all the bits its
+     * encoder can use: about 10 Mbit/s were measured, whatever the size.
+     */
+    fun uploadLimit(size: VideoSize, frameRate: Int): Int {
+        if (frameRate == AUTO_FRAME_RATE) return NO_UPLOAD_LIMIT
+        val atFullRate = when (size) {
+            VideoSize.QVGA -> 256
+            VideoSize.VGA -> 768
+            VideoSize.HD -> 1536
+        }
+        return atFullRate * frameRate / FULL_FRAME_RATE + SOUND_KBITS
+    }
+
+    /** What the SIP core takes for "no limit". */
+    const val NO_UPLOAD_LIMIT = 0
 
     /** The cameras among the video devices of the SDK, in its order. */
     fun cameras(devices: List<String>): List<String> = devices.filter { it != STATIC_PICTURE }
@@ -76,4 +98,10 @@ object VideoRules {
     }
 
     private const val FRONT = "front"
+
+    /** The frame rate the bit rates of [uploadLimit] are meant for; fewer frames get as much less. */
+    private const val FULL_FRAME_RATE = 30
+
+    /** Room for the sound next to the picture: G.711 with its packet headers stays below this. */
+    private const val SOUND_KBITS = 100
 }

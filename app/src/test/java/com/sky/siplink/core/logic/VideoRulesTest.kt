@@ -2,6 +2,7 @@ package com.sky.siplink.core.logic
 
 import com.sky.siplink.core.model.AudioRoute
 import com.sky.siplink.core.model.CallPhase
+import com.sky.siplink.core.model.VideoSize
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -17,6 +18,24 @@ class VideoRulesTest {
         assertEquals(listOf(0, 15, 24, 30), VideoRules.FRAME_RATES)
         VideoRules.FRAME_RATES.forEach { assertEquals(it, VideoRules.frameRate(it)) }
         listOf(-1, 1, 20, 25, 60).forEach { assertEquals(VideoRules.AUTO_FRAME_RATE, VideoRules.frameRate(it)) }
+    }
+
+    @Test
+    fun aFrameRateOfTheAppsChoosingComesWithALimitOnWhatIsSent() {
+        // Left to the SIP core, the rate needs none: the core is modest by itself.
+        VideoSize.entries.forEach { assertEquals(VideoRules.NO_UPLOAD_LIMIT, VideoRules.uploadLimit(it, VideoRules.AUTO_FRAME_RATE)) }
+        assertEquals(356, VideoRules.uploadLimit(VideoSize.QVGA, 30))
+        assertEquals(868, VideoRules.uploadLimit(VideoSize.VGA, 30))
+        assertEquals(1636, VideoRules.uploadLimit(VideoSize.HD, 30))
+        // Half the frames, half the bits for the picture; the sound keeps its share.
+        assertEquals(484, VideoRules.uploadLimit(VideoSize.VGA, 15))
+        assertEquals(304, VideoRules.uploadLimit(VideoSize.QVGA, 24))
+        // A larger picture or more frames never get less.
+        for (rate in VideoRules.FRAME_RATES.filter { it != VideoRules.AUTO_FRAME_RATE }) {
+            val limits = VideoSize.entries.map { VideoRules.uploadLimit(it, rate) }
+            assertEquals(limits.sorted(), limits)
+            assertTrue(limits.all { it > 0 })
+        }
     }
 
     @Test
