@@ -46,6 +46,9 @@ class SipEngine(context: Context) {
     val codecs: CodecManager by lazy { CodecManager(core, lock) }
     val shortcuts: ShortcutManager
 
+    /** The configuration a management platform hands out; started by the Application ([RemoteConfig.start]). */
+    val remote: RemoteConfig by lazy { RemoteConfig(appContext, this) }
+
     /** Whether a newer version of the app has been released; asks only when the main screen or the user calls for it. */
     val updates: UpdateChecker by lazy { UpdateChecker(appContext, autoCheck = { settings.current.autoUpdateCheck }) }
 
@@ -79,7 +82,10 @@ class SipEngine(context: Context) {
         ) = accounts.onRegistrationChanged(account)
 
         override fun onNetworkReachable(core: Core, reachable: Boolean) {
-            if (reachable) accounts.onNetworkReachable()
+            if (reachable) {
+                accounts.onNetworkReachable()
+                remote.onNetworkBack()
+            }
         }
 
         override fun onCallStateChanged(core: Core, call: Call, state: Call.State?, message: String) =

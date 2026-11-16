@@ -46,6 +46,7 @@ class MainActivity : ComponentActivity() {
         super.onStart()
         // At most once a day, and only while the user lets the app ask by itself.
         engine.updates.checkIfDue()
+        engine.remote.onForeground()
     }
 
     override fun onStop() {

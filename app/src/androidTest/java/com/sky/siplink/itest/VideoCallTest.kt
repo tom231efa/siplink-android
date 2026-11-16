@@ -286,20 +286,26 @@ class VideoCallTest : VideoTestBase() {
         // upright picture, and the PBX sends back what it gets.
         awaitVideo { upright(it.sent) && upright(it.received) }
         val screen = callScreen()
+        try {
+            turnCallScreen(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
+            awaitVideo { onItsSide(it.sent) && onItsSide(it.received) }
+            // Were the call screen started anew, the views the video is drawn into would go with the
+            // old one, and the camera with its view: it once stayed off after that.
+            assertSame("The call screen was started anew", screen, callScreen())
+            assertTrue("The camera stopped as the phone was turned", cameraInUse())
+            awaitVideoSent()
+            awaitVideoReceived()
 
-        turnCallScreen(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
-        awaitVideo { onItsSide(it.sent) && onItsSide(it.received) }
-        // Were the call screen started anew, the views the video is drawn into would go with the
-        // old one, and the camera with its view: it once stayed off after that.
-        assertSame("The call screen was started anew", screen, callScreen())
-        assertTrue("The camera stopped as the phone was turned", cameraInUse())
-        awaitVideoSent()
-        awaitVideoReceived()
-
-        turnCallScreen(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED)
-        awaitVideo { upright(it.sent) && upright(it.received) }
-        assertSame("The call screen was started anew", screen, callScreen())
-        assertTrue("The camera stopped as the phone was turned back", cameraInUse())
+            // Upright, said as such: "unspecified" would leave it to the system, which with
+            // auto-rotate on goes by the sensor and may keep the screen on its side.
+            turnCallScreen(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
+            awaitVideo { upright(it.sent) && upright(it.received) }
+            assertSame("The call screen was started anew", screen, callScreen())
+            assertTrue("The camera stopped as the phone was turned back", cameraInUse())
+        } finally {
+            // The orientation goes back to the system; the screen may be gone by now, which is no fault of the test.
+            runCatching { onMain { screen.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED } }
+        }
         onMain { engine.calls.hangUp() }
         awaitNoCall()
     }

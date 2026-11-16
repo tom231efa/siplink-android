@@ -19,6 +19,7 @@ import androidx.compose.material.icons.automirrored.rounded.PhoneForwarded
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.BatterySaver
 import androidx.compose.material.icons.rounded.Campaign
+import androidx.compose.material.icons.rounded.CloudSync
 import androidx.compose.material.icons.rounded.Dialpad
 import androidx.compose.material.icons.rounded.Dns
 import androidx.compose.material.icons.rounded.DoNotDisturbOn
@@ -63,6 +64,7 @@ fun SettingsScreen(
     onOpenCallHandling: () -> Unit,
     onOpenFeatureCodes: () -> Unit,
     onOpenCodecs: () -> Unit,
+    onOpenRemoteConfig: () -> Unit,
 ) {
     val context = LocalContext.current
     val engine = context.engine
@@ -70,6 +72,7 @@ fun SettingsScreen(
     val certificates by engine.tls.certificates.collectAsStateWithLifecycle()
     val accounts by engine.accounts.accounts.collectAsStateWithLifecycle()
     val directories by engine.directory.directories.collectAsStateWithLifecycle()
+    val remote by engine.remote.status.collectAsStateWithLifecycle()
     val messenger = LocalMessenger.current
     val launcher = rememberCallLauncher()
 
@@ -84,6 +87,13 @@ fun SettingsScreen(
         ) {
             ManagedNotice()
             SectionCard(title = "账号") {
+                // Like the profiles of a proxy client: scanned or typed in, then in force until it is deleted here.
+                NavRow(
+                    title = "远程配置",
+                    subtitle = if (remote.enrolled) remote.clientName.ifEmpty { remote.platformName.ifEmpty { remote.host } } else "扫码或输入地址",
+                    icon = Icons.Rounded.CloudSync,
+                    onClick = onOpenRemoteConfig,
+                )
                 NavRow(
                     title = "SIP 账号",
                     // Registered / all.

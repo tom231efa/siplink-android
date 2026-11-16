@@ -52,6 +52,7 @@ class SipLinkApp : Application(), CallManager.Host {
         })
 
         SipService.sync(this)
+        engine.remote.start()
     }
 
     override fun showIncomingCall(info: CallInfo) {

@@ -1,0 +1,67 @@
+{
+  "schema": 1,
+  "version": "4f2a9c0b7e1d3a5c6b8e0f1a2d3c4b5a6f7e8d9c0b1a2f3e4d5c6b7a8f9e0d1c",
+  "generatedAt": "2026-11-16T08:30:00Z",
+  "deviceKey": "dK3y-ExampleOnly_0123456789abcdefghijklmnopq",
+  "platform": { "name": "示例平台", "syncUrl": "https://platform.example.com:8443/api/device/v1/sync", "comment": "unknown fields are ignored" },
+  "client": { "name": "前台-01", "region": "华东" },
+  "refreshMinutes": 30,
+  "configPasswordHash": "8D969EEF6ECAD3C29A3A629280E686CF0C3F5D5A86AFF3CA12020C923ADC6C92",
+  "settings": {
+    "keepAlive": false,
+    "intercomAutoAnswer": true,
+    "intercomSpeaker": false,
+    "verifyTlsCertificate": true,
+    "verifyTlsHostname": false,
+    "mediaSecurity": "SRTP_OPTIONAL",
+    "dndMode": "SERVER",
+    "callWaiting": false,
+    "rejectAnonymous": true,
+    "dtmfMode": "SIP_INFO",
+    "forwardAlways": "",
+    "forwardBusy": "8001",
+    "forwardNoAnswer": "8002",
+    "forwardNoAnswerSeconds": 25,
+    "features": {
+      "park": "701", "listen": "*81", "whisper": "*82", "barge": "*83", "forceHangUp": "*84",
+      "pickup": "*8", "groupPickup": "", "voicemail": "*98", "intercom": "*90", "dndOn": "*76", "dndOff": "*77"
+    },
+    "videoCalls": false,
+    "videoSize": "HD",
+    "videoFrameRate": 15,
+    "autoUpdateCheck": false,
+    "doNotDisturb": true
+  },
+  "accounts": [
+    {
+      "key": "p1", "name": "总机", "username": "1001", "password": "example-password-1", "authUser": "auth1001",
+      "displayName": "前台", "domain": "pbx.example.com", "port": "5061", "server": "sbc.example.com:5061",
+      "backupServer": "sbc2.example.com:5061", "dnsServer": "192.0.2.53", "transport": "TLS", "expires": 600,
+      "subscribeMwi": true, "enabled": true
+    },
+    { "key": "p2", "username": "2001", "password": "example-password-2", "domain": "192.0.2.10" }
+  ],
+  "defaultAccount": "p2",
+  "codecs": {
+    "audio": [ { "key": "opus/48000/2", "enabled": true }, { "key": "PCMA/8000/1", "enabled": false } ],
+    "video": [ { "key": "VP8/90000/0", "enabled": true } ]
+  },
+  "caCertificates": [ "@CA@" ],
+  "directories": [
+    {
+      "key": "d1", "name": "总部", "enabled": true, "host": "ldap.example.com", "port": 1389, "security": "START_TLS",
+      "bindDn": "uid=abc,ou=clients,dc=siplink", "password": "example-ldap-password", "baseDn": "ou=staff,ou=books,dc=siplink",
+      "line": "p1", "lookupIncoming": true, "lookupOutgoing": false, "maxResults": 200, "nameAttributes": "cn",
+      "numberAttributes": "telephoneNumber mobile", "nameFilter": "", "numberFilter": "(telephoneNumber=%)"
+    },
+    { "key": "d2", "host": "192.0.2.20", "baseDn": "dc=example,dc=com", "line": "" }
+  ],
+  "shortcuts": [
+    { "label": "前台", "number": "1000", "action": "speed", "category": "常用", "line": "总机", "icon": "reception" },
+    { "label": "转财务", "number": "1200", "action": "bxfer", "category": "转接", "line": "", "icon": "" },
+    { "label": "咨询", "number": "1300", "action": "axfer" },
+    { "label": "会议密码", "number": "1234#", "action": "dtmf" },
+    { "label": "转手机", "number": "8001", "action": "forward" },
+    { "label": "免打扰", "action": "dnd", "icon": "lock" }
+  ]
+}

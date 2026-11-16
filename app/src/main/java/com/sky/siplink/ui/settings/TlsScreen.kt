@@ -49,8 +49,8 @@ import com.sky.siplink.core.logic.ManagedConfig
 import com.sky.siplink.core.model.CertInfo
 import com.sky.siplink.core.model.MediaSecurity
 import com.sky.siplink.engine
-import com.sky.siplink.restartApp
 import com.sky.siplink.ui.components.ChoiceRow
+import com.sky.siplink.ui.components.LdapRestartDialog
 import com.sky.siplink.ui.components.LocalConfigLocked
 import com.sky.siplink.ui.components.LocalMessenger
 import com.sky.siplink.ui.components.SectionCard
@@ -201,29 +201,7 @@ fun TlsScreen(onBack: () -> Unit) {
         )
     }
 
-    if (restartPrompt) {
-        AlertDialog(
-            onDismissRequest = { restartPrompt = false },
-            title = { Text("重启后对 LDAP 生效") },
-            text = {
-                Text(
-                    "SIP 账号已经使用新的证书设置。LDAP 通讯录的加密连接在本次运行中已经建立过，" +
-                        "它要到应用重启后才会改用新的 CA 证书。",
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    if (engine.calls.call.value != null) {
-                        restartPrompt = false
-                        messenger("通话结束后再重启应用")
-                    } else {
-                        context.restartApp()
-                    }
-                }) { Text("立即重启") }
-            },
-            dismissButton = { TextButton(onClick = { restartPrompt = false }) { Text("稍后") } },
-        )
-    }
+    if (restartPrompt) LdapRestartDialog(onDismiss = { restartPrompt = false })
 }
 
 /** @param onRemove null where the certificate cannot be removed: the row then has no button for it */

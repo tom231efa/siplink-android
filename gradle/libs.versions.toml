@@ -13,6 +13,11 @@ materialIconsExtended = "1.7.8"
 # Linphone SDK is GPLv3 (or commercial licence from Belledonne Communications).
 linphone = "5.5.39"
 
+# Scanning the QR code of a remote configuration: CameraX for the picture, ZXing core (plain
+# Java, no Google Play services) to read it.
+camerax = "1.6.2"
+zxing = "3.5.4"
+
 junit = "4.13.2"
 androidxTestRunner = "1.7.0"
 androidxTestCore = "1.7.0"
@@ -33,6 +38,11 @@ androidx-compose-material3 = { group = "androidx.compose.material3", name = "mat
 androidx-compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended", version.ref = "materialIconsExtended" }
 
 linphone = { group = "org.linphone", name = "linphone-sdk-android", version.ref = "linphone" }
+
+androidx-camera-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "camerax" }
+androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "camerax" }
+androidx-camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "camerax" }
+zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxing" }
 
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "androidxTestRunner" }

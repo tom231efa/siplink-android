@@ -77,6 +77,7 @@ import com.sky.siplink.engine
 import com.sky.siplink.openCallScreen
 import com.sky.siplink.ui.accounts.AccountEditScreen
 import com.sky.siplink.ui.accounts.AccountsScreen
+import com.sky.siplink.ui.components.LdapRestartDialog
 import com.sky.siplink.ui.components.LocalConfigLocked
 import com.sky.siplink.ui.components.LocalMessenger
 import com.sky.siplink.ui.components.pressScale
@@ -88,6 +89,7 @@ import com.sky.siplink.ui.history.HistoryScreen
 import com.sky.siplink.ui.settings.CallHandlingScreen
 import com.sky.siplink.ui.settings.CodecsScreen
 import com.sky.siplink.ui.settings.FeatureCodesScreen
+import com.sky.siplink.ui.settings.RemoteConfigScreen
 import com.sky.siplink.ui.settings.SettingsScreen
 import com.sky.siplink.ui.settings.TlsScreen
 import com.sky.siplink.ui.shortcuts.ShortcutsScreen
@@ -114,6 +116,7 @@ private object Routes {
     const val CALL_HANDLING = "call-handling"
     const val FEATURE_CODES = "feature-codes"
     const val CODECS = "codecs"
+    const val REMOTE_CONFIG = "remote-config"
 
     /** The account chosen on the dial pad travels along; without it the default account is meant. */
     const val SHORTCUTS = "shortcuts?account={account}"
@@ -146,6 +149,10 @@ fun AppRoot() {
     val updateOffered by remember(engine) {
         engine.updates.status.map { UpdateRules.offered(it, BuildConfig.VERSION_NAME) != null }.distinctUntilChanged()
     }.collectAsStateWithLifecycle(false)
+    // A remote configuration changed the CAs after LDAP had used TLS: wherever the user is, the app asks to restart.
+    val restartForLdap by remember(engine) {
+        engine.remote.status.map { it.restartNeeded }.distinctUntilChanged()
+    }.collectAsStateWithLifecycle(false)
     // The way back to the call is offered on the main screens and next to the shortcut keys,
     // which is where a call in progress is handled from outside its own screen.
     val bannerWanted = topLevel || route == Routes.SHORTCUTS
@@ -164,6 +171,7 @@ fun AppRoot() {
 
     CompositionLocalProvider(LocalMessenger provides messenger, LocalConfigLocked provides managed) {
         StartupPermissions()
+        if (restartForLdap) LdapRestartDialog(onDismiss = engine.remote::restartHandled)
         Scaffold(
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             snackbarHost = {
@@ -235,6 +243,7 @@ fun AppRoot() {
                         onOpenCallHandling = { navController.navigate(Routes.CALL_HANDLING) },
                         onOpenFeatureCodes = { navController.navigate(Routes.FEATURE_CODES) },
                         onOpenCodecs = { navController.navigate(Routes.CODECS) },
+                        onOpenRemoteConfig = { navController.navigate(Routes.REMOTE_CONFIG) },
                     )
                 }
                 composable(Routes.ACCOUNT_NEW) {
@@ -282,6 +291,7 @@ fun AppRoot() {
                 composable(Routes.CALL_HANDLING) { CallHandlingScreen(onBack = { navController.popBackStack() }) }
                 composable(Routes.FEATURE_CODES) { FeatureCodesScreen(onBack = { navController.popBackStack() }) }
                 composable(Routes.CODECS) { CodecsScreen(onBack = { navController.popBackStack() }) }
+                composable(Routes.REMOTE_CONFIG) { RemoteConfigScreen(onBack = { navController.popBackStack() }) }
                 composable(
                     Routes.SHORTCUTS,
                     arguments = listOf(

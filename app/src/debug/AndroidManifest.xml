@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Debug builds take a remote configuration over plain http:// as well (core/logic/RemoteAddress.kt),
+    for tests on the local network and the integration test's stand-in for the platform. Release
+    builds stay with Android's default: no cleartext traffic.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application android:usesCleartextTraffic="true" />
+
+</manifest>

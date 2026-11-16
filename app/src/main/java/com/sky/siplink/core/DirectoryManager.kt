@@ -140,14 +140,42 @@ class DirectoryManager(private val core: Core, private val cache: DirectoryCache
             if (before == null) list + stored else list.map { if (it === before) stored else it },
             if (password == null) emptyMap() else mapOf(stored.id to password),
         )
-        // Entries of another server or another part of it are not the entries of this directory.
-        if (before != null && (before.host != stored.host || before.port != stored.port || before.baseDn != stored.baseDn)) {
-            dropCopy(stored.id)
-        }
+        if (before != null && looksElsewhere(before, stored)) dropCopy(stored.id)
         listState.value = store.load()
         onChanged?.invoke()
         return emptyList()
     }
+
+    /**
+     * Replaces every directory by [directories], in their order, keeping their ids: for the
+     * remote side, which checked them ([LdapRules.validate]) and gives each the id it had. The
+     * local copy of a directory that is gone, or now looks elsewhere, goes with it.
+     *
+     * @param passwords by directory id, the password of every directory with a bind DN
+     * @return false while the configuration is managed and this is not the remote side
+     */
+    fun replaceAll(directories: List<LdapDirectory>, passwords: Map<String, String>): Boolean {
+        if (lock.refuses) return false
+        val before = listState.value
+        val stored = directories.map { it.copy(password = "") }
+        val kept = stored.map { if (it.bindDn.isEmpty()) "" else passwords[it.id].orEmpty() }
+        if (before == stored && stored.map { store.passwordOf(it.id) } == kept) return true
+        store.save(stored, stored.map { it.id }.zip(kept).toMap())
+        val now = stored.associateBy { it.id }
+        before.filter { old -> now[old.id]?.let { looksElsewhere(old, it) } ?: true }.forEach { dropCopy(it.id) }
+        listState.value = store.load()
+        if (listState.value.isEmpty()) forgetServer()
+        if (searchState.value.directory.isNotEmpty() && searchState.value.directory !in now) {
+            searchToken++
+            searchState.value = DirectoryState()
+        }
+        onChanged?.invoke()
+        return true
+    }
+
+    /** Entries of another server or another part of it are not the entries of the directory [before] was. */
+    private fun looksElsewhere(before: LdapDirectory, after: LdapDirectory): Boolean =
+        before.host != after.host || before.port != after.port || before.baseDn != after.baseDn
 
     /**
      * The password saved for the directory [id], to show it in its form. Empty where a managed

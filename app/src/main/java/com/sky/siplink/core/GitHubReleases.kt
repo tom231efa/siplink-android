@@ -52,18 +52,6 @@ object GitHubReleases {
         }
     }
 
-    /** Reads at most [limit] bytes; InputStream.readNBytes needs Android 13. */
-    private fun InputStream.readAtMost(limit: Int): ByteArray {
-        val out = ByteArrayOutputStream()
-        val buffer = ByteArray(8192)
-        while (out.size() < limit) {
-            val read = read(buffer, 0, minOf(buffer.size, limit - out.size()))
-            if (read < 0) break
-            out.write(buffer, 0, read)
-        }
-        return out.toByteArray()
-    }
-
     /**
      * The release that GitHub's answer for the latest release describes. Of the answer only
      * tag_name, html_url, body and the name and browser_download_url of each asset are read;
@@ -86,4 +74,16 @@ object GitHubReleases {
 
     /** The text under [key]; empty when it is missing or null (optString would give "null"). */
     private fun JSONObject.text(key: String): String = if (isNull(key)) "" else optString(key)
+}
+
+/** Reads at most [limit] bytes; InputStream.readNBytes needs Android 13. */
+internal fun InputStream.readAtMost(limit: Int): ByteArray {
+    val out = ByteArrayOutputStream()
+    val buffer = ByteArray(8192)
+    while (out.size() < limit) {
+        val read = read(buffer, 0, minOf(buffer.size, limit - out.size()))
+        if (read < 0) break
+        out.write(buffer, 0, read)
+    }
+    return out.toByteArray()
 }

@@ -1,0 +1,75 @@
+{
+  "schema": 1,
+  "version": "c7b9adb9ddfc8fe1271b86e9ccd672408fc096f782e64752dc2ddcd5e0d457f5",
+  "generatedAt": "2026-11-16T08:00:00Z",
+  "platform": {
+    "name": "SipLink 管理平台",
+    "syncUrl": "https://platform.example.com/api/device/v1/sync"
+  },
+  "client": {
+    "name": "min",
+    "region": "华东"
+  },
+  "refreshMinutes": 60,
+  "configPasswordHash": "",
+  "settings": {
+    "keepAlive": true,
+    "intercomAutoAnswer": false,
+    "intercomSpeaker": true,
+    "verifyTlsCertificate": true,
+    "verifyTlsHostname": true,
+    "mediaSecurity": "NONE",
+    "dndMode": "SOFTWARE",
+    "callWaiting": true,
+    "rejectAnonymous": false,
+    "dtmfMode": "RFC2833",
+    "forwardAlways": "",
+    "forwardBusy": "",
+    "forwardNoAnswer": "",
+    "forwardNoAnswerSeconds": 20,
+    "features": {
+      "park": "700",
+      "listen": "*91",
+      "whisper": "*92",
+      "barge": "*93",
+      "forceHangUp": "*94",
+      "pickup": "**",
+      "groupPickup": "*8",
+      "voicemail": "*97",
+      "intercom": "*80",
+      "dndOn": "*78",
+      "dndOff": "*79"
+    },
+    "videoCalls": true,
+    "videoSize": "VGA",
+    "videoFrameRate": 0,
+    "autoUpdateCheck": true,
+    "userAgent": "",
+    "adaptiveRateControl": false,
+    "echoCancellation": true,
+    "ipv6": true
+  },
+  "accounts": [
+    {
+      "key": "p1",
+      "name": "总部",
+      "username": "1001",
+      "password": "test-password-1001",
+      "authUser": "",
+      "displayName": "",
+      "domain": "pbx.example.com",
+      "port": "",
+      "server": "",
+      "backupServer": "",
+      "dnsServer": "",
+      "transport": "UDP",
+      "expires": 3600,
+      "subscribeMwi": true,
+      "enabled": true
+    }
+  ],
+  "defaultAccount": "p1",
+  "caCertificates": [],
+  "directories": [],
+  "shortcuts": []
+}

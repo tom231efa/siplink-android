@@ -134,10 +134,27 @@ class AccountManager(private val core: Core, private val lock: ConfigLock) {
 
     fun add(input: AccountDraft): List<AccountRules.Error> {
         if (lock.refuses) return listOf(AccountRules.Error.MANAGED)
+        return addAs(UUID.randomUUID().toString(), input)
+    }
+
+    /**
+     * Makes the account [id] what [input] says: creates it with that id where there is none,
+     * changes it where it is something else, and leaves it alone where it is [input] already
+     * (it is not registered anew). For the remote side, which keeps the ids of its accounts.
+     */
+    fun put(id: String, input: AccountDraft): List<AccountRules.Error> {
+        if (lock.refuses) return listOf(AccountRules.Error.MANAGED)
+        val current = state.value.firstOrNull { it.id == id } ?: return addAs(id, input)
+        val stored = current.toDraft().copy(password = find(id)?.findAuthInfo()?.password.orEmpty())
+        if (AccountRules.normalize(stored) == AccountRules.normalize(input)) return emptyList()
+        return update(id, input)
+    }
+
+    private fun addAs(id: String, input: AccountDraft): List<AccountRules.Error> {
         val draft = AccountRules.normalize(input)
         val errors = AccountRules.validate(draft, existingKeys(), takenNames = state.value.map { it.name })
         if (errors.isNotEmpty()) return errors
-        if (!create(draft)) return listOf(AccountRules.Error.ADDRESS_REJECTED)
+        if (!create(draft, id)) return listOf(AccountRules.Error.ADDRESS_REJECTED)
         refresh()
         return emptyList()
     }
@@ -148,7 +165,7 @@ class AccountManager(private val core: Core, private val lock: ConfigLock) {
         var created = 0
         for (input in drafts) {
             val draft = AccountRules.normalize(input)
-            if (AccountRules.validate(draft, existingKeys()).isEmpty() && create(draft)) created++
+            if (AccountRules.validate(draft, existingKeys()).isEmpty() && create(draft, UUID.randomUUID().toString())) created++
         }
         refresh()
         return created
@@ -242,6 +259,24 @@ class AccountManager(private val core: Core, private val lock: ConfigLock) {
 
     private fun finishRetiring(pointer: Long) {
         retired.remove(pointer)?.let(::release)
+        if (retired.isEmpty() && afterUnregistering.isNotEmpty()) {
+            val waiting = afterUnregistering.toList()
+            afterUnregistering.clear()
+            waiting.forEach { it() }
+        }
+    }
+
+    /** What waits for the removed accounts to be unregistered ([whenUnregistered]). */
+    private val afterUnregistering = ArrayList<() -> Unit>()
+
+    /**
+     * Runs [action] once every removed account has unregistered, or its time to do so
+     * ([UNREGISTER_GRACE_MS]) has run out; at once when none is unregistering. What drops the
+     * SIP connections (other CAs, other TLS checks) has to wait for this: an un-REGISTER cut off
+     * by it is sent again by the SIP core as a REGISTER, and the PBX keeps the binding.
+     */
+    fun whenUnregistered(action: () -> Unit) {
+        if (retired.isEmpty()) action() else afterUnregistering += action
     }
 
     private fun part(auth: AuthInfo, identityKey: String) = Parting(auth, identityKey).also { parting += it }
@@ -286,12 +321,11 @@ class AccountManager(private val core: Core, private val lock: ConfigLock) {
     private fun existingKeys(): List<String> =
         state.value.map { AccountRules.identityKey(it.username, it.domain) }
 
-    private fun create(draft: AccountDraft): Boolean {
+    private fun create(draft: AccountDraft, id: String): Boolean {
         val identity = buildIdentity(draft) ?: return false
         val server = Factory.instance().createAddress(AccountRules.serverUri(draft)) ?: return false
 
         val params = core.createAccountParams()
-        val id = UUID.randomUUID().toString()
         params.idkey = id
         applyParams(id, params, draft, identity, server)
         storeName(id, draft.name)

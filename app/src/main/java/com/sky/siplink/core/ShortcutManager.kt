@@ -130,6 +130,25 @@ class ShortcutManager(private val file: File, private val lock: ConfigLock) {
     }
 
     /**
+     * Replaces the keys that were handed out by [keys], in their order, and keeps every key of
+     * the user's own ([Shortcut.own]) behind them: for the remote side. Nothing is written when
+     * the handed-out keys are [keys] already.
+     *
+     * @return false when nothing was replaced: the keys are not read yet, or the configuration is
+     *   managed and this is not the remote side
+     */
+    fun replaceHandedOut(keys: List<Shortcut>): Boolean {
+        if (lock.refuses || !ready.value) return false
+        val (own, handedOut) = state.value.partition { it.own }
+        val wanted = keys.map { it.copy(id = 0, own = false) }
+        if (handedOut.map { it.copy(id = 0) } == wanted) return true
+        val replaced = wanted.mapIndexed { index, key -> key.copy(id = nextId + index) }
+        nextId += replaced.size
+        publish(replaced + own)
+        return true
+    }
+
+    /**
      * Keeps the fixed lines of the keys in step with the accounts after one of them was renamed
      * or removed: see [ShortcutLines.follow].
      */

@@ -1,5 +1,7 @@
 package com.sky.siplink.core
 
+import com.sky.siplink.core.logic.CodecChoice
+import com.sky.siplink.core.logic.RemotePlan
 import com.sky.siplink.core.model.Codec
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -61,6 +63,18 @@ class CodecManager(private val core: Core, private val lock: ConfigLock) {
             commit(types.sortedBy { order[keyOf(it)] ?: Int.MAX_VALUE }.toTypedArray())
         }
 
+        /** Puts the codecs in the order of [RemotePlan.codecOrder] and switches each as it says. */
+        fun arrange(wanted: List<CodecChoice>) {
+            val types = get()
+            val order = RemotePlan.codecOrder(types.map(::keyOf), wanted)
+            val position = order.withIndex().associate { it.value.key to it.index }
+            val on = order.associate { it.key to it.enabled }
+            val arranged = types.sortedBy { position.getValue(keyOf(it)) }
+            if (arranged.map(::keyOf) == types.map(::keyOf) && types.all { it.enabled() == on.getValue(keyOf(it)) }) return
+            arranged.forEach { it.enable(on.getValue(keyOf(it))) }
+            commit(arranged.toTypedArray())
+        }
+
         private fun commit(types: Array<PayloadType>) {
             set(types)
             core.config.sync()
@@ -103,6 +117,25 @@ class CodecManager(private val core: Core, private val lock: ConfigLock) {
         if (lock.refuses) return false
         audio.restoreDefaults()
         video.restoreDefaults()
+        return true
+    }
+
+    /**
+     * Orders and switches the codecs as the remote side wants them ([RemotePlan.codecOrder]).
+     * Where that would leave no audio codec on, the audio codecs go back to the SDK's defaults
+     * instead: a call needs one.
+     *
+     * @return false when that happened, or when the configuration is managed and this is not the remote side
+     */
+    fun apply(audioCodecs: List<CodecChoice>, videoCodecs: List<CodecChoice>): Boolean {
+        if (lock.refuses) return false
+        video.arrange(videoCodecs)
+        val audioKeys = audio.state.value.map { it.key }
+        if (RemotePlan.codecOrder(audioKeys, audioCodecs).none { it.enabled }) {
+            audio.restoreDefaults()
+            return false
+        }
+        audio.arrange(audioCodecs)
         return true
     }
 

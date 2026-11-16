@@ -15,9 +15,9 @@ import org.linphone.core.Config
  * stored in it (of the accounts, of the directories) are shown only to who types that password
  * ([showsPasswords]); without one they can be looked at like everything else.
  *
- * The state is kept in the app's section of the SIP core configuration file. Nothing in the app
- * switches it on yet: [setManaged] and [fromRemote] are for the loader of remote configurations.
- * Main thread only, like the SIP core.
+ * The state is kept in the app's section of the SIP core configuration file. [setManaged] and
+ * [fromRemote] are for the loader of remote configurations ([RemoteApplier]). Main thread only,
+ * like the SIP core.
  */
 class ConfigLock(private val config: Config) {
     private val state = MutableStateFlow(config.getBool(SettingsStore.SECTION, KEY_MANAGED, false))

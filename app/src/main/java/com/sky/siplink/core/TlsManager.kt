@@ -78,6 +78,21 @@ class TlsManager(context: Context, private val core: Core, private val lock: Con
         return true
     }
 
+    /**
+     * Trusts exactly [certificates] (duplicates dropped), in their order: for the remote side.
+     *
+     * @return whether the trusted CAs changed; false as well while the configuration is managed
+     *   and this is not the remote side
+     */
+    fun replaceAll(certificates: List<X509Certificate>): Boolean {
+        if (lock.refuses) return false
+        val (wanted, _) = CertificateTools.merge(emptyList(), certificates)
+        if (wanted.map(CertificateTools::fingerprint) == userCertificates.map(CertificateTools::fingerprint)) return false
+        userCertificates = wanted
+        applyTrust(reconnect = true)
+        return true
+    }
+
     /** Applies certificate verification and media encryption preferences to the core. */
     fun applySettings(settings: Settings) {
         core.verifyServerCertificates(settings.verifyTlsCertificate)
