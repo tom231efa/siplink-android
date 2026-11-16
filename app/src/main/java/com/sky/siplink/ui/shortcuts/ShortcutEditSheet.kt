@@ -59,7 +59,7 @@ import com.sky.siplink.ui.components.DropdownField
 import com.sky.siplink.ui.components.FormField
 import com.sky.siplink.ui.components.LocalConfigLocked
 import com.sky.siplink.ui.components.LocalMessenger
-import com.sky.siplink.ui.components.ManagedNotice
+import com.sky.siplink.ui.components.ManagedLock
 import com.sky.siplink.ui.components.pressScale
 
 /** Offers to make a new key of a contact or a call log entry. */
@@ -153,8 +153,10 @@ internal fun ShortcutEditSheet(shortcut: Shortcut, onDismiss: () -> Unit) {
                     .padding(horizontal = SheetPadding),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text(if (isNew) "新建快捷键" else "编辑快捷键", style = MaterialTheme.typography.titleLarge)
-                ManagedNotice()
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(if (isNew) "新建快捷键" else "编辑快捷键", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                    ManagedLock()
+                }
 
                 FormField(
                     value = label,

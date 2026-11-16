@@ -78,7 +78,7 @@ import com.sky.siplink.ui.components.EmptyState
 import com.sky.siplink.ui.components.FieldText
 import com.sky.siplink.ui.components.LocalConfigLocked
 import com.sky.siplink.ui.components.LocalMessenger
-import com.sky.siplink.ui.components.ManagedNotice
+import com.sky.siplink.ui.components.ManagedLock
 import com.sky.siplink.ui.components.StatusDot
 import com.sky.siplink.ui.components.regStateColor
 import com.sky.siplink.ui.components.regStateLabel
@@ -134,6 +134,7 @@ fun AccountsScreen(onBack: () -> Unit, onAdd: () -> Unit, onEdit: (String) -> Un
                     IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回") }
                 },
                 actions = {
+                    ManagedLock()
                     if (!locked) {
                         IconButton(onClick = { if (full) messenger(AccountRules.Error.LIMIT_REACHED.message) else importOpen = true }) {
                             Icon(Icons.Rounded.UploadFile, contentDescription = "批量导入账号")
@@ -177,7 +178,6 @@ fun AccountsScreen(onBack: () -> Unit, onAdd: () -> Unit, onEdit: (String) -> Un
                     shape = CircleShape,
                 )
             }
-            ManagedNotice(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp))
             if (accounts.isEmpty()) {
                 EmptyState(
                     icon = Icons.Rounded.ManageAccounts,

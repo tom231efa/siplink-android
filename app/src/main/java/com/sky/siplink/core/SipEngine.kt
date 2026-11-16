@@ -1,7 +1,10 @@
 package com.sky.siplink.core
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import com.sky.siplink.BuildConfig
+import com.sky.siplink.core.logic.UserAgent
 import com.sky.siplink.core.model.DtmfMode
 import com.sky.siplink.core.model.Settings
 import com.sky.siplink.core.model.SipAccount
@@ -130,6 +133,9 @@ class SipEngine(context: Context) {
         lock = ConfigLock(core.config)
         settings = SettingsStore(core.config, lock)
         applyDtmfMode(settings.current.dtmfMode)
+        // The core keeps its own copy of these in its configuration file: the settings win at every start.
+        applyUserAgent(settings.current.userAgent)
+        applyMediaOptions(settings.current)
         CallVideoSupport.configure(core, settings.current.videoCalls)
         CallVideoSupport.setQuality(core, settings.current.videoSize, settings.current.videoFrameRate)
         tls = TlsManager(appContext, core, lock)
@@ -173,6 +179,17 @@ class SipEngine(context: Context) {
         if (verificationChanged) tls.reconnect()
         if (before.keepAlive != after.keepAlive) onKeepAliveChanged?.invoke()
         if (before.dtmfMode != after.dtmfMode) applyDtmfMode(after.dtmfMode)
+        if (before.userAgent != after.userAgent) {
+            applyUserAgent(after.userAgent)
+            // The servers learn the new name with the next REGISTER: sent once the typing has stopped.
+            handler.removeCallbacks(reRegister)
+            handler.postDelayed(reRegister, RE_REGISTER_DELAY_MS)
+        }
+        if (before.adaptiveRateControl != after.adaptiveRateControl || before.echoCancellation != after.echoCancellation ||
+            before.ipv6 != after.ipv6
+        ) {
+            applyMediaOptions(after)
+        }
         if (before.videoCalls != after.videoCalls) {
             CallVideoSupport.setEnabled(core, after.videoCalls)
             calls.onVideoAllowedChanged()
@@ -183,16 +200,29 @@ class SipEngine(context: Context) {
         return taken
     }
 
+    /** The name the app sends when none of the user's own is set ([UserAgent.default]). */
+    val defaultUserAgent: String get() = UserAgent.default(core.version, BuildConfig.VERSION_NAME)
+
+    private val handler = Handler(Looper.getMainLooper())
+    private val reRegister = Runnable { accounts.registerAnew() }
+
+    private fun applyUserAgent(custom: String) {
+        val (name, version) = UserAgent.parts(custom, core.version, BuildConfig.VERSION_NAME)
+        core.setUserAgent(name, version)
+    }
+
+    private fun applyMediaOptions(settings: Settings) {
+        core.isAdaptiveRateControlEnabled = settings.adaptiveRateControl
+        core.isEchoCancellationEnabled = settings.echoCancellation
+        core.isIpv6Enabled = settings.ipv6
+    }
+
     private fun applyDtmfMode(mode: DtmfMode) {
         core.useRfc2833ForDtmf = mode == DtmfMode.RFC2833
         core.useInfoForDtmf = mode == DtmfMode.SIP_INFO
     }
 
     private fun configure() {
-        // The SIP stack is named first and the app after it. Some services answer only clients
-        // whose name begins with one they know: a relay in front of hosted PBXs was seen to
-        // refuse "SipLink/…" with 403 before asking for any password, and to let "Linphone…" in.
-        core.setUserAgent(SDK_NAME, "${core.version} $APP_NAME/${BuildConfig.VERSION_NAME}")
         core.isAutoIterateEnabled = true
         // With the app off the screen the core looks at the network less often, and was seen to
         // take about one SIP message each time it does. At its usual half second an answer is
@@ -229,8 +259,8 @@ class SipEngine(context: Context) {
 
     private companion object {
         const val LOG_TAG = "SipLink"
-        const val SDK_NAME = "LinphoneSDK"
-        const val APP_NAME = "SipLink"
+        /** How long a changed User-Agent waits for the next key stroke before the accounts register with it. */
+        const val RE_REGISTER_DELAY_MS = 1_500L
         const val CONFIG_FILE = "linphonerc"
         const val SHORTCUTS_FILE = "shortcuts.csv"
         const val MAX_CALLS = 4

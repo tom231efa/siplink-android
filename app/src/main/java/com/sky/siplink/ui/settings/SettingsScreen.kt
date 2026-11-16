@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.PhoneForwarded
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.BatterySaver
 import androidx.compose.material.icons.rounded.Campaign
@@ -28,6 +27,7 @@ import androidx.compose.material.icons.rounded.ManageAccounts
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.ScreenLockPortrait
 import androidx.compose.material.icons.rounded.Sync
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.VerifiedUser
 import androidx.compose.material.icons.rounded.Videocam
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -47,7 +47,7 @@ import com.sky.siplink.core.model.ThemeMode
 import com.sky.siplink.engine
 import com.sky.siplink.ui.components.ChoiceRow
 import com.sky.siplink.ui.components.LocalMessenger
-import com.sky.siplink.ui.components.ManagedNotice
+import com.sky.siplink.ui.components.ManagedLock
 import com.sky.siplink.ui.components.NavRow
 import com.sky.siplink.ui.components.Personal
 import com.sky.siplink.ui.components.SectionCard
@@ -61,7 +61,7 @@ fun SettingsScreen(
     onOpenAccounts: () -> Unit,
     onOpenTls: () -> Unit,
     onOpenLdap: () -> Unit,
-    onOpenCallHandling: () -> Unit,
+    onOpenAdvanced: () -> Unit,
     onOpenFeatureCodes: () -> Unit,
     onOpenCodecs: () -> Unit,
     onOpenRemoteConfig: () -> Unit,
@@ -77,7 +77,7 @@ fun SettingsScreen(
     val launcher = rememberCallLauncher()
 
     Column(Modifier.fillMaxSize()) {
-        TopAppBar(title = { Text("设置") })
+        TopAppBar(title = { Text("设置") }, actions = { ManagedLock() })
         Column(
             Modifier
                 .fillMaxSize()
@@ -85,12 +85,11 @@ fun SettingsScreen(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            ManagedNotice()
             SectionCard(title = "账号") {
                 // Like the profiles of a proxy client: scanned or typed in, then in force until it is deleted here.
                 NavRow(
                     title = "远程配置",
-                    subtitle = if (remote.enrolled) remote.clientName.ifEmpty { remote.platformName.ifEmpty { remote.host } } else "扫码或输入地址",
+                    subtitle = if (remote.enrolled) remote.clientName.ifEmpty { remote.platformName.ifEmpty { remote.host } } else null,
                     icon = Icons.Rounded.CloudSync,
                     onClick = onOpenRemoteConfig,
                 )
@@ -119,7 +118,7 @@ fun SettingsScreen(
                     checked = settings.videoCalls,
                     onCheckedChange = { value -> engine.updateSettings { it.copy(videoCalls = value) } },
                 )
-                NavRow(title = "呼叫处理", icon = Icons.AutoMirrored.Rounded.PhoneForwarded, onClick = onOpenCallHandling)
+                NavRow(title = "高级设置", icon = Icons.Rounded.Tune, onClick = onOpenAdvanced)
                 NavRow(title = "功能码", icon = Icons.Rounded.Dialpad, onClick = onOpenFeatureCodes)
                 NavRow(title = if (settings.videoCalls) "编码" else "音频编码", icon = Icons.Rounded.GraphicEq, onClick = onOpenCodecs)
             }

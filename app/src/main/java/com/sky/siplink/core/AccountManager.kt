@@ -309,6 +309,24 @@ class AccountManager(private val core: Core, private val lock: ConfigLock) {
         return true
     }
 
+    /**
+     * Has every account that is registered, or registering, register anew with a request built
+     * afresh, so that it carries what the core sends now (its User-Agent): a refresh repeats the
+     * request the registration was built with. The registration is switched off and on again in
+     * one go, and the core builds a new REGISTER when it next runs, without unregistering in
+     * between. Accounts that are switched off, or held back by the router, stay as they are.
+     */
+    fun registerAnew() {
+        for (account in core.accountList) {
+            val params = account.params
+            if (!params.isRegisterEnabled || account.state !in REGISTERED) continue
+            val off = params.clone()
+            off.isRegisterEnabled = false
+            account.params = off
+            account.params = params.clone()
+        }
+    }
+
     /** @return whether the account is the default one now: not when there is none with this id, nor while the configuration is managed */
     fun setDefault(id: String): Boolean {
         if (lock.refuses) return false
@@ -450,6 +468,9 @@ class AccountManager(private val core: Core, private val lock: ConfigLock) {
 
         /** How long registration events are gathered before the list is published. */
         const val PUBLISH_DELAY_MS = 50L
+
+        /** The states of a registration that [registerAnew] builds anew. */
+        val REGISTERED = setOf(RegistrationState.Ok, RegistrationState.Refreshing, RegistrationState.Progress)
 
         /** Section of the core configuration file holding the account names, keyed by account id. */
         const val NAMES_SECTION = "siplink_account_names"

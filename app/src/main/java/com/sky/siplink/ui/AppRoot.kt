@@ -86,7 +86,7 @@ import com.sky.siplink.ui.directory.DirectoryScreen
 import com.sky.siplink.ui.directory.LdapEditScreen
 import com.sky.siplink.ui.directory.LdapListScreen
 import com.sky.siplink.ui.history.HistoryScreen
-import com.sky.siplink.ui.settings.CallHandlingScreen
+import com.sky.siplink.ui.settings.AdvancedSettingsScreen
 import com.sky.siplink.ui.settings.CodecsScreen
 import com.sky.siplink.ui.settings.FeatureCodesScreen
 import com.sky.siplink.ui.settings.RemoteConfigScreen
@@ -113,7 +113,7 @@ private object Routes {
     const val LDAP_NEW = "ldap/new"
     const val LDAP_EDIT = "ldap/edit/{id}"
     const val TLS = "tls"
-    const val CALL_HANDLING = "call-handling"
+    const val ADVANCED = "advanced"
     const val FEATURE_CODES = "feature-codes"
     const val CODECS = "codecs"
     const val REMOTE_CONFIG = "remote-config"
@@ -240,7 +240,7 @@ fun AppRoot() {
                         onOpenAccounts = { navController.navigate(Routes.ACCOUNTS) },
                         onOpenTls = { navController.navigate(Routes.TLS) },
                         onOpenLdap = { navController.navigate(Routes.LDAP) },
-                        onOpenCallHandling = { navController.navigate(Routes.CALL_HANDLING) },
+                        onOpenAdvanced = { navController.navigate(Routes.ADVANCED) },
                         onOpenFeatureCodes = { navController.navigate(Routes.FEATURE_CODES) },
                         onOpenCodecs = { navController.navigate(Routes.CODECS) },
                         onOpenRemoteConfig = { navController.navigate(Routes.REMOTE_CONFIG) },
@@ -288,7 +288,7 @@ fun AppRoot() {
                     )
                 }
                 composable(Routes.TLS) { TlsScreen(onBack = { navController.popBackStack() }) }
-                composable(Routes.CALL_HANDLING) { CallHandlingScreen(onBack = { navController.popBackStack() }) }
+                composable(Routes.ADVANCED) { AdvancedSettingsScreen(onBack = { navController.popBackStack() }) }
                 composable(Routes.FEATURE_CODES) { FeatureCodesScreen(onBack = { navController.popBackStack() }) }
                 composable(Routes.CODECS) { CodecsScreen(onBack = { navController.popBackStack() }) }
                 composable(Routes.REMOTE_CONFIG) { RemoteConfigScreen(onBack = { navController.popBackStack() }) }

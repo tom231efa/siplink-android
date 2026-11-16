@@ -45,7 +45,7 @@ import com.sky.siplink.engine
 import com.sky.siplink.ui.components.ChoiceRow
 import com.sky.siplink.ui.components.LocalConfigLocked
 import com.sky.siplink.ui.components.LocalMessenger
-import com.sky.siplink.ui.components.ManagedNotice
+import com.sky.siplink.ui.components.ManagedLock
 
 /**
  * Audio and video codecs: which ones are offered, and in which order of preference. The video
@@ -72,6 +72,7 @@ fun CodecsScreen(onBack: () -> Unit) {
                 IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回") }
             },
             actions = {
+                ManagedLock()
                 if (!locked) {
                     TextButton(
                         onClick = {
@@ -91,7 +92,6 @@ fun CodecsScreen(onBack: () -> Unit) {
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            if (locked) item(key = "managed", contentType = "notice") { ManagedNotice() }
             if (video) item(key = "audioTitle", contentType = "title") { KindTitle("音频") }
             codecRows(codecs, onMove = manager::move) { key, enabled ->
                 if (!manager.setEnabled(key, enabled)) messenger("至少保留一种音频编码")
@@ -155,11 +155,6 @@ private fun VideoQuality(size: VideoSize, frameRate: Int, onSize: (VideoSize) ->
             ChoiceRow(options = videoSizes, selected = size, onSelect = onSize)
             Text("帧率（帧/秒）", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 4.dp))
             ChoiceRow(options = frameRates, selected = frameRate, onSelect = onFrameRate)
-            Text(
-                "发送本机画面时使用，下次开启视频时生效；实际效果还取决于摄像头、对方设备和网络。",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
     }
 }

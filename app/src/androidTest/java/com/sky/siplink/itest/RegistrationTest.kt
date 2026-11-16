@@ -43,8 +43,7 @@ class RegistrationTest : PbxTestBase() {
         await("the PBX to know the contact of $APP") { pbxHasContact(APP) }
         // What the PBX kept of the User-Agent header. Services that answer known clients only go
         // by how it begins, and know the stack, not the app.
-        val stored = pbx.command("database show registrar/contact").lineSequence().first { it.startsWith("/registrar/contact/$APP;") }
-        val agent = STORED_USER_AGENT.find(stored)?.groupValues?.get(1)
+        val agent = pbxUserAgent(APP)
         assertTrue("The app called itself $agent", agent != null && SDK_FIRST.matches(agent))
     }
 
@@ -189,7 +188,6 @@ class RegistrationTest : PbxTestBase() {
 
     private companion object {
         const val WRONG_PASSWORD = "not the password"
-        val STORED_USER_AGENT = Regex(""""user_agent":"([^"]*)"""")
         val SDK_FIRST = Regex("""LinphoneSDK/\S+ SipLink/\S+""")
         const val FIRST = 1001
         const val LAST = 1100

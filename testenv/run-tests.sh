@@ -112,7 +112,8 @@ fi
 failed=()
 for class in RegistrationTest BasicCallTest TransferParkTest SupervisionTest CallHandlingTest \
   CallerIdTest LineRoutingTest CodecTest DirectoryTest DirectoryTrustTest ShortcutStoreTest DirectoryCacheTest \
-  VideoCallTest VideoNoCameraTest ManagedLockTest ManagedScreensTest RemoteConfigTest AccountFormTest ReleaseJsonTest UpdateCheckTest; do
+  VideoCallTest VideoNoCameraTest ManagedLockTest ManagedScreensTest RemoteConfigTest \
+  AdvancedSettingsTest SdkDefaultsTest AccountFormTest ReleaseJsonTest UpdateCheckTest; do
   echo "=== $class" >&2
   run -e class "com.sky.siplink.itest.$class" || failed+=("$class")
 done

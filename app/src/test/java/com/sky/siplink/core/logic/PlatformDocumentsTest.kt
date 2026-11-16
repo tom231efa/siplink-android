@@ -1,6 +1,7 @@
 package com.sky.siplink.core.logic
 
 import com.sky.siplink.core.model.LdapSecurity
+import com.sky.siplink.core.model.Settings
 import com.sky.siplink.core.model.ShortcutAction
 import com.sky.siplink.core.model.ShortcutIcon
 import com.sky.siplink.core.model.SipTransport
@@ -52,6 +53,10 @@ class PlatformDocumentsTest {
         assertEquals(listOf("opus/48000/2", "PCMA/8000/1", "PCMU/8000/1"), document.codecs!!.audio.map { it.key })
         assertEquals("13800000000", document.settings.forwardAlways)
         assertEquals("*85", document.settings.features.park)
+        assertEquals("SipLink-Example/1.0", document.settings.userAgent)
+        assertEquals(true, document.settings.adaptiveRateControl)
+        assertEquals(false, document.settings.echoCancellation)
+        assertEquals(true, document.settings.ipv6)
     }
 
     @Test
@@ -96,5 +101,6 @@ class PlatformDocumentsTest {
         assertTrue(document.directories.isEmpty() && document.shortcuts.isEmpty() && document.caCertificates.isEmpty())
         assertNull("No codecs: the SDK's defaults", document.codecs)
         assertEquals("700", document.settings.features.park)
+        assertEquals(Settings().copy(features = document.settings.features), document.settings)
     }
 }

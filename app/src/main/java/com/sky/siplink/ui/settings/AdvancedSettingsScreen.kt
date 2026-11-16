@@ -5,7 +5,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Block
+import androidx.compose.material.icons.rounded.Hearing
+import androidx.compose.material.icons.rounded.Lan
 import androidx.compose.material.icons.rounded.PhonePaused
+import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -20,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sky.siplink.core.logic.FeatureDial
 import com.sky.siplink.core.logic.IncomingPolicy
+import com.sky.siplink.core.logic.UserAgent
 import com.sky.siplink.core.model.DndMode
 import com.sky.siplink.core.model.DtmfMode
 import com.sky.siplink.engine
@@ -30,9 +34,12 @@ import com.sky.siplink.ui.components.SectionCard
 import com.sky.siplink.ui.components.SubScreen
 import com.sky.siplink.ui.components.SwitchRow
 
-/** Who keeps do not disturb, call waiting and call forwarding. */
+/**
+ * What most people leave as it is: who keeps do not disturb, call waiting, call forwarding, and
+ * a few options of the SIP library (rate control, echo cancellation, IPv6, the User-Agent name).
+ */
 @Composable
-fun CallHandlingScreen(onBack: () -> Unit) {
+fun AdvancedSettingsScreen(onBack: () -> Unit) {
     val engine = LocalContext.current.engine
     val messenger = LocalMessenger.current
     val settings by engine.settings.settings.collectAsStateWithLifecycle()
@@ -41,8 +48,10 @@ fun CallHandlingScreen(onBack: () -> Unit) {
     // Typed text is kept locally so an out-of-range number can be shown with its error.
     var seconds by remember { mutableStateOf(settings.forwardNoAnswerSeconds.toString()) }
     val range = IncomingPolicy.MIN_NO_ANSWER_SECONDS..IncomingPolicy.MAX_NO_ANSWER_SECONDS
+    // Likewise the name, which is kept only once the rule takes it; a name set elsewhere (a remote configuration) replaces it.
+    var userAgent by remember(settings.userAgent) { mutableStateOf(settings.userAgent) }
 
-    SubScreen(title = "呼叫处理", onBack = onBack) {
+    SubScreen(title = "高级设置", onBack = onBack) {
         SectionCard(title = "来电") {
             Text(
                 "免打扰方式",
@@ -127,6 +136,43 @@ fun CallHandlingScreen(onBack: () -> Unit) {
                         else -> null
                     },
                     keyboardType = KeyboardType.Number,
+                )
+            }
+        }
+
+        SectionCard(title = "媒体与网络") {
+            SwitchRow(
+                title = "自适应速率控制",
+                icon = Icons.Rounded.Speed,
+                checked = settings.adaptiveRateControl,
+                onCheckedChange = { value -> engine.updateSettings { it.copy(adaptiveRateControl = value) } },
+            )
+            SwitchRow(
+                title = "回声消除",
+                icon = Icons.Rounded.Hearing,
+                checked = settings.echoCancellation,
+                onCheckedChange = { value -> engine.updateSettings { it.copy(echoCancellation = value) } },
+            )
+            SwitchRow(
+                title = "允许 IPv6",
+                icon = Icons.Rounded.Lan,
+                checked = settings.ipv6,
+                onCheckedChange = { value -> engine.updateSettings { it.copy(ipv6 = value) } },
+            )
+        }
+
+        SectionCard(title = "客户端标识") {
+            Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
+                val refused = UserAgent.error(userAgent)
+                FormField(
+                    value = userAgent,
+                    onValueChange = { value ->
+                        userAgent = value
+                        if (UserAgent.error(value) == null) engine.updateSettings { it.copy(userAgent = value) }
+                    },
+                    label = "客户端名称（User-Agent）",
+                    placeholder = engine.defaultUserAgent,
+                    error = refused?.message,
                 )
             }
         }

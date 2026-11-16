@@ -26,6 +26,7 @@ object RemoteChecks {
             errors += "无应答等待时间应为 ${IncomingPolicy.MIN_NO_ANSWER_SECONDS}–${IncomingPolicy.MAX_NO_ANSWER_SECONDS} 秒"
         }
         if (settings.videoFrameRate !in VideoRules.FRAME_RATES) errors += "视频帧率应为 ${VideoRules.FRAME_RATES.joinToString(" / ")}"
+        UserAgent.error(settings.userAgent)?.let { errors += it.full }
 
         val accounts = accounts(document.accounts, errors)
         val directories = directories(document.directories, errors)

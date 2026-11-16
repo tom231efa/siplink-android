@@ -158,11 +158,6 @@ fun RemoteConfigScreen(onBack: () -> Unit) {
 private fun NotEnrolled(status: RemoteConfig.Status, onScan: () -> Unit, onType: () -> Unit) {
     SectionCard(title = null) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            Text(
-                "扫描管理平台提供的二维码，或输入配置地址。载入后，配置由平台统一下发，在本机只能查看。",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
             // One above the other at full width: side by side, a narrow phone or a large font broke the labels.
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilledTonalButton(onClick = onScan, enabled = !status.busy, modifier = Modifier.fillMaxWidth()) {

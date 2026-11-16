@@ -323,7 +323,7 @@ private fun StatusChips(
             if (doNotDisturb) {
                 AssistChip(
                     onClick = onDisableDnd,
-                    label = { Text("免打扰已开启 · 点按关闭") },
+                    label = { Text("免打扰已开启") },
                     leadingIcon = {
                         Icon(Icons.Rounded.DoNotDisturbOn, contentDescription = null, tint = Brand.HangUpRed, modifier = Modifier.size(18.dp))
                     },

@@ -270,6 +270,11 @@ abstract class PbxTestBase {
             .forEach { pbx.command("database del registrar/contact $it") }
     }
 
+    /** The User-Agent the PBX stored with the registration of [extension]; null while it has none. */
+    protected fun pbxUserAgent(extension: Int): String? =
+        pbx.command("database show registrar/contact").lineSequence().firstOrNull { it.startsWith("/registrar/contact/$extension;") }
+            ?.let { STORED_USER_AGENT.find(it)?.groupValues?.get(1) }
+
     protected fun pbxHasContact(extension: Int): Boolean = CONTACT.findAll(pbx.command("pjsip show contacts"))
         .any { it.groupValues[1] == "$extension" && it.groupValues[2] != env.phonesHost }
 
@@ -408,6 +413,9 @@ abstract class PbxTestBase {
 
         /** A row of "pjsip show contacts": extension and contact host. */
         private val CONTACT = Regex("""Contact:\s+(\d+)/sips?:[^@\s]+@([0-9.]+)""")
+
+        /** What a stored registration says of the client that made it. */
+        private val STORED_USER_AGENT = Regex(""""user_agent":"([^"]*)"""")
 
         /** A row of "database show registrar/contact": the key of a stored registration. */
         private val STORED_CONTACT = Regex("""^/registrar/contact/(\S+?)\s*:""")

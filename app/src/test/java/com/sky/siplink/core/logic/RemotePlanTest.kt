@@ -11,7 +11,10 @@ class RemotePlanTest {
     @Test
     fun theHandedOutSettingsKeepTheUsersOwn() {
         val current = Settings(doNotDisturb = true, themeMode = ThemeMode.DARK, dynamicColor = true, callBannerPosition = BannerPosition.TOP, lockScreenPromptDeclined = true, forwardBusy = "1002")
-        val remote = Settings(forwardBusy = "1003", videoCalls = false, autoUpdateCheck = false)
+        val remote = Settings(
+            forwardBusy = "1003", videoCalls = false, autoUpdateCheck = false,
+            userAgent = "Example/1.0", adaptiveRateControl = true, echoCancellation = false, ipv6 = false,
+        )
         val merged = RemotePlan.settings(remote, current)
         assertEquals(
             remote.copy(doNotDisturb = true, themeMode = ThemeMode.DARK, dynamicColor = true, callBannerPosition = BannerPosition.TOP, lockScreenPromptDeclined = true),

@@ -74,8 +74,11 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
         see("隐藏密码")
     }
 
-    /** What the shortcut screen says at its top while the configuration is managed and the user has [count] keys of their own. */
-    private fun ownKeysNotice(count: Int): String = "远程下发的快捷键不能修改，可另外自建 $count / ${ShortcutRules.MAX_OWN} 个"
+    /** The counter under the title of the shortcut screen while the configuration is managed and the user has [count] keys of their own. */
+    private fun ownKeysCounter(count: Int): String = "$count / ${ShortcutRules.MAX_OWN}"
+
+    /** The counter under the title of the shortcut screen while the configuration is not managed. */
+    private fun allKeysCounter(): String = "${engine.shortcuts.shortcuts.value.size} / ${ShortcutRules.MAX_SHORTCUTS}"
 
     private fun sha256(text: String): String =
         MessageDigest.getInstance("SHA-256").digest(text.toByteArray()).joinToString("") { "%02x".format(it) }
@@ -114,7 +117,12 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
 
         // Settings: the locked switches are there to look at, the user's own ones work.
         tap("设置")
-        see(ManagedConfig.NOTICE)
+        see(ManagedConfig.LOCKED)
+        absent(ManagedConfig.NOTICE)
+        // The lock says why when tapped.
+        tap(ManagedConfig.LOCKED)
+        await("the lock to say why") { shown(ManagedConfig.NOTICE).isNotEmpty() }
+        await("the notice to go") { shown(ManagedConfig.NOTICE).isEmpty() }
         locked("视频通话", "自动接听对讲呼叫", "对讲使用扬声器", "后台保持在线", "自动检查更新")
         // Checking for a newer version is an action, not a setting.
         usable("免打扰", "深色", "顶部", "电池优化", VERSION_ROW)
@@ -134,14 +142,14 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
         // The accounts: listed, with nothing to add, import or switch; one of them opens to be read.
         tap("SIP 账号")
         see(LINE)
-        see(ManagedConfig.NOTICE)
+        see(ManagedConfig.LOCKED)
         absent("批量导入账号")
         assertTrue("There is a button to add an account", namelessButtons().isEmpty())
         switchesAreLocked()
         picture("accounts")
         tap(LINE)
         see("账号详情")
-        see(ManagedConfig.NOTICE)
+        see(ManagedConfig.LOCKED)
         locked("账号名称（可选）", "用户名", "密码", "域名 / 服务器", "端口", "显示名称（可选）", "UDP", "TLS", "启用此账号")
         // Without a password of its own the configuration lets the stored ones be looked at.
         assertFalse("The password is on the screen", passwordOnScreen(env.sipPassword))
@@ -153,20 +161,21 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
         back()
 
         // Call handling, feature codes, codecs.
-        tap("呼叫处理")
-        see(ManagedConfig.NOTICE)
+        tap("高级设置")
+        see(ManagedConfig.LOCKED)
         locked("软件", "服务器", "呼叫等待", "拒接匿名来电", "RFC 2833", "SIP INFO", "无条件前转", "遇忙前转", "无应答前转", "无应答等待时间（秒）")
+        locked("自适应速率控制", "回声消除", "允许 IPv6", "客户端名称（User-Agent）")
         see("免打扰方式")
-        picture("call-handling")
+        picture("advanced")
         back()
         tap("功能码")
-        see(ManagedConfig.NOTICE)
+        see(ManagedConfig.LOCKED)
         locked("对讲", "驻留", "语音信箱", "关闭免打扰")
         absent("恢复默认")
         picture("feature-codes")
         back()
         tap("编码")
-        see(ManagedConfig.NOTICE)
+        see(ManagedConfig.LOCKED)
         see("音频")
         switchesAreLocked()
         val arrows = nodes().filter { it.contentDescription?.startsWith("提高") == true || it.contentDescription?.startsWith("降低") == true }
@@ -180,7 +189,7 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
 
         // TLS: the CA is listed and stays, verification and media encryption are not to be touched.
         tap("TLS 与 CA 证书")
-        see(ManagedConfig.NOTICE)
+        see(ManagedConfig.LOCKED)
         locked("校验服务器证书", "校验主机名", "关闭", "优先", "强制")
         assertTrue("The CA is not listed", nodes().any { it.text?.startsWith("签发者") == true })
         absent("导入 CA 证书", "移除证书")
@@ -193,7 +202,7 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
         onMain { engine.directory.search(directory.id, "100") }
         await("the answer of the directory in the local copy") { engine.directory.cacheStats.value.entries > 0 }
         tap("LDAP 通讯录")
-        see(ManagedConfig.NOTICE)
+        see(ManagedConfig.LOCKED)
         usable("清空缓存")
         absent("添加通讯录")
         picture("directories")
@@ -201,7 +210,7 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
         await("the local copy to be emptied") { engine.directory.cacheStats.value.entries == 0L }
         tap(DIRECTORY)
         see("通讯录详情")
-        see(ManagedConfig.NOTICE)
+        see(ManagedConfig.LOCKED)
         locked("名称（可选）", "服务器地址", "搜索基准", "不加密", "StartTLS", "匿名", "用户名", "密码", "线路", "来电显示姓名", "启用此通讯录")
         assertFalse("The password is on the screen", passwordOnScreen(env.ldapPassword))
         see("显示密码")
@@ -226,7 +235,7 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
         tap("拨号")
         tap("快捷键")
         see(SPEED_KEY)
-        see(ownKeysNotice(0))
+        see(ownKeysCounter(0))
         locked("编辑")
         picture("shortcuts")
         tap("更多")
@@ -246,7 +255,7 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
         tap("保存")
         await("the key of the user's own") { engine.shortcuts.shortcuts.value.any { it.own && it.label == OWN_KEY } }
         see(OWN_KEY)
-        see(ownKeysNotice(1))
+        see(ownKeysCounter(1))
         picture("shortcuts-own")
         tap("编辑")
         tap(SPEED_KEY)
@@ -258,16 +267,16 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
         tap("删除")
         tap("再点一次确认删除")
         await("the key to be removed") { engine.shortcuts.shortcuts.value.none { it.own } }
-        see(ownKeysNotice(0))
+        see(ownKeysCounter(0))
         tap("完成")
         back()
 
         // Switched off while the app is shown, the screens take input again and everything that
         // was left out is back: none of it was missing above for being called something else.
         tap("设置")
-        see(ManagedConfig.NOTICE)
+        see(ManagedConfig.LOCKED)
         onMain { engine.lock.setManaged(false) }
-        await("the notice to go") { shown(ManagedConfig.NOTICE).isEmpty() }
+        await("the lock to go") { shown(ManagedConfig.LOCKED).isEmpty() }
         usable("视频通话", "自动接听对讲呼叫", "后台保持在线", "自动检查更新")
         tap("SIP 账号")
         see("批量导入账号")
@@ -278,8 +287,8 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
         listOf("保存", "显示密码", "当前默认账号", "删除账号").forEach(::see)
         back()
         back()
-        tap("呼叫处理")
-        usable("服务器", "呼叫等待", "SIP INFO", "无条件前转")
+        tap("高级设置")
+        usable("服务器", "呼叫等待", "SIP INFO", "无条件前转", "自适应速率控制", "回声消除", "允许 IPv6", "客户端名称（User-Agent）")
         back()
         tap("功能码")
         see("恢复默认")
@@ -305,6 +314,7 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
         back()
         tap("拨号")
         tap("快捷键")
+        see(allKeysCounter())
         listOf("编辑", "新建快捷键").forEach(::see)
         tap("更多")
         see("批量导入")
@@ -391,7 +401,7 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
         await("the dial pad to say why") { shown(ManagedConfig.NOTICE).isNotEmpty() }
         tap("快捷键")
         see("还没有快捷键")
-        see(ownKeysNotice(0))
+        see(ownKeysCounter(0))
         // Keys of the user's own are made one by one; nothing is imported.
         see("新建快捷键")
         absent("批量导入")
@@ -401,13 +411,13 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
         tap("设置")
         tap("SIP 账号")
         see("没有 SIP 账号")
-        see(ManagedConfig.NOTICE)
+        see(ManagedConfig.LOCKED)
         absent("添加账号", "添加第一个 SIP 账号", "批量导入账号")
         picture("empty-accounts")
         back()
         tap("LDAP 通讯录")
         see("尚未配置 LDAP 通讯录")
-        see(ManagedConfig.NOTICE)
+        see(ManagedConfig.LOCKED)
         absent("添加通讯录")
         picture("empty-directories")
         back()
@@ -428,6 +438,7 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
         tap("拨号")
         see("添加 SIP 账号")
         tap("快捷键")
+        see(allKeysCounter())
         listOf("新建快捷键", "批量导入").forEach(::see)
     }
 

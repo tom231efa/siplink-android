@@ -2,16 +2,12 @@ package com.sky.siplink.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -22,7 +18,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -83,27 +78,17 @@ fun ConfigPasswordDialog(onDismiss: () -> Unit, onOpened: (String) -> Unit) {
     )
 }
 
-/**
- * The line at the top of a screen that takes no changes, saying why; nothing where the configuration is not locked.
- *
- * @param text what it says, for a screen where not everything is locked
- */
+/** The lock in the top bar of a screen that takes no changes; a tap says why. Nothing where the configuration is not locked. */
 @Composable
-fun ManagedNotice(modifier: Modifier = Modifier, text: String = ManagedConfig.NOTICE) {
+fun ManagedLock() {
     if (!LocalConfigLocked.current) return
-    Row(
-        modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    val messenger = LocalMessenger.current
+    IconButton(onClick = { messenger(ManagedConfig.NOTICE) }) {
         Icon(
             Icons.Rounded.Lock,
-            contentDescription = null,
+            contentDescription = ManagedConfig.LOCKED,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(16.dp),
+            modifier = Modifier.size(20.dp),
         )
-        Spacer(Modifier.width(8.dp))
-        Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

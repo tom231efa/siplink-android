@@ -8,8 +8,11 @@ import java.security.MessageDigest
  * on the phone but not changed there. A few settings stay the user's own all the same.
  */
 object ManagedConfig {
-    /** What a change tried on the phone is answered with, and what the locked screens say at their top. */
+    /** What a change tried on the phone is answered with, and what the lock of a locked screen says when tapped. */
     const val NOTICE = "配置由远程下发，不能在本机修改"
+
+    /** What the lock in the top bar of a locked screen is called. */
+    const val LOCKED = "配置由远程下发"
 
     /**
      * What a settings change made on the phone comes to while the configuration is managed. The

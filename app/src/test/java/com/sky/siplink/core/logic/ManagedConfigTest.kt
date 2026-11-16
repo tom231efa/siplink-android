@@ -44,6 +44,10 @@ class ManagedConfigTest {
         videoFrameRate = 30,
         lockScreenPromptDeclined = !current.lockScreenPromptDeclined,
         autoUpdateCheck = !current.autoUpdateCheck,
+        userAgent = "Example/1.0",
+        adaptiveRateControl = !current.adaptiveRateControl,
+        echoCancellation = !current.echoCancellation,
+        ipv6 = !current.ipv6,
     )
 
     /** The settings that stay the user's own, taken from [everythingChanged]. */
@@ -109,6 +113,11 @@ class ManagedConfigTest {
             { it.copy(videoFrameRate = 24) },
             // An administrator decides whether the phones ask GitHub for updates.
             { it.copy(autoUpdateCheck = !it.autoUpdateCheck) },
+            // The options of the SIP library on the advanced settings page.
+            { it.copy(userAgent = "Example/1.0") },
+            { it.copy(adaptiveRateControl = !it.adaptiveRateControl) },
+            { it.copy(echoCancellation = !it.echoCancellation) },
+            { it.copy(ipv6 = !it.ipv6) },
         )
         locked.forEachIndexed { index, change ->
             val wanted = change(current)
@@ -119,7 +128,7 @@ class ManagedConfigTest {
 
     @Test
     fun `who keeps do not disturb is locked while its switch is not`() {
-        // What the call handling screen does when the mode is changed: the mode stays, the switch follows.
+        // What the advanced settings page does when the mode is changed: the mode stays, the switch follows.
         val server = current.copy(dndMode = DndMode.SERVER, doNotDisturb = true)
         val wanted = server.copy(dndMode = DndMode.SOFTWARE, doNotDisturb = false)
         val taken = ManagedConfig.localUpdate(server, wanted)

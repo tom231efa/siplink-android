@@ -169,7 +169,7 @@ class RemoteConfigTest : ScreenTestBase(PICTURES) {
 
         // The screens are locked; the remote configuration screen itself is the user's.
         back()
-        see(ManagedConfig.NOTICE)
+        see(ManagedConfig.LOCKED)
         locked("视频通话", "自动检查更新")
         usable("免打扰", "深色")
         tap("深色")

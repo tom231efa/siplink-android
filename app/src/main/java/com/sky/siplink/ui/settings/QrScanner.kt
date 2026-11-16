@@ -46,7 +46,7 @@ import java.util.concurrent.Executors
 /**
  * The camera picture, full screen, looking for a QR code. The camera permission has been given
  * before this is shown. The first code [accepts] takes goes to [onFound]; other codes only
- * change the hint.
+ * bring up a line saying that they are not taken.
  *
  * @param onFailed called when the camera cannot be opened, with what to tell the user
  */
@@ -56,7 +56,7 @@ fun QrScanner(accepts: (String) -> Boolean, onFound: (String) -> Unit, onClose: 
         val context = LocalContext.current
         val lifecycleOwner = LocalLifecycleOwner.current
         val preview = remember { PreviewView(context) }
-        var hint by remember { mutableStateOf(HINT) }
+        var refused by remember { mutableStateOf<String?>(null) }
         val found by rememberUpdatedState(onFound)
         val failed by rememberUpdatedState(onFailed)
         val takes by rememberUpdatedState(accepts)
@@ -82,7 +82,7 @@ fun QrScanner(accepts: (String) -> Boolean, onFound: (String) -> Unit, onClose: 
                             done = true
                             found(text)
                         }
-                        else -> hint = NOT_OURS
+                        else -> refused = NOT_OURS
                     }
                 }
             }
@@ -122,15 +122,17 @@ fun QrScanner(accepts: (String) -> Boolean, onFound: (String) -> Unit, onClose: 
             ) {
                 Icon(Icons.Rounded.Close, contentDescription = "关闭", tint = Color.White)
             }
-            Text(
-                hint,
-                color = Color.White,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .navigationBarsPadding()
-                    .padding(bottom = 48.dp),
-            )
+            refused?.let { message ->
+                Text(
+                    message,
+                    color = Color.White,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .navigationBarsPadding()
+                        .padding(bottom = 48.dp),
+                )
+            }
         }
     }
 }
@@ -143,6 +145,5 @@ private fun decode(image: ImageProxy): String? {
     return QrDecoder.decode(bytes, image.width, image.height, plane.rowStride)
 }
 
-private const val HINT = "将二维码放入框内"
 private const val NOT_OURS = "这不是远程配置的二维码"
 private const val NO_CAMERA = "无法打开相机"

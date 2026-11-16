@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Add
@@ -48,7 +47,6 @@ import com.sky.siplink.ui.components.EmptyState
 import com.sky.siplink.ui.components.ImportOutcome
 import com.sky.siplink.ui.components.LocalConfigLocked
 import com.sky.siplink.ui.components.LocalMessenger
-import com.sky.siplink.ui.components.ManagedNotice
 import com.sky.siplink.ui.components.importReport
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -111,8 +109,9 @@ fun ShortcutsScreen(accountId: String?, onBack: () -> Unit) {
             title = {
                 Column {
                     Text("快捷键")
+                    // Under a managed configuration what counts is how many keys of their own the user has.
                     Text(
-                        "${all.size} / ${ShortcutRules.MAX_SHORTCUTS}",
+                        if (locked) "$ownCount / ${ShortcutRules.MAX_OWN}" else "${all.size} / ${ShortcutRules.MAX_SHORTCUTS}",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -162,10 +161,6 @@ fun ShortcutsScreen(accountId: String?, onBack: () -> Unit) {
             },
         )
 
-        ManagedNotice(
-            Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
-            text = "远程下发的快捷键不能修改，可另外自建 $ownCount / ${ShortcutRules.MAX_OWN} 个",
-        )
         when {
             !loaded -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
             all.isEmpty() -> EmptyBoard(

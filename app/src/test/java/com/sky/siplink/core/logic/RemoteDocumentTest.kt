@@ -170,6 +170,24 @@ class RemoteDocumentTest {
     }
 
     @Test
+    fun theOptionsOfTheSipLibraryAreReadAndAnOlderPlatformLeavesTheDefaults() {
+        // The fixture is from before the platform sent them: the app's defaults.
+        val older = parsed(fixture).settings
+        assertEquals(listOf("", false, true, true), listOf(older.userAgent, older.adaptiveRateControl, older.echoCancellation, older.ipv6))
+        val newer = parsed(
+            with("""{"userAgent": "Example Phone/2.0", "adaptiveRateControl": true, "echoCancellation": false, "ipv6": false}""", "settings"),
+        ).settings
+        assertEquals(listOf("Example Phone/2.0", true, false, false), listOf(newer.userAgent, newer.adaptiveRateControl, newer.echoCancellation, newer.ipv6))
+    }
+
+    @Test
+    fun aUserAgentTheRuleRefusesRefusesTheDocument() {
+        assertEquals(listOf(UserAgent.Error.SPACE_AT_ENDS.full), errors(with("\" Example\"", "settings", "userAgent")))
+        assertEquals(listOf(UserAgent.Error.NOT_PRINTABLE_ASCII.full), errors(with("\"话机\"", "settings", "userAgent")))
+        assertEquals(listOf("settings.ipv6 格式不正确"), errors(with("\"yes\"", "settings", "ipv6")))
+    }
+
+    @Test
     fun nullIsMissing() {
         assertEquals(Settings().keepAlive, parsed(with("null", "settings", "keepAlive")).settings.keepAlive)
     }

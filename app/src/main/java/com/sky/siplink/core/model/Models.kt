@@ -330,4 +330,17 @@ data class Settings(
     val lockScreenPromptDeclined: Boolean = false,
     /** The app asks GitHub for a newer version by itself (core/UpdateChecker.kt); a manual check works either way. */
     val autoUpdateCheck: Boolean = true,
+    /** The name in the User-Agent header of the SIP requests ([com.sky.siplink.core.logic.UserAgent]); empty: the app's default. */
+    val userAgent: String = "",
+    /**
+     * The SIP core adapts what it sends to the network (bit rate, packet time). Off by default: a
+     * PBX offers no RTCP feedback (AVPF), so the SDK falls back to its basic controller, which on
+     * reported loss or a doubled round trip lengthens the audio packets step by step up to
+     * 100 ms; behind Asterisk the far end was reported to go silent the moment that happens.
+     */
+    val adaptiveRateControl: Boolean = false,
+    /** The SIP core's own echo canceller; on, as in a fresh core. */
+    val echoCancellation: Boolean = true,
+    /** The SIP core uses IPv6 where the network has it; on, as in a fresh core. */
+    val ipv6: Boolean = true,
 )

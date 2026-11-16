@@ -160,6 +160,10 @@ data class RemoteDocument(
                 videoSize = fields.enum("videoSize", d.videoSize, VideoSize.entries),
                 videoFrameRate = fields.int("videoFrameRate", d.videoFrameRate),
                 autoUpdateCheck = fields.bool("autoUpdateCheck", d.autoUpdateCheck),
+                userAgent = fields.string("userAgent", d.userAgent),
+                adaptiveRateControl = fields.bool("adaptiveRateControl", d.adaptiveRateControl),
+                echoCancellation = fields.bool("echoCancellation", d.echoCancellation),
+                ipv6 = fields.bool("ipv6", d.ipv6),
             )
         }
 

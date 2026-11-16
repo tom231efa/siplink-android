@@ -78,6 +78,10 @@ class SettingsStore(private val config: Config, private val lock: ConfigLock) {
             videoFrameRate = VideoRules.frameRate(config.getInt(SECTION, KEY_VIDEO_FRAME_RATE, d.videoFrameRate)),
             lockScreenPromptDeclined = bool(KEY_LOCK_SCREEN_PROMPT_DECLINED, d.lockScreenPromptDeclined),
             autoUpdateCheck = bool(KEY_AUTO_UPDATE_CHECK, d.autoUpdateCheck),
+            userAgent = text(KEY_USER_AGENT, d.userAgent),
+            adaptiveRateControl = bool(KEY_ADAPTIVE_RATE_CONTROL, d.adaptiveRateControl),
+            echoCancellation = bool(KEY_ECHO_CANCELLATION, d.echoCancellation),
+            ipv6 = bool(KEY_IPV6, d.ipv6),
         )
     }
 
@@ -117,6 +121,10 @@ class SettingsStore(private val config: Config, private val lock: ConfigLock) {
         config.setInt(SECTION, KEY_VIDEO_FRAME_RATE, value.videoFrameRate)
         config.setBool(SECTION, KEY_LOCK_SCREEN_PROMPT_DECLINED, value.lockScreenPromptDeclined)
         config.setBool(SECTION, KEY_AUTO_UPDATE_CHECK, value.autoUpdateCheck)
+        config.setString(SECTION, KEY_USER_AGENT, value.userAgent)
+        config.setBool(SECTION, KEY_ADAPTIVE_RATE_CONTROL, value.adaptiveRateControl)
+        config.setBool(SECTION, KEY_ECHO_CANCELLATION, value.echoCancellation)
+        config.setBool(SECTION, KEY_IPV6, value.ipv6)
         // Writing the file means writing every account in it as well, and a text field changes
         // the settings with each key stroke: one write once the changes have stopped coming.
         unsaved = true
@@ -183,5 +191,9 @@ class SettingsStore(private val config: Config, private val lock: ConfigLock) {
         private const val KEY_VIDEO_FRAME_RATE = "video_frame_rate"
         private const val KEY_LOCK_SCREEN_PROMPT_DECLINED = "lock_screen_prompt_declined"
         private const val KEY_AUTO_UPDATE_CHECK = "auto_update_check"
+        private const val KEY_USER_AGENT = "user_agent"
+        private const val KEY_ADAPTIVE_RATE_CONTROL = "adaptive_rate_control"
+        private const val KEY_ECHO_CANCELLATION = "echo_cancellation"
+        private const val KEY_IPV6 = "ipv6"
     }
 }

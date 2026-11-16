@@ -26,8 +26,8 @@ import androidx.compose.ui.unit.dp
 /**
  * Second-level screen: back arrow, title, and a scrolling column that avoids the keyboard.
  *
- * These screens show configuration. Where that is locked ([LocalConfigLocked]) the screen says
- * so at its top and leaves its [actions] out.
+ * These screens show configuration. Where that is locked ([LocalConfigLocked]) the screen shows
+ * a lock in its top bar ([ManagedLock]) and leaves its [actions] out.
  *
  * @param actions what changes the configuration shown as a whole: save, add, restore defaults
  */
@@ -47,7 +47,10 @@ fun SubScreen(
                     Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
                 }
             },
-            actions = { if (!locked) actions() },
+            actions = {
+                ManagedLock()
+                if (!locked) actions()
+            },
         )
         Column(
             modifier = Modifier
@@ -58,7 +61,6 @@ fun SubScreen(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            ManagedNotice()
             content()
         }
     }
