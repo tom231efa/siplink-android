@@ -5,6 +5,7 @@ import android.os.Looper
 import com.sky.siplink.core.CallSupport.isEnded
 import com.sky.siplink.core.logic.VideoRules
 import org.linphone.core.Call
+import org.linphone.core.CallListenerStub
 import org.linphone.core.CallParams
 import org.linphone.core.Core
 
@@ -31,6 +32,14 @@ internal class VideoController(
     /** A call whose other side asked to add video; its request waits for the user's answer. */
     private var request: Call? = null
     private val declineRequest = Runnable { answerRequest(false) }
+
+    /** Tells of the first picture of the other side, whose size the call screen lays it out by. */
+    private val firstPicture = object : CallListenerStub() {
+        override fun onNextVideoFrameDecoded(call: Call) {
+            call.removeListener(this)
+            onChanged()
+        }
+    }
 
     private val allowed: Boolean get() = settings.current.videoCalls
 
@@ -103,6 +112,18 @@ internal class VideoController(
         }
     }
 
+    /** The streams of [call] run, at first or after a change. */
+    fun onStreaming(call: Call) {
+        applyCamera(call)
+        val video = CallVideoSupport.stateOf(call) ?: return
+        if (!video.receiving || video.received != null) return
+        // Later changes of the size are seen with the statistics of the call, once a second;
+        // the first picture should not wait that long for its place on the screen.
+        call.removeListener(firstPicture)
+        call.addListener(firstPicture)
+        call.requestNotifyNextVideoFrameDecoded()
+    }
+
     /**
      * Without the call screen in front Android does not let the app have the camera: a still
      * picture is sent in its place, which needs no new offer to the other side.
@@ -143,6 +164,7 @@ internal class VideoController(
     }
 
     fun onReleased(call: Call) {
+        call.removeListener(firstPicture)
         if (!isRequesting(call)) return
         request = null
         handler.removeCallbacks(declineRequest)

@@ -278,6 +278,16 @@ class CallManager(
     /** The call screen came to the front or left it: the camera is only used while it is in front. */
     fun onCallScreenShown(shown: Boolean) = video.onCallScreenShown(shown)
 
+    /**
+     * The statistics of [call] came in, about once a second while it runs: the pictures of a
+     * video call can have changed their size since (the other side turned its phone round, say).
+     */
+    fun onCallStatsUpdated(call: Call) {
+        if (!same(call, current)) return
+        val shown = state.value?.video ?: return
+        if (CallVideoSupport.stateOf(call) != shown) publish()
+    }
+
     /** Video calls were switched on or off in the settings; off, running video ends. */
     fun onVideoAllowedChanged() = video.onAllowedChanged()
 
@@ -404,7 +414,7 @@ class CallManager(
                 if (meta.connectedAt == null) meta.connectedAt = SystemClock.elapsedRealtime()
                 if (same(call, current) || same(call, other)) host?.dismissIncomingCall()
                 if (callState == Call.State.StreamsRunning) {
-                    video.applyCamera(call)
+                    video.onStreaming(call)
                     if (same(call, current)) onCurrentStreaming(call, meta)
                 }
                 publish()

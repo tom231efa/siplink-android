@@ -3,6 +3,8 @@ package com.sky.siplink.ui.call
 import android.view.TextureView
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -13,6 +15,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -26,6 +29,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Cameraswitch
+import androidx.compose.material.icons.rounded.Fullscreen
+import androidx.compose.material.icons.rounded.FullscreenExit
 import androidx.compose.material.icons.rounded.Videocam
 import androidx.compose.material.icons.rounded.VideocamOff
 import androidx.compose.material3.Icon
@@ -35,16 +40,23 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.sky.siplink.core.logic.VideoRules
 import com.sky.siplink.core.model.CallVideo
 import com.sky.siplink.engine
 import com.sky.siplink.ui.theme.Brand
@@ -52,8 +64,12 @@ import org.linphone.core.Core
 import org.linphone.mediastream.video.capture.CaptureTextureView
 
 /**
- * The picture of the other side over the whole screen, with the own camera in a small window
- * in the corner. Tapping the picture shows or hides the controls ([chrome]).
+ * The picture of the other side on the whole screen, with the own camera in a small window in
+ * the corner. Tapping the picture shows or hides the controls ([chrome]).
+ *
+ * A picture never changes its shape. Where it has another shape than the screen it is either
+ * shown whole, with the rest of the screen black, or enlarged until it fills the screen, its
+ * edges cut off: [VideoRules.fillsByDefault] picks, and a key in the corner changes it.
  */
 @Composable
 internal fun VideoStage(
@@ -64,19 +80,60 @@ internal fun VideoStage(
     onToggleCamera: () -> Unit,
 ) {
     val core = LocalContext.current.engine.core
-    Box(
+    // What the user picked with the key; null until then.
+    var fillChosen by remember { mutableStateOf<Boolean?>(null) }
+    BoxWithConstraints(
         Modifier
             .fillMaxSize()
             .background(Color.Black)
+            .clipToBounds()
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onTap),
     ) {
-        if (video.receiving) RemoteVideo(core, Modifier.fillMaxSize())
-        // Shade where the name and the controls sit, so that white stays readable on a bright picture.
+        val picture = video.received
+        val cut = if (picture != null) VideoRules.cutWhenFilled(picture, constraints.maxWidth, constraints.maxHeight) else 0f
+        val filled = fillChosen ?: VideoRules.fillsByDefault(cut)
+        if (video.receiving) {
+            // Only the user's change is animated: the first picture and one of a new size take their place at once.
+            val scale by animateFloatAsState(
+                targetValue = if (filled) VideoRules.fillScale(cut) else 1f,
+                animationSpec = if (fillChosen != null) tween(220) else snap(),
+                label = "pictureScale",
+            )
+            RemoteVideo(
+                core,
+                Modifier
+                    // The view has the shape of the picture, so that the SDK draws the whole of it
+                    // into the whole of the view; until a picture came, the view is the screen.
+                    .layout { measurable, constraints ->
+                        val size = picture?.let { VideoRules.fitted(it, constraints.maxWidth, constraints.maxHeight) }
+                        val width = size?.width ?: constraints.maxWidth
+                        val height = size?.height ?: constraints.maxHeight
+                        val placeable = measurable.measure(Constraints.fixed(width, height))
+                        layout(constraints.maxWidth, constraints.maxHeight) {
+                            placeable.place((constraints.maxWidth - width) / 2, (constraints.maxHeight - height) / 2)
+                        }
+                    }
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                    },
+            )
+        }
+        // Shade where the name and the controls sit, so that white stays readable on a bright picture:
+        // top and bottom, or, with the phone on its side, the top and the side the controls stand at.
+        val wide = maxWidth > maxHeight
         AnimatedVisibility(chrome, Modifier.fillMaxSize(), enter = fadeIn(tween(180)), exit = fadeOut(tween(140))) {
             Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(Brush.verticalGradient(0f to Shade, 0.22f to Color.Transparent, 0.55f to Color.Transparent, 1f to Shade)),
+                if (wide) {
+                    Modifier
+                        .fillMaxSize()
+                        .background(Brush.horizontalGradient(0f to Shade, 0.5f to Color.Transparent))
+                        .background(Brush.verticalGradient(0f to Shade, 0.4f to Color.Transparent))
+                } else {
+                    Modifier
+                        .fillMaxSize()
+                        .background(Brush.verticalGradient(0f to Shade, 0.22f to Color.Transparent, 0.55f to Color.Transparent, 1f to Shade))
+                },
             )
         }
         Column(
@@ -84,19 +141,26 @@ internal fun VideoStage(
                 .align(Alignment.TopEnd)
                 .systemBarsPadding()
                 .padding(top = 12.dp, end = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
+            horizontalAlignment = Alignment.End,
         ) {
             AnimatedVisibility(video.sending, enter = fadeIn(tween(180)) + scaleIn(tween(200), 0.85f), exit = fadeOut(tween(140)) + scaleOut(tween(160), 0.85f)) {
+                val (width, height) = VideoRules.previewSize(video.sent, PreviewLongSide.value)
                 LocalPreview(
                     core,
                     Modifier
-                        .size(width = PreviewWidth, height = PreviewHeight)
+                        .size(width = width.dp, height = height.dp)
                         .clip(RoundedCornerShape(16.dp))
                         .background(Color(0xFF202328)),
                 )
             }
             AnimatedVisibility(chrome, enter = fadeIn(tween(180)), exit = fadeOut(tween(140))) {
                 Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    if (video.receiving && picture != null && VideoRules.canFill(cut)) {
+                        CornerButton(
+                            if (filled) Icons.Rounded.FullscreenExit else Icons.Rounded.Fullscreen,
+                            if (filled) "显示完整画面" else "铺满屏幕",
+                        ) { fillChosen = !filled }
+                    }
                     if (video.sending) CornerButton(Icons.Rounded.Cameraswitch, "切换摄像头", onSwitchCamera)
                     CornerButton(
                         if (video.sending) Icons.Rounded.Videocam else Icons.Rounded.VideocamOff,
@@ -190,5 +254,5 @@ internal fun AnswerWithVideoToggle(on: Boolean, onChange: (Boolean) -> Unit) {
 }
 
 private val Shade = Color.Black.copy(alpha = 0.55f)
-private val PreviewWidth = 104.dp
-private val PreviewHeight = 156.dp
+/** The longer side of the window of the own camera. */
+private val PreviewLongSide = 148.dp

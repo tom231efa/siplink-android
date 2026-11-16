@@ -309,7 +309,7 @@ class ManagedScreensTest : PbxTestBase() {
         absent("恢复默认")
         picture("codecs")
         // The size and the rate of the video stand above the video codecs.
-        locked("流畅 240p", "高清 720p", "自动", "30")
+        locked("240p", "720p", "自动", "30")
         back()
 
         // TLS: the CA is listed and stays, verification and media encryption are not to be touched.
@@ -420,7 +420,7 @@ class ManagedScreensTest : PbxTestBase() {
         back()
         tap("编码")
         see("恢复默认")
-        usable("高清 720p", "30")
+        usable("720p", "30")
         back()
         tap("TLS 与 CA 证书")
         usable("校验服务器证书", "强制")

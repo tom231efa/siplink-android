@@ -142,7 +142,7 @@ private fun KindTitle(text: String) {
     )
 }
 
-private val videoSizes = listOf(VideoSize.QVGA to "流畅 240p", VideoSize.VGA to "标清 480p", VideoSize.HD to "高清 720p")
+private val videoSizes = listOf(VideoSize.QVGA to "240p", VideoSize.VGA to "480p", VideoSize.HD to "720p", VideoSize.FHD to "1080p")
 
 private val frameRates = VideoRules.FRAME_RATES.map { it to if (it == VideoRules.AUTO_FRAME_RATE) "自动" else "$it" }
 

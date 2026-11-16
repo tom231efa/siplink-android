@@ -2,6 +2,7 @@ package com.sky.siplink.core.logic
 
 import com.sky.siplink.core.model.AudioRoute
 import com.sky.siplink.core.model.CallPhase
+import com.sky.siplink.core.model.PictureSize
 import com.sky.siplink.core.model.VideoSize
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -27,6 +28,7 @@ class VideoRulesTest {
         assertEquals(356, VideoRules.uploadLimit(VideoSize.QVGA, 30))
         assertEquals(868, VideoRules.uploadLimit(VideoSize.VGA, 30))
         assertEquals(1636, VideoRules.uploadLimit(VideoSize.HD, 30))
+        assertEquals(3172, VideoRules.uploadLimit(VideoSize.FHD, 30))
         // Half the frames, half the bits for the picture; the sound keeps its share.
         assertEquals(484, VideoRules.uploadLimit(VideoSize.VGA, 15))
         assertEquals(304, VideoRules.uploadLimit(VideoSize.QVGA, 24))
@@ -36,6 +38,91 @@ class VideoRulesTest {
             assertEquals(limits.sorted(), limits)
             assertTrue(limits.all { it > 0 })
         }
+    }
+
+    /** The screen of the test phone, upright and on its side (9:22). */
+    private val upright = 1080 to 2640
+    private val onItsSide = 2640 to 1080
+
+    private fun cut(picture: PictureSize, window: Pair<Int, Int>) = VideoRules.cutWhenFilled(picture, window.first, window.second)
+
+    @Test
+    fun aPictureOfTheShapeOfTheWindowLosesNothing() {
+        assertEquals(0f, cut(PictureSize(1080, 2640), upright), 0.001f)
+        assertEquals(0f, cut(PictureSize(540, 1320), upright), 0.001f)
+        assertFalse(VideoRules.canFill(cut(PictureSize(540, 1320), upright)))
+        assertEquals(1f, VideoRules.fillScale(0f), 0.001f)
+        // Nothing to go by: nothing is cut, and nothing divided by zero.
+        assertEquals(0f, cut(PictureSize(0, 0), upright), 0f)
+        assertEquals(0f, VideoRules.cutWhenFilled(PictureSize(640, 480), 0, 0), 0f)
+    }
+
+    @Test
+    fun anUprightPictureFillsTheUprightScreenWhereLittleIsLost() {
+        // 9:16 from another phone: about a quarter is cut off at the sides.
+        val phone = cut(PictureSize(720, 1280), upright)
+        assertEquals(0.273f, phone, 0.001f)
+        assertTrue(VideoRules.fillsByDefault(phone))
+        assertTrue(VideoRules.canFill(phone))
+        // 3:4 would lose nearly half: it is shown whole.
+        val camera = cut(PictureSize(480, 640), upright)
+        assertEquals(0.455f, camera, 0.001f)
+        assertFalse(VideoRules.fillsByDefault(camera))
+        assertTrue(VideoRules.canFill(camera))
+    }
+
+    @Test
+    fun aWidePictureIsShownWholeOnTheUprightScreen() {
+        for (picture in listOf(PictureSize(1920, 1080), PictureSize(1280, 720), PictureSize(640, 480), PictureSize(352, 288), PictureSize(720, 720))) {
+            assertFalse("$picture", VideoRules.fillsByDefault(cut(picture, upright)))
+        }
+        // With the phone on its side the wide picture of a desk phone fills the screen, a 4:3 one does not.
+        assertTrue(VideoRules.fillsByDefault(cut(PictureSize(1280, 720), onItsSide)))
+        assertFalse(VideoRules.fillsByDefault(cut(PictureSize(640, 480), onItsSide)))
+    }
+
+    @Test
+    fun theWholePictureKeepsItsShapeInsideTheWindow() {
+        assertEquals(PictureSize(1080, 608), VideoRules.fitted(PictureSize(1280, 720), 1080, 2640))
+        assertEquals(PictureSize(1080, 1440), VideoRules.fitted(PictureSize(480, 640), 1080, 2640))
+        assertEquals(PictureSize(1080, 1920), VideoRules.fitted(PictureSize(720, 1280), 1080, 2640))
+        assertEquals(PictureSize(1440, 1080), VideoRules.fitted(PictureSize(640, 480), 2640, 1080))
+        assertEquals(PictureSize(1080, 1080), VideoRules.fitted(PictureSize(720, 720), 1080, 2640))
+        // Without a size the view is the window.
+        assertEquals(PictureSize(1080, 2640), VideoRules.fitted(PictureSize(0, 0), 1080, 2640))
+    }
+
+    @Test
+    fun enlargedByTheFillScaleTheWholePictureCoversTheWindow() {
+        for (picture in listOf(PictureSize(1280, 720), PictureSize(480, 640), PictureSize(720, 1280), PictureSize(720, 720))) {
+            for (window in listOf(upright, onItsSide)) {
+                val whole = VideoRules.fitted(picture, window.first, window.second)
+                val scale = VideoRules.fillScale(cut(picture, window))
+                // The whole picture is rounded to full pixels, which the scale enlarges with it.
+                val slack = scale
+                assertTrue("$picture in $window is too narrow", whole.width * scale >= window.first - slack)
+                assertTrue("$picture in $window is too low", whole.height * scale >= window.second - slack)
+                // No larger than it has to be: one of the sides just fits.
+                assertTrue(
+                    "$picture in $window is larger than the window needs",
+                    whole.width * scale <= window.first + slack || whole.height * scale <= window.second + slack,
+                )
+            }
+        }
+        // A line of a picture does not make the scale run away.
+        assertTrue(VideoRules.fillScale(1f) <= 20f)
+    }
+
+    @Test
+    fun theWindowOfTheOwnCameraHasTheShapeOfWhatIsSent() {
+        assertEquals(111f to 148f, VideoRules.previewSize(PictureSize(480, 640), 148f))
+        assertEquals(148f to 111f, VideoRules.previewSize(PictureSize(640, 480), 148f))
+        assertEquals(83.25f to 148f, VideoRules.previewSize(PictureSize(1080, 1920), 148f))
+        assertEquals(148f to 83.25f, VideoRules.previewSize(PictureSize(1280, 720), 148f))
+        // Nothing sent yet: an upright 4:3 camera. A shape beyond 16:9 is held to it.
+        assertEquals(111f to 148f, VideoRules.previewSize(null, 148f))
+        assertEquals(111f to 148f, VideoRules.previewSize(PictureSize(0, 0), 148f))
+        assertEquals(148f to 83.25f, VideoRules.previewSize(PictureSize(3000, 1000), 148f))
     }
 
     @Test

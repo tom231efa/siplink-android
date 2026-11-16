@@ -2,12 +2,14 @@ package com.sky.siplink.core
 
 import com.sky.siplink.core.logic.VideoRules
 import com.sky.siplink.core.model.CallVideo
+import com.sky.siplink.core.model.PictureSize
 import com.sky.siplink.core.model.VideoSize
 import org.linphone.core.Call
 import org.linphone.core.CallParams
 import org.linphone.core.Core
 import org.linphone.core.Factory
 import org.linphone.core.MediaDirection
+import org.linphone.core.VideoDefinition
 
 /** Stateless helpers of [CallManager] for the video of a call. */
 internal object CallVideoSupport {
@@ -65,11 +67,19 @@ internal object CallVideoSupport {
         val params = paramsOf(call)
         if (!params.isVideoEnabled) return null
         val direction = params.videoDirection
+        val sending = direction == MediaDirection.SendRecv || direction == MediaDirection.SendOnly
+        val receiving = direction == MediaDirection.SendRecv || direction == MediaDirection.RecvOnly
         return CallVideo(
-            sending = direction == MediaDirection.SendRecv || direction == MediaDirection.SendOnly,
-            receiving = direction == MediaDirection.SendRecv || direction == MediaDirection.RecvOnly,
+            sending = sending,
+            receiving = receiving,
+            received = if (receiving) sizeOf(params.receivedVideoDefinition) else null,
+            sent = if (sending) sizeOf(params.sentVideoDefinition) else null,
         )
     }
+
+    /** The core gives a size of 0 x 0 for a picture there has been none of yet. */
+    private fun sizeOf(definition: VideoDefinition?): PictureSize? =
+        definition?.takeIf { it.width > 0 && it.height > 0 }?.let { PictureSize(it.width, it.height) }
 
     /** What the call was set up with while it is, and what was agreed on once it runs. */
     private fun paramsOf(call: Call): CallParams = when (call.state) {

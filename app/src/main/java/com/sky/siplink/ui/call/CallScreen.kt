@@ -26,8 +26,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -36,7 +38,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.CallEnd
@@ -64,6 +68,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -266,82 +271,10 @@ private fun CallContent(
         val roomy = maxHeight >= 760.dp && controls != Controls.ACTIVE || maxHeight >= 860.dp
         val ringSize = if (roomy) 224.dp else 148.dp
         val avatarSize = if (roomy) 120.dp else 84.dp
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .systemBarsPadding()
-                .padding(horizontal = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Spacer(Modifier.height(16.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                // Over video the corner belongs to the own picture: the line is left out there.
-                if (info.accountLabel.isNotEmpty() && !videoMode) Chip(text = info.accountLabel)
-                if (info.intercom) Chip(text = "对讲", icon = Icons.Rounded.Campaign, highlighted = true)
-                if (info.conference) Chip(text = "三方通话", icon = Icons.Rounded.Groups, highlighted = true)
-            }
-
-            AnimatedVisibility(
-                visible = info.waitingCall != null,
-                enter = expandVertically() + fadeIn(),
-                exit = shrinkVertically() + fadeOut(),
-            ) {
-                WaitingCallBanner(info.waitingCall, onAnswer = calls::answer, onDecline = calls::decline)
-            }
-            AnimatedVisibility(
-                visible = info.heldCall != null,
-                enter = expandVertically() + fadeIn(),
-                exit = shrinkVertically() + fadeOut(),
-            ) {
-                HeldCallBanner(info, onSwap = calls::swap)
-            }
-            AnimatedVisibility(
-                visible = info.videoOffer && info.phase != CallPhase.INCOMING,
-                enter = expandVertically() + fadeIn(),
-                exit = shrinkVertically() + fadeOut(),
-            ) {
-                VideoRequestBanner(onAccept = onAcceptVideo, onDecline = { calls.answerVideoRequest(false) })
-            }
-
-            // Over video the picture is what matters: the name and the time go to the top.
-            if (videoMode) {
-                Spacer(Modifier.height(12.dp))
-            } else {
-                Spacer(Modifier.weight(0.4f))
-                CallAvatar(
-                    name = info.remoteName,
-                    beating = info.phase == CallPhase.INCOMING || info.phase == CallPhase.OUTGOING,
-                    size = avatarSize,
-                    haloSize = ringSize,
-                )
-                Spacer(Modifier.height(4.dp))
-            }
-            Text(
-                info.remoteName,
-                style = MaterialTheme.typography.headlineMedium,
-                color = Color.White,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            if (info.remoteAddress != info.remoteName && !videoMode) {
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    info.remoteAddress,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = Color.White.copy(alpha = 0.7f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            Spacer(Modifier.height(10.dp))
-            StatusLine(info)
-            NoticeLine(notice ?: transferLabel(info))
-
-            Spacer(Modifier.weight(1f))
+        val controlsArea: @Composable (Modifier) -> Unit = { modifier ->
             AnimatedContent(
                 targetState = controls,
-                modifier = Modifier.heightIn(min = 250.dp),
+                modifier = modifier,
                 transitionSpec = {
                     (fadeIn(tween(260)) + slideInVertically(tween(300)) { it / 4 }) togetherWith fadeOut(tween(160))
                 },
@@ -353,10 +286,134 @@ private fun CallContent(
                     Controls.ENDED -> Spacer(Modifier.fillMaxWidth())
                 }
             }
-            Spacer(Modifier.height(20.dp))
+        }
+
+        if (maxWidth > maxHeight) {
+            // The phone lies on its side: too low for the controls under the name, so they stand
+            // beside it. The far corner stays free for the picture of the own camera.
+            Row(
+                Modifier
+                    .fillMaxSize()
+                    .systemBarsPadding()
+                    .padding(horizontal = 24.dp),
+            ) {
+                Box(
+                    Modifier
+                        .width(SideControlsWidth)
+                        .fillMaxHeight()
+                        .verticalScroll(rememberScrollState()),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    controlsArea(Modifier.padding(vertical = 8.dp))
+                }
+                Column(
+                    Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .padding(start = 24.dp, end = if (videoMode) SideCornerWidth else 0.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Spacer(Modifier.height(8.dp))
+                    CallHead(info, calls, notice, videoMode, avatarSize, ringSize, onAcceptVideo)
+                    if (!videoMode) Spacer(Modifier.weight(0.6f))
+                }
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .systemBarsPadding()
+                    .padding(horizontal = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Spacer(Modifier.height(16.dp))
+                CallHead(info, calls, notice, videoMode, avatarSize, ringSize, onAcceptVideo)
+                Spacer(Modifier.weight(1f))
+                controlsArea(Modifier.heightIn(min = 250.dp))
+                Spacer(Modifier.height(20.dp))
+            }
         }
     }
 }
+
+/** Who the call is with and how it stands: the line, what waits beside it, the name, the time. */
+@Composable
+private fun ColumnScope.CallHead(
+    info: CallInfo,
+    calls: CallManager,
+    notice: String?,
+    videoMode: Boolean,
+    avatarSize: Dp,
+    ringSize: Dp,
+    onAcceptVideo: () -> Unit,
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        // Over video the corner belongs to the own picture: the line is left out there.
+        if (info.accountLabel.isNotEmpty() && !videoMode) Chip(text = info.accountLabel)
+        if (info.intercom) Chip(text = "对讲", icon = Icons.Rounded.Campaign, highlighted = true)
+        if (info.conference) Chip(text = "三方通话", icon = Icons.Rounded.Groups, highlighted = true)
+    }
+
+    AnimatedVisibility(
+        visible = info.waitingCall != null,
+        enter = expandVertically() + fadeIn(),
+        exit = shrinkVertically() + fadeOut(),
+    ) {
+        WaitingCallBanner(info.waitingCall, onAnswer = calls::answer, onDecline = calls::decline)
+    }
+    AnimatedVisibility(
+        visible = info.heldCall != null,
+        enter = expandVertically() + fadeIn(),
+        exit = shrinkVertically() + fadeOut(),
+    ) {
+        HeldCallBanner(info, onSwap = calls::swap)
+    }
+    AnimatedVisibility(
+        visible = info.videoOffer && info.phase != CallPhase.INCOMING,
+        enter = expandVertically() + fadeIn(),
+        exit = shrinkVertically() + fadeOut(),
+    ) {
+        VideoRequestBanner(onAccept = onAcceptVideo, onDecline = { calls.answerVideoRequest(false) })
+    }
+
+    // Over video the picture is what matters: the name and the time go to the top.
+    if (videoMode) {
+        Spacer(Modifier.height(12.dp))
+    } else {
+        Spacer(Modifier.weight(0.4f))
+        CallAvatar(
+            name = info.remoteName,
+            beating = info.phase == CallPhase.INCOMING || info.phase == CallPhase.OUTGOING,
+            size = avatarSize,
+            haloSize = ringSize,
+        )
+        Spacer(Modifier.height(4.dp))
+    }
+    Text(
+        info.remoteName,
+        style = MaterialTheme.typography.headlineMedium,
+        color = Color.White,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+    )
+    if (info.remoteAddress != info.remoteName && !videoMode) {
+        Spacer(Modifier.height(2.dp))
+        Text(
+            info.remoteAddress,
+            style = MaterialTheme.typography.bodyLarge,
+            color = Color.White.copy(alpha = 0.7f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+    Spacer(Modifier.height(10.dp))
+    StatusLine(info)
+    NoticeLine(notice ?: transferLabel(info))
+}
+
+/** With the phone on its side: the width of the controls, and what the own picture needs of the far corner. */
+private val SideControlsWidth = 380.dp
+private val SideCornerWidth = 172.dp
 
 private fun transferLabel(info: CallInfo): String? = when (info.transfer) {
     TransferStatus.IN_PROGRESS -> "正在转接…"

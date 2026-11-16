@@ -131,7 +131,14 @@ data class CallVideo(
     /** The own camera is meant to be sent (it is replaced by a still picture while the call screen is not shown). */
     val sending: Boolean,
     val receiving: Boolean,
+    /** The picture of the other side as it arrives; null until the first one was decoded. */
+    val received: PictureSize? = null,
+    /** The picture of the own camera as it goes out; null while none does. */
+    val sent: PictureSize? = null,
 )
+
+/** Width and height of a video picture in pixels, the way round it is looked at. */
+data class PictureSize(val width: Int, val height: Int)
 
 enum class HistoryKind { OUTGOING, INCOMING, MISSED, FAILED }
 
@@ -283,6 +290,7 @@ enum class VideoSize(val definition: String, val width: Int, val height: Int) {
     QVGA("qvga", 320, 240),
     VGA("vga", 640, 480),
     HD("720p", 1280, 720),
+    FHD("1080p", 1920, 1080),
 }
 
 /** An audio or video codec of the SIP core; the list order is the order of preference. */

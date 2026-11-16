@@ -12,6 +12,7 @@ import org.linphone.core.Account
 import org.linphone.core.AudioDevice
 import org.linphone.core.Call
 import org.linphone.core.CallLog
+import org.linphone.core.CallStats
 import org.linphone.core.Core
 import org.linphone.core.CoreListenerStub
 import org.linphone.core.Event
@@ -83,6 +84,8 @@ class SipEngine(context: Context) {
 
         override fun onTransferStateChanged(core: Core, transfered: Call, callState: Call.State?) =
             calls.onTransferStateChanged(transfered, callState)
+
+        override fun onCallStatsUpdated(core: Core, call: Call, stats: CallStats) = calls.onCallStatsUpdated(call)
 
         override fun onMessageWaitingIndicationChanged(core: Core, lev: Event, mwi: MessageWaitingIndication) {
             val voice = mwi.getSummary(MessageWaitingIndication.ContextClass.Voice)

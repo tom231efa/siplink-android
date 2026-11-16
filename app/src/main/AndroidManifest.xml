@@ -68,8 +68,11 @@
             </intent-filter>
         </activity>
 
+        <!-- Turning the phone does not start the call screen anew: the views the video is drawn
+             into stay, and the camera with them. -->
         <activity
             android:name=".CallActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"
             android:excludeFromRecents="true"
             android:exported="false"
             android:launchMode="singleTask"

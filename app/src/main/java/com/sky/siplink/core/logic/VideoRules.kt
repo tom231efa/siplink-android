@@ -2,7 +2,9 @@ package com.sky.siplink.core.logic
 
 import com.sky.siplink.core.model.AudioRoute
 import com.sky.siplink.core.model.CallPhase
+import com.sky.siplink.core.model.PictureSize
 import com.sky.siplink.core.model.VideoSize
+import kotlin.math.roundToInt
 
 /**
  * Decisions about the video of a call that do not need the SIP core; core/VideoController.kt
@@ -36,12 +38,61 @@ object VideoRules {
             VideoSize.QVGA -> 256
             VideoSize.VGA -> 768
             VideoSize.HD -> 1536
+            VideoSize.FHD -> 3072
         }
         return atFullRate * frameRate / FULL_FRAME_RATE + SOUND_KBITS
     }
 
     /** What the SIP core takes for "no limit". */
     const val NO_UPLOAD_LIMIT = 0
+
+    /**
+     * The part of a picture that is cut off when it is enlarged until it fills a window of
+     * another shape: 0 where the shapes are the same, towards 1 the more they differ.
+     */
+    fun cutWhenFilled(picture: PictureSize, windowWidth: Int, windowHeight: Int): Float {
+        if (picture.width <= 0 || picture.height <= 0 || windowWidth <= 0 || windowHeight <= 0) return 0f
+        val shape = picture.width.toFloat() / picture.height
+        val window = windowWidth.toFloat() / windowHeight
+        return 1f - minOf(shape, window) / maxOf(shape, window)
+    }
+
+    /**
+     * Whether a picture fills the window while the user has not said how it is to be shown:
+     * only where little of it is lost. A phone held upright then fills the screen with the
+     * upright picture of another phone, and shows the wide one of a desk phone or a door
+     * station whole.
+     *
+     * @param cut see [cutWhenFilled]
+     */
+    fun fillsByDefault(cut: Float): Boolean = cut <= MAX_CUT_BY_DEFAULT
+
+    /** Whether the whole picture and the filled window differ enough for there to be a choice. */
+    fun canFill(cut: Float): Boolean = cut >= MIN_CUT_TO_CHOOSE
+
+    /** By how much the picture, shown whole, is enlarged to fill the window. */
+    fun fillScale(cut: Float): Float = 1f / (1f - cut.coerceIn(0f, MAX_CUT))
+
+    /** The largest size at which the whole picture fits into the window, in the units of the window. */
+    fun fitted(picture: PictureSize, windowWidth: Int, windowHeight: Int): PictureSize {
+        if (picture.width <= 0 || picture.height <= 0) return PictureSize(windowWidth, windowHeight)
+        val scale = minOf(windowWidth.toFloat() / picture.width, windowHeight.toFloat() / picture.height)
+        return PictureSize(
+            (picture.width * scale).roundToInt().coerceIn(1, maxOf(windowWidth, 1)),
+            (picture.height * scale).roundToInt().coerceIn(1, maxOf(windowHeight, 1)),
+        )
+    }
+
+    /**
+     * Width and height of the small window of the own camera: the shape of the picture that is
+     * sent, its longer side [longSide] long. Before a picture goes out it has the shape of an
+     * upright 4:3 camera; shapes more stretched than 16:9 are held to that.
+     */
+    fun previewSize(sent: PictureSize?, longSide: Float): Pair<Float, Float> {
+        val shape = (sent?.takeIf { it.width > 0 && it.height > 0 }?.let { it.width.toFloat() / it.height } ?: UPRIGHT_CAMERA)
+            .coerceIn(1f / WIDEST_PREVIEW, WIDEST_PREVIEW)
+        return if (shape >= 1f) longSide to longSide / shape else longSide * shape to longSide
+    }
 
     /** The cameras among the video devices of the SDK, in its order. */
     fun cameras(devices: List<String>): List<String> = devices.filter { it != STATIC_PICTURE }
@@ -104,4 +155,16 @@ object VideoRules {
 
     /** Room for the sound next to the picture: G.711 with its packet headers stays below this. */
     private const val SOUND_KBITS = 100
+
+    /** Up to this much of a picture may be cut off for it to fill the window without being asked. */
+    private const val MAX_CUT_BY_DEFAULT = 0.3f
+
+    /** Below this the whole picture and the filled window look the same. */
+    private const val MIN_CUT_TO_CHOOSE = 0.02f
+
+    /** Keeps [fillScale] finite for a picture that is all but a line. */
+    private const val MAX_CUT = 0.95f
+
+    private const val UPRIGHT_CAMERA = 3f / 4f
+    private const val WIDEST_PREVIEW = 16f / 9f
 }

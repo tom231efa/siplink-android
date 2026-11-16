@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -39,7 +40,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -58,15 +61,19 @@ private val dtmfKeys = listOf('1', '2', '3', '4', '5', '6', '7', '8', '9', '*', 
 internal fun DtmfPanel(onDigit: (Char) -> Unit, onClose: () -> Unit) {
     val haptics = LocalHapticFeedback.current
     var typed by remember { mutableStateOf("") }
+    // With the phone on its side the screen is too low for the keys at their size, and far too
+    // wide for three in a row: they shrink, and the panel is no wider than a phone held upright.
+    val low = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() } < LowScreen
+    val keySize = if (low) 50.dp else 66.dp
     Column(
-        Modifier
+        (if (low) Modifier.widthIn(max = 420.dp) else Modifier)
             .fillMaxWidth()
             .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
             .background(Color(0xF51B1E23))
             // Swallow touches so they do not reach the controls underneath.
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = {})
             .navigationBarsPadding()
-            .padding(horizontal = 28.dp, vertical = 16.dp),
+            .padding(horizontal = 28.dp, vertical = if (low) 6.dp else 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -82,18 +89,18 @@ internal fun DtmfPanel(onDigit: (Char) -> Unit, onClose: () -> Unit) {
                 Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = "收起键盘", tint = Color.White)
             }
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(if (low) 0.dp else 8.dp))
         dtmfKeys.chunked(3).forEach { row ->
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 6.dp),
+                    .padding(vertical = if (low) 3.dp else 6.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
                 row.forEach { digit ->
                     Box(
                         Modifier
-                            .size(66.dp)
+                            .size(keySize)
                             .clip(CircleShape)
                             .background(Color.White.copy(alpha = 0.12f))
                             .clickable {
@@ -103,14 +110,17 @@ internal fun DtmfPanel(onDigit: (Char) -> Unit, onClose: () -> Unit) {
                             },
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text(digit.toString(), color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Medium)
+                        Text(digit.toString(), color = Color.White, fontSize = if (low) 22.sp else 26.sp, fontWeight = FontWeight.Medium)
                     }
                 }
             }
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(if (low) 2.dp else 8.dp))
     }
 }
+
+/** Windows lower than this (a phone on its side) get the small keypad. */
+private val LowScreen = 480.dp
 
 /** Asks for the transfer target and whether to transfer blindly or after consulting. */
 @Composable

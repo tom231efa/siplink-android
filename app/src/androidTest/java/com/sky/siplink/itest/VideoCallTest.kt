@@ -1,16 +1,19 @@
 package com.sky.siplink.itest
 
 import android.Manifest
+import android.content.pm.ActivityInfo
 import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.sky.siplink.core.logic.VideoRules
 import com.sky.siplink.core.model.AudioRoute
 import com.sky.siplink.core.model.CallPhase
+import com.sky.siplink.core.model.PictureSize
 import com.sky.siplink.core.model.VideoSize
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -271,10 +274,41 @@ class VideoCallTest : VideoTestBase() {
     }
 
     @Test
+    fun turningThePhoneTurnsTheCameraAndKeepsTheCallScreen() {
+        fun upright(size: PictureSize?) = size != null && size.height > size.width
+        fun onItsSide(size: PictureSize?) = size != null && size.width > size.height
+        register()
+        dialVideo("2000")
+        awaitConnected("2000")
+        openCallScreen()
+        await("the camera to start") { cameraInUse() }
+        // The call screen lays the pictures out by their sizes. A phone held upright sends an
+        // upright picture, and the PBX sends back what it gets.
+        awaitVideo { upright(it.sent) && upright(it.received) }
+        val screen = callScreen()
+
+        turnCallScreen(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
+        awaitVideo { onItsSide(it.sent) && onItsSide(it.received) }
+        // Were the call screen started anew, the views the video is drawn into would go with the
+        // old one, and the camera with its view: it once stayed off after that.
+        assertSame("The call screen was started anew", screen, callScreen())
+        assertTrue("The camera stopped as the phone was turned", cameraInUse())
+        awaitVideoSent()
+        awaitVideoReceived()
+
+        turnCallScreen(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED)
+        awaitVideo { upright(it.sent) && upright(it.received) }
+        assertSame("The call screen was started anew", screen, callScreen())
+        assertTrue("The camera stopped as the phone was turned back", cameraInUse())
+        onMain { engine.calls.hangUp() }
+        awaitNoCall()
+    }
+
+    @Test
     fun theCameraIsSentInTheSizeAndAtTheRateThatWereChosen() {
         register()
         // Neither is what the SDK starts with (VGA, and a rate of its own of about 15), so each shows.
-        for ((size, rate) in listOf(VideoSize.QVGA to 24, VideoSize.HD to VideoRules.AUTO_FRAME_RATE)) {
+        for ((size, rate) in listOf(VideoSize.QVGA to 24, VideoSize.HD to VideoRules.AUTO_FRAME_RATE, VideoSize.FHD to VideoRules.AUTO_FRAME_RATE)) {
             settings { it.copy(videoSize = size, videoFrameRate = rate) }
             // What the SIP core is told. A rate of the app's choosing only counts under its preset "custom".
             val told = onMain { Triple(engine.core.preferredVideoDefinition?.name, engine.core.preferredFramerate, engine.core.videoPreset) }
