@@ -501,6 +501,7 @@ class ManagedLockTest : PbxTestBase() {
             { it.copy(videoCalls = !it.videoCalls) },
             { it.copy(videoSize = VideoSize.HD) },
             { it.copy(videoFrameRate = 30) },
+            { it.copy(autoUpdateCheck = !it.autoUpdateCheck) },
             { Settings() },
         )
     }

@@ -32,6 +32,8 @@ import androidx.compose.material.icons.rounded.Dialpad
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.PhoneInTalk
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -52,6 +54,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -63,7 +67,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.sky.siplink.BuildConfig
 import com.sky.siplink.core.logic.ManagedConfig
+import com.sky.siplink.core.logic.UpdateRules
 import com.sky.siplink.core.model.BannerPosition
 import com.sky.siplink.core.model.CallInfo
 import com.sky.siplink.core.model.CallPhase
@@ -136,6 +142,10 @@ fun AppRoot() {
     val bannerAtTop by remember(engine) {
         engine.settings.settings.map { it.callBannerPosition == BannerPosition.TOP }.distinctUntilChanged()
     }.collectAsStateWithLifecycle(engine.settings.current.callBannerPosition == BannerPosition.TOP)
+    // A newer version that the user has not skipped puts a dot on the settings tab.
+    val updateOffered by remember(engine) {
+        engine.updates.status.map { UpdateRules.offered(it, BuildConfig.VERSION_NAME) != null }.distinctUntilChanged()
+    }.collectAsStateWithLifecycle(false)
     // The way back to the call is offered on the main screens and next to the shortcut keys,
     // which is where a call in progress is handled from outside its own screen.
     val bannerWanted = topLevel || route == Routes.SHORTCUTS
@@ -179,7 +189,7 @@ fun AppRoot() {
                         enter = expandVertically(Motion.spatial()) + fadeIn(Motion.fade(160)),
                         exit = shrinkVertically(Motion.spatial()) + fadeOut(Motion.fade(100)),
                     ) {
-                        BottomBar(route, navController)
+                        BottomBar(route, navController, updateOffered)
                     }
                 }
             },
@@ -292,8 +302,9 @@ fun AppRoot() {
     }
 }
 
+/** @param updateOffered whether the settings tab carries the dot of a newer version */
 @Composable
-private fun BottomBar(route: String?, navController: NavHostController) {
+private fun BottomBar(route: String?, navController: NavHostController, updateOffered: Boolean) {
     NavigationBar {
         Tab.entries.forEach { tab ->
             val selected = route == tab.route
@@ -313,22 +324,40 @@ private fun BottomBar(route: String?, navController: NavHostController) {
                     }
                 },
                 icon = {
-                    Crossfade(selected, animationSpec = Motion.fade(140), label = "tabIconShape") { on ->
-                        Icon(
-                            if (on) tab.selectedIcon else tab.icon,
-                            contentDescription = null,
-                            modifier = Modifier.graphicsLayer {
-                                scaleX = scale
-                                scaleY = scale
-                            },
-                        )
+                    BadgedBox(
+                        badge = {
+                            if (tab == Tab.SETTINGS && updateOffered) {
+                                // A small dot in a neutral colour: news, not an alarm.
+                                Badge(containerColor = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        },
+                    ) {
+                        Crossfade(selected, animationSpec = Motion.fade(140), label = "tabIconShape") { on ->
+                            Icon(
+                                if (on) tab.selectedIcon else tab.icon,
+                                contentDescription = null,
+                                modifier = Modifier.graphicsLayer {
+                                    scaleX = scale
+                                    scaleY = scale
+                                },
+                            )
+                        }
                     }
                 },
-                label = { Text(tab.label) },
+                // The icon slot, dot included, is hidden from accessibility while a label is shown
+                // (Material clears its semantics), so the label tells of the news. A description
+                // stands in for the text when it is read out: it names the tab as well.
+                label = {
+                    val news = tab == Tab.SETTINGS && updateOffered
+                    Text(tab.label, modifier = if (news) Modifier.semantics { contentDescription = "${tab.label}，$UPDATE_NEWS" } else Modifier)
+                },
             )
         }
     }
 }
+
+/** What the settings tab adds to its name for a screen reader while it carries the dot. */
+private const val UPDATE_NEWS = "有新版本可用"
 
 /** Green strip, at the top or above the navigation bar, that leads back to the running call. */
 @Composable

@@ -2,6 +2,7 @@ package com.sky.siplink.itest
 
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.sky.siplink.BuildConfig
 import com.sky.siplink.core.TlsManager
 import com.sky.siplink.core.logic.ManagedConfig
 import com.sky.siplink.core.logic.ShortcutRules
@@ -114,8 +115,9 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
         // Settings: the locked switches are there to look at, the user's own ones work.
         tap("设置")
         see(ManagedConfig.NOTICE)
-        locked("视频通话", "自动接听对讲呼叫", "对讲使用扬声器", "后台保持在线")
-        usable("免打扰", "深色", "顶部", "电池优化")
+        locked("视频通话", "自动接听对讲呼叫", "对讲使用扬声器", "后台保持在线", "自动检查更新")
+        // Checking for a newer version is an action, not a setting.
+        usable("免打扰", "深色", "顶部", "电池优化", VERSION_ROW)
         tap("免打扰")
         await("do not disturb to be switched on") { engine.settings.current.doNotDisturb }
         tap("免打扰")
@@ -266,7 +268,7 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
         see(ManagedConfig.NOTICE)
         onMain { engine.lock.setManaged(false) }
         await("the notice to go") { shown(ManagedConfig.NOTICE).isEmpty() }
-        usable("视频通话", "自动接听对讲呼叫", "后台保持在线")
+        usable("视频通话", "自动接听对讲呼叫", "后台保持在线", "自动检查更新")
         tap("SIP 账号")
         see("批量导入账号")
         assertEquals("The button to add an account", 1, namelessButtons().size)
@@ -436,6 +438,7 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
         const val SPEED_KEY = "前台"
         const val FORWARD_KEY = "转总机"
         const val OWN_KEY = "我的自建键"
+        const val VERSION_ROW = "版本 ${BuildConfig.VERSION_NAME}"
 
         /** How many dots a password field shows that keeps its password back, whatever the password. */
         const val MASK_LENGTH = 8

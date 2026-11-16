@@ -42,6 +42,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        // At most once a day, and only while the user lets the app ask by itself.
+        engine.updates.checkIfDue()
+    }
+
     override fun onStop() {
         super.onStop()
         engine.settings.flush()

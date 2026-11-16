@@ -77,6 +77,7 @@ class SettingsStore(private val config: Config, private val lock: ConfigLock) {
             videoSize = enumOf(KEY_VIDEO_SIZE, d.videoSize),
             videoFrameRate = VideoRules.frameRate(config.getInt(SECTION, KEY_VIDEO_FRAME_RATE, d.videoFrameRate)),
             lockScreenPromptDeclined = bool(KEY_LOCK_SCREEN_PROMPT_DECLINED, d.lockScreenPromptDeclined),
+            autoUpdateCheck = bool(KEY_AUTO_UPDATE_CHECK, d.autoUpdateCheck),
         )
     }
 
@@ -115,6 +116,7 @@ class SettingsStore(private val config: Config, private val lock: ConfigLock) {
         config.setString(SECTION, KEY_VIDEO_SIZE, value.videoSize.name)
         config.setInt(SECTION, KEY_VIDEO_FRAME_RATE, value.videoFrameRate)
         config.setBool(SECTION, KEY_LOCK_SCREEN_PROMPT_DECLINED, value.lockScreenPromptDeclined)
+        config.setBool(SECTION, KEY_AUTO_UPDATE_CHECK, value.autoUpdateCheck)
         // Writing the file means writing every account in it as well, and a text field changes
         // the settings with each key stroke: one write once the changes have stopped coming.
         unsaved = true
@@ -180,5 +182,6 @@ class SettingsStore(private val config: Config, private val lock: ConfigLock) {
         private const val KEY_VIDEO_SIZE = "video_size"
         private const val KEY_VIDEO_FRAME_RATE = "video_frame_rate"
         private const val KEY_LOCK_SCREEN_PROMPT_DECLINED = "lock_screen_prompt_declined"
+        private const val KEY_AUTO_UPDATE_CHECK = "auto_update_check"
     }
 }

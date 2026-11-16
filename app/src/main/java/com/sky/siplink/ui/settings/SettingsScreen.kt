@@ -213,6 +213,8 @@ fun SettingsScreen(
                 }
             }
 
+            AboutSection()
+
             Column(Modifier.padding(horizontal = 12.dp)) {
                 Text(
                     "SipLink ${BuildConfig.VERSION_NAME} · Linphone SDK ${engine.sdkVersion}",

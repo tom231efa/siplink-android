@@ -43,6 +43,7 @@ class ManagedConfigTest {
         videoSize = VideoSize.HD,
         videoFrameRate = 30,
         lockScreenPromptDeclined = !current.lockScreenPromptDeclined,
+        autoUpdateCheck = !current.autoUpdateCheck,
     )
 
     /** The settings that stay the user's own, taken from [everythingChanged]. */
@@ -106,6 +107,8 @@ class ManagedConfigTest {
             { it.copy(videoCalls = !it.videoCalls) },
             { it.copy(videoSize = VideoSize.QVGA) },
             { it.copy(videoFrameRate = 24) },
+            // An administrator decides whether the phones ask GitHub for updates.
+            { it.copy(autoUpdateCheck = !it.autoUpdateCheck) },
         )
         locked.forEachIndexed { index, change ->
             val wanted = change(current)

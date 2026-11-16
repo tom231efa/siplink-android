@@ -328,4 +328,6 @@ data class Settings(
     val videoFrameRate: Int = 0,
     /** The user does not want to be asked again to let calls show on the lock screen. */
     val lockScreenPromptDeclined: Boolean = false,
+    /** The app asks GitHub for a newer version by itself (core/UpdateChecker.kt); a manual check works either way. */
+    val autoUpdateCheck: Boolean = true,
 )

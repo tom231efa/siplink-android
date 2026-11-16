@@ -8,6 +8,7 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.platform.app.InstrumentationRegistry
 import com.sky.siplink.MainActivity
 import com.sky.siplink.SipLinkApp
+import com.sky.siplink.core.ReleaseFeed
 import com.sky.siplink.core.SipEngine
 import com.sky.siplink.core.model.AccountDraft
 import com.sky.siplink.core.model.CallInfo
@@ -22,6 +23,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import java.io.File
+import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.math.PI
@@ -65,6 +67,8 @@ abstract class PbxTestBase {
         val tone = toneFile()
         onMain {
             engine.updateSettings { Settings() }
+            // The tests do not ask GitHub: a check the app makes by itself when it is shown fails, quietly.
+            engine.updates.feed = NO_RELEASES
             engine.tls.certificates.value.forEach { engine.tls.remove(it.fingerprint) }
             engine.directory.directories.value.forEach { engine.directory.remove(it.id) }
             engine.directory.serverDelayMs = DIRECTORY_DELAY_MS
@@ -372,6 +376,9 @@ abstract class PbxTestBase {
     }
 
     protected companion object {
+        /** What the app is told when it asks for the latest release: nothing, as if it were offline. */
+        val NO_RELEASES = ReleaseFeed { throw IOException("The tests do not ask GitHub") }
+
         /** Extension the app registers as. */
         const val APP = 1001
 

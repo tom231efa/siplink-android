@@ -46,6 +46,9 @@ class SipEngine(context: Context) {
     val codecs: CodecManager by lazy { CodecManager(core, lock) }
     val shortcuts: ShortcutManager
 
+    /** Whether a newer version of the app has been released; asks only when the main screen or the user calls for it. */
+    val updates: UpdateChecker by lazy { UpdateChecker(appContext, autoCheck = { settings.current.autoUpdateCheck }) }
+
     val sdkVersion: String get() = core.version
 
     /** Lives as long as the engine, which is as long as the process. */
