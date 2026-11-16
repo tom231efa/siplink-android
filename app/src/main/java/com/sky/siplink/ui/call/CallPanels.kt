@@ -70,7 +70,8 @@ internal fun DtmfPanel(onDigit: (Char) -> Unit, onClose: () -> Unit) {
         (if (low) Modifier.widthIn(max = 420.dp) else Modifier)
             .fillMaxWidth()
             .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
-            .background(Color(0xF51B1E23))
+            // Solid: the controls underneath must not show between the keys.
+            .background(MaterialTheme.colorScheme.surfaceContainer)
             // Swallow touches so they do not reach the controls underneath.
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = {})
             .navigationBarsPadding()

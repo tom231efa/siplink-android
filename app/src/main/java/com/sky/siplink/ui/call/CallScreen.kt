@@ -88,7 +88,7 @@ internal enum class Controls { INCOMING, ACTIVE, ENDED }
  * Full-screen call UI: incoming, outgoing, established and ended states of the current call.
  *
  * @param glass the window is see through and what is behind it is blurred, so the background
- *   may let it shine through; without the blur it has to cover more to keep the text readable
+ *   may let it shine through; without the blur it covers it whole
  */
 @Composable
 fun CallScreen(onAnswer: (video: Boolean) -> Unit, onFinished: () -> Unit, glass: Boolean = false) {
@@ -214,8 +214,9 @@ fun CallScreen(onAnswer: (video: Boolean) -> Unit, onFinished: () -> Unit, glass
 
 /**
  * Dark, with one faint blue highlight for depth. A call that only rings lets what is behind the
- * window shine through, like glass; once it is dialled or answered the call has the screen to
- * itself, and the glass turns solid.
+ * window shine through, like frosted glass, where the system blurs it; once it is dialled or
+ * answered the call has the screen to itself, and the glass turns solid. Without the blur the
+ * background is solid from the start: a page seen sharp behind the caller's name only confuses.
  *
  * It does not move otherwise: a call can last for hours, and a background that animates would
  * redraw the whole screen all that time.
@@ -223,11 +224,7 @@ fun CallScreen(onAnswer: (video: Boolean) -> Unit, onFinished: () -> Unit, glass
 @Composable
 private fun CallBackground(ringingIn: Boolean, glass: Boolean) {
     val tint by animateFloatAsState(
-        targetValue = when {
-            !ringingIn -> 1f
-            glass -> GLASS_TINT
-            else -> PLAIN_TINT
-        },
+        targetValue = if (ringingIn && glass) GLASS_TINT else 1f,
         animationSpec = tween(SOLIDIFY_MS, easing = FastOutSlowInEasing),
         label = "callTint",
     )
@@ -243,9 +240,8 @@ private fun CallBackground(ringingIn: Boolean, glass: Boolean) {
     }
 }
 
-/** How much of what is behind a ringing call its dark tint covers: over a blur, and over a sharp picture. */
+/** How much of what is behind a ringing call its dark tint covers where the system blurs it. */
 private const val GLASS_TINT = 0.72f
-private const val PLAIN_TINT = 0.95f
 
 private const val APPEAR_MS = 280
 private const val DISAPPEAR_MS = 220

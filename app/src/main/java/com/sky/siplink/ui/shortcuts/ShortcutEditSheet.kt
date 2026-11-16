@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -38,9 +39,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sky.siplink.core.logic.ShortcutLines
@@ -147,7 +150,7 @@ internal fun ShortcutEditSheet(shortcut: Shortcut, onDismiss: () -> Unit) {
                 Modifier
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 24.dp),
+                    .padding(horizontal = SheetPadding),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(if (isNew) "新建快捷键" else "编辑快捷键", style = MaterialTheme.typography.titleLarge)
@@ -221,11 +224,15 @@ internal fun ShortcutEditSheet(shortcut: Shortcut, onDismiss: () -> Unit) {
                 }
 
                 Text("图标", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 4.dp))
+                // The row of icons runs to the edges of the sheet, so that the one cut off at the
+                // edge reads as "more to the side" rather than as something clipped by mistake.
                 LazyHorizontalGrid(
                     rows = GridCells.Fixed(2),
                     modifier = Modifier
+                        .bleed(SheetPadding)
                         .fillMaxWidth()
                         .height(IconChoiceSize * 2 + 8.dp),
+                    contentPadding = PaddingValues(horizontal = SheetPadding),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
@@ -313,6 +320,18 @@ private fun lineLabel(account: SipAccount): String {
 }
 
 private val IconChoiceSize = 46.dp
+
+/** The space between the edges of the sheet and its fields. */
+private val SheetPadding = 24.dp
+
+/** Widens an element by [by] on either side, into the padding of what holds it. Needs a bounded width. */
+private fun Modifier.bleed(by: Dp): Modifier = layout { measurable, constraints ->
+    val extra = if (constraints.hasBoundedWidth) by.roundToPx() * 2 else 0
+    val placeable = measurable.measure(
+        constraints.copy(minWidth = constraints.minWidth + extra, maxWidth = constraints.maxWidth + extra),
+    )
+    layout(placeable.width - extra, placeable.height) { placeable.place(-extra / 2, 0) }
+}
 
 /** One picture of the icon list; the chosen one is filled in the accent colour. */
 @Composable

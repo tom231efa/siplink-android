@@ -7,11 +7,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Add
@@ -47,6 +44,7 @@ import com.sky.siplink.core.model.Shortcut
 import com.sky.siplink.engine
 import com.sky.siplink.openCallScreen
 import com.sky.siplink.ui.components.CsvImportSheet
+import com.sky.siplink.ui.components.EmptyState
 import com.sky.siplink.ui.components.ImportOutcome
 import com.sky.siplink.ui.components.LocalConfigLocked
 import com.sky.siplink.ui.components.LocalMessenger
@@ -248,22 +246,7 @@ fun ShortcutsScreen(accountId: String?, onBack: () -> Unit) {
 /** @param canImport false where the configuration is locked: keys are then made one by one, as the user's own */
 @Composable
 private fun EmptyBoard(canImport: Boolean, onAdd: () -> Unit, onImport: () -> Unit) {
-    Column(
-        Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Icon(
-            Icons.Rounded.Apps,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(48.dp),
-        )
-        Spacer(Modifier.height(12.dp))
-        Text("还没有快捷键", style = MaterialTheme.typography.titleMedium)
-        Spacer(Modifier.height(20.dp))
+    EmptyState(icon = Icons.Rounded.Apps, title = "还没有快捷键", modifier = Modifier.fillMaxSize()) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             if (canImport) OutlinedButton(onClick = onImport) { Text("批量导入") }
             Button(onClick = onAdd) { Text("新建快捷键") }

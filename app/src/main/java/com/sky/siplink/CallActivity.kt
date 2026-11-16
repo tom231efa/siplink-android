@@ -32,14 +32,15 @@ import kotlinx.coroutines.launch
 
 /**
  * Full-screen call UI, also shown over the lock screen for incoming calls. Its window is see
- * through: what was on screen before stays visible behind it, blurred like frosted glass.
+ * through: where the system blurs what is behind it, a ringing call lets what was on screen
+ * before show through, like frosted glass.
  */
 class CallActivity : ComponentActivity() {
     private var proximityLock: PowerManager.WakeLock? = null
 
     /**
      * Whether the system blurs what is behind this window right now. It cannot on Android 11 and
-     * older, and stops when the user saves battery; the screen then covers more of what is behind.
+     * older, and stops when the user saves battery; the screen then covers what is behind whole.
      */
     private var blurred by mutableStateOf(false)
     private val onBlurChanged = Consumer<Boolean> { blurred = it }

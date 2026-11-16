@@ -3,6 +3,7 @@ package com.sky.siplink.ui.theme
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
@@ -73,7 +74,7 @@ private val DarkColors = darkColorScheme(
     onPrimary = Color(0xFF06224A),
     primaryContainer = Color(0xFF1B3F78),
     onPrimaryContainer = Color(0xFFD7E6FF),
-    inversePrimary = Color(0xFF2B6DE9),
+    inversePrimary = Brand.Blue,
     secondary = Color(0xFFA9B4C6),
     onSecondary = Color(0xFF1A2330),
     secondaryContainer = Color(0xFF2A3442),
@@ -88,8 +89,9 @@ private val DarkColors = darkColorScheme(
     onSurface = Color(0xFFE6E8EB),
     surfaceVariant = Color(0xFF2B3037),
     onSurfaceVariant = Color(0xFFB4BAC4),
-    inverseSurface = Color(0xFFE6E8EB),
-    inverseOnSurface = Color(0xFF1B1E23),
+    // The snackbar: a raised dark bar with light text. A near-white bar glares on the soft black.
+    inverseSurface = Color(0xFF30353D),
+    inverseOnSurface = Color(0xFFE6E8EB),
     surfaceBright = Color(0xFF2B3037),
     surfaceDim = Brand.CallSurface,
     surfaceContainerLowest = Color(0xFF0D0F12),
@@ -129,6 +131,23 @@ fun isDarkTheme(mode: ThemeMode): Boolean = when (mode) {
     ThemeMode.DARK -> true
 }
 
+/** The app's own scheme, light or [dark]. */
+internal fun appColorScheme(dark: Boolean): ColorScheme = if (dark) DarkColors else LightColors
+
+/**
+ * The scheme of the "dynamic colour" switch: the accent, the primary roles, comes from [system]
+ * (the colours of the wallpaper), everything else from the app's [own] scheme. A page then has
+ * the same tones as with the switch off: the system's own surfaces would give its body, top bar
+ * and tab bar three different tones, a dead black in the dark, and turn neutral buttons lavender.
+ * inversePrimary stays the app's own as well: it goes with the app's own inverseSurface.
+ */
+internal fun withSystemAccent(own: ColorScheme, system: ColorScheme): ColorScheme = own.copy(
+    primary = system.primary,
+    onPrimary = system.onPrimary,
+    primaryContainer = system.primaryContainer,
+    onPrimaryContainer = system.onPrimaryContainer,
+)
+
 @Composable
 fun SipLinkTheme(
     themeMode: ThemeMode = ThemeMode.SYSTEM,
@@ -136,13 +155,12 @@ fun SipLinkTheme(
     content: @Composable () -> Unit,
 ) {
     val dark = isDarkTheme(themeMode)
-    val scheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-        dark -> DarkColors
-        else -> LightColors
+    val own = appColorScheme(dark)
+    val scheme = if (dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        val context = LocalContext.current
+        withSystemAccent(own, if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context))
+    } else {
+        own
     }
     MaterialTheme(colorScheme = scheme, typography = AppTypography, shapes = AppShapes, content = content)
 }

@@ -224,6 +224,9 @@ fun AccountsScreen(onBack: () -> Unit, onAdd: () -> Unit, onEdit: (String) -> Un
                 expanded = fabExpanded,
                 icon = { Icon(Icons.Rounded.Add, contentDescription = null) },
                 text = { Text("添加账号") },
+                // Neutral like the rest of the list; the accent is kept for what is switched on.
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                contentColor = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(20.dp),
@@ -242,7 +245,7 @@ private fun SummaryRow(accounts: List<SipAccount>) {
     val registered = accounts.count { it.state == RegState.OK }
     val failed = accounts.count { it.state == RegState.FAILED }
     val disabled = accounts.count { !it.enabled }
-    Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.primaryContainer) {
+    Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainerHighest) {
         FlowRow(
             modifier = Modifier
                 .fillMaxWidth()
@@ -254,7 +257,7 @@ private fun SummaryRow(accounts: List<SipAccount>) {
             Text(
                 "${accounts.size} / ${AccountRules.MAX_ACCOUNTS} 个账号",
                 style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
             )
             SummaryStat(regStateColor(RegState.OK), "已注册 $registered")
@@ -277,7 +280,7 @@ private fun SummaryStat(color: Color, text: String) {
         Text(
             text,
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onPrimaryContainer,
+            color = MaterialTheme.colorScheme.onSurface,
             maxLines = 1,
         )
     }
