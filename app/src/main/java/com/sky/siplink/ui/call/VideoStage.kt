@@ -1,5 +1,6 @@
 package com.sky.siplink.ui.call
 
+import android.content.Context
 import android.view.TextureView
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -38,7 +39,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,7 +52,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.layout
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -60,7 +59,6 @@ import com.sky.siplink.core.logic.VideoRules
 import com.sky.siplink.core.model.CallVideo
 import com.sky.siplink.engine
 import com.sky.siplink.ui.theme.Brand
-import org.linphone.core.Core
 import org.linphone.mediastream.video.capture.CaptureTextureView
 
 /**
@@ -79,7 +77,6 @@ internal fun VideoStage(
     onSwitchCamera: () -> Unit,
     onToggleCamera: () -> Unit,
 ) {
-    val core = LocalContext.current.engine.core
     // What the user picked with the key; null until then.
     var fillChosen by remember { mutableStateOf<Boolean?>(null) }
     BoxWithConstraints(
@@ -100,7 +97,6 @@ internal fun VideoStage(
                 label = "pictureScale",
             )
             RemoteVideo(
-                core,
                 Modifier
                     // The view has the shape of the picture, so that the SDK draws the whole of it
                     // into the whole of the view; until a picture came, the view is the screen.
@@ -146,7 +142,6 @@ internal fun VideoStage(
             AnimatedVisibility(video.sending, enter = fadeIn(tween(180)) + scaleIn(tween(200), 0.85f), exit = fadeOut(tween(140)) + scaleOut(tween(160), 0.85f)) {
                 val (width, height) = VideoRules.previewSize(video.sent, PreviewLongSide.value)
                 LocalPreview(
-                    core,
                     Modifier
                         .size(width = width.dp, height = height.dp)
                         .clip(RoundedCornerShape(16.dp))
@@ -175,26 +170,68 @@ internal fun VideoStage(
 
 /** Where the SDK draws the other side's video while the view is on screen. */
 @Composable
-private fun RemoteVideo(core: Core, modifier: Modifier) {
-    val context = LocalContext.current
-    val view = remember { TextureView(context) }
-    DisposableEffect(view) {
-        core.nativeVideoWindowId = view
-        onDispose { if (core.nativeVideoWindowId === view) core.nativeVideoWindowId = null }
-    }
-    AndroidView(factory = { view }, modifier = modifier)
+private fun RemoteVideo(modifier: Modifier) {
+    AndroidView(factory = ::RemoteVideoView, modifier = modifier)
 }
 
 /** Where the SDK draws what the own camera sends. */
 @Composable
-private fun LocalPreview(core: Core, modifier: Modifier) {
-    val context = LocalContext.current
-    val view = remember { CaptureTextureView(context) }
-    DisposableEffect(view) {
-        core.nativePreviewWindowId = view
-        onDispose { if (core.nativePreviewWindowId === view) core.nativePreviewWindowId = null }
+private fun LocalPreview(modifier: Modifier) {
+    AndroidView(factory = ::PreviewView, modifier = modifier)
+}
+
+/*
+ * The two views give themselves to the SIP core when they come into a window, and take
+ * themselves back before they leave it. Not later: a view that leaves loses its surface, and the
+ * SDK, while that view is still the one it has, then sets itself a task to forget "its view".
+ * The task runs after the next call screen has handed over its own views (a call screen started
+ * anew because the system changed its theme or its font size), and it is those the SDK forgets:
+ * the camera, which waits for its view, never starts.
+ */
+
+private class RemoteVideoView(context: Context) : TextureView(context) {
+    private val core = context.engine.core
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        current = this
+        core.nativeVideoWindowId = this
     }
-    AndroidView(factory = { view }, modifier = modifier)
+
+    override fun onDetachedFromWindow() {
+        if (current === this) {
+            current = null
+            core.nativeVideoWindowId = null
+        }
+        super.onDetachedFromWindow()
+    }
+
+    private companion object {
+        /** The view the SIP core has; what the core gives back for it is not always the view itself. */
+        var current: RemoteVideoView? = null
+    }
+}
+
+private class PreviewView(context: Context) : CaptureTextureView(context) {
+    private val core = context.engine.core
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        current = this
+        core.nativePreviewWindowId = this
+    }
+
+    override fun onDetachedFromWindow() {
+        if (current === this) {
+            current = null
+            core.nativePreviewWindowId = null
+        }
+        super.onDetachedFromWindow()
+    }
+
+    private companion object {
+        var current: PreviewView? = null
+    }
 }
 
 @Composable

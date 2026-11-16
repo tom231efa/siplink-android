@@ -305,6 +305,33 @@ class VideoCallTest : VideoTestBase() {
     }
 
     @Test
+    fun aCallScreenThatIsStartedAnewKeepsTheVideo() {
+        register()
+        dialVideo("2000")
+        awaitConnected("2000")
+        openCallScreen()
+        await("the camera to start") { cameraInUse() }
+        awaitVideoSent()
+        val screen = callScreen()
+        // What the system does to a screen when its theme or its font size changes, for one.
+        onMain { screen.recreate() }
+        await("the call screen to be started anew") { callScreen() !== screen }
+        // The SDK once forgot the views of the new screen in this hand-over: the camera, which
+        // waits for its view, stayed off, and nothing was sent.
+        await("the camera to start again") { cameraInUse() }
+        awaitVideoSent()
+        awaitVideoReceived()
+        assertNotNull("The SIP core has no view for the own camera", onMain { engine.core.nativePreviewWindowId })
+        assertNotNull("The SIP core has no view for the other side", onMain { engine.core.nativeVideoWindowId })
+        onMain { engine.calls.hangUp() }
+        awaitNoCall()
+        // With the call the screen goes, and its views with it.
+        await("the SIP core to let go of the views") {
+            onMain { engine.core.nativePreviewWindowId == null && engine.core.nativeVideoWindowId == null }
+        }
+    }
+
+    @Test
     fun theCameraIsSentInTheSizeAndAtTheRateThatWereChosen() {
         register()
         // Neither is what the SDK starts with (VGA, and a rate of its own of about 15), so each shows.
