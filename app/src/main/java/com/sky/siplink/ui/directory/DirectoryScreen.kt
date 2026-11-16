@@ -62,6 +62,7 @@ import com.sky.siplink.engine
 import com.sky.siplink.ui.components.Avatar
 import com.sky.siplink.ui.components.EmptyState
 import com.sky.siplink.ui.components.FeatureSheet
+import com.sky.siplink.ui.components.FieldText
 import com.sky.siplink.ui.components.rememberCallLauncher
 import com.sky.siplink.ui.shortcuts.NewShortcutSheet
 import kotlinx.coroutines.delay
@@ -152,7 +153,7 @@ fun DirectoryScreen(onOpenSettings: () -> Unit) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp),
-                    placeholder = { Text("搜索姓名或号码") },
+                    placeholder = { FieldText("搜索姓名或号码") },
                     leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
                     trailingIcon = {
                         AnimatedVisibility(query.isNotEmpty(), enter = fadeIn(), exit = fadeOut()) {

@@ -80,7 +80,7 @@ fun AccountPickerSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp, vertical = 8.dp),
-                placeholder = { Text("搜索名称、号码或域名") },
+                placeholder = { FieldText("搜索名称、号码或域名") },
                 leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
                 singleLine = true,
                 shape = CircleShape,

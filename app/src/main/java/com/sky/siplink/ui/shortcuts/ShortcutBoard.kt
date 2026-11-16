@@ -50,6 +50,7 @@ import com.sky.siplink.core.logic.ShortcutRules
 import com.sky.siplink.core.model.Shortcut
 import com.sky.siplink.core.model.ShortcutAction
 import com.sky.siplink.engine
+import com.sky.siplink.ui.components.FieldText
 import com.sky.siplink.ui.components.pressScale
 
 /**
@@ -89,7 +90,7 @@ internal fun ShortcutBoard(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
-            placeholder = { Text("搜索名称、号码、分类或类型") },
+            placeholder = { FieldText("搜索名称、号码、分类或类型") },
             leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
             trailingIcon = {
                 if (query.isNotEmpty()) {

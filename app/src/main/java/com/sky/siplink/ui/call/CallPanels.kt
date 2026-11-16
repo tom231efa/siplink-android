@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sky.siplink.engine
 import com.sky.siplink.ui.components.AppBottomSheet
+import com.sky.siplink.ui.components.FieldText
 import com.sky.siplink.ui.components.LocalMessenger
 import com.sky.siplink.ui.shortcuts.ShortcutBoard
 import com.sky.siplink.ui.shortcuts.rememberShortcutRunner
@@ -143,8 +144,8 @@ internal fun TransferSheet(
                 value = target,
                 onValueChange = { target = it },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("转接到") },
-                placeholder = { Text("分机号或 SIP 地址") },
+                label = { FieldText("转接到") },
+                placeholder = { FieldText("分机号或 SIP 地址") },
                 singleLine = true,
                 shape = MaterialTheme.shapes.medium,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),

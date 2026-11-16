@@ -90,6 +90,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sky.siplink.core.model.SipAccount
 import com.sky.siplink.engine
 import com.sky.siplink.ui.components.FeatureSheet
+import com.sky.siplink.ui.components.FieldText
 import com.sky.siplink.ui.components.AccountPickerSheet
 import com.sky.siplink.ui.components.LocalConfigLocked
 import com.sky.siplink.ui.components.LocalMessenger
@@ -464,8 +465,8 @@ private fun AddressInput(value: String, onChange: (String) -> Unit, onCall: () -
             value = value,
             onValueChange = onChange,
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("号码或 SIP 地址") },
-            placeholder = { Text("例如 1001 或 alice@example.com") },
+            label = { FieldText("号码或 SIP 地址") },
+            placeholder = { FieldText("例如 1001 或 alice@example.com") },
             singleLine = true,
             shape = MaterialTheme.shapes.medium,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Go),

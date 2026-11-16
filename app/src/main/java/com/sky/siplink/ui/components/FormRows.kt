@@ -43,6 +43,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 /** Titled group of rows drawn on a rounded surface. */
@@ -200,8 +201,8 @@ fun FormField(
         onValueChange = onValueChange,
         modifier = modifier.fillMaxWidth(),
         enabled = !locked,
-        label = { Text(label) },
-        placeholder = placeholder?.let { { Text(it) } },
+        label = { FieldText(label) },
+        placeholder = placeholder?.let { { FieldText(it) } },
         supportingText = (error ?: supporting)?.let { { Text(it) } },
         isError = error != null,
         singleLine = singleLine,
@@ -237,6 +238,15 @@ fun FormField(
         },
     )
 }
+
+/**
+ * The label or the placeholder of a text field: one line, cut off with an ellipsis. A field shows
+ * its placeholder only while it has the focus and is empty, so a placeholder that wrapped in a
+ * narrow field made the field taller the moment it was tapped, and shorter again with the first
+ * character typed; a label that wrapped did the same as it moved up into the frame.
+ */
+@Composable
+fun FieldText(text: String) = Text(text, maxLines = 1, overflow = TextOverflow.Ellipsis)
 
 /** Stands in a password field whose password is kept from the screen: eight dots, whatever the password. */
 private const val KEPT_PASSWORD = "········"
@@ -281,7 +291,7 @@ fun <T> DropdownField(
                 .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = options.isNotEmpty() && !locked),
             enabled = !locked,
             readOnly = true,
-            label = { Text(label, maxLines = 1) },
+            label = { FieldText(label) },
             supportingText = error?.let { { Text(it) } },
             isError = error != null,
             singleLine = true,

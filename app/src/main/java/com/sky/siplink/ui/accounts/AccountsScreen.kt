@@ -75,6 +75,7 @@ import com.sky.siplink.engine
 import com.sky.siplink.ui.Motion
 import com.sky.siplink.ui.components.Avatar
 import com.sky.siplink.ui.components.EmptyState
+import com.sky.siplink.ui.components.FieldText
 import com.sky.siplink.ui.components.LocalConfigLocked
 import com.sky.siplink.ui.components.LocalMessenger
 import com.sky.siplink.ui.components.ManagedNotice
@@ -165,7 +166,7 @@ fun AccountsScreen(onBack: () -> Unit, onAdd: () -> Unit, onEdit: (String) -> Un
                         .fillMaxWidth()
                         .padding(start = 16.dp, end = 16.dp, bottom = 6.dp)
                         .focusRequester(focusRequester),
-                    placeholder = { Text("搜索账号") },
+                    placeholder = { FieldText("搜索账号") },
                     leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
                     trailingIcon = {
                         IconButton(onClick = ::closeSearch) {

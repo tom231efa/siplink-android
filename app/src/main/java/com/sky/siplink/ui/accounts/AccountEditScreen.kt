@@ -27,6 +27,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
@@ -157,40 +158,20 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
                     placeholder = "例如 前台、销售一线",
                     error = error(AccountRules.Error.NAME_TOO_LONG, AccountRules.Error.NAME_TAKEN),
                 )
-                FormField(
-                    value = username,
-                    onValueChange = { username = it },
-                    label = "用户名",
-                    placeholder = "例如 1001",
-                    keyboardType = KeyboardType.Email,
-                    error = error(
-                        AccountRules.Error.USERNAME_EMPTY,
-                        AccountRules.Error.USERNAME_INVALID,
-                        AccountRules.Error.DUPLICATE,
-                        AccountRules.Error.LIMIT_REACHED,
-                    ),
-                )
-                FormField(
-                    value = password,
-                    onValueChange = { password = it },
-                    label = "密码",
-                    placeholder = if (existing != null && !locked) "留空则不修改密码" else null,
-                    password = true,
-                    error = error(AccountRules.Error.PASSWORD_REQUIRED),
-                    onUnlock = if (existing != null && passwordsProtected && !passwordOpened) ({ askConfigPassword = true }) else null,
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // The two fields stay aligned at their tops when one of them shows an error line.
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
                     FormField(
-                        value = domain,
-                        onValueChange = { domain = it },
-                        label = "域名 / 服务器",
+                        value = username,
+                        onValueChange = { username = it },
+                        label = "用户名",
                         modifier = Modifier.weight(1f),
-                        placeholder = "pbx.example.com 或 192.168.1.10",
-                        keyboardType = KeyboardType.Uri,
+                        placeholder = "例如 1001",
+                        keyboardType = KeyboardType.Email,
                         error = error(
-                            AccountRules.Error.DOMAIN_EMPTY,
-                            AccountRules.Error.DOMAIN_INVALID,
-                            AccountRules.Error.ADDRESS_REJECTED,
+                            AccountRules.Error.USERNAME_EMPTY,
+                            AccountRules.Error.USERNAME_INVALID,
+                            AccountRules.Error.DUPLICATE,
+                            AccountRules.Error.LIMIT_REACHED,
                         ),
                     )
                     FormField(
@@ -202,6 +183,27 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
                         error = error(AccountRules.Error.PORT_INVALID),
                     )
                 }
+                FormField(
+                    value = domain,
+                    onValueChange = { domain = it },
+                    label = "域名 / 服务器",
+                    placeholder = "pbx.example.com 或 192.168.1.10",
+                    keyboardType = KeyboardType.Uri,
+                    error = error(
+                        AccountRules.Error.DOMAIN_EMPTY,
+                        AccountRules.Error.DOMAIN_INVALID,
+                        AccountRules.Error.ADDRESS_REJECTED,
+                    ),
+                )
+                FormField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = "密码",
+                    placeholder = if (existing != null && !locked) "留空则不修改密码" else null,
+                    password = true,
+                    error = error(AccountRules.Error.PASSWORD_REQUIRED),
+                    onUnlock = if (existing != null && passwordsProtected && !passwordOpened) ({ askConfigPassword = true }) else null,
+                )
                 FormField(
                     value = displayName,
                     onValueChange = { displayName = it },

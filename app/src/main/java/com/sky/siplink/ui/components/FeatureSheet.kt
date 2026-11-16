@@ -113,8 +113,8 @@ fun FeatureSheet(
                             confirmForce = false
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text("目标分机") },
-                        placeholder = { Text("例如 1002") },
+                        label = { FieldText("目标分机") },
+                        placeholder = { FieldText("例如 1002") },
                         singleLine = true,
                         shape = MaterialTheme.shapes.medium,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
