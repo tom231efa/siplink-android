@@ -44,6 +44,7 @@ class CallManager(
     private val settings: SettingsStore,
     private val accounts: AccountManager,
     private val names: NameResolver,
+    recordings: RecordingStore,
 ) {
     /** Hooks implemented by the app layer (notifications, call screen, foreground service). */
     interface Host {
@@ -109,6 +110,13 @@ class CallManager(
     private val video = VideoController(core, settings, { host?.canUseCamera == true }) { publish() }
     private val videoAllowed: Boolean get() = settings.current.videoCalls
 
+    private val recorder = CallRecorder(
+        recordings,
+        allowed = { settings.current.callRecording },
+        byDefault = { settings.current.recordByDefault },
+        party = ::partyOf,
+    ) { publish() }
+
     // ---------------------------------------------------------------- placing calls
 
     /**
@@ -140,10 +148,12 @@ class CallManager(
         val params = core.createCallParams(null) ?: return "无法创建呼叫"
         params.account = account
         this.video.prepare(params, video)
+        val recordFile = recorder.prepare(params)
         // The core reports OutgoingInit from inside the invite call; `pending` tells it apart there.
         pending = kind
         val created = core.inviteAddressWithParams(address, params)
         pending = null
+        created?.let { recorder.attach(it, recordFile) }
         return if (created == null) "呼叫失败" else null
     }
 
@@ -176,6 +186,7 @@ class CallManager(
             return
         }
         this.video.prepare(params, video && CallVideoSupport.offered(call))
+        recorder.attach(call, recorder.prepare(params))
         call.acceptWithParams(params)
     }
 
@@ -260,6 +271,12 @@ class CallManager(
         held.resume()
         publish()
     }
+
+    /** Starts or stops recording the current call. */
+    fun toggleRecording() = recorder.toggle(live(current), conference != null)
+
+    /** Recording was allowed or forbidden in the settings; forbidden, running recordings end. */
+    fun onRecordingAllowedChanged() = recorder.onAllowedChanged(core.calls.toList())
 
     // ---------------------------------------------------------------- video
 
@@ -351,6 +368,7 @@ class CallManager(
         val created = core.createConferenceWithParams(params) ?: return "无法创建三方通话"
         // Muting the call the user is talking in carries over to the three-way call.
         val muted = isMuted(first)
+        recorder.onMerging(listOf(first, second))
         created.addParticipants(arrayOf(first, second))
         conference = created
         consulting = false
@@ -415,6 +433,7 @@ class CallManager(
                 if (same(call, current) || same(call, other)) host?.dismissIncomingCall()
                 if (callState == Call.State.StreamsRunning) {
                     video.onStreaming(call)
+                    recorder.onStreaming(call, conference != null)
                     if (same(call, current)) onCurrentStreaming(call, meta)
                 }
                 publish()
@@ -562,6 +581,7 @@ class CallManager(
     private fun onReleased(call: Call) {
         val meta = metas.remove(call.nativePointer)
         video.onReleased(call)
+        recorder.onReleased(call)
         when {
             same(call, current) -> {
                 host?.dismissIncomingCall()
@@ -690,6 +710,8 @@ class CallManager(
             video = if (videoAllowed && !ringing) CallVideoSupport.stateOf(call) else null,
             videoOffer = videoAllowed && (if (ringing) CallVideoSupport.offered(call) else video.isRequesting(call)),
             videoAllowed = videoAllowed && conference == null,
+            recordable = recorder.recordable(call, conference != null),
+            recordingSince = recorder.startedAt(call),
         )
     }
 

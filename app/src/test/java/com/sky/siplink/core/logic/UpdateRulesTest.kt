@@ -8,7 +8,6 @@ import org.junit.Test
 
 class UpdateRulesTest {
     private val hour = 60 * 60 * 1000L
-    private val day = 24 * hour
 
     /** The ABIs of the test phone (Samsung, Android 16), preferred one first. */
     private val phone = listOf("arm64-v8a", "armeabi-v7a", "armeabi")
@@ -22,7 +21,7 @@ class UpdateRulesTest {
         assets = listOf(apk("SipLink-0.2.0-armeabi-v7a.apk"), apk("SipLink-0.2.0-arm64-v8a.apk"), apk("checksums.txt")),
     )
 
-    private val found = FoundRelease("0.2.0", "- 新增自动检查更新", release.assets[1].url)
+    private val found = FoundRelease("0.2.0", "- 新增自动检查更新", release.pageUrl, release.assets[1])
 
     @Test
     fun aTagIsADottedVersionWithOrWithoutItsV() {
@@ -64,40 +63,85 @@ class UpdateRulesTest {
         assertEquals(release.assets[1], UpdateRules.apkFor(release.assets, phone))
         // The first ABI of the device that has an APK.
         assertEquals(release.assets[0], UpdateRules.apkFor(release.assets, listOf("armeabi-v7a", "armeabi")))
-        assertEquals(release.assets[1].url, UpdateRules.downloadUrl(release, phone))
         // Only APKs, upper case in the extension included.
         assertEquals(
             "SipLink-0.2.0-arm64-v8a.APK",
             UpdateRules.apkFor(listOf(apk("arm64-v8a-notes.txt"), apk("SipLink-0.2.0-arm64-v8a.APK")), phone)?.name,
         )
+        // Only from the releases of the app's own repository.
+        val elsewhere = ReleaseAsset("SipLink-0.2.0-arm64-v8a.apk", "https://github.com/someone/else/releases/download/v0.2.0/SipLink-0.2.0-arm64-v8a.apk")
+        assertNull(UpdateRules.apkFor(listOf(elsewhere), phone))
+        assertNull(UpdateRules.apkFor(listOf(ReleaseAsset("SipLink-0.2.0-arm64-v8a.apk", "http://example.com/a.apk")), phone))
     }
 
     @Test
-    fun withoutAnApkForTheDeviceTheReleasePageIsOpened() {
-        assertNull(UpdateRules.apkFor(release.assets, listOf("x86_64", "x86")))
-        assertEquals(release.pageUrl, UpdateRules.downloadUrl(release, listOf("x86_64", "x86")))
-        assertEquals(release.pageUrl, UpdateRules.downloadUrl(release.copy(assets = emptyList()), phone))
-        // An address that is not HTTPS is not opened; the page of all releases stands in.
-        val plain = release.copy(pageUrl = "http://example.com/", assets = listOf(ReleaseAsset("SipLink-0.2.0-arm64-v8a.apk", "http://example.com/a.apk")))
-        assertNull(UpdateRules.apkFor(plain.assets, phone))
-        assertEquals(UpdateRules.RELEASES_PAGE, UpdateRules.downloadUrl(plain, phone))
-        assertEquals(UpdateRules.RELEASES_PAGE, UpdateRules.downloadUrl(release.copy(pageUrl = "", assets = emptyList()), phone))
+    fun withoutAnApkForTheDeviceThereIsOnlyThePage() {
+        assertNull(UpdateRules.found(release, listOf("x86_64", "x86")).apk)
+        assertEquals(release.pageUrl, UpdateRules.found(release, listOf("x86_64", "x86")).pageUrl)
+        // A page that is not HTTPS is not opened; the page of all releases stands in.
+        assertEquals(UpdateRules.RELEASES_PAGE, UpdateRules.found(release.copy(pageUrl = "http://example.com/"), phone).pageUrl)
+        assertEquals(UpdateRules.RELEASES_PAGE, UpdateRules.found(release.copy(pageUrl = ""), phone).pageUrl)
     }
 
     @Test
-    fun aCheckKeepsTheVersionTheNotesAndWhatToOpen() {
+    fun aCheckKeepsTheVersionTheNotesThePageAndTheApk() {
         assertEquals(found, UpdateRules.found(release, phone))
     }
 
     @Test
-    fun anAutomaticCheckIsDueOnceADayOrAnHourAfterAFailure() {
-        val last = 1_800_000_000_000L
-        assertTrue("Never checked", UpdateRules.isDue(last, 0, false))
-        assertFalse(UpdateRules.isDue(last + day - 1, last, false))
-        assertTrue(UpdateRules.isDue(last + day, last, false))
-        assertFalse(UpdateRules.isDue(last + hour - 1, last, true))
-        assertTrue(UpdateRules.isDue(last + hour, last, true))
-        assertTrue("The clock was put back", UpdateRules.isDue(last - 1, last, false))
+    fun aDigestIsTakenOnlyAsSha256() {
+        val hex = "2151b604e3429bff440b9fbc03eb3617bc2603cda96c95b9bb05277f9ddba255"
+        assertEquals(hex, UpdateRules.sha256Of("sha256:$hex"))
+        assertEquals(hex, UpdateRules.sha256Of("SHA256:${hex.uppercase()}"))
+        listOf(null, "", "null", "sha1:$hex", "sha256:", "sha256:${hex.dropLast(1)}", "sha256:${hex.dropLast(1)}x").forEach {
+            assertEquals("\"$it\" was taken", "", UpdateRules.sha256Of(it))
+        }
+    }
+
+    @Test
+    fun downloadsComeOnlyFromGitHubOverHttps() {
+        assertTrue(UpdateRules.isTrustedDownload(release.assets[1].url))
+        assertTrue(UpdateRules.isTrustedDownload("https://release-assets.githubusercontent.com/github-production-release-asset/1/2?sp=r"))
+        assertTrue(UpdateRules.isTrustedDownload("https://objects.githubusercontent.com/github-production-release-asset-2e65be/1"))
+        listOf(
+            "http://github.com/tom231efa/siplink-android/releases/download/v0.2.0/a.apk",
+            "https://example.com/a.apk",
+            "https://github.com.example.com/a.apk",
+            "https://githubusercontent.com.example.com/a.apk",
+            "https://user@github.com/a.apk",
+            "not a url",
+        ).forEach { assertFalse("$it was trusted", UpdateRules.isTrustedDownload(it)) }
+    }
+
+    @Test
+    fun theAppChecksOnEveryEntryButNotTwiceWithinAMinute() {
+        val now = 1_800_000_000_000L
+        val gap = UpdateRules.MIN_GAP_MS
+        assertTrue("Never checked", UpdateRules.checksOnEntry(now, UpdateState()))
+        assertFalse(UpdateRules.checksOnEntry(now + gap - 1, UpdateState(lastAttempt = now)))
+        assertTrue(UpdateRules.checksOnEntry(now + gap, UpdateState(lastAttempt = now)))
+        assertTrue("The clock was put back", UpdateRules.checksOnEntry(now - 1, UpdateState(lastAttempt = now)))
+        // Not before the time GitHub named.
+        assertFalse(UpdateRules.checksOnEntry(now + hour, UpdateState(lastAttempt = now, blockedUntil = now + hour + 1)))
+        assertTrue(UpdateRules.checksOnEntry(now + hour, UpdateState(lastAttempt = now, blockedUntil = now + hour)))
+    }
+
+    @Test
+    fun aRateLimitIsRespectedUntilTheTimeGitHubNames() {
+        val now = 1_800_000_000_000L
+        val reset = (now + hour) / 1000
+        assertEquals(reset * 1000, UpdateRules.blockedUntil(403, "0", "$reset", null, now))
+        assertEquals(reset * 1000, UpdateRules.blockedUntil(429, "0", "$reset", null, now))
+        assertEquals(now + 30_000, UpdateRules.blockedUntil(429, null, null, "30", now))
+        assertEquals(now + 30_000, UpdateRules.blockedUntil(403, "5", "$reset", "30", now))
+        // A 429 that names no time waits a minute; a 403 that is no rate limit is a plain failure.
+        assertEquals(now + UpdateRules.DEFAULT_BACKOFF_MS, UpdateRules.blockedUntil(429, null, null, null, now))
+        assertNull(UpdateRules.blockedUntil(403, "12", "$reset", null, now))
+        assertNull(UpdateRules.blockedUntil(403, null, null, null, now))
+        assertNull(UpdateRules.blockedUntil(200, "0", "$reset", null, now))
+        assertNull(UpdateRules.blockedUntil(304, "0", "$reset", null, now))
+        // A reset in the past still waits a moment.
+        assertEquals(now + 1000, UpdateRules.blockedUntil(403, "0", "1", null, now))
     }
 
     @Test
@@ -114,7 +158,7 @@ class UpdateRulesTest {
     }
 
     @Test
-    fun theRowSaysWhatIsKnown() {
+    fun theRowSaysWhatIsKnownInGeneralWords() {
         val installed = "0.1.2"
         assertEquals("点按检查更新", UpdateRules.status(UpdateState(), installed))
         assertEquals("正在检查…", UpdateRules.status(UpdateState(checking = true, latest = found), installed))
@@ -123,18 +167,14 @@ class UpdateRulesTest {
         assertEquals("已跳过 0.2.0", UpdateRules.status(checked.copy(skipped = "0.2.0"), installed))
         assertEquals("已是最新版本", UpdateRules.status(checked, "0.2.0"))
         assertEquals("已是最新版本", UpdateRules.status(checked.copy(latest = found.copy(version = "0.3.0-beta")), installed))
-        // A failed manual check says so; one that failed by itself says nothing new.
-        assertEquals("无法连接 GitHub", UpdateRules.status(checked.copy(failure = "无法连接 GitHub", lastFailed = true), installed))
-        assertEquals("有新版本 0.2.0", UpdateRules.status(checked.copy(lastFailed = true, lastAttempt = 2), installed))
-    }
-
-    @Test
-    fun aFailureIsNamedShortly() {
-        assertEquals("无法连接 GitHub", UpdateRules.failureText(null))
-        assertEquals("检查失败：无法解析 GitHub 的响应", UpdateRules.failureText(200))
-        assertEquals("检查失败：尚无发布版本", UpdateRules.failureText(404))
-        assertEquals("检查失败：GitHub 暂时拒绝请求", UpdateRules.failureText(403))
-        assertEquals("检查失败：GitHub 暂时拒绝请求", UpdateRules.failureText(429))
-        assertEquals("检查失败（HTTP 502）", UpdateRules.failureText(502))
+        // A failure is named in two plain ways, and a newer version found before still counts more.
+        assertEquals("更新检查失败", UpdateRules.status(checked.copy(failure = UpdateFailure.CHECK_FAILED), "0.2.0"))
+        assertEquals("请求过于频繁", UpdateRules.status(UpdateState(failure = UpdateFailure.RATE_LIMITED), installed))
+        assertEquals("有新版本 0.2.0", UpdateRules.status(checked.copy(failure = UpdateFailure.CHECK_FAILED), installed))
+        // A download of the version offered says how far it is.
+        assertEquals("正在下载 25%", UpdateRules.status(checked, installed, DownloadState.Running("0.2.0", 25, 100)))
+        assertEquals("已下载 0.2.0", UpdateRules.status(checked, installed, DownloadState.Ready("0.2.0", "/x.apk")))
+        assertEquals("有新版本 0.2.0", UpdateRules.status(checked, installed, DownloadState.Ready("0.1.9", "/x.apk")))
+        assertEquals("512 KB", UpdateRules.percent(DownloadState.Running("0.2.0", 512 * 1024, 0)))
     }
 }

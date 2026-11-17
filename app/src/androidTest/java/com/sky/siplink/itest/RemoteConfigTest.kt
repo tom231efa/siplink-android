@@ -170,8 +170,11 @@ class RemoteConfigTest : ScreenTestBase(PICTURES) {
         // The screens are locked; the remote configuration screen itself is the user's.
         back()
         see(ManagedConfig.LOCKED)
-        locked("视频通话", "自动检查更新")
+        locked("视频通话")
         usable("免打扰", "深色")
+        tap("关于")
+        locked("自动检查更新")
+        back()
         tap("深色")
         await("the dark theme") { engine.settings.current.themeMode == ThemeMode.DARK }
 
@@ -231,7 +234,10 @@ class RemoteConfigTest : ScreenTestBase(PICTURES) {
         // The account said goodbye to the PBX before the CAs went, which drops the SIP connections.
         await("the PBX to forget the contact of $APP") { !pbxHasContact(APP) }
         back()
-        usable("视频通话", "自动检查更新")
+        usable("视频通话")
+        tap("关于")
+        usable("自动检查更新")
+        back()
     }
 
     @Test

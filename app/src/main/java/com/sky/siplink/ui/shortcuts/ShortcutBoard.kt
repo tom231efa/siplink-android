@@ -2,11 +2,13 @@ package com.sky.siplink.ui.shortcuts
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -21,6 +24,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Clear
 import androidx.compose.material.icons.rounded.Edit
@@ -29,7 +33,6 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -41,6 +44,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
@@ -52,7 +57,6 @@ import com.sky.siplink.core.logic.ShortcutRules
 import com.sky.siplink.core.model.Shortcut
 import com.sky.siplink.core.model.ShortcutAction
 import com.sky.siplink.engine
-import com.sky.siplink.ui.components.FieldText
 import com.sky.siplink.ui.components.pressScale
 
 /**
@@ -112,26 +116,18 @@ internal fun ShortcutBoard(
     )
 
     Column(modifier) {
-        OutlinedTextField(
+        SearchField(
             value = query,
             onValueChange = { query = it },
+            placeholder = "搜索名称、号码、分类或类型",
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
-            placeholder = { FieldText("搜索名称、号码、分类或类型") },
-            leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
-            trailingIcon = {
-                if (query.isNotEmpty()) {
-                    IconButton(onClick = { query = "" }) { Icon(Icons.Rounded.Clear, contentDescription = "清除") }
-                }
-            },
-            singleLine = true,
-            shape = CircleShape,
         )
 
         if (categories.size > 1 || categories.first().first.isNotEmpty()) {
             LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 item(key = "all", contentType = "chip") {
@@ -151,7 +147,7 @@ internal fun ShortcutBoard(
                 }
             }
         } else {
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(8.dp))
         }
 
         if (shown.isEmpty()) {
@@ -279,3 +275,44 @@ private fun ShortcutKey(
         }
     }
 }
+
+/** The search field of the board: a compact pill, smaller than a form field, with a smaller text and icons. */
+@Composable
+private fun SearchField(value: String, onValueChange: (String) -> Unit, placeholder: String, modifier: Modifier = Modifier) {
+    val colors = MaterialTheme.colorScheme
+    val textStyle = MaterialTheme.typography.bodyMedium.copy(color = colors.onSurface)
+    BasicTextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = modifier.height(SEARCH_HEIGHT),
+        singleLine = true,
+        textStyle = textStyle,
+        cursorBrush = SolidColor(colors.primary),
+        decorationBox = { field ->
+            Row(
+                Modifier
+                    .fillMaxSize()
+                    .clip(CircleShape)
+                    .background(colors.surfaceContainerHigh)
+                    .padding(start = 14.dp, end = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Rounded.Search, contentDescription = null, tint = colors.onSurfaceVariant, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                    if (value.isEmpty()) {
+                        Text(placeholder, style = textStyle, color = colors.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                    field()
+                }
+                if (value.isNotEmpty()) {
+                    IconButton(onClick = { onValueChange("") }, modifier = Modifier.size(34.dp)) {
+                        Icon(Icons.Rounded.Clear, contentDescription = "清除", modifier = Modifier.size(18.dp))
+                    }
+                }
+            }
+        },
+    )
+}
+
+private val SEARCH_HEIGHT = 42.dp

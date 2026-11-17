@@ -123,9 +123,14 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
         tap(ManagedConfig.LOCKED)
         await("the lock to say why") { shown(ManagedConfig.NOTICE).isNotEmpty() }
         await("the notice to go") { shown(ManagedConfig.NOTICE).isEmpty() }
-        locked("视频通话", "自动接听对讲呼叫", "对讲使用扬声器", "后台保持在线", "自动检查更新")
+        locked("视频通话", "通话录音", "自动接听对讲呼叫", "对讲使用扬声器", "后台保持在线")
+        // The recordings and how many are kept are the user's own.
+        usable("免打扰", "深色", "顶部", "电池优化", "录音文件", "1000")
         // Checking for a newer version is an action, not a setting.
-        usable("免打扰", "深色", "顶部", "电池优化", VERSION_ROW)
+        tap("关于")
+        locked("自动检查更新")
+        usable(VERSION_ROW)
+        back()
         tap("免打扰")
         await("do not disturb to be switched on") { engine.settings.current.doNotDisturb }
         tap("免打扰")
@@ -277,7 +282,10 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
         see(ManagedConfig.LOCKED)
         onMain { engine.lock.setManaged(false) }
         await("the lock to go") { shown(ManagedConfig.LOCKED).isEmpty() }
-        usable("视频通话", "自动接听对讲呼叫", "后台保持在线", "自动检查更新")
+        usable("视频通话", "通话录音", "自动接听对讲呼叫", "后台保持在线")
+        tap("关于")
+        usable("自动检查更新")
+        back()
         tap("SIP 账号")
         see("批量导入账号")
         assertEquals("The button to add an account", 1, namelessButtons().size)

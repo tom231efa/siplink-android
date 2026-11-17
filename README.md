@@ -37,7 +37,7 @@ SipLink 是基于 [Linphone SDK](https://www.linphone.org/en/liblinphone-voip-sd
 | 快捷键 | 速拨、转接、发送按键、呼叫前转、免打扰；分类、图标、固定线路；CSV 导入导出 |
 | 通讯录 | 最多 50 个 LDAP 通讯录，支持 StartTLS；来去电显示姓名；本地缓存 |
 | 远程配置 | 扫描管理平台二维码载入配置并定期同步，下发内容在本机只读 |
-| 其它 | 通话记录、编码选择、CA 证书管理、后台保持注册（不依赖推送）、深浅色主题 |
+| 其它 | 通话记录、录音、编码选择、CA 证书管理、后台保持注册（不依赖推送）、深浅色主题 |
 
 ## 运行要求
 
@@ -47,7 +47,7 @@ SipLink 是基于 [Linphone SDK](https://www.linphone.org/en/liblinphone-voip-sd
 
 ## 获取
 
-从 [GitHub Releases](https://github.com/tom231efa/siplink-android/releases) 下载 APK 并安装。应用会检查 GitHub 上的新版本并在设置中提示，安装包由浏览器下载。
+从 [GitHub Releases](https://github.com/tom231efa/siplink-android/releases) 下载 APK 并安装。应用会检查 GitHub 上的新版本并在设置中提示，可在应用内下载并交由系统安装。
 
 更新检查会访问 `api.github.com`，可在设置中关闭，详见[隐私与权限](docs/privacy.md)。
 

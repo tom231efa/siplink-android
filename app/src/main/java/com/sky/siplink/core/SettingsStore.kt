@@ -3,6 +3,7 @@ package com.sky.siplink.core
 import android.os.Handler
 import android.os.Looper
 import com.sky.siplink.core.logic.ManagedConfig
+import com.sky.siplink.core.logic.RecordingRules
 import com.sky.siplink.core.logic.VideoRules
 import com.sky.siplink.core.model.FeatureCodes
 import com.sky.siplink.core.model.Settings
@@ -29,7 +30,9 @@ class SettingsStore(private val config: Config, private val lock: ConfigLock) {
      */
     fun update(transform: (Settings) -> Settings): Boolean {
         // A frame rate that cannot be chosen is no rate of its own, here as when it is read back.
-        val wanted = transform(state.value).let { it.copy(videoFrameRate = VideoRules.frameRate(it.videoFrameRate)) }
+        val wanted = transform(state.value).let {
+            it.copy(videoFrameRate = VideoRules.frameRate(it.videoFrameRate), recordingsKept = RecordingRules.keepChoice(it.recordingsKept))
+        }
         val next = if (lock.refuses) ManagedConfig.localUpdate(state.value, wanted) else wanted
         if (next != state.value) {
             save(next)
@@ -82,6 +85,9 @@ class SettingsStore(private val config: Config, private val lock: ConfigLock) {
             adaptiveRateControl = bool(KEY_ADAPTIVE_RATE_CONTROL, d.adaptiveRateControl),
             echoCancellation = bool(KEY_ECHO_CANCELLATION, d.echoCancellation),
             ipv6 = bool(KEY_IPV6, d.ipv6),
+            callRecording = bool(KEY_CALL_RECORDING, d.callRecording),
+            recordByDefault = bool(KEY_RECORD_BY_DEFAULT, d.recordByDefault),
+            recordingsKept = RecordingRules.keepChoice(config.getInt(SECTION, KEY_RECORDINGS_KEPT, d.recordingsKept)),
         )
     }
 
@@ -125,6 +131,9 @@ class SettingsStore(private val config: Config, private val lock: ConfigLock) {
         config.setBool(SECTION, KEY_ADAPTIVE_RATE_CONTROL, value.adaptiveRateControl)
         config.setBool(SECTION, KEY_ECHO_CANCELLATION, value.echoCancellation)
         config.setBool(SECTION, KEY_IPV6, value.ipv6)
+        config.setBool(SECTION, KEY_CALL_RECORDING, value.callRecording)
+        config.setBool(SECTION, KEY_RECORD_BY_DEFAULT, value.recordByDefault)
+        config.setInt(SECTION, KEY_RECORDINGS_KEPT, value.recordingsKept)
         // Writing the file means writing every account in it as well, and a text field changes
         // the settings with each key stroke: one write once the changes have stopped coming.
         unsaved = true
@@ -195,5 +204,8 @@ class SettingsStore(private val config: Config, private val lock: ConfigLock) {
         private const val KEY_ADAPTIVE_RATE_CONTROL = "adaptive_rate_control"
         private const val KEY_ECHO_CANCELLATION = "echo_cancellation"
         private const val KEY_IPV6 = "ipv6"
+        private const val KEY_CALL_RECORDING = "call_recording"
+        private const val KEY_RECORD_BY_DEFAULT = "record_by_default"
+        private const val KEY_RECORDINGS_KEPT = "recordings_kept"
     }
 }

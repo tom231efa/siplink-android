@@ -25,13 +25,14 @@ class ReleaseJsonTest {
         assertEquals("- 新增自动检查更新\n- 修复若干问题", release.notes)
         assertEquals(
             listOf(
-                ReleaseAsset("SipLink-0.2.0-arm64-v8a.apk", "$PAGE/download/v0.2.0/SipLink-0.2.0-arm64-v8a.apk"),
-                ReleaseAsset("SipLink-0.2.0-armeabi-v7a.apk", "$PAGE/download/v0.2.0/SipLink-0.2.0-armeabi-v7a.apk"),
+                // The size and the SHA-256 GitHub states; an asset from before GitHub kept digests has none.
+                ReleaseAsset("SipLink-0.2.0-arm64-v8a.apk", "$PAGE/download/v0.2.0/SipLink-0.2.0-arm64-v8a.apk", 31_457_280, SHA256),
+                ReleaseAsset("SipLink-0.2.0-armeabi-v7a.apk", "$PAGE/download/v0.2.0/SipLink-0.2.0-armeabi-v7a.apk", 29_360_128, ""),
             ),
             release.assets,
         )
         assertEquals(
-            FoundRelease("0.2.0", "- 新增自动检查更新\n- 修复若干问题", "$PAGE/download/v0.2.0/SipLink-0.2.0-armeabi-v7a.apk"),
+            FoundRelease("0.2.0", "- 新增自动检查更新\n- 修复若干问题", "$PAGE/tag/v0.2.0", release.assets[1]),
             UpdateRules.found(release, listOf("armeabi-v7a", "armeabi")),
         )
     }
@@ -42,7 +43,9 @@ class ReleaseJsonTest {
         assertEquals("", release.notes)
         assertTrue(release.assets.isEmpty())
         // The page of the release is opened instead of a package.
-        assertEquals("$PAGE/tag/v0.2.0", UpdateRules.found(release, listOf("arm64-v8a")).url)
+        val found = UpdateRules.found(release, listOf("arm64-v8a"))
+        assertEquals("$PAGE/tag/v0.2.0", found.pageUrl)
+        assertEquals(null, found.apk)
     }
 
     @Test
@@ -55,6 +58,7 @@ class ReleaseJsonTest {
 
     private companion object {
         const val PAGE = "https://github.com/tom231efa/siplink-android/releases"
+        const val SHA256 = "2151b604e3429bff440b9fbc03eb3617bc2603cda96c95b9bb05277f9ddba255"
 
         /** Shaped like GitHub's answer, with fields the app does not read left in. */
         val RELEASE = """
@@ -67,8 +71,8 @@ class ReleaseJsonTest {
               "draft": false,
               "prerelease": false,
               "assets": [
-                {"name": "SipLink-0.2.0-arm64-v8a.apk", "size": 1, "browser_download_url": "$PAGE/download/v0.2.0/SipLink-0.2.0-arm64-v8a.apk"},
-                {"name": "SipLink-0.2.0-armeabi-v7a.apk", "size": 1, "browser_download_url": "$PAGE/download/v0.2.0/SipLink-0.2.0-armeabi-v7a.apk"}
+                {"name": "SipLink-0.2.0-arm64-v8a.apk", "size": 31457280, "digest": "sha256:$SHA256", "browser_download_url": "$PAGE/download/v0.2.0/SipLink-0.2.0-arm64-v8a.apk"},
+                {"name": "SipLink-0.2.0-armeabi-v7a.apk", "size": 29360128, "digest": null, "browser_download_url": "$PAGE/download/v0.2.0/SipLink-0.2.0-armeabi-v7a.apk"}
               ],
               "body": "- 新增自动检查更新\n- 修复若干问题"
             }

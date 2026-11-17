@@ -164,6 +164,8 @@ data class RemoteDocument(
                 adaptiveRateControl = fields.bool("adaptiveRateControl", d.adaptiveRateControl),
                 echoCancellation = fields.bool("echoCancellation", d.echoCancellation),
                 ipv6 = fields.bool("ipv6", d.ipv6),
+                callRecording = fields.bool("callRecording", d.callRecording),
+                recordByDefault = fields.bool("recordByDefault", d.recordByDefault),
             )
         }
 

@@ -48,6 +48,9 @@ class ManagedConfigTest {
         adaptiveRateControl = !current.adaptiveRateControl,
         echoCancellation = !current.echoCancellation,
         ipv6 = !current.ipv6,
+        callRecording = !current.callRecording,
+        recordByDefault = !current.recordByDefault,
+        recordingsKept = 100,
     )
 
     /** The settings that stay the user's own, taken from [everythingChanged]. */
@@ -57,6 +60,7 @@ class ManagedConfigTest {
         dynamicColor = everythingChanged.dynamicColor,
         callBannerPosition = everythingChanged.callBannerPosition,
         lockScreenPromptDeclined = everythingChanged.lockScreenPromptDeclined,
+        recordingsKept = everythingChanged.recordingsKept,
     )
 
     /** The values of a data class in the order of its properties. */
@@ -118,6 +122,9 @@ class ManagedConfigTest {
             { it.copy(adaptiveRateControl = !it.adaptiveRateControl) },
             { it.copy(echoCancellation = !it.echoCancellation) },
             { it.copy(ipv6 = !it.ipv6) },
+            // Whether calls are recorded, and whether by default, is the administrator's.
+            { it.copy(callRecording = !it.callRecording) },
+            { it.copy(recordByDefault = !it.recordByDefault) },
         )
         locked.forEachIndexed { index, change ->
             val wanted = change(current)

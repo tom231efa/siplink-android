@@ -68,6 +68,8 @@ import org.linphone.mediastream.video.capture.CaptureTextureView
  * A picture never changes its shape. Where it has another shape than the screen it is either
  * shown whole, with the rest of the screen black, or enlarged until it fills the screen, its
  * edges cut off: [VideoRules.fillsByDefault] picks, and a key in the corner changes it.
+ *
+ * @param record the record button, first of the buttons in the corner; null where the call cannot be recorded
  */
 @Composable
 internal fun VideoStage(
@@ -76,6 +78,7 @@ internal fun VideoStage(
     onTap: () -> Unit,
     onSwitchCamera: () -> Unit,
     onToggleCamera: () -> Unit,
+    record: (@Composable () -> Unit)? = null,
 ) {
     // What the user picked with the key; null until then.
     var fillChosen by remember { mutableStateOf<Boolean?>(null) }
@@ -150,6 +153,7 @@ internal fun VideoStage(
             }
             AnimatedVisibility(chrome, enter = fadeIn(tween(180)), exit = fadeOut(tween(140))) {
                 Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    record?.invoke()
                     if (video.receiving && picture != null && VideoRules.canFill(cut)) {
                         CornerButton(
                             if (filled) Icons.Rounded.FullscreenExit else Icons.Rounded.Fullscreen,

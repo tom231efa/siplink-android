@@ -49,6 +49,9 @@ class SipEngine(context: Context) {
     val codecs: CodecManager by lazy { CodecManager(core, lock) }
     val shortcuts: ShortcutManager
 
+    /** The call recordings, kept in the app's private files. */
+    val recordings: RecordingStore
+
     /** The configuration a management platform hands out; started by the Application ([RemoteConfig.start]). */
     val remote: RemoteConfig by lazy { RemoteConfig(appContext, this) }
 
@@ -141,7 +144,8 @@ class SipEngine(context: Context) {
         tls = TlsManager(appContext, core, lock)
         tls.applySettings(settings.current)
         accounts = AccountManager(core, lock)
-        calls = CallManager(core, settings, accounts, names)
+        recordings = RecordingStore(File(appContext.filesDir, RecordingStore.DIRECTORY)) { settings.current.recordingsKept }
+        calls = CallManager(core, settings, accounts, names, recordings)
         history = HistoryManager(core, names) { settings.current.features }
         shortcuts = ShortcutManager(File(appContext.filesDir, SHORTCUTS_FILE), lock)
         accounts.onEdited = ::onAccountsEdited
@@ -194,6 +198,7 @@ class SipEngine(context: Context) {
             CallVideoSupport.setEnabled(core, after.videoCalls)
             calls.onVideoAllowedChanged()
         }
+        if (before.callRecording != after.callRecording) calls.onRecordingAllowedChanged()
         if (before.videoSize != after.videoSize || before.videoFrameRate != after.videoFrameRate) {
             CallVideoSupport.setQuality(core, after.videoSize, after.videoFrameRate)
         }
@@ -244,6 +249,9 @@ class SipEngine(context: Context) {
         // goes along when the account moves to another server. Left to itself the core keeps a
         // digest of it only, which fits no other user name and no other server.
         core.config.setInt("sip", "store_ha1_passwd", 0)
+
+        // A call is recorded without the other side being told (no "record aware" attribute in the SDP).
+        core.isRecordAwareEnabled = false
 
         // Let the SDK ring with the device ringtone and vibrate on incoming calls.
         core.isNativeRingingEnabled = true

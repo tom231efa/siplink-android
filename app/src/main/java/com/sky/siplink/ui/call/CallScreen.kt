@@ -140,6 +140,9 @@ fun CallScreen(onAnswer: (video: Boolean) -> Unit, onFinished: () -> Unit, glass
 
     val info = shown
     val video = info?.video?.takeIf { info.phase == CallPhase.CONNECTED }
+    // The record button stands in the top right corner; over video, in the row of the camera buttons.
+    val recordable = info != null && info.recordable && (info.phase == CallPhase.CONNECTED || info.phase == CallPhase.HELD)
+    val record: @Composable () -> Unit = { RecordControl(info?.recordingSince, onToggle = calls::toggleRecording) }
     LaunchedEffect(video == null) { chromeHidden = false }
     Box(
         Modifier
@@ -154,6 +157,7 @@ fun CallScreen(onAnswer: (video: Boolean) -> Unit, onFinished: () -> Unit, glass
                 onTap = { chromeHidden = !chromeHidden },
                 onSwitchCamera = calls::switchCamera,
                 onToggleCamera = { withCamera { calls.toggleCamera()?.let { notice = it } } },
+                record = record.takeIf { recordable },
             )
         }
         if (info != null) {
@@ -169,6 +173,7 @@ fun CallScreen(onAnswer: (video: Boolean) -> Unit, onFinished: () -> Unit, glass
                     calls = calls,
                     notice = notice,
                     videoMode = video != null,
+                    recordRoom = recordable && video == null,
                     // The call activity asks for the microphone and, to answer with video, the camera.
                     onAnswer = onAnswer,
                     onToggleVideo = {
@@ -182,6 +187,17 @@ fun CallScreen(onAnswer: (video: Boolean) -> Unit, onFinished: () -> Unit, glass
                     onOpenShortcuts = { shortcutsOpen = true },
                     onNotice = { notice = it },
                 )
+            }
+            AnimatedVisibility(
+                visible = recordable && video == null,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .systemBarsPadding()
+                    .padding(top = 8.dp, end = 16.dp),
+                enter = fadeIn(tween(180)),
+                exit = fadeOut(tween(140)),
+            ) {
+                record()
             }
             AnimatedVisibility(
                 visible = keypadOpen && controls == Controls.ACTIVE,
@@ -254,6 +270,7 @@ private fun CallContent(
     calls: CallManager,
     notice: String?,
     videoMode: Boolean,
+    recordRoom: Boolean,
     onAnswer: (video: Boolean) -> Unit,
     onToggleVideo: () -> Unit,
     onAcceptVideo: () -> Unit,
@@ -267,6 +284,8 @@ private fun CallContent(
         val roomy = maxHeight >= 760.dp && controls != Controls.ACTIVE || maxHeight >= 860.dp
         val ringSize = if (roomy) 224.dp else 148.dp
         val avatarSize = if (roomy) 120.dp else 84.dp
+        // Below the record button in the top right corner, where it stands.
+        val top = if (recordRoom) 56.dp else 0.dp
         val controlsArea: @Composable (Modifier) -> Unit = { modifier ->
             AnimatedContent(
                 targetState = controls,
@@ -309,7 +328,7 @@ private fun CallContent(
                         .padding(start = 24.dp, end = if (videoMode) SideCornerWidth else 0.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(maxOf(8.dp, top)))
                     CallHead(info, calls, notice, videoMode, avatarSize, ringSize, onAcceptVideo)
                     if (!videoMode) Spacer(Modifier.weight(0.6f))
                 }
@@ -322,7 +341,7 @@ private fun CallContent(
                     .padding(horizontal = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(maxOf(16.dp, top)))
                 CallHead(info, calls, notice, videoMode, avatarSize, ringSize, onAcceptVideo)
                 Spacer(Modifier.weight(1f))
                 controlsArea(Modifier.heightIn(min = 250.dp))

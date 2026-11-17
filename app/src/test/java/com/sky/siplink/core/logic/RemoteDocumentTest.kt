@@ -181,6 +181,16 @@ class RemoteDocumentTest {
     }
 
     @Test
+    fun recordingIsAllowedAndNotByDefaultUnlessTheDocumentSaysOtherwise() {
+        // The fixture is from before the platform sent the two keys.
+        val older = parsed(fixture).settings
+        assertEquals(true to false, older.callRecording to older.recordByDefault)
+        val newer = parsed(with("""{"callRecording": false, "recordByDefault": true}""", "settings")).settings
+        assertEquals(false to true, newer.callRecording to newer.recordByDefault)
+        assertEquals(listOf("settings.callRecording 格式不正确"), errors(with("\"no\"", "settings", "callRecording")))
+    }
+
+    @Test
     fun aUserAgentTheRuleRefusesRefusesTheDocument() {
         assertEquals(listOf(UserAgent.Error.SPACE_AT_ENDS.full), errors(with("\" Example\"", "settings", "userAgent")))
         assertEquals(listOf(UserAgent.Error.NOT_PRINTABLE_ASCII.full), errors(with("\"话机\"", "settings", "userAgent")))

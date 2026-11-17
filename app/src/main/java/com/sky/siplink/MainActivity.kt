@@ -44,8 +44,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        // At most once a day, and only while the user lets the app ask by itself.
-        engine.updates.checkIfDue()
+        // Each time the app comes to the front, while the user lets it ask by itself (UpdateRules.checksOnEntry).
+        engine.updates.checkOnEntry()
         engine.remote.onForeground()
     }
 

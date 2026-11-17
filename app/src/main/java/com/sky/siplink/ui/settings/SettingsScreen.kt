@@ -22,8 +22,12 @@ import androidx.compose.material.icons.rounded.CloudSync
 import androidx.compose.material.icons.rounded.Dialpad
 import androidx.compose.material.icons.rounded.Dns
 import androidx.compose.material.icons.rounded.DoNotDisturbOn
+import androidx.compose.material.icons.rounded.FiberManualRecord
 import androidx.compose.material.icons.rounded.GraphicEq
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.ManageAccounts
+import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.ScreenLockPortrait
 import androidx.compose.material.icons.rounded.Sync
@@ -41,6 +45,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sky.siplink.BuildConfig
+import com.sky.siplink.core.logic.RecordingRules
+import com.sky.siplink.core.logic.UpdateRules
 import com.sky.siplink.core.model.BannerPosition
 import com.sky.siplink.core.model.RegState
 import com.sky.siplink.core.model.ThemeMode
@@ -65,6 +71,8 @@ fun SettingsScreen(
     onOpenFeatureCodes: () -> Unit,
     onOpenCodecs: () -> Unit,
     onOpenRemoteConfig: () -> Unit,
+    onOpenRecordings: () -> Unit,
+    onOpenAbout: () -> Unit,
 ) {
     val context = LocalContext.current
     val engine = context.engine
@@ -73,6 +81,8 @@ fun SettingsScreen(
     val accounts by engine.accounts.accounts.collectAsStateWithLifecycle()
     val directories by engine.directory.directories.collectAsStateWithLifecycle()
     val remote by engine.remote.status.collectAsStateWithLifecycle()
+    val recordings by engine.recordings.recordings.collectAsStateWithLifecycle()
+    val update by engine.updates.status.collectAsStateWithLifecycle()
     val messenger = LocalMessenger.current
     val launcher = rememberCallLauncher()
 
@@ -114,6 +124,43 @@ fun SettingsScreen(
                 NavRow(title = "功能码", icon = Icons.Rounded.Dialpad, onClick = onOpenFeatureCodes)
                 NavRow(title = if (settings.videoCalls) "编码" else "音频编码", icon = Icons.Rounded.GraphicEq, onClick = onOpenCodecs)
                 NavRow(title = "高级设置", icon = Icons.Rounded.Tune, onClick = onOpenAdvanced)
+            }
+
+            SectionCard(title = "录音") {
+                SwitchRow(
+                    title = "通话录音",
+                    icon = Icons.Rounded.Mic,
+                    checked = settings.callRecording,
+                    onCheckedChange = { value -> engine.updateSettings { it.copy(callRecording = value) } },
+                )
+                AnimatedVisibility(settings.callRecording) {
+                    SwitchRow(
+                        title = "默认录音",
+                        icon = Icons.Rounded.FiberManualRecord,
+                        checked = settings.recordByDefault,
+                        onCheckedChange = { value -> engine.updateSettings { it.copy(recordByDefault = value) } },
+                    )
+                }
+                // How many recordings are kept is the user's own, like the recordings themselves.
+                Personal {
+                    Text(
+                        "保留条数",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(start = 16.dp, top = 10.dp),
+                    )
+                    ChoiceRow(
+                        options = RecordingRules.KEEP_CHOICES.map { it to "$it" },
+                        selected = settings.recordingsKept,
+                        onSelect = { kept -> engine.updateSettings { it.copy(recordingsKept = kept) } },
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
+                }
+                NavRow(
+                    title = "录音文件",
+                    trailing = recordings.size.toString().takeIf { recordings.isNotEmpty() },
+                    icon = Icons.Rounded.LibraryMusic,
+                    onClick = onOpenRecordings,
+                )
             }
 
             SectionCard(title = "对讲来电") {
@@ -223,20 +270,12 @@ fun SettingsScreen(
                     icon = Icons.Rounded.CloudSync,
                     onClick = onOpenRemoteConfig,
                 )
-            }
-
-            AboutSection()
-
-            Column(Modifier.padding(horizontal = 12.dp)) {
-                Text(
-                    "SipLink ${BuildConfig.VERSION_NAME} · Linphone SDK ${engine.sdkVersion}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    "SIP 协议栈由 Belledonne Communications 的 Linphone SDK 提供，以 GNU AGPLv3 许可发布。",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                NavRow(
+                    title = "关于",
+                    // A newer version is worth a word here; how a check failed is only told on the page itself.
+                    trailing = if (UpdateRules.offered(update, BuildConfig.VERSION_NAME) != null) "有新版本" else BuildConfig.VERSION_NAME,
+                    icon = Icons.Rounded.Info,
+                    onClick = onOpenAbout,
                 )
             }
             Spacer(Modifier.height(16.dp))

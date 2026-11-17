@@ -22,6 +22,8 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Updates downloaded inside the app are handed to the system's installer, after the user's tap. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- Foreground service: keeps SIP accounts registered and calls alive. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -89,6 +91,17 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Keeps SIP accounts registered so incoming VoIP calls can be received without push notifications" />
         </service>
+
+        <!-- Lends the system's installer the APK of an update (cache/updates, see core/UpdateChecker.kt). -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.updates"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/update_paths" />
+        </provider>
 
         <receiver
             android:name=".service.CallActionReceiver"

@@ -17,8 +17,8 @@ object ManagedConfig {
     /**
      * What a settings change made on the phone comes to while the configuration is managed. The
      * user's own settings are taken from [wanted]: the do not disturb switch (not who keeps it),
-     * the appearance, and the answer to the lock screen question. Everything else stays as it
-     * is in [current].
+     * the appearance, the answer to the lock screen question, and how many recordings are kept.
+     * Everything else stays as it is in [current].
      *
      * The change was taken in full when the result equals [wanted].
      */
@@ -28,6 +28,7 @@ object ManagedConfig {
         dynamicColor = wanted.dynamicColor,
         callBannerPosition = wanted.callBannerPosition,
         lockScreenPromptDeclined = wanted.lockScreenPromptDeclined,
+        recordingsKept = wanted.recordingsKept,
     )
 
     /**

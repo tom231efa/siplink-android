@@ -124,6 +124,10 @@ data class CallInfo(
     val videoOffer: Boolean = false,
     /** Video can be switched on in this call (video calls are on in the settings, no three-way call). */
     val videoAllowed: Boolean = false,
+    /** The call can be recorded: recording is allowed, the call got a file for it, and it is no three-way call. */
+    val recordable: Boolean = false,
+    /** While the call is being recorded: SystemClock.elapsedRealtime() at which the recording would have started without its breaks. */
+    val recordingSince: Long? = null,
 )
 
 /** Which ways the video of a call goes. */
@@ -343,4 +347,13 @@ data class Settings(
     val echoCancellation: Boolean = true,
     /** The SIP core uses IPv6 where the network has it; on, as in a fresh core. */
     val ipv6: Boolean = true,
+    /** Calls can be recorded: the call screen offers the record button. Off, nothing is recorded. */
+    val callRecording: Boolean = true,
+    /** Every call is recorded from the moment it is connected (needs [callRecording]). */
+    val recordByDefault: Boolean = false,
+    /**
+     * How many recordings are kept, one of [com.sky.siplink.core.logic.RecordingRules.KEEP_CHOICES];
+     * the oldest go first. The user's own, also under a managed configuration.
+     */
+    val recordingsKept: Int = com.sky.siplink.core.logic.RecordingRules.DEFAULT_KEEP,
 )

@@ -86,6 +86,8 @@ import com.sky.siplink.ui.directory.DirectoryScreen
 import com.sky.siplink.ui.directory.LdapEditScreen
 import com.sky.siplink.ui.directory.LdapListScreen
 import com.sky.siplink.ui.history.HistoryScreen
+import com.sky.siplink.ui.recordings.RecordingsScreen
+import com.sky.siplink.ui.settings.AboutScreen
 import com.sky.siplink.ui.settings.AdvancedSettingsScreen
 import com.sky.siplink.ui.settings.CodecsScreen
 import com.sky.siplink.ui.settings.FeatureCodesScreen
@@ -117,6 +119,8 @@ private object Routes {
     const val FEATURE_CODES = "feature-codes"
     const val CODECS = "codecs"
     const val REMOTE_CONFIG = "remote-config"
+    const val RECORDINGS = "recordings"
+    const val ABOUT = "about"
 
     /** The account chosen on the dial pad travels along; without it the default account is meant. */
     const val SHORTCUTS = "shortcuts?account={account}"
@@ -244,6 +248,8 @@ fun AppRoot() {
                         onOpenFeatureCodes = { navController.navigate(Routes.FEATURE_CODES) },
                         onOpenCodecs = { navController.navigate(Routes.CODECS) },
                         onOpenRemoteConfig = { navController.navigate(Routes.REMOTE_CONFIG) },
+                        onOpenRecordings = { navController.navigate(Routes.RECORDINGS) },
+                        onOpenAbout = { navController.navigate(Routes.ABOUT) },
                     )
                 }
                 composable(Routes.ACCOUNT_NEW) {
@@ -292,6 +298,8 @@ fun AppRoot() {
                 composable(Routes.FEATURE_CODES) { FeatureCodesScreen(onBack = { navController.popBackStack() }) }
                 composable(Routes.CODECS) { CodecsScreen(onBack = { navController.popBackStack() }) }
                 composable(Routes.REMOTE_CONFIG) { RemoteConfigScreen(onBack = { navController.popBackStack() }) }
+                composable(Routes.RECORDINGS) { RecordingsScreen(onBack = { navController.popBackStack() }) }
+                composable(Routes.ABOUT) { AboutScreen(onBack = { navController.popBackStack() }) }
                 composable(
                     Routes.SHORTCUTS,
                     arguments = listOf(
