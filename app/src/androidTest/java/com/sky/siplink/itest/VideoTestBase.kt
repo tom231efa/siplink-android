@@ -1,11 +1,7 @@
 package com.sky.siplink.itest
 
-import android.app.Activity
 import android.os.ParcelFileDescriptor
 import androidx.test.platform.app.InstrumentationRegistry
-import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
-import androidx.test.runner.lifecycle.Stage
-import com.sky.siplink.CallActivity
 import com.sky.siplink.core.model.CallVideo
 import com.sky.siplink.openCallScreen
 import org.junit.Assert.assertTrue
@@ -95,26 +91,6 @@ abstract class VideoTestBase : PbxTestBase() {
     }
 
     protected fun leaveCallScreen() = shell("input keyevent KEYCODE_HOME")
-
-    /** The call screen, once it is in front. */
-    protected fun callScreen(): Activity {
-        fun find() = onMain {
-            ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED).firstOrNull { it is CallActivity }
-        }
-        await("the call screen to be in front") { find() != null }
-        return find()!!
-    }
-
-    /**
-     * Turns the call screen the way turning the phone does, without a change to the settings
-     * of the phone or a hand on it.
-     *
-     * @param orientation one of the ActivityInfo.SCREEN_ORIENTATION_ values
-     */
-    protected fun turnCallScreen(orientation: Int) {
-        val screen = callScreen()
-        onMain { screen.requestedOrientation = orientation }
-    }
 
     private fun shellOutput(command: String): String =
         ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand(command))

@@ -1,11 +1,15 @@
 package com.sky.siplink.itest
 
 import android.Manifest
+import android.app.Activity
 import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.view.WindowManager
 import androidx.test.core.app.ActivityScenario
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
+import androidx.test.runner.lifecycle.Stage
+import com.sky.siplink.CallActivity
 import com.sky.siplink.MainActivity
 import com.sky.siplink.SipLinkApp
 import com.sky.siplink.core.ReleaseFeed
@@ -119,6 +123,26 @@ abstract class PbxTestBase {
         scenario = ActivityScenario.launch(MainActivity::class.java).onActivity {
             it.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
+    }
+
+    /** The call screen, once it is in front. */
+    protected fun callScreen(): Activity {
+        fun find() = onMain {
+            ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED).firstOrNull { it is CallActivity }
+        }
+        await("the call screen to be in front") { find() != null }
+        return find()!!
+    }
+
+    /**
+     * Turns the call screen the way turning the phone does, without a change to the settings
+     * of the phone or a hand on it.
+     *
+     * @param orientation one of the ActivityInfo.SCREEN_ORIENTATION_ values
+     */
+    protected fun turnCallScreen(orientation: Int) {
+        val screen = callScreen()
+        onMain { screen.requestedOrientation = orientation }
     }
 
     /** Runs a command as the shell user, like `adb shell`. */

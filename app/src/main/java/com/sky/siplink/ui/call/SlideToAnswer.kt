@@ -1,6 +1,7 @@
 package com.sky.siplink.ui.call
 
-import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationSpec
+import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.Orientation
@@ -22,6 +23,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -47,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import com.sky.siplink.ui.theme.Brand
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -75,15 +78,27 @@ internal fun SlideToAnswer(onAnswer: () -> Unit, onDecline: () -> Unit, modifier
     val answer by rememberUpdatedState(onAnswer)
     val decline by rememberUpdatedState(onDecline)
 
-    /** Position of the dot in pixels from the middle; negative is towards "hang up". */
-    val position = remember { Animatable(0f) }
+    /**
+     * Position of the dot in pixels from the middle; negative is towards "hang up". The finger
+     * sets it as it moves, at once: when it lifts, the dot is where the finger left it. (Set
+     * through a coroutine it once came in after the lifting, the last movement of a finger that
+     * was still moving, and stopped the dot on its way to the end: the call was never answered.)
+     */
+    var position by remember { mutableFloatStateOf(0f) }
     var decided by remember { mutableStateOf(false) }
+
+    /** The dot moving by itself: on to the end it was let go towards, or back to the middle. */
+    var gliding by remember { mutableStateOf<Job?>(null) }
+    fun glide(target: Float, spec: AnimationSpec<Float>): Job {
+        gliding?.cancel()
+        return scope.launch { animate(position, target, animationSpec = spec) { value, _ -> position = value } }.also { gliding = it }
+    }
 
     // An answer can be held up (microphone permission refused): give the dot back then.
     LaunchedEffect(decided) {
         if (decided) {
             delay(1500)
-            position.animateTo(0f, tween(160))
+            glide(0f, tween(160)).join()
             decided = false
         }
     }
@@ -97,7 +112,7 @@ internal fun SlideToAnswer(onAnswer: () -> Unit, onDecline: () -> Unit, modifier
         val reach = with(LocalDensity.current) { ((maxWidth - DotSize) / 2 - TrackPadding).toPx() }
 
         /** -1 (hang up) .. 0 (at rest) .. 1 (answer). Read while drawing, so dragging does not recompose. */
-        val progress = { (position.value / reach).coerceIn(-1f, 1f) }
+        val progress = { (position / reach).coerceIn(-1f, 1f) }
 
         Box(
             Modifier
@@ -126,20 +141,25 @@ internal fun SlideToAnswer(onAnswer: () -> Unit, onDecline: () -> Unit, modifier
                 .draggable(
                     orientation = Orientation.Horizontal,
                     enabled = !decided,
-                    state = rememberDraggableState { delta ->
-                        scope.launch { position.snapTo((position.value + delta).coerceIn(-reach, reach)) }
-                    },
+                    // The finger belongs to the slide from the moment it is down. Waiting for it
+                    // to have moved sideways first leaves the start of the movement to whatever
+                    // scrolls around the slide (the controls of a phone on its side do), and a
+                    // finger that also goes up or down a little then never moves the dot.
+                    startDragImmediately = true,
+                    onDragStarted = { gliding?.cancel() },
+                    state = rememberDraggableState { delta -> position = (position + delta).coerceIn(-reach, reach) },
                     onDragStopped = { velocity ->
                         val p = progress()
                         val flicked = abs(velocity) > FLICK_VELOCITY && abs(p) > FLICK_FROM && velocity * p > 0f
                         if (abs(p) >= COMMIT_AT || flicked) {
                             decided = true
                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                            position.animateTo(if (p > 0f) reach else -reach, tween(110))
+                            // At once: the call does not wait for the dot to arrive.
                             if (p > 0f) answer() else decline()
+                            glide(if (p > 0f) reach else -reach, tween(110))
                         } else {
                             // Straight back, without a bounce.
-                            position.animateTo(0f, spring(dampingRatio = 1f, stiffness = 700f))
+                            glide(0f, spring(dampingRatio = 1f, stiffness = 700f))
                         }
                     },
                 ),
@@ -149,7 +169,7 @@ internal fun SlideToAnswer(onAnswer: () -> Unit, onDecline: () -> Unit, modifier
             Box(
                 Modifier
                     .align(Alignment.Center)
-                    .offset { IntOffset(position.value.roundToInt(), 0) }
+                    .offset { IntOffset(position.roundToInt(), 0) }
                     .size(DotSize)
                     .drawBehind {
                         val p = progress()

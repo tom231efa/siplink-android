@@ -131,31 +131,63 @@ abstract class ScreenTestBase(private val pictures: String) : PbxTestBase() {
     }
 
     /**
+     * One touch of a finger that went down at [downTime]: [action] is one of the MotionEvent.ACTION_ values.
+     *
+     * @param awaited the app has taken the touch when this returns; without, the next touch can reach
+     *   the app together with this one, the way the touches of a real finger do
+     */
+    private fun touch(downTime: Long, action: Int, x: Float, y: Float, awaited: Boolean = true) {
+        val event = MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), action, x, y, 0)
+        event.source = InputDevice.SOURCE_TOUCHSCREEN
+        assertTrue("The touch was not taken", automation.injectInputEvent(event, awaited))
+        event.recycle()
+    }
+
+    /**
+     * A finger that goes down at the first point, moves to the second in a straight line and is
+     * lifted there, after resting for [restMs]. Without a rest it is lifted while it still moves:
+     * its last movement and the lifting then reach the app in one go.
+     */
+    private fun move(fromX: Float, fromY: Float, toX: Float, toY: Float, holdMs: Long, restMs: Long) {
+        val downTime = SystemClock.uptimeMillis()
+        val inMotion = restMs == 0L
+        touch(downTime, MotionEvent.ACTION_DOWN, fromX, fromY)
+        Thread.sleep(holdMs)
+        for (step in 1..DRAG_STEPS) {
+            val fraction = step.toFloat() / DRAG_STEPS
+            val last = step == DRAG_STEPS
+            touch(
+                downTime, MotionEvent.ACTION_MOVE, fromX + (toX - fromX) * fraction, fromY + (toY - fromY) * fraction,
+                awaited = !(last && inMotion),
+            )
+            if (!(last && inMotion)) Thread.sleep(DRAG_STEP_MS)
+        }
+        Thread.sleep(restMs)
+        touch(downTime, MotionEvent.ACTION_UP, toX, toY, awaited = !inMotion)
+    }
+
+    /**
      * Holds a finger on [from] until it counts as a long press, moves it onto [to] and lifts it
      * there: the way an item is dragged to another place.
      */
     protected fun drag(from: AccessibilityNodeInfo, to: AccessibilityNodeInfo) {
         val start = Rect().also(from::getBoundsInScreen)
         val end = Rect().also(to::getBoundsInScreen)
-        val downTime = SystemClock.uptimeMillis()
-        fun touch(action: Int, fraction: Float) {
-            val x = start.exactCenterX() + (end.exactCenterX() - start.exactCenterX()) * fraction
-            val y = start.exactCenterY() + (end.exactCenterY() - start.exactCenterY()) * fraction
-            val event = MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), action, x, y, 0)
-            event.source = InputDevice.SOURCE_TOUCHSCREEN
-            assertTrue("The touch was not taken", automation.injectInputEvent(event, true))
-            event.recycle()
-        }
-        touch(MotionEvent.ACTION_DOWN, 0f)
-        Thread.sleep(ViewConfiguration.getLongPressTimeout() * 2L)
-        for (step in 1..DRAG_STEPS) {
-            touch(MotionEvent.ACTION_MOVE, step.toFloat() / DRAG_STEPS)
-            Thread.sleep(DRAG_STEP_MS)
-        }
-        Thread.sleep(DRAG_HOLD_MS)
-        touch(MotionEvent.ACTION_UP, 1f)
+        move(
+            start.exactCenterX(), start.exactCenterY(), end.exactCenterX(), end.exactCenterY(),
+            holdMs = ViewConfiguration.getLongPressTimeout() * 2L, restMs = DRAG_HOLD_MS,
+        )
         settle()
     }
+
+    /**
+     * A finger that slides from one point of the screen to another without resting first.
+     *
+     * @param liftInMotion the finger is lifted while it still moves, as most are; without, it
+     *   rests a moment at the end
+     */
+    protected fun swipe(fromX: Float, fromY: Float, toX: Float, toY: Float, liftInMotion: Boolean = false) =
+        move(fromX, fromY, toX, toY, holdMs = DRAG_STEP_MS, restMs = if (liftInMotion) 0L else SWIPE_REST_MS)
 
     /** Sets the text of the field that [field] finds; a screen that is still moving may not have it at once. */
     protected fun setText(text: String, field: () -> AccessibilityNodeInfo?) {
@@ -189,5 +221,8 @@ abstract class ScreenTestBase(private val pictures: String) : PbxTestBase() {
         const val DRAG_STEPS = 20
         const val DRAG_STEP_MS = 16L
         const val DRAG_HOLD_MS = 300L
+
+        /** A slide rests this long at its end, so that it is not taken for a flick. */
+        const val SWIPE_REST_MS = 60L
     }
 }
