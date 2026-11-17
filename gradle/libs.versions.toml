@@ -10,7 +10,7 @@ media = "1.8.0"
 composeBom = "2026.09.00"
 materialIconsExtended = "1.7.8"
 
-# Linphone SDK is GPLv3 (or commercial licence from Belledonne Communications).
+# Linphone SDK is AGPLv3 (or commercial licence from Belledonne Communications).
 linphone = "5.5.39"
 
 # Scanning the QR code of a remote configuration: CameraX for the picture, ZXing core (plain

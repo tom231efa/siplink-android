@@ -4,54 +4,63 @@
 
 <h1 align="center">SipLink</h1>
 
-<p align="center">Android 上的 SIP 软电话，面向接入 IP PBX 的日常办公使用。</p>
+<p align="center">面向 IP PBX 办公场景的 Android SIP 软电话</p>
 
-基于 [Linphone SDK](https://www.linphone.org/en/liblinphone-voip-sdk)，界面用 Jetpack Compose 编写。语音通话为主，可选一对一视频通话，不含即时消息。
+<p align="center">
+  <a href="https://github.com/tom231efa/siplink-android/releases/latest"><img src="https://img.shields.io/github/v/release/tom231efa/siplink-android?style=flat-square&label=release&color=555" alt="Release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-555?style=flat-square" alt="License: AGPL-3.0"></a>
+  <img src="https://img.shields.io/badge/Android-9%2B-555?style=flat-square" alt="Android 9+">
+  <a href="https://github.com/tom231efa/siplink-android/releases"><img src="https://img.shields.io/github/downloads/tom231efa/siplink-android/total?style=flat-square&color=555" alt="Downloads"></a>
+</p>
+
+<table align="center">
+  <tr>
+    <td align="center"><img src="docs/images/dialer.png" width="200" alt="拨号"><br><sub>拨号</sub></td>
+    <td align="center"><img src="docs/images/shortcuts.png" width="200" alt="快捷键"><br><sub>快捷键</sub></td>
+    <td align="center"><img src="docs/images/call.png" width="200" alt="通话"><br><sub>通话</sub></td>
+    <td align="center"><img src="docs/images/settings.png" width="200" alt="设置"><br><sub>设置</sub></td>
+  </tr>
+</table>
+
+## 简介
+
+SipLink 是基于 [Linphone SDK](https://www.linphone.org/en/liblinphone-voip-sdk) 的 SIP 软电话，界面使用 Jetpack Compose 编写。以语音通话为主，支持一对一视频通话，不含即时消息。
 
 ## 功能
 
-- **线路**：最多 100 个 SIP 账号，UDP / TCP / TLS，SRTP；每条线路可单独设置代理、备用代理和 DNS 服务器，支持批量导入
-- **通话**：保留、盲转、咨询转、合并、呼叫等待、呼叫前转、免打扰、对讲自动接听、语音留言订阅
-- **视频**：一对一视频通话，可在设置中关闭；摄像头只在用户选择视频且通话界面在前台时开启；对方画面按原比例显示，可在“完整”和“铺满”之间切换，通话界面可横屏使用
-- **功能码**：驻留、代接、监听、耳语、强插、强拆等，按 PBX 的功能码配置
-- **快捷键**：速拨、转接、发送按键等，可分类，支持 CSV 导入导出
-- **通讯录**：最多 50 个 LDAP 通讯录，来电和去电显示姓名
-- **其它**：通话记录、音视频编码选择（含视频清晰度与帧率）、CA 证书管理、后台保持注册（不依赖推送）
-- **高级设置**：来电处理与呼叫前转，以及 SIP 协议栈的选项：自适应速率控制（默认关闭，部分网关在通话中途调整打包时长后会无声）、回声消除、IPv6、自定义客户端名称（User-Agent，留空使用默认名称）
-- **更新**：自动检查 GitHub 上的新版本，在设置中提示，可跳过某个版本；安装包由浏览器下载
-- **远程配置**：在设置中扫描管理平台的二维码或输入地址载入配置，首次扫码信任平台自签的 CA；载入后账号、通讯录、证书、编码、设置和快捷键由平台下发，在本机只读，免打扰、外观、通话记录和最多 50 个自建快捷键仍由用户管理；平台收回或在本机删除后，下发的内容和自建快捷键一并清除
-
-开启“自动检查更新”时（默认开启），应用每天最多向 `api.github.com` 查询一次最新发布版本（查询失败则一小时后再试）；关闭后只在设置里手动检查时查询。
+| 类别 | 内容 |
+| --- | --- |
+| 线路 | 最多 100 个 SIP 账号；UDP / TCP / TLS，SRTP；每条线路可设代理、备用代理和 DNS 服务器；CSV 批量导入 |
+| 通话 | 保留、盲转、咨询转、驻留、合并（三方通话）、呼叫等待、呼叫前转、免打扰、拒接匿名来电 |
+| 话务功能 | 对讲及自动接听、监听 / 耳语 / 强插、强拆、指定代接、同组代接、语音信箱；功能码按 PBX 配置 |
+| 视频 | 一对一视频通话，可关闭；清晰度 240p–1080p，帧率可选；支持横屏 |
+| 快捷键 | 速拨、转接、发送按键、呼叫前转、免打扰；分类、图标、固定线路；CSV 导入导出 |
+| 通讯录 | 最多 50 个 LDAP 通讯录，支持 StartTLS；来去电显示姓名；本地缓存 |
+| 远程配置 | 扫描管理平台二维码载入配置并定期同步，下发内容在本机只读 |
+| 其它 | 通话记录、编码选择、CA 证书管理、后台保持注册（不依赖推送）、深浅色主题 |
 
 ## 运行要求
 
-Android 9 及以上，64 位 ARM 设备。目前只在 Android 16 上测试过。
+- Android 9 及以上
+- 发布的安装包面向 64 位 ARM（arm64-v8a）设备
+- 目前仅在 Android 16 上测试过
 
-## 构建
+## 获取
 
-需要 JDK 21 和 Android SDK（平台 37）。
+从 [GitHub Releases](https://github.com/tom231efa/siplink-android/releases) 下载 APK 并安装。应用会检查 GitHub 上的新版本并在设置中提示，安装包由浏览器下载。
 
-```bash
-./gradlew :app:assembleDebug
-```
+更新检查会访问 `api.github.com`，可在设置中关闭，详见[隐私与权限](docs/privacy.md)。
 
-生成 `app/build/outputs/apk/debug/app-debug.apk`。
+## 文档
 
-发布包需要签名：在项目根目录放一个 `keystore.properties`（已被 git 忽略），写入 `storeFile`、`storePassword`、`keyAlias`、`keyPassword`，再执行：
-
-```bash
-./gradlew :app:assembleRelease
-```
-
-默认只打包 `arm64-v8a`。要同时支持 32 位手机，加上 `-Psiplink.abi=arm64-v8a,armeabi-v7a`。
-
-## 测试
-
-```bash
-./gradlew :app:testDebugUnitTest
-```
-
-集成测试在真机或模拟器上运行，需要 `testenv/` 里用 Docker 启动的测试环境（Asterisk、OpenLDAP、DNS），用法见 `testenv/up.sh` 和 `testenv/run-tests.sh` 开头的说明。
+| 文档 | 内容 |
+| --- | --- |
+| [使用指南](docs/user-guide.md) | 账号、通话、视频、功能码、快捷键、通讯录、设置 |
+| [远程配置](docs/remote-configuration.md) | 载入与同步、锁定范围、配置文档格式（供管理平台实现参考） |
+| [隐私与权限](docs/privacy.md) | 权限用途、联网对象、本机存储内容 |
+| [常见问题](docs/faq.md) | 收不到来电、通话无声、证书、LDAP、更新等 |
+| [构建](docs/build.md) | 构建环境、调试包与发布包、签名、项目结构 |
+| [测试](docs/testing.md) | 单元测试、Lint、集成测试环境 |
 
 ## 许可证
 

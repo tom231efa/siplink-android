@@ -234,7 +234,7 @@ fun SettingsScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    "SIP 协议栈由 Belledonne Communications 的 Linphone SDK 提供，以 GNU GPLv3 许可发布。",
+                    "SIP 协议栈由 Belledonne Communications 的 Linphone SDK 提供，以 GNU AGPLv3 许可发布。",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
