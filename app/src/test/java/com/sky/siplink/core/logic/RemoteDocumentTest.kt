@@ -58,6 +58,30 @@ class RemoteDocumentTest {
         return Json.write(root)
     }
 
+    /**
+     * A platform newer than the app sends fields the app has never heard of. They are passed
+     * over wherever they stand, so that the platform need not know which version it talks to.
+     */
+    @Test
+    @Suppress("UNCHECKED_CAST")
+    fun fieldsTheAppDoesNotKnowArePassedOver() {
+        val root = Json.parse(fixture) as MutableMap<String, Any?>
+        var marked = 0
+        fun mark(node: Any?) {
+            when (node) {
+                is MutableMap<*, *> -> {
+                    node.values.toList().forEach(::mark)
+                    (node as MutableMap<String, Any?>)["fieldOfALaterVersion"] = mapOf("any" to listOf(1, "two", null))
+                    marked++
+                }
+                is List<*> -> node.forEach(::mark)
+            }
+        }
+        mark(root)
+        assertTrue("The fixture has objects at several levels", marked > 10)
+        assertEquals(parsed(fixture), parsed(Json.write(root)))
+    }
+
     @Test
     fun everyFieldBecomesWhatTheDesignSays() {
         val document = parsed(fixture)
@@ -79,6 +103,8 @@ class RemoteDocumentTest {
                 keepAlive = false,
                 intercomAutoAnswer = true,
                 intercomSpeaker = false,
+                autoAnswer = true,
+                autoAnswerSeconds = 10,
                 verifyTlsCertificate = true,
                 verifyTlsHostname = false,
                 mediaSecurity = MediaSecurity.SRTP_OPTIONAL,
@@ -188,6 +214,19 @@ class RemoteDocumentTest {
         val newer = parsed(with("""{"callRecording": false, "recordByDefault": true}""", "settings")).settings
         assertEquals(false to true, newer.callRecording to newer.recordByDefault)
         assertEquals(listOf("settings.callRecording 格式不正确"), errors(with("\"no\"", "settings", "callRecording")))
+    }
+
+    @Test
+    fun autoAnswerIsOffUnlessSentAndItsTimeIsOneThatCanBeChosen() {
+        val absent = parsed(with("""{"intercomAutoAnswer": true}""", "settings")).settings
+        assertEquals(false to AutoAnswerRules.DEFAULT_SECONDS, absent.autoAnswer to absent.autoAnswerSeconds)
+        // A time the app does not offer becomes the nearest one it does.
+        val odd = parsed(with("""{"autoAnswer": true, "autoAnswerSeconds": 7}""", "settings")).settings
+        assertEquals(true to 5, odd.autoAnswer to odd.autoAnswerSeconds)
+        assertEquals(0, parsed(with("-4", "settings", "autoAnswerSeconds")).settings.autoAnswerSeconds)
+        assertEquals(30, parsed(with("600", "settings", "autoAnswerSeconds")).settings.autoAnswerSeconds)
+        assertEquals(listOf("settings.autoAnswer 格式不正确"), errors(with("\"yes\"", "settings", "autoAnswer")))
+        assertEquals(listOf("settings.autoAnswerSeconds 格式不正确"), errors(with("\"3\"", "settings", "autoAnswerSeconds")))
     }
 
     @Test

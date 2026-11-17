@@ -527,6 +527,8 @@ class ManagedLockTest : PbxTestBase() {
             { it.copy(keepAlive = !it.keepAlive) },
             { it.copy(intercomAutoAnswer = !it.intercomAutoAnswer) },
             { it.copy(intercomSpeaker = !it.intercomSpeaker) },
+            { it.copy(autoAnswer = !it.autoAnswer) },
+            { it.copy(autoAnswerSeconds = 20) },
             { it.copy(verifyTlsCertificate = !it.verifyTlsCertificate) },
             { it.copy(verifyTlsHostname = !it.verifyTlsHostname) },
             { it.copy(mediaSecurity = MediaSecurity.SRTP_MANDATORY) },

@@ -111,7 +111,7 @@ fun RecordingsScreen(onBack: () -> Unit) {
 
     Column(Modifier.fillMaxSize()) {
         TopAppBar(
-            title = { Text(if (selecting) "已选 ${selected.size}" else "通话录音") },
+            title = { Text(if (selecting) "已选 ${selected.size}" else "录音文件") },
             navigationIcon = {
                 if (selecting) {
                     IconButton(onClick = { selected = emptySet() }) { Icon(Icons.Rounded.Close, contentDescription = "取消选择") }
@@ -195,7 +195,7 @@ fun RecordingsScreen(onBack: () -> Unit) {
                     store.remove(doomed)
                     selected = selected - doomed.mapTo(HashSet()) { it.id }
                     confirmDelete = null
-                }) { Text("删除", color = MaterialTheme.colorScheme.error) }
+                }) { Text("确认删除", color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = { TextButton(onClick = { confirmDelete = null }) { Text("取消") } },
         )

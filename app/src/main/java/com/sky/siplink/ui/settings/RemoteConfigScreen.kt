@@ -41,6 +41,7 @@ import com.sky.siplink.core.RemoteConfig
 import com.sky.siplink.core.logic.RemoteAddress
 import com.sky.siplink.core.logic.RemoteSync
 import com.sky.siplink.engine
+import com.sky.siplink.ui.components.FadingText
 import com.sky.siplink.ui.components.FoldingCard
 import com.sky.siplink.ui.components.FormField
 import com.sky.siplink.ui.components.LocalMessenger
@@ -147,7 +148,7 @@ fun RemoteConfigScreen(onBack: () -> Unit) {
                 TextButton(onClick = {
                     deleting = false
                     remote.delete(messenger)
-                }) { Text("删除", color = MaterialTheme.colorScheme.error) }
+                }) { Text("确认删除", color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = { TextButton(onClick = { deleting = false }) { Text("取消") } },
         )
@@ -213,7 +214,7 @@ private fun Enrolled(status: RemoteConfig.Status, onSync: () -> Unit, onDelete: 
     Spacer(Modifier.height(8.dp))
 }
 
-/** A value to read, with what it is on its left. */
+/** A value to read, with what it is on its left; [error] is a status that wraps, any other value stays on one line. */
 @Composable
 private fun InfoRow(label: String, value: String, error: Boolean = false) {
     Row(
@@ -224,13 +225,25 @@ private fun InfoRow(label: String, value: String, error: Boolean = false) {
     ) {
         Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.width(16.dp))
-        Text(
-            value,
-            style = MaterialTheme.typography.bodyMedium,
-            color = if (error) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
-            textAlign = TextAlign.End,
-            modifier = Modifier.weight(1f),
-        )
+        if (error) {
+            // An error is read in full.
+            Text(
+                value,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error,
+                textAlign = TextAlign.End,
+                modifier = Modifier.weight(1f),
+            )
+        } else {
+            // Names and addresses of the platform: one line, fading where it does not fit.
+            FadingText(
+                value,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.End,
+                modifier = Modifier.weight(1f),
+            )
+        }
     }
 }
 

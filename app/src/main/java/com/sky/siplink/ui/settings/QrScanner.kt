@@ -40,6 +40,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.sky.siplink.core.logic.QrDecoder
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.awaitCancellation
 import java.util.concurrent.Executors
 
@@ -67,6 +68,10 @@ fun QrScanner(accepts: (String) -> Boolean, onFound: (String) -> Unit, onClose: 
             var done = false
             val provider = try {
                 ProcessCameraProvider.awaitInstance(context)
+            } catch (e: CancellationException) {
+                // The scanner was closed before the camera was there: nothing has failed.
+                analyzer.shutdown()
+                throw e
             } catch (e: Exception) {
                 analyzer.shutdown()
                 failed(NO_CAMERA)
@@ -91,6 +96,10 @@ fun QrScanner(accepts: (String) -> Boolean, onFound: (String) -> Unit, onClose: 
                 val picture = Preview.Builder().build().also { it.surfaceProvider = preview.surfaceProvider }
                 provider.bindToLifecycle(lifecycleOwner, CameraSelector.DEFAULT_BACK_CAMERA, picture, analysis)
                 awaitCancellation()
+            } catch (e: CancellationException) {
+                // The scanner was closed. A cancellation is an IllegalStateException too, and was
+                // once reported as a camera that cannot be opened.
+                throw e
             } catch (e: IllegalArgumentException) {
                 // No back camera.
                 failed(NO_CAMERA)

@@ -99,7 +99,8 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
         await("both calls in the history") { engine.history.entries.value.size >= 2 }
         onMain {
             // The question about the lock screen would stand in front of the screens.
-            assertTrue(engine.updateSettings { it.copy(lockScreenPromptDeclined = true, forwardBusy = "$CUSTOMER") })
+            // Auto answer on, so that its time is shown as well.
+            assertTrue(engine.updateSettings { it.copy(lockScreenPromptDeclined = true, forwardBusy = "$CUSTOMER", autoAnswer = true) })
             val directory = LdapDirectory(name = DIRECTORY, host = env.ldapHost, bindDn = env.ldapBindDn, password = env.ldapPassword, baseDn = env.ldapBaseDn)
             assertTrue(engine.directory.save(directory).isEmpty())
             assertEquals(TlsManager.ImportResult.Added(1), engine.tls.import(env.caPem))
@@ -123,9 +124,21 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
         tap(ManagedConfig.LOCKED)
         await("the lock to say why") { shown(ManagedConfig.NOTICE).isNotEmpty() }
         await("the notice to go") { shown(ManagedConfig.NOTICE).isEmpty() }
-        locked("视频通话", "通话录音", "自动接听对讲呼叫", "对讲使用扬声器", "后台保持在线")
+        locked("视频通话", "后台保持在线")
+        // The pages behind them open to be looked at.
+        usable("免打扰", "深色", "顶部", "电池优化", "录音", "对讲与自动接听")
+        tap("录音")
+        see(ManagedConfig.LOCKED)
+        locked("通话录音", "默认录音")
         // The recordings and how many are kept are the user's own.
-        usable("免打扰", "深色", "顶部", "电池优化", "录音文件", "1000")
+        usable("录音文件", "1000")
+        picture("recording")
+        back()
+        tap("对讲与自动接听")
+        see(ManagedConfig.LOCKED)
+        locked("自动接听对讲呼叫", "对讲使用扬声器", "自动接听", "立即", "30 秒")
+        picture("auto-answer")
+        back()
         // Checking for a newer version is an action, not a setting.
         tap("关于")
         locked("自动检查更新")
@@ -270,7 +283,7 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
         see("编辑快捷键")
         usable("名称")
         tap("删除")
-        tap("再次点按以确认删除")
+        tap("确认删除")
         await("the key to be removed") { engine.shortcuts.shortcuts.value.none { it.own } }
         see(ownKeysCounter(0))
         tap("完成")
@@ -282,7 +295,13 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
         see(ManagedConfig.LOCKED)
         onMain { engine.lock.setManaged(false) }
         await("the lock to go") { shown(ManagedConfig.LOCKED).isEmpty() }
-        usable("视频通话", "通话录音", "自动接听对讲呼叫", "后台保持在线")
+        usable("视频通话", "后台保持在线")
+        tap("录音")
+        usable("通话录音", "默认录音")
+        back()
+        tap("对讲与自动接听")
+        usable("自动接听对讲呼叫", "对讲使用扬声器", "自动接听", "30 秒")
+        back()
         tap("关于")
         usable("自动检查更新")
         back()

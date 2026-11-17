@@ -29,7 +29,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
@@ -104,12 +103,10 @@ fun <T> ChoiceRow(
                         ),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(
+                    FadingText(
                         label,
                         color = if (dimmed(value) || (locked && at != index)) color.copy(alpha = 0.38f) else color,
                         style = MaterialTheme.typography.labelLarge,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }

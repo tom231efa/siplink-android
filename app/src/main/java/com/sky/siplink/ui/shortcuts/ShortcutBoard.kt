@@ -49,7 +49,6 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -57,6 +56,7 @@ import com.sky.siplink.core.logic.ShortcutRules
 import com.sky.siplink.core.model.Shortcut
 import com.sky.siplink.core.model.ShortcutAction
 import com.sky.siplink.engine
+import com.sky.siplink.ui.components.FadingText
 import com.sky.siplink.ui.components.pressScale
 
 /**
@@ -253,11 +253,10 @@ private fun ShortcutKey(
                     modifier = Modifier.size(28.dp),
                 )
                 Spacer(Modifier.height(6.dp))
-                Text(
+                FadingText(
                     shortcut.label,
                     style = MaterialTheme.typography.labelLarge,
                     maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
                     textAlign = TextAlign.Center,
                 )
             }
@@ -301,7 +300,7 @@ private fun SearchField(value: String, onValueChange: (String) -> Unit, placehol
                 Spacer(Modifier.width(8.dp))
                 Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
                     if (value.isEmpty()) {
-                        Text(placeholder, style = textStyle, color = colors.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        FadingText(placeholder, style = textStyle, color = colors.onSurfaceVariant)
                     }
                     field()
                 }

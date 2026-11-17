@@ -65,6 +65,8 @@ GitHub 发布的标签写作 `v{versionName}`，如 `v0.1.2`。更新检查只�
 
 ## 项目结构
 
+仓库根目录下，`app/` 是安卓应用，`testenv/` 是集成测试环境，`platform/` 是管理平台（Go，构建方法见 [platform/README.md](../platform/README.md)），`docs/` 是文档。以下为应用部分。
+
 ```text
 app/src/main/java/com/sky/siplink/
 ├── SipLinkApp.kt        Application：创建 SipEngine，启动后台服务与远程配置

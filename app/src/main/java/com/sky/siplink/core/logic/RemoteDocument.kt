@@ -132,6 +132,8 @@ data class RemoteDocument(
                 keepAlive = fields.bool("keepAlive", d.keepAlive),
                 intercomAutoAnswer = fields.bool("intercomAutoAnswer", d.intercomAutoAnswer),
                 intercomSpeaker = fields.bool("intercomSpeaker", d.intercomSpeaker),
+                autoAnswer = fields.bool("autoAnswer", d.autoAnswer),
+                autoAnswerSeconds = AutoAnswerRules.seconds(fields.int("autoAnswerSeconds", d.autoAnswerSeconds)),
                 verifyTlsCertificate = fields.bool("verifyTlsCertificate", d.verifyTlsCertificate),
                 verifyTlsHostname = fields.bool("verifyTlsHostname", d.verifyTlsHostname),
                 mediaSecurity = fields.enum("mediaSecurity", d.mediaSecurity, MediaSecurity.entries),

@@ -2,6 +2,7 @@ package com.sky.siplink.core
 
 import android.os.Handler
 import android.os.Looper
+import com.sky.siplink.core.logic.AutoAnswerRules
 import com.sky.siplink.core.logic.ManagedConfig
 import com.sky.siplink.core.logic.RecordingRules
 import com.sky.siplink.core.logic.VideoRules
@@ -31,7 +32,11 @@ class SettingsStore(private val config: Config, private val lock: ConfigLock) {
     fun update(transform: (Settings) -> Settings): Boolean {
         // A frame rate that cannot be chosen is no rate of its own, here as when it is read back.
         val wanted = transform(state.value).let {
-            it.copy(videoFrameRate = VideoRules.frameRate(it.videoFrameRate), recordingsKept = RecordingRules.keepChoice(it.recordingsKept))
+            it.copy(
+                videoFrameRate = VideoRules.frameRate(it.videoFrameRate),
+                recordingsKept = RecordingRules.keepChoice(it.recordingsKept),
+                autoAnswerSeconds = AutoAnswerRules.seconds(it.autoAnswerSeconds),
+            )
         }
         val next = if (lock.refuses) ManagedConfig.localUpdate(state.value, wanted) else wanted
         if (next != state.value) {
@@ -48,6 +53,8 @@ class SettingsStore(private val config: Config, private val lock: ConfigLock) {
             keepAlive = bool(KEY_KEEP_ALIVE, d.keepAlive),
             intercomAutoAnswer = bool(KEY_INTERCOM_AUTO_ANSWER, d.intercomAutoAnswer),
             intercomSpeaker = bool(KEY_INTERCOM_SPEAKER, d.intercomSpeaker),
+            autoAnswer = bool(KEY_AUTO_ANSWER, d.autoAnswer),
+            autoAnswerSeconds = AutoAnswerRules.seconds(config.getInt(SECTION, KEY_AUTO_ANSWER_SECONDS, d.autoAnswerSeconds)),
             themeMode = enumOf(KEY_THEME, d.themeMode),
             dynamicColor = bool(KEY_DYNAMIC_COLOR, d.dynamicColor),
             callBannerPosition = enumOf(KEY_CALL_BANNER, d.callBannerPosition),
@@ -95,6 +102,8 @@ class SettingsStore(private val config: Config, private val lock: ConfigLock) {
         config.setBool(SECTION, KEY_KEEP_ALIVE, value.keepAlive)
         config.setBool(SECTION, KEY_INTERCOM_AUTO_ANSWER, value.intercomAutoAnswer)
         config.setBool(SECTION, KEY_INTERCOM_SPEAKER, value.intercomSpeaker)
+        config.setBool(SECTION, KEY_AUTO_ANSWER, value.autoAnswer)
+        config.setInt(SECTION, KEY_AUTO_ANSWER_SECONDS, value.autoAnswerSeconds)
         config.setString(SECTION, KEY_THEME, value.themeMode.name)
         config.setBool(SECTION, KEY_DYNAMIC_COLOR, value.dynamicColor)
         config.setString(SECTION, KEY_CALL_BANNER, value.callBannerPosition.name)
@@ -169,6 +178,8 @@ class SettingsStore(private val config: Config, private val lock: ConfigLock) {
         private const val KEY_KEEP_ALIVE = "keep_alive"
         private const val KEY_INTERCOM_AUTO_ANSWER = "intercom_auto_answer"
         private const val KEY_INTERCOM_SPEAKER = "intercom_speaker"
+        private const val KEY_AUTO_ANSWER = "auto_answer"
+        private const val KEY_AUTO_ANSWER_SECONDS = "auto_answer_seconds"
         private const val KEY_THEME = "theme"
         private const val KEY_DYNAMIC_COLOR = "dynamic_color"
         private const val KEY_CALL_BANNER = "call_banner_position"

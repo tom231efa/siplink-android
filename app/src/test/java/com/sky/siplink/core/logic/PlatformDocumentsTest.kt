@@ -57,6 +57,8 @@ class PlatformDocumentsTest {
         assertEquals(true, document.settings.adaptiveRateControl)
         assertEquals(false, document.settings.echoCancellation)
         assertEquals(true, document.settings.ipv6)
+        assertEquals(true, document.settings.autoAnswer)
+        assertEquals(5, document.settings.autoAnswerSeconds)
     }
 
     @Test

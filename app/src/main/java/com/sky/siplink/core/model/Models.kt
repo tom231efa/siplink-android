@@ -306,6 +306,10 @@ data class Settings(
     val keepAlive: Boolean = true,
     val intercomAutoAnswer: Boolean = false,
     val intercomSpeaker: Boolean = true,
+    /** Regular (not intercom) incoming calls are answered by themselves, audio only, after [autoAnswerSeconds]. */
+    val autoAnswer: Boolean = false,
+    /** One of [com.sky.siplink.core.logic.AutoAnswerRules.SECONDS_CHOICES]; 0 answers at once. */
+    val autoAnswerSeconds: Int = com.sky.siplink.core.logic.AutoAnswerRules.DEFAULT_SECONDS,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val dynamicColor: Boolean = false,
     val callBannerPosition: BannerPosition = BannerPosition.BOTTOM,

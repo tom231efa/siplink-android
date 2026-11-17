@@ -46,7 +46,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sky.siplink.core.logic.Formatters
@@ -55,6 +54,7 @@ import com.sky.siplink.core.model.HistoryKind
 import com.sky.siplink.engine
 import com.sky.siplink.ui.components.Avatar
 import com.sky.siplink.ui.components.EmptyState
+import com.sky.siplink.ui.components.FadingText
 import com.sky.siplink.ui.components.FeatureSheet
 import com.sky.siplink.ui.components.rememberCallLauncher
 import com.sky.siplink.ui.shortcuts.NewShortcutSheet
@@ -168,7 +168,7 @@ fun HistoryScreen() {
                 TextButton(onClick = {
                     history.clear()
                     confirmClear = false
-                }) { Text("清空", color = MaterialTheme.colorScheme.error) }
+                }) { Text("确认清空", color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = { TextButton(onClick = { confirmClear = false }) { Text("取消") } },
         )
@@ -219,30 +219,24 @@ private fun HistoryRow(
             Avatar(entry.name)
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
-                Text(
+                FadingText(
                     entry.name,
                     style = MaterialTheme.typography.titleMedium,
                     color = if (missed) Brand.HangUpRed else MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(15.dp))
                     Spacer(Modifier.width(4.dp))
-                    Text(
+                    FadingText(
                         "$time · $detail",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
                     )
                 }
-                Text(
+                FadingText(
                     entry.address,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
                 )
             }
             FilledTonalIconButton(onClick = onCall) {

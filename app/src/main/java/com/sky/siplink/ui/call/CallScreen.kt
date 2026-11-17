@@ -67,7 +67,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -79,6 +78,7 @@ import com.sky.siplink.core.model.CallPhase
 import com.sky.siplink.core.model.SideCall
 import com.sky.siplink.core.model.TransferStatus
 import com.sky.siplink.engine
+import com.sky.siplink.ui.components.FadingText
 import com.sky.siplink.ui.theme.Brand
 import kotlinx.coroutines.delay
 
@@ -364,7 +364,8 @@ private fun ColumnScope.CallHead(
 ) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         // Over video the corner belongs to the own picture: the line is left out there.
-        if (info.accountLabel.isNotEmpty() && !videoMode) Chip(text = info.accountLabel)
+        // A long line name gives way to the chips beside it.
+        if (info.accountLabel.isNotEmpty() && !videoMode) Chip(text = info.accountLabel, modifier = Modifier.weight(1f, fill = false))
         if (info.intercom) Chip(text = "对讲", icon = Icons.Rounded.Campaign, highlighted = true)
         if (info.conference) Chip(text = "三方通话", icon = Icons.Rounded.Groups, highlighted = true)
     }
@@ -404,21 +405,17 @@ private fun ColumnScope.CallHead(
         )
         Spacer(Modifier.height(4.dp))
     }
-    Text(
+    FadingText(
         info.remoteName,
         style = MaterialTheme.typography.headlineMedium,
         color = Color.White,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
     )
     if (info.remoteAddress != info.remoteName && !videoMode) {
         Spacer(Modifier.height(2.dp))
-        Text(
+        FadingText(
             info.remoteAddress,
             style = MaterialTheme.typography.bodyLarge,
             color = Color.White.copy(alpha = 0.7f),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
         )
     }
     Spacer(Modifier.height(10.dp))
@@ -450,9 +447,9 @@ private fun NoticeLine(text: String?) {
 }
 
 @Composable
-private fun Chip(text: String, icon: ImageVector? = null, highlighted: Boolean = false) {
+private fun Chip(text: String, modifier: Modifier = Modifier, icon: ImageVector? = null, highlighted: Boolean = false) {
     Row(
-        Modifier
+        modifier
             .clip(CircleShape)
             .background(if (highlighted) Brand.Amber.copy(alpha = 0.9f) else Color.White.copy(alpha = 0.14f))
             .padding(horizontal = 12.dp, vertical = 6.dp),
@@ -462,7 +459,7 @@ private fun Chip(text: String, icon: ImageVector? = null, highlighted: Boolean =
             Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(4.dp))
         }
-        Text(text, style = MaterialTheme.typography.labelMedium, color = Color.White, maxLines = 1)
+        FadingText(text, style = MaterialTheme.typography.labelMedium, color = Color.White, modifier = Modifier.weight(1f, fill = false))
     }
 }
 
@@ -480,12 +477,10 @@ private fun WaitingCallBanner(waiting: SideCall?, onAnswer: () -> Unit, onDeclin
     ) {
         Column(Modifier.weight(1f)) {
             Text("新来电", style = MaterialTheme.typography.labelMedium, color = Brand.Amber)
-            Text(
+            FadingText(
                 waiting?.name.orEmpty(),
                 style = MaterialTheme.typography.titleMedium,
                 color = Color.White,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
             )
         }
         SmallRound(Brand.HangUpRed, Icons.Rounded.CallEnd, "拒绝新来电", onDecline)
@@ -518,12 +513,10 @@ private fun HeldCallBanner(info: CallInfo, onSwap: () -> Unit) {
                 style = MaterialTheme.typography.labelMedium,
                 color = Color.White.copy(alpha = 0.7f),
             )
-            Text(
+            FadingText(
                 held?.name.orEmpty(),
                 style = MaterialTheme.typography.titleMedium,
                 color = Color.White,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
             )
         }
         if (!info.conference) {

@@ -11,6 +11,8 @@
     "keepAlive": false,
     "intercomAutoAnswer": true,
     "intercomSpeaker": false,
+    "autoAnswer": true,
+    "autoAnswerSeconds": 10,
     "verifyTlsCertificate": true,
     "verifyTlsHostname": false,
     "mediaSecurity": "SRTP_OPTIONAL",

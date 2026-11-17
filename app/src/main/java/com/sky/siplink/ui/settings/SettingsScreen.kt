@@ -15,17 +15,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.BatterySaver
 import androidx.compose.material.icons.rounded.Campaign
 import androidx.compose.material.icons.rounded.CloudSync
 import androidx.compose.material.icons.rounded.Dialpad
 import androidx.compose.material.icons.rounded.Dns
 import androidx.compose.material.icons.rounded.DoNotDisturbOn
-import androidx.compose.material.icons.rounded.FiberManualRecord
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.ManageAccounts
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.Palette
@@ -45,7 +42,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sky.siplink.BuildConfig
-import com.sky.siplink.core.logic.RecordingRules
 import com.sky.siplink.core.logic.UpdateRules
 import com.sky.siplink.core.model.BannerPosition
 import com.sky.siplink.core.model.RegState
@@ -71,7 +67,8 @@ fun SettingsScreen(
     onOpenFeatureCodes: () -> Unit,
     onOpenCodecs: () -> Unit,
     onOpenRemoteConfig: () -> Unit,
-    onOpenRecordings: () -> Unit,
+    onOpenRecordingSettings: () -> Unit,
+    onOpenAutoAnswer: () -> Unit,
     onOpenAbout: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -105,7 +102,7 @@ fun SettingsScreen(
                 )
             }
 
-            SectionCard(title = "呼叫与话务功能") {
+            SectionCard(title = "话务功能") {
                 // Whether to be disturbed stays the user's own switch under a managed configuration.
                 Personal {
                     SwitchRow(
@@ -121,79 +118,34 @@ fun SettingsScreen(
                     checked = settings.videoCalls,
                     onCheckedChange = { value -> engine.updateSettings { it.copy(videoCalls = value) } },
                 )
-                NavRow(title = "功能码", icon = Icons.Rounded.Dialpad, onClick = onOpenFeatureCodes)
-                NavRow(title = if (settings.videoCalls) "编码" else "音频编码", icon = Icons.Rounded.GraphicEq, onClick = onOpenCodecs)
-                NavRow(title = "高级设置", icon = Icons.Rounded.Tune, onClick = onOpenAdvanced)
-            }
-
-            SectionCard(title = "录音") {
-                SwitchRow(
-                    title = "通话录音",
-                    icon = Icons.Rounded.Mic,
-                    checked = settings.callRecording,
-                    onCheckedChange = { value -> engine.updateSettings { it.copy(callRecording = value) } },
-                )
-                AnimatedVisibility(settings.callRecording) {
-                    SwitchRow(
-                        title = "默认录音",
-                        icon = Icons.Rounded.FiberManualRecord,
-                        checked = settings.recordByDefault,
-                        onCheckedChange = { value -> engine.updateSettings { it.copy(recordByDefault = value) } },
-                    )
-                }
-                // How many recordings are kept is the user's own, like the recordings themselves.
-                Personal {
-                    Text(
-                        "保留条数",
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(start = 16.dp, top = 10.dp),
-                    )
-                    ChoiceRow(
-                        options = RecordingRules.KEEP_CHOICES.map { it to "$it" },
-                        selected = settings.recordingsKept,
-                        onSelect = { kept -> engine.updateSettings { it.copy(recordingsKept = kept) } },
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    )
-                }
                 NavRow(
-                    title = "录音文件",
+                    title = "录音",
                     trailing = recordings.size.toString().takeIf { recordings.isNotEmpty() },
-                    icon = Icons.Rounded.LibraryMusic,
-                    onClick = onOpenRecordings,
+                    icon = Icons.Rounded.Mic,
+                    onClick = onOpenRecordingSettings,
                 )
-            }
-
-            SectionCard(title = "对讲来电") {
-                SwitchRow(
-                    title = "自动接听对讲呼叫",
-                    icon = Icons.Rounded.Campaign,
-                    checked = settings.intercomAutoAnswer,
-                    onCheckedChange = { value -> engine.updateSettings { it.copy(intercomAutoAnswer = value) } },
-                )
-                SwitchRow(
-                    title = "对讲使用扬声器",
-                    icon = Icons.AutoMirrored.Rounded.VolumeUp,
-                    checked = settings.intercomSpeaker,
-                    onCheckedChange = { value -> engine.updateSettings { it.copy(intercomSpeaker = value) } },
-                )
-            }
-
-            SectionCard(title = "安全与通讯录") {
-                NavRow(
-                    title = "TLS 与 CA 证书",
-                    trailing = certificates.size.toString().takeIf { certificates.isNotEmpty() },
-                    icon = Icons.Rounded.VerifiedUser,
-                    onClick = onOpenTls,
-                )
+                NavRow(title = "对讲与自动接听", icon = Icons.Rounded.Campaign, onClick = onOpenAutoAnswer)
                 NavRow(
                     title = "LDAP 通讯录",
                     trailing = directories.size.toString().takeIf { directories.isNotEmpty() },
                     icon = Icons.Rounded.Dns,
                     onClick = onOpenLdap,
                 )
+                NavRow(title = "功能码", icon = Icons.Rounded.Dialpad, onClick = onOpenFeatureCodes)
+                NavRow(title = if (settings.videoCalls) "编码" else "音频编码", icon = Icons.Rounded.GraphicEq, onClick = onOpenCodecs)
+                NavRow(title = "高级设置", icon = Icons.Rounded.Tune, onClick = onOpenAdvanced)
             }
 
-            SectionCard(title = "后台运行") {
+            SectionCard(title = "安全") {
+                NavRow(
+                    title = "TLS 与 CA 证书",
+                    trailing = certificates.size.toString().takeIf { certificates.isNotEmpty() },
+                    icon = Icons.Rounded.VerifiedUser,
+                    onClick = onOpenTls,
+                )
+            }
+
+            SectionCard(title = "电池策略") {
                 SwitchRow(
                     title = "后台保持在线",
                     icon = Icons.Rounded.Sync,

@@ -23,6 +23,8 @@ class ManagedConfigTest {
         keepAlive = !current.keepAlive,
         intercomAutoAnswer = !current.intercomAutoAnswer,
         intercomSpeaker = !current.intercomSpeaker,
+        autoAnswer = !current.autoAnswer,
+        autoAnswerSeconds = 10,
         themeMode = ThemeMode.DARK,
         dynamicColor = !current.dynamicColor,
         callBannerPosition = BannerPosition.TOP,
@@ -99,6 +101,9 @@ class ManagedConfigTest {
             { it.copy(keepAlive = !it.keepAlive) },
             { it.copy(intercomAutoAnswer = !it.intercomAutoAnswer) },
             { it.copy(intercomSpeaker = !it.intercomSpeaker) },
+            // Answering regular calls by itself, and after how long, is the administrator's like the intercom switches.
+            { it.copy(autoAnswer = !it.autoAnswer) },
+            { it.copy(autoAnswerSeconds = 20) },
             { it.copy(verifyTlsCertificate = false) },
             { it.copy(verifyTlsHostname = false) },
             { it.copy(mediaSecurity = MediaSecurity.SRTP_OPTIONAL) },

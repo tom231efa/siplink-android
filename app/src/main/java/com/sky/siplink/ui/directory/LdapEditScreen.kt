@@ -339,7 +339,7 @@ fun LdapEditScreen(directoryId: String?, onBack: () -> Unit, onOpenTls: () -> Un
                     manager.remove(stored.id)
                     confirmDelete = false
                     onBack()
-                }) { Text("删除", color = MaterialTheme.colorScheme.error) }
+                }) { Text("确认删除", color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("取消") } },
         )

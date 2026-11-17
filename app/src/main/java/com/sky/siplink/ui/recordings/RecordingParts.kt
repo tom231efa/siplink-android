@@ -38,12 +38,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.sky.siplink.core.logic.Formatters
 import com.sky.siplink.core.logic.RecordingPeriod
 import com.sky.siplink.core.logic.RecordingRules
 import com.sky.siplink.core.model.Recording
+import com.sky.siplink.ui.components.FadingText
 import java.io.File
 import java.time.Instant
 import java.time.LocalDate
@@ -114,21 +114,17 @@ internal fun RecordingRow(
             }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(
+                FadingText(title, style = MaterialTheme.typography.titleMedium)
+                FadingText(
                     detail,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
                 )
                 if (recording.name.isNotEmpty() && recording.number.isNotEmpty() && recording.name != recording.number) {
-                    Text(
+                    FadingText(
                         recording.number,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }

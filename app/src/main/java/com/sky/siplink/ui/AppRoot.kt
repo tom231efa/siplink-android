@@ -56,7 +56,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -77,6 +76,7 @@ import com.sky.siplink.engine
 import com.sky.siplink.openCallScreen
 import com.sky.siplink.ui.accounts.AccountEditScreen
 import com.sky.siplink.ui.accounts.AccountsScreen
+import com.sky.siplink.ui.components.FadingText
 import com.sky.siplink.ui.components.LdapRestartDialog
 import com.sky.siplink.ui.components.LocalConfigLocked
 import com.sky.siplink.ui.components.LocalMessenger
@@ -89,8 +89,10 @@ import com.sky.siplink.ui.history.HistoryScreen
 import com.sky.siplink.ui.recordings.RecordingsScreen
 import com.sky.siplink.ui.settings.AboutScreen
 import com.sky.siplink.ui.settings.AdvancedSettingsScreen
+import com.sky.siplink.ui.settings.AutoAnswerScreen
 import com.sky.siplink.ui.settings.CodecsScreen
 import com.sky.siplink.ui.settings.FeatureCodesScreen
+import com.sky.siplink.ui.settings.RecordingSettingsScreen
 import com.sky.siplink.ui.settings.RemoteConfigScreen
 import com.sky.siplink.ui.settings.SettingsScreen
 import com.sky.siplink.ui.settings.TlsScreen
@@ -119,7 +121,9 @@ private object Routes {
     const val FEATURE_CODES = "feature-codes"
     const val CODECS = "codecs"
     const val REMOTE_CONFIG = "remote-config"
+    const val RECORDING_SETTINGS = "recording-settings"
     const val RECORDINGS = "recordings"
+    const val AUTO_ANSWER = "auto-answer"
     const val ABOUT = "about"
 
     /** The account chosen on the dial pad travels along; without it the default account is meant. */
@@ -248,7 +252,8 @@ fun AppRoot() {
                         onOpenFeatureCodes = { navController.navigate(Routes.FEATURE_CODES) },
                         onOpenCodecs = { navController.navigate(Routes.CODECS) },
                         onOpenRemoteConfig = { navController.navigate(Routes.REMOTE_CONFIG) },
-                        onOpenRecordings = { navController.navigate(Routes.RECORDINGS) },
+                        onOpenRecordingSettings = { navController.navigate(Routes.RECORDING_SETTINGS) },
+                        onOpenAutoAnswer = { navController.navigate(Routes.AUTO_ANSWER) },
                         onOpenAbout = { navController.navigate(Routes.ABOUT) },
                     )
                 }
@@ -298,7 +303,14 @@ fun AppRoot() {
                 composable(Routes.FEATURE_CODES) { FeatureCodesScreen(onBack = { navController.popBackStack() }) }
                 composable(Routes.CODECS) { CodecsScreen(onBack = { navController.popBackStack() }) }
                 composable(Routes.REMOTE_CONFIG) { RemoteConfigScreen(onBack = { navController.popBackStack() }) }
+                composable(Routes.RECORDING_SETTINGS) {
+                    RecordingSettingsScreen(
+                        onBack = { navController.popBackStack() },
+                        onOpenRecordings = { navController.navigate(Routes.RECORDINGS) },
+                    )
+                }
                 composable(Routes.RECORDINGS) { RecordingsScreen(onBack = { navController.popBackStack() }) }
+                composable(Routes.AUTO_ANSWER) { AutoAnswerScreen(onBack = { navController.popBackStack() }) }
                 composable(Routes.ABOUT) { AboutScreen(onBack = { navController.popBackStack() }) }
                 composable(
                     Routes.SHORTCUTS,
@@ -402,7 +414,7 @@ private fun ActiveCallBanner(call: CallInfo?, visible: Boolean, onClick: () -> U
             ) {
                 Icon(Icons.Rounded.PhoneInTalk, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(10.dp))
-                Text(
+                FadingText(
                     text = when (call?.phase) {
                         CallPhase.INCOMING -> "来电：${call.remoteName}"
                         CallPhase.OUTGOING -> "正在呼叫 ${call.remoteName}"
@@ -410,11 +422,10 @@ private fun ActiveCallBanner(call: CallInfo?, visible: Boolean, onClick: () -> U
                     },
                     color = Color.White,
                     style = MaterialTheme.typography.labelLarge,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
                 )
-                Text("返回通话", color = Color.White, style = MaterialTheme.typography.labelMedium)
+                Spacer(Modifier.width(8.dp))
+                Text("返回通话", color = Color.White, style = MaterialTheme.typography.labelMedium, maxLines = 1)
             }
         }
     }

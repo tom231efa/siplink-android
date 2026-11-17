@@ -1,6 +1,6 @@
 # 远程配置
 
-管理平台可以向 SipLink 下发账号、通讯录、证书、编码、设置和快捷键。管理平台是独立的项目，不在本仓库中；本文后半部分给出应用接受的接口与文档格式，可据此实现兼容的配置服务。
+管理平台可以向 SipLink 下发账号、通讯录、证书、编码、设置和快捷键。管理平台的源码在本仓库的 `platform/` 目录，部署与使用见[管理平台](platform.md)；本文后半部分给出应用接受的接口与文档格式，也可据此实现兼容的配置服务。
 
 ## 载入
 
@@ -152,7 +152,7 @@ https://{主机}[:{端口}][/{前缀}]/p/{令牌}[?pin={指纹}]
 
 ### 文档
 
-字段缺失或为 `null` 时取应用默认值（不是本机当前值）；类型不符、取值不在枚举中或未通过校验时整份文档被拒绝，所有错误一次报告。完整示例见 `app/src/test/resources/platform-provision-testdata-full.json`，最小示例见 `platform-provision-testdata-minimal.json`。
+字段缺失或为 `null` 时取应用默认值（不是本机当前值）；类型不符、取值不在枚举中或未通过校验时整份文档被拒绝，所有错误一次报告。应用不认识的字段一律忽略，无论出现在哪一层。完整示例见 `app/src/test/resources/platform-provision-testdata-full.json`，最小示例见 `platform-provision-testdata-minimal.json`。
 
 **顶层**
 
@@ -182,6 +182,8 @@ https://{主机}[:{端口}][/{前缀}]/p/{令牌}[?pin={指纹}]
 | `keepAlive` | 布尔 | `true` |
 | `intercomAutoAnswer` | 布尔 | `false` |
 | `intercomSpeaker` | 布尔 | `true` |
+| `autoAnswer` | 布尔：自动接听非对讲来电 | `false` |
+| `autoAnswerSeconds` | 整数：`0` / `3` / `5` / `10` / `20` / `30`，其它值取最接近的一个（等距时取较长者） | `3` |
 | `verifyTlsCertificate` | 布尔 | `true` |
 | `verifyTlsHostname` | 布尔 | `true` |
 | `mediaSecurity` | `NONE` / `SRTP_OPTIONAL` / `SRTP_MANDATORY` | `NONE` |
@@ -244,6 +246,12 @@ https://{主机}[:{端口}][/{前缀}]/p/{令牌}[?pin={指纹}]
 | `action` | CSV 中的类型写法：`speed` / `bxfer` / `axfer` / `dtmf` / `forward` / `dnd`；空为 `speed` |
 | `line` | 账号名称或 `user@domain`（不是账号 `key`）；空为拨出时选择 |
 | `icon` | CSV 中的图标写法；空为随类型 |
+
+### 版本兼容
+
+- 文档只增加字段。应用忽略不认识的字段，缺失的字段取默认值，所以配置服务对所有版本的客户端发送同一份文档，不需要按版本区分
+- 已有字段的含义和取值范围不改变；必须改变时提高 `schema`，旧版本应用会提示“请升级 SipLink”
+- 应用在每次请求的 `device.appVersion`、`device.appVersionCode` 和 `User-Agent` 中报告自己的版本，配置服务可据此记录和显示
 
 ### 应用结果
 

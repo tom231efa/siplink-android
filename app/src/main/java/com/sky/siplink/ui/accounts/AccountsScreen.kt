@@ -64,7 +64,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sky.siplink.core.logic.AccountRules
@@ -75,6 +74,7 @@ import com.sky.siplink.engine
 import com.sky.siplink.ui.Motion
 import com.sky.siplink.ui.components.Avatar
 import com.sky.siplink.ui.components.EmptyState
+import com.sky.siplink.ui.components.FadingText
 import com.sky.siplink.ui.components.FieldText
 import com.sky.siplink.ui.components.LocalConfigLocked
 import com.sky.siplink.ui.components.LocalMessenger
@@ -320,11 +320,9 @@ private fun AccountRow(
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
+                    FadingText(
                         account.label,
                         style = MaterialTheme.typography.titleMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false),
                     )
                     if (account.isDefault) {
@@ -337,12 +335,10 @@ private fun AccountRow(
                         )
                     }
                 }
-                Text(
+                FadingText(
                     account.identity,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
                 )
                 Spacer(Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -355,13 +351,11 @@ private fun AccountRow(
                         )
                         Spacer(Modifier.width(3.dp))
                     }
-                    Text(
+                    FadingText(
                         "${account.transport.name} · ${account.error ?: regStateLabel(account.state)}" +
                             if (account.onBackup) " · 备用服务器" else "",
                         style = MaterialTheme.typography.labelMedium,
                         color = regStateColor(account.state),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }

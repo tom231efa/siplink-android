@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -54,13 +55,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sky.siplink.core.model.DirectoryContact
 import com.sky.siplink.engine
 import com.sky.siplink.ui.components.Avatar
 import com.sky.siplink.ui.components.EmptyState
+import com.sky.siplink.ui.components.FadingText
 import com.sky.siplink.ui.components.FeatureSheet
 import com.sky.siplink.ui.components.FieldText
 import com.sky.siplink.ui.components.rememberCallLauncher
@@ -142,7 +143,8 @@ fun DirectoryScreen(onOpenSettings: () -> Unit) {
                             FilterChip(
                                 selected = item.id == current.id,
                                 onClick = { chosen = item.id },
-                                label = { Text(item.title, maxLines = 1) },
+                                // A long name keeps the chip from taking the whole row.
+                                label = { FadingText(item.title, modifier = Modifier.widthIn(max = 200.dp)) },
                             )
                         }
                     }
@@ -256,13 +258,11 @@ private fun ContactRow(
         Avatar(contact.name)
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
-            Text(contact.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(
+            FadingText(contact.name, style = MaterialTheme.typography.titleMedium)
+            FadingText(
                 if (contact.organization.isEmpty()) contact.number else "${contact.number} · ${contact.organization}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
             )
         }
         FilledIconButton(onClick = onCall) {

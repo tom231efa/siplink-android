@@ -5,12 +5,13 @@ import com.sky.siplink.core.logic.FeatureDial
 import com.sky.siplink.core.model.CallPhase
 import com.sky.siplink.core.model.DndMode
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** Call waiting, do not disturb, forwarding, call pickup and voicemail (MWI). */
+/** Call waiting, do not disturb, forwarding, auto answer, call pickup and voicemail (MWI). */
 @RunWith(AndroidJUnit4::class)
 class CallHandlingTest : PbxTestBase() {
     private fun features() = engine.settings.current.features
@@ -136,6 +137,66 @@ class CallHandlingTest : PbxTestBase() {
     }
 
     @Test
+    fun aRegularCallIsAnsweredByItselfOnceItsTimeHasPassed() {
+        register()
+        // On screen: Android does not let an app in the background open the microphone.
+        showApp()
+        settings { it.copy(autoAnswer = true, autoAnswerSeconds = AUTO_ANSWER_SECONDS) }
+        val mark = phones.mark()
+        phoneCalls(AGENT, "$APP")
+        val ringing = awaitCall("the call to ring") { it.phase == CallPhase.INCOMING }
+        assertFalse("Taken for an intercom call", ringing.intercom)
+        // Seen ringing a little after it began to: what is left of its time, less a margin, it has to go on ringing.
+        never("answered before its time", AUTO_ANSWER_SECONDS * 1000L - TIME_MARGIN_MS) { call()?.phase == CallPhase.CONNECTED }
+        awaitConnected("$AGENT")
+        awaitPhoneHears(AGENT, mark)
+    }
+
+    @Test
+    fun aRegularCallRingsOnWhileAutoAnswerIsOff() {
+        register()
+        showApp()
+        // Answering intercom calls by itself says nothing about the others.
+        settings { it.copy(autoAnswer = false, autoAnswerSeconds = 0, intercomAutoAnswer = true) }
+        phoneCalls(AGENT, "$APP")
+        awaitCall("the call to ring") { it.phase == CallPhase.INCOMING }
+        never("answered although auto answer is off", QUIET_WINDOW_MS) { call()?.phase == CallPhase.CONNECTED }
+        onMain { engine.calls.decline() }
+        awaitNoCall()
+    }
+
+    @Test
+    fun anIntercomCallFollowsOnlyItsOwnSwitch() {
+        register()
+        showApp()
+        settings { it.copy(autoAnswer = true, autoAnswerSeconds = 0, intercomAutoAnswer = false) }
+        phoneCalls(AGENT, "*80$APP")
+        val ringing = awaitCall("the intercom call to ring") { it.phase == CallPhase.INCOMING }
+        assertTrue("Not recognised as intercom", ringing.intercom)
+        never("an intercom call answered by the switch of regular calls", QUIET_WINDOW_MS) { call()?.phase == CallPhase.CONNECTED }
+        onMain { engine.calls.decline() }
+        awaitNoCall()
+    }
+
+    @Test
+    fun aSecondCallDuringACallIsNotAnsweredByItself() {
+        register()
+        showApp()
+        settings { it.copy(autoAnswer = true, autoAnswerSeconds = 0) }
+        dial("$AGENT")
+        awaitConnected("$AGENT")
+
+        phoneCalls(CUSTOMER, "$APP")
+        awaitCall("the waiting call") { it.waitingCall != null }
+        never("the waiting call answered by itself", QUIET_WINDOW_MS) { call()?.remoteAddress.orEmpty().startsWith("$CUSTOMER@") }
+
+        // Nor once it is left alone: it came during a call.
+        onMain { engine.calls.hangUp() }
+        awaitCall("the waiting call to ring on its own") { it.phase == CallPhase.INCOMING && it.remoteAddress.startsWith("$CUSTOMER@") }
+        never("the call that came during another one answered by itself", QUIET_WINDOW_MS) { call()?.phase == CallPhase.CONNECTED }
+    }
+
+    @Test
     fun directedPickup() {
         register()
         phoneCalls(AGENT, "$RINGING_PHONE") // rings forever
@@ -165,7 +226,8 @@ class CallHandlingTest : PbxTestBase() {
 
         dial(features().voicemail)
         awaitCall("the voicemail box to answer") { it.phase == CallPhase.CONNECTED }
-        assertEquals("VoiceMailMain", pbxChannel(pbxLeg(APP))?.get("Application"))
+        // The PBX answers first and starts the mailbox a moment later.
+        await("the PBX to open the mailbox") { pbxChannel(pbxLeg(APP))?.get("Application") == "VoiceMailMain" }
         onMain { engine.calls.hangUp() }
         awaitNoCall()
 
@@ -219,6 +281,12 @@ class CallHandlingTest : PbxTestBase() {
 
     private companion object {
         const val MESSAGE_MS = 6_000L
+
+        /** The time of auto answer in the tests: one that can be chosen, long enough to watch it ring. */
+        const val AUTO_ANSWER_SECONDS = 5
+
+        /** What of that time the call may have rung before the test saw it ring. */
+        const val TIME_MARGIN_MS = 1_500L
 
         /** A message id in the output of "voicemail show mailbox", like 1794645458-00000000. */
         val MESSAGE_ID = Regex("\\b\\d{9,}-[0-9a-f]{8}\\b")

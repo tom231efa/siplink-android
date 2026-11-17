@@ -261,7 +261,7 @@ class RemoteConfigTest : ScreenTestBase(PICTURES) {
         tap("删除远程配置")
         see("删除远程配置？")
         picture("delete")
-        tap("删除")
+        tap("确认删除")
         await("the configuration to be taken back") { !engine.lock.managed.value }
         val leave = platform.requests.single { it.path == "/api/device/v1/leave" }
         assertEquals("Bearer $DEVICE_KEY", leave.headers["authorization"])

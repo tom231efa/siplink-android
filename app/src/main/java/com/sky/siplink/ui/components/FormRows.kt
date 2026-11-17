@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
@@ -43,7 +44,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 /** Titled group of rows drawn on a rounded surface. */
@@ -140,7 +140,13 @@ fun NavRow(
         RowText(title, subtitle, Modifier.weight(1f))
         if (trailing != null) {
             Spacer(Modifier.width(8.dp))
-            Text(trailing, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            // A value of someone else's can be long: it gives way before the title does.
+            FadingText(
+                trailing,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.widthIn(max = TrailingMaxWidth),
+            )
         }
         Icon(
             Icons.AutoMirrored.Rounded.KeyboardArrowRight,
@@ -160,13 +166,17 @@ private fun RowIcon(icon: ImageVector?) {
 
 @Composable
 private fun RowText(title: String, subtitle: String?, modifier: Modifier) {
+    // Names and addresses of someone else's stand here too: one line each, fading where they do not fit.
     Column(modifier) {
-        Text(title, style = MaterialTheme.typography.bodyLarge)
+        FadingText(title, style = MaterialTheme.typography.bodyLarge)
         if (subtitle != null) {
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            FadingText(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
+
+/** The widest a trailing value of a [NavRow] gets. */
+private val TrailingMaxWidth = 140.dp
 
 /**
  * Outlined text field with the app's rounded shape and an optional error line.
@@ -240,13 +250,13 @@ fun FormField(
 }
 
 /**
- * The label or the placeholder of a text field: one line, cut off with an ellipsis. A field shows
+ * The label or the placeholder of a text field: one line, fading out where it does not fit. A field shows
  * its placeholder only while it has the focus and is empty, so a placeholder that wrapped in a
  * narrow field made the field taller the moment it was tapped, and shorter again with the first
  * character typed; a label that wrapped did the same as it moved up into the frame.
  */
 @Composable
-fun FieldText(text: String) = Text(text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+fun FieldText(text: String) = FadingText(text)
 
 /** Stands in a password field whose password is kept from the screen: eight dots, whatever the password. */
 private const val KEPT_PASSWORD = "········"

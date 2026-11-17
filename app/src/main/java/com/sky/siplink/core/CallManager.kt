@@ -6,6 +6,7 @@ import android.os.SystemClock
 import com.sky.siplink.core.CallSupport.isEnded
 import com.sky.siplink.core.CallSupport.isRinging
 import com.sky.siplink.core.CallSupport.phaseOf
+import com.sky.siplink.core.logic.AutoAnswerRules
 import com.sky.siplink.core.logic.DialTarget
 import com.sky.siplink.core.logic.FeatureDial
 import com.sky.siplink.core.logic.Formatters
@@ -104,8 +105,14 @@ class CallManager(
     private var attendedTransfer = false
     private var transferStatus: TransferStatus? = null
     private var parking = false
-    private var autoAnswerPending = false
     private var generation = 0
+
+    private val autoAnswer = AutoAnswerer(
+        handler,
+        canUseMicrophone = { host?.isAppVisible == true },
+        // A regular call is only answered by itself while no other call is up.
+        answerable = { call, intercom -> same(call, current) && isRinging(call) && (intercom || live(other) == null) },
+    ) { call -> accept(call, video = false) }
 
     private val video = VideoController(core, settings, { host?.canUseCamera == true }) { publish() }
     private val videoAllowed: Boolean get() = settings.current.videoCalls
@@ -166,7 +173,7 @@ class CallManager(
      *   it); without, the call is answered audio-only
      */
     fun answer(video: Boolean = false) {
-        autoAnswerPending = false
+        autoAnswer.cancel()
         val waiting = other?.takeIf(::isRinging)
         if (waiting != null) {
             // The core puts the running call on hold by itself when another one is accepted.
@@ -192,7 +199,7 @@ class CallManager(
 
     /** Declines the ringing call: the waiting one if there is one, else the current one. */
     fun decline() {
-        autoAnswerPending = false
+        autoAnswer.cancel()
         val waiting = other?.takeIf(::isRinging)
         if (waiting != null) {
             waiting.decline(Reason.Busy)
@@ -379,10 +386,8 @@ class CallManager(
 
     // ---------------------------------------------------------------- core events
 
-    /** Called when the call screen becomes visible: completes a pending intercom auto answer. */
-    fun onCallUiVisible() {
-        if (autoAnswerPending) answer()
-    }
+    /** Called when the call screen becomes visible: completes an auto answer whose time has come. */
+    fun onCallUiVisible() = autoAnswer.onCallUiVisible()
 
     fun onAudioChanged() {
         if (current != null) publish()
@@ -497,7 +502,7 @@ class CallManager(
                 val meta = metaOf(call)
                 meta.intercom = detectIntercom(call)
                 val info = publish() ?: return
-                ring(call, info, meta.intercom)
+                ring(call, info, meta.intercom, cameDuringCall = false)
                 val target = decision.forwardTo
                 if (target != null) {
                     handler.postDelayed({
@@ -508,16 +513,9 @@ class CallManager(
         }
     }
 
-    private fun ring(call: Call, info: CallInfo, intercom: Boolean) {
-        val autoAnswer = intercom && settings.current.intercomAutoAnswer
-        if (autoAnswer && host?.isAppVisible == true) {
-            // The microphone is only usable while the app is visible, so answer right away.
-            handler.postDelayed({ if (same(call, current) && isRinging(call)) accept(call, video = false) }, AUTO_ANSWER_DELAY_MS)
-        } else {
-            // Not visible: Android would mute the microphone. The call screen is brought up first
-            // and the answer happens as soon as it is shown (see onCallUiVisible).
-            autoAnswerPending = autoAnswer
-        }
+    /** @param cameDuringCall the call arrived while another one was up and rang next to it */
+    private fun ring(call: Call, info: CallInfo, intercom: Boolean, cameDuringCall: Boolean) {
+        autoAnswer.start(call, intercom, AutoAnswerRules.delayMs(settings.current, intercom, cameDuringCall))
         host?.showIncomingCall(info)
     }
 
@@ -585,6 +583,7 @@ class CallManager(
         when {
             same(call, current) -> {
                 host?.dismissIncomingCall()
+                autoAnswer.cancel()
                 val next = live(other) ?: live(referredFrom)
                 if (next != null) {
                     // The remaining call takes over the screen.
@@ -593,7 +592,7 @@ class CallManager(
                     consulting = false
                     conference = null
                     when {
-                        isRinging(next) -> publish()?.let { ring(next, it, metaOf(next).intercom) }
+                        isRinging(next) -> publish()?.let { ring(next, it, metaOf(next).intercom, cameDuringCall = true) }
                         // Our own hold is lifted, unless that call is just being transferred away.
                         next.state == Call.State.Paused && transferStatus != TransferStatus.IN_PROGRESS &&
                             transferStatus != TransferStatus.SUCCEEDED -> next.resume()
@@ -651,7 +650,7 @@ class CallManager(
         attendedTransfer = false
         transferStatus = null
         parking = false
-        autoAnswerPending = false
+        autoAnswer.cancel()
     }
 
     private fun isMuted(call: Call): Boolean = conference?.microphoneMuted ?: call.microphoneMuted
@@ -736,7 +735,6 @@ class CallManager(
 
     private companion object {
         const val END_LINGER_MS = 1400L
-        const val AUTO_ANSWER_DELAY_MS = 400L
         const val PARK_ANNOUNCE_TIMEOUT_MS = 12_000L
 
         /** SIP status for a caller who withholds the number where that is not accepted. */

@@ -41,7 +41,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sky.siplink.core.TlsManager
@@ -50,6 +49,7 @@ import com.sky.siplink.core.model.CertInfo
 import com.sky.siplink.core.model.MediaSecurity
 import com.sky.siplink.engine
 import com.sky.siplink.ui.components.ChoiceRow
+import com.sky.siplink.ui.components.FadingText
 import com.sky.siplink.ui.components.LdapRestartDialog
 import com.sky.siplink.ui.components.LocalConfigLocked
 import com.sky.siplink.ui.components.LocalMessenger
@@ -195,7 +195,7 @@ fun TlsScreen(onBack: () -> Unit) {
                     engine.tls.remove(certificate.fingerprint)
                     pendingRemoval = null
                     restartPrompt = engine.directory.tlsChangeNeedsRestart
-                }) { Text("移除", color = MaterialTheme.colorScheme.error) }
+                }) { Text("确认移除", color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = { TextButton(onClick = { pendingRemoval = null }) { Text("取消") } },
         )
@@ -225,13 +225,11 @@ private fun CertificateRow(certificate: CertInfo, onRemove: (() -> Unit)?) {
         }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(certificate.subject, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(
+            FadingText(certificate.subject, style = MaterialTheme.typography.titleMedium)
+            FadingText(
                 "签发者：${certificate.issuer}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
             )
             val expiry = Instant.ofEpochMilli(certificate.notAfterMs).atZone(zone).format(dateFormat)
             Text(
@@ -243,16 +241,11 @@ private fun CertificateRow(certificate: CertInfo, onRemove: (() -> Unit)?) {
                 style = MaterialTheme.typography.bodySmall,
                 color = if (certificate.expired) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Text(
+            // As much of the fingerprint as the row has room for, on one line.
+            FadingText(
                 "SHA-256 ${certificate.fingerprint}",
-                style = MaterialTheme.typography.labelSmall,
-                fontFamily = FontFamily.Monospace,
+                style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
-                maxLines = 1,
-                // As much of the fingerprint as the row has room for. Left to wrap, it would go
-                // to a second line as a whole, which the one line allowed here does not show.
-                softWrap = false,
-                overflow = TextOverflow.Ellipsis,
             )
         }
         if (onRemove != null) {

@@ -88,10 +88,10 @@ fun LdapListScreen(onBack: () -> Unit, onAdd: () -> Unit, onEdit: (String) -> Un
     }
 }
 
-/** Where the directory is, and that it is switched off when it is. */
+/** Where the directory is, and that it is switched off when it is: said first, so that a long host cannot fade it out. */
 private fun summary(directory: LdapDirectory): String {
     val server = LdapRules.serverText(directory)
-    return if (directory.enabled) server else "$server · 已停用"
+    return if (directory.enabled) server else "已停用 · $server"
 }
 
 /** A size in bytes as megabytes with one decimal. */

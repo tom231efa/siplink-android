@@ -59,6 +59,7 @@ import androidx.compose.material3.AssistChip
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -83,12 +84,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sky.siplink.core.model.SipAccount
 import com.sky.siplink.engine
+import com.sky.siplink.ui.components.FadingText
 import com.sky.siplink.ui.components.FeatureSheet
 import com.sky.siplink.ui.components.FieldText
 import com.sky.siplink.ui.components.AccountPickerSheet
@@ -292,11 +293,9 @@ private fun AccountChip(account: SipAccount?, canAdd: Boolean, onClick: () -> Un
             } else {
                 StatusDot(account.state)
                 Spacer(Modifier.width(8.dp))
-                Text(
+                FadingText(
                     account.name.ifBlank { account.identity },
                     style = MaterialTheme.typography.labelLarge,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.sizeIn(maxWidth = 200.dp),
                 )
                 Icon(Icons.Rounded.ArrowDropDown, contentDescription = "选择呼出账号")
@@ -360,14 +359,12 @@ private fun NumberDisplay(number: String) {
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
         )
     } else {
-        Text(
+        FadingText(
             text = number,
-            fontSize = fontSize.sp,
-            lineHeight = (fontSize * 1.2f).sp,
+            style = LocalTextStyle.current.copy(fontSize = fontSize.sp, lineHeight = (fontSize * 1.2f).sp),
             fontWeight = FontWeight.Medium,
             textAlign = TextAlign.Center,
             maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
             color = MaterialTheme.colorScheme.onSurface,
         )
     }

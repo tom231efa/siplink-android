@@ -97,9 +97,9 @@ fun FeatureSheet(
                 .verticalScroll(rememberScrollState()),
         ) {
             Column(Modifier.padding(horizontal = 24.dp)) {
-                Text(name ?: "话务功能", style = MaterialTheme.typography.titleLarge)
+                FadingText(name ?: "话务功能", style = MaterialTheme.typography.titleLarge)
                 if (name != null) {
-                    Text(
+                    FadingText(
                         "分机 $extension",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,

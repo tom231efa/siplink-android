@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "version": "9bc8137a6efcea98eb1090fba60f6243ba578f369f135316ae48e33af76fc60e",
+  "version": "ea51c1450f1bf9ae6f88b1cb21255cc62567b6981402abcd31e82c20b125641f",
   "generatedAt": "2026-11-16T08:00:00Z",
   "platform": {
     "name": "SipLink 管理平台",
@@ -49,7 +49,9 @@
     "echoCancellation": false,
     "ipv6": true,
     "callRecording": true,
-    "recordByDefault": true
+    "recordByDefault": true,
+    "autoAnswer": true,
+    "autoAnswerSeconds": 5
   },
   "accounts": [
     {
