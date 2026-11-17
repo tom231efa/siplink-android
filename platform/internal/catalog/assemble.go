@@ -100,7 +100,7 @@ func Assemble(ctx context.Context, st *store.Store, p Platform, c *store.Client)
 	}
 	for _, d := range dirs {
 		var l rules.LdapDirectory
-		if d.Kind == "hosted" {
+		if d.Kind == store.KindHosted {
 			if d.BookID == nil {
 				continue
 			}
@@ -115,6 +115,9 @@ func Assemble(ctx context.Context, st *store.Store, p Platform, c *store.Client)
 				return in, err
 			}
 		} else {
+			if d.External == nil {
+				continue
+			}
 			password, err := directoryPassword(p.Box, c.ID, d, clientPass)
 			if err != nil {
 				return in, err
@@ -169,14 +172,16 @@ func hostedByAccount(ctx context.Context, st *store.Store, p Platform, c *store.
 	return p.Hosted.HostedLdap(d, b, AccountBindDN(a.Name, p.Hosted.Suffix), password), nil
 }
 
+// directoryPassword opens the password a use of a directory binds with: the one kept for
+// every client, or the client's own for this use.
 func directoryPassword(box *secret.Box, clientID int64, d *store.Directory, clientPass map[int64]string) (string, error) {
-	var enc string
-	var aad []byte
-	switch d.PasswordMode {
+	mode, enc, aad := d.Password()
+	switch mode {
 	case PasswordTemplate:
-		enc, aad = d.PasswordEnc, secret.AAD("template_directories", d.ID, "password_enc")
 	case PasswordClient:
 		enc, aad = clientPass[d.ID], store.DirectoryPasswordAAD(clientID, d.ID)
+	default:
+		enc = ""
 	}
 	if enc == "" {
 		return "", nil

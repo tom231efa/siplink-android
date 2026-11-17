@@ -1,0 +1,89 @@
+{{define "content"}}
+{{$d := .Data}}{{$e := $d.E}}
+<div class="narrow-page">
+<header class="page-head"><div><h1 class="fade">{{.Title}}</h1>{{if not $d.New}}<p class="page-sub fade">外部<span class="dot-sep"></span>{{if $e.RegionID}}{{$d.Region}}{{else}}全局{{end}}<span class="dot-sep"></span><span class="mono">{{$e.Host}}:{{$e.Port}}</span></p>{{end}}</div></header>
+{{if $d.New}}{{template "kind_choice" $d.Kind}}{{end}}
+{{with $d.Errors}}<div class="flash error" role="alert"><ul class="errors">{{range .}}<li>{{.}}</li>{{end}}</ul></div>{{end}}
+<form method="post" action="{{if $d.New}}/directories{{else}}/directories/{{$e.ID}}{{end}}" class="form-stack"
+  {{if gt $d.Clients 0}}data-confirm="此通讯录已被 {{$d.Clients}} 个客户端使用，保存后将于下次同步时生效。确认保存？"{{end}}>
+  <fieldset class="plain bare"{{if not $d.CanEdit}} disabled{{end}}>
+  <section class="card">
+    <div class="card-body form">
+      <label>名称<input name="name" value="{{$e.Name}}" required maxlength="40"></label>
+      {{if not $d.New}}<label>类型<input value="外部" disabled></label>{{end}}
+      {{if or $d.New .Super}}
+      <label>区域
+        <select name="region">
+          {{if $d.Global}}<option value="0"{{if not $e.RegionID}} selected{{end}}>全局</option>{{end}}
+          {{range $d.Regions}}<option value="{{.ID}}"{{if eq .ID (deref $e.RegionID)}} selected{{end}}>{{.Name}}</option>{{end}}
+        </select>
+      </label>
+      {{end}}
+      <label>备注<input name="note" value="{{$e.Note}}" maxlength="200"></label>
+    </div>
+  </section>
+  <section class="card">
+    <div class="card-head"><h2>服务器</h2></div>
+    <div class="card-body form">
+      <div class="grid2 domain-port">
+        <label>服务器<input name="host" value="{{$e.Host}}" required placeholder="ldap.example.com"></label>
+        <label>端口<input name="port" value="{{$e.Port}}" inputmode="numeric"></label>
+      </div>
+      <div class="field"><span class="field-label" id="l-sec">加密</span>
+        <div class="segmented" role="radiogroup" aria-labelledby="l-sec">
+          <label><input type="radio" name="security" value="START_TLS"{{if ne $e.Security "NONE"}} checked{{end}}><span>StartTLS</span></label>
+          <label><input type="radio" name="security" value="NONE"{{if eq $e.Security "NONE"}} checked{{end}}><span>不加密</span></label>
+        </div></div>
+      <label>搜索基准（Base DN）<input name="baseDn" value="{{$e.BaseDN}}" required class="mono"></label>
+    </div>
+  </section>
+  <section class="card">
+    <div class="card-head"><h2>登录</h2></div>
+    <div class="card-body form">
+      <label>登录名（Bind DN）<input name="bindDn" value="{{$e.BindDN}}" class="mono" placeholder="留空为匿名"></label>
+      <div class="field"><span class="field-label" id="l-epm">密码</span>
+        <div class="segmented" role="radiogroup" aria-labelledby="l-epm">
+          <label><input type="radio" name="passwordMode" value="none"{{if eq $e.PasswordMode "none"}} checked{{end}}><span>匿名</span></label>
+          <label><input type="radio" name="passwordMode" value="template"{{if eq $e.PasswordMode "template"}} checked{{end}}><span>统一设置</span></label>
+          <label><input type="radio" name="passwordMode" value="client"{{if eq $e.PasswordMode "client"}} checked{{end}}><span>按客户端设置</span></label>
+        </div></div>
+      <label class="shared-password">统一密码<input type="password" name="password" autocomplete="new-password"{{if $d.HasPass}} placeholder="已设置，留空保持不变"{{end}}></label>
+    </div>
+  </section>
+  <section class="card">
+    <div class="card-head"><h2>查询</h2></div>
+    <div class="card-body form">
+      <div class="grid2">
+        <label>最大结果数<input type="number" name="maxResults" value="{{$e.MaxResults}}" min="1" max="1000" required></label>
+        <span></span>
+        <label>姓名属性<input name="nameAttributes" value="{{$e.NameAttributes}}" class="mono"></label>
+        <label>号码属性<input name="numberAttributes" value="{{$e.NumberAttributes}}" class="mono"></label>
+        <label>姓名过滤器<input name="nameFilter" value="{{$e.NameFilter}}" class="mono" placeholder="自动（需含 %）"></label>
+        <label>号码过滤器<input name="numberFilter" value="{{$e.NumberFilter}}" class="mono" placeholder="自动（需含 %）"></label>
+      </div>
+    </div>
+  </section>
+  </fieldset>
+  {{if $d.CanEdit}}<div class="savebar"><a class="btn" href="{{if $d.New}}/books{{else}}/directories/{{$e.ID}}{{end}}">取消</a><button type="submit" class="btn primary">{{icon "check"}}保存</button></div>{{end}}
+</form>
+{{if not $d.New}}
+<section class="card">
+  <div class="card-head"><h2>{{icon "layers"}}使用情况</h2></div>
+  <div class="card-body">{{if $d.Users}}<p class="fade">配置模板：{{join $d.Users "、"}}</p>{{else}}<p class="muted">暂无配置模板使用</p>{{end}}</div>
+</section>
+{{if $d.CanEdit}}
+<section class="card danger-card">
+  {{if $d.Users}}
+  <div class="card-body op"><div><strong>删除通讯录</strong><p class="hint">使用中：配置模板 {{join $d.Users "、"}}</p></div>
+    <button type="button" class="btn danger" disabled>{{icon "trash"}}删除通讯录</button></div>
+  {{else}}
+  <form method="post" action="/directories/{{$e.ID}}/delete" class="card-body op" data-confirm="确认删除通讯录「{{$e.Name}}」？此操作不可撤销。">
+    <div><strong>删除通讯录</strong></div>
+    <button type="submit" class="btn danger">{{icon "trash"}}删除通讯录</button>
+  </form>
+  {{end}}
+</section>
+{{end}}
+{{end}}
+</div>
+{{end}}

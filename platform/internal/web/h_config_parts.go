@@ -3,6 +3,7 @@ package web
 import (
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"siplink/internal/auth"
@@ -169,10 +170,12 @@ func (s *Server) accountPasswordProblem(a *store.LDAPAccount, password string) s
 
 type directoryForm struct {
 	T          *store.ConfigTemplate
-	D          *store.Directory
+	D          *store.Directory // nil while no directory is chosen for a new use
 	New        bool
 	Errors     []string
-	Books      []*store.Book
+	Books      []directorySource // what a new use may refer to
+	Externals  []directorySource
+	Source     string // the chosen one, as directorySource.Value
 	Profiles   []*store.Profile
 	HasPass    bool
 	HostedNote string
@@ -182,18 +185,31 @@ type directoryForm struct {
 	Manual     bool                 // hosted book with manual credentials
 }
 
+// directorySource is a directory a template may use; Value is "hosted:{book id}" or
+// "external:{id}".
+type directorySource struct {
+	Value  string
+	Name   string
+	Global bool
+}
+
+func sourceValue(kind string, id int64) string { return kind + ":" + itoa(id) }
+
 func (s *Server) directoryFormPage(w http.ResponseWriter, r *http.Request, status int, f directoryForm) {
 	ctx := r.Context()
 	f.Profiles, _ = s.St.Profiles(ctx, f.T.ID)
-	f.Books = s.usableBooks(r, f.T.RegionID)
-	f.HasPass = f.D.PasswordEnc != ""
 	f.Clients, _ = s.St.ClientCountOfConfigTemplate(ctx, f.T.ID)
-	f.Accounts = s.usableAccounts(r, f.T.RegionID)
-	f.Manual = f.D.LDAPAccountID != nil
-	if sec, ok := s.hosted().Security(); !ok {
-		f.HostedNote = rules.HostedNeedsName
-	} else {
-		f.Plain = sec == rules.LdapSecurityNone
+	if f.New {
+		f.Books, f.Externals = s.usableSources(r, f.T.RegionID)
+	}
+	if f.D != nil && f.D.Kind == store.KindHosted {
+		f.HasPass, f.Manual = f.D.PasswordEnc != "", f.D.LDAPAccountID != nil
+		f.Accounts = s.usableAccounts(r, f.T.RegionID)
+		if sec, ok := s.hosted().Security(); !ok {
+			f.HostedNote = rules.HostedNeedsName
+		} else {
+			f.Plain = sec == rules.LdapSecurityNone
+		}
 	}
 	title := "编辑通讯录"
 	if f.New {
@@ -222,11 +238,68 @@ func (s *Server) usableBooks(r *http.Request, region *int64) []*store.Book {
 	act := actor(r)
 	var out []*store.Book
 	for _, b := range all {
-		if act.Can(auth.BookUse, b.RegionID) && (b.RegionID == nil || region != nil && *region == *b.RegionID) {
+		if act.Can(auth.BookUse, b.RegionID) && compatible(region, b.RegionID) {
 			out = append(out, b)
 		}
 	}
 	return out
+}
+
+// usableExternals are the external directories a template of region may refer to, by
+// the rule of usableBooks.
+func (s *Server) usableExternals(r *http.Request, region *int64) []*store.ExternalDirectory {
+	all, _ := s.St.ListExternalDirectories(r.Context(), store.BookScope{All: true})
+	act := actor(r)
+	var out []*store.ExternalDirectory
+	for _, e := range all {
+		if act.Can(auth.BookUse, e.RegionID) && compatible(region, e.RegionID) {
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
+// usableSources lists what a new use of a template of region may refer to: books (none
+// while the LDAP service cannot be offered) and external directories.
+func (s *Server) usableSources(r *http.Request, region *int64) (books, externals []directorySource) {
+	if _, ok := s.hosted().Security(); ok {
+		for _, b := range s.usableBooks(r, region) {
+			books = append(books, directorySource{sourceValue(store.KindHosted, b.ID), b.Name, b.RegionID == nil})
+		}
+	}
+	for _, e := range s.usableExternals(r, region) {
+		externals = append(externals, directorySource{sourceValue(store.KindExternal, e.ID), e.Name, e.RegionID == nil})
+	}
+	return books, externals
+}
+
+// newDirectory is a new use of the directory named by source ("hosted:{id}" or
+// "external:{id}") when a template of region may use it; nil otherwise.
+func (s *Server) newDirectory(r *http.Request, t *store.ConfigTemplate, source string) *store.Directory {
+	kind, idText, _ := strings.Cut(source, ":")
+	id, err := strconv.ParseInt(idText, 10, 64)
+	if err != nil {
+		return nil
+	}
+	d := &store.Directory{TemplateID: t.ID, Kind: kind, Enabled: true, PasswordMode: catalog.PasswordNone, LookupIncoming: true,
+		LookupOutgoing: true, MaxResults: 50}
+	switch kind {
+	case store.KindHosted:
+		for _, b := range s.usableBooks(r, t.RegionID) {
+			if b.ID == id {
+				d.BookID, d.Source = &b.ID, b.Name
+				return d
+			}
+		}
+	case store.KindExternal:
+		for _, e := range s.usableExternals(r, t.RegionID) {
+			if e.ID == id {
+				d.ExternalID, d.External, d.Source = &e.ID, e, e.Name
+				return d
+			}
+		}
+	}
+	return nil
 }
 
 func (s *Server) directoryForm(w http.ResponseWriter, r *http.Request) {
@@ -235,13 +308,8 @@ func (s *Server) directoryForm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.PathValue("did") == "" {
-		d := &store.Directory{Kind: r.URL.Query().Get("kind"), Enabled: true, Port: 389, Security: "START_TLS",
-			PasswordMode: catalog.PasswordNone, LookupIncoming: true, LookupOutgoing: true, MaxResults: 50,
-			NameAttributes: rules.LdapDefaultNameAttributes, NumberAttributes: rules.LdapDefaultNumberAttributes}
-		if d.Kind != "hosted" {
-			d.Kind = "external"
-		}
-		s.directoryFormPage(w, r, http.StatusOK, directoryForm{T: t, D: d, New: true})
+		source := r.URL.Query().Get("source")
+		s.directoryFormPage(w, r, http.StatusOK, directoryForm{T: t, D: s.newDirectory(r, t, source), New: true, Source: source})
 		return
 	}
 	if d := s.loadDirectory(w, r, t); d != nil {
@@ -263,24 +331,52 @@ func (s *Server) loadDirectory(w http.ResponseWriter, r *http.Request, t *store.
 	return d
 }
 
+// readHostedUse reads what a use of a hosted book adds: the maximum results and the
+// credentials (automatic, or a service account with its password handling).
+func (s *Server) readHostedUse(r *http.Request, t *store.ConfigTemplate, d *store.Directory, book *store.Book, password string) []string {
+	var problems []string
+	d.MaxResults = intValue(r, "maxResults", 0)
+	d.PasswordMode = catalog.PasswordNone
+	oldAccount := d.LDAPAccountID
+	d.LDAPAccountID = nil
+	if r.FormValue("credentials") != "manual" {
+		return nil
+	}
+	id := formID(r, "account")
+	d.LDAPAccountID, d.PasswordMode = &id, r.FormValue("passwordMode")
+	account, err := s.St.LDAPAccountByID(r.Context(), id)
+	if err != nil {
+		account = nil
+	}
+	if p := s.accountPasswordProblem(account, password); p != "" && d.PasswordMode == catalog.PasswordTemplate {
+		problems = append(problems, p)
+	}
+	if p := catalog.HostedAccountProblem(d, book, account, t.RegionID); p != "" {
+		problems = append(problems, p)
+	} else if d.PasswordMode == catalog.PasswordTemplate && password == "" && (d.PasswordEnc == "" || derefOr(oldAccount) != id) {
+		problems = append(problems, "请填写 LDAP 账号「"+account.Name+"」的密码")
+	}
+	return problems
+}
+
 func (s *Server) directorySave(w http.ResponseWriter, r *http.Request) {
 	t := s.loadConfig(w, r, true)
 	if t == nil {
 		return
 	}
 	ctx := r.Context()
-	d := &store.Directory{TemplateID: t.ID}
+	var d *store.Directory
 	isNew := r.PathValue("did") == ""
-	if !isNew {
-		if d = s.loadDirectory(w, r, t); d == nil {
+	if isNew {
+		if d = s.newDirectory(r, t, r.FormValue("source")); d == nil {
+			s.directoryFormPage(w, r, http.StatusBadRequest, directoryForm{T: t, New: true, Errors: []string{"请选择通讯录"}})
 			return
 		}
-	} else {
-		d.Kind = r.FormValue("kind")
+	} else if d = s.loadDirectory(w, r, t); d == nil {
+		return
 	}
-	d.Name, d.Enabled = r.FormValue("name"), checkbox(r, "enabled")
+	d.Name, d.Enabled = strings.TrimSpace(r.FormValue("name")), checkbox(r, "enabled")
 	d.LookupIncoming, d.LookupOutgoing = checkbox(r, "lookupIncoming"), checkbox(r, "lookupOutgoing")
-	d.MaxResults = intValue(r, "maxResults", 0)
 	d.LineProfileID = nil
 	if pid := formID(r, "line"); pid > 0 {
 		if _, err := s.St.ProfileByID(ctx, t.ID, pid); err == nil {
@@ -288,54 +384,20 @@ func (s *Server) directorySave(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	var book *store.Book
-	var hostedProblems []string
+	var problems []string
 	password := r.FormValue("password")
-	if d.Kind == "hosted" {
-		d.BookID, d.PasswordMode, d.Host, d.BindDN, d.BaseDN = nil, catalog.PasswordNone, "", "", ""
-		if id := formID(r, "book"); id > 0 {
-			for _, b := range s.usableBooks(r, t.RegionID) {
-				if b.ID == id {
-					book, d.BookID = b, &b.ID
-				}
-			}
+	if d.Kind == store.KindHosted {
+		if b, err := s.St.BookByID(ctx, *d.BookID); err == nil {
+			book = b
 		}
-		sec, _ := s.hosted().Security()
-		d.Security = string(sec)
-		oldAccount := d.LDAPAccountID
-		d.LDAPAccountID = nil
-		if r.FormValue("credentials") == "manual" {
-			id := formID(r, "account")
-			d.LDAPAccountID, d.PasswordMode = &id, r.FormValue("passwordMode")
-			account, err := s.St.LDAPAccountByID(ctx, id)
-			if err != nil {
-				account = nil
-			}
-			if p := s.accountPasswordProblem(account, password); p != "" && d.PasswordMode == catalog.PasswordTemplate {
-				hostedProblems = append(hostedProblems, p)
-			}
-			if p := catalog.HostedAccountProblem(d, book, account, t.RegionID); p != "" {
-				hostedProblems = append(hostedProblems, p)
-			} else if d.PasswordMode == catalog.PasswordTemplate && password == "" && (d.PasswordEnc == "" || derefOr(oldAccount) != id) {
-				hostedProblems = append(hostedProblems, "请填写 LDAP 账号「"+account.Name+"」的密码")
-			}
-		}
-	} else {
-		d.Host, d.Port = r.FormValue("host"), intValue(r, "port", 0)
-		d.Security, d.BindDN, d.BaseDN = r.FormValue("security"), r.FormValue("bindDn"), r.FormValue("baseDn")
-		d.PasswordMode = r.FormValue("passwordMode")
-		d.NameAttributes, d.NumberAttributes = r.FormValue("nameAttributes"), r.FormValue("numberAttributes")
-		d.NameFilter, d.NumberFilter = r.FormValue("nameFilter"), r.FormValue("numberFilter")
+		problems = s.readHostedUse(r, t, d, book, password)
 	}
-	catalog.NormalizeDirectory(d)
 	others, err := s.St.Directories(ctx, t.ID)
 	if err != nil {
 		s.internal(w, r, err)
 		return
 	}
-	problems := append(catalog.DirectoryProblems(d, others, book, s.hosted(), isNew), hostedProblems...)
-	if d.Kind == "external" && d.PasswordMode == catalog.PasswordTemplate && password == "" && d.PasswordEnc == "" {
-		problems = append(problems, "请填写模板中的 LDAP 密码")
-	}
+	problems = append(catalog.DirectoryProblems(d, others, book, s.hosted(), isNew), problems...)
 	var seal func(id int64) (string, error)
 	if d.PasswordMode == catalog.PasswordTemplate && password != "" {
 		seal = func(id int64) (string, error) {
@@ -353,11 +415,12 @@ func (s *Server) directorySave(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if len(problems) > 0 {
-		s.directoryFormPage(w, r, http.StatusBadRequest, directoryForm{T: t, D: d, New: isNew, Errors: problems})
+		s.directoryFormPage(w, r, http.StatusBadRequest, directoryForm{T: t, D: d, New: isNew, Errors: problems,
+			Source: r.FormValue("source")})
 		return
 	}
-	detail := map[string]any{"directory": d.Name, "kind": d.Kind}
-	if d.Kind == "hosted" {
+	detail := map[string]any{"directory": d.DisplayName(), "kind": d.Kind}
+	if d.Kind == store.KindHosted {
 		detail["credentials"] = map[bool]string{true: "manual", false: "auto"}[d.LDAPAccountID != nil]
 	}
 	if seal != nil {
@@ -380,7 +443,7 @@ func (s *Server) directoryDelete(w http.ResponseWriter, r *http.Request) {
 		s.internal(w, r, err)
 		return
 	}
-	s.audit(r, "config_template.update", "config_template", t.ID, t.Name, t.RegionID, map[string]any{"directory": d.Name, "op": "delete"})
+	s.audit(r, "config_template.update", "config_template", t.ID, t.Name, t.RegionID, map[string]any{"directory": d.DisplayName(), "op": "delete"})
 	s.redirect(w, r, "/config-templates/"+itoa(t.ID)+"?tab=directories", "ok", "已删除。")
 }
 

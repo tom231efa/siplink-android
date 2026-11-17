@@ -140,3 +140,6 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
 @media print {
   .print-bar { display: none !important; }
 }
+
+/* The shared password of an external directory shows only for "统一设置". */
+.form:not(:has(input[name="passwordMode"][value="template"]:checked)) > .shared-password { display: none; }

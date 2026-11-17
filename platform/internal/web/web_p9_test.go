@@ -74,8 +74,12 @@ func TestPagesRender(t *testing.T) {
 		"/clients/" + itoa(id), "/clients/" + itoa(id) + "/edit", "/clients/" + itoa(id) + "/preview", "/clients/import",
 		"/clients/print?ids=" + itoa(id), "/client-templates", "/client-templates/new", "/client-templates/" + itoa(f.tpl.ID),
 		"/config-templates", "/config-templates/new", "/config-templates/" + cfg + "/profiles/new",
-		"/config-templates/" + cfg + "/profiles/" + p, "/config-templates/" + cfg + "/directories/new?kind=hosted",
-		"/config-templates/" + cfg + "/directories/new?kind=external", "/config-templates/" + cfg + "/directories/" + d,
+		"/config-templates/" + cfg + "/profiles/" + p, "/config-templates/" + cfg + "/directories/new",
+		"/config-templates/" + cfg + "/directories/new?source=external:" + itoa(*f.dir.ExternalID),
+		"/config-templates/" + cfg + "/directories/new?source=hosted:" + itoa(*f.hosted.BookID),
+		"/config-templates/" + cfg + "/directories/" + d, "/config-templates/" + cfg + "/directories/" + itoa(f.hosted.ID),
+		"/books", "/books?kind=external&q=ldap", "/books/new", "/books/new?kind=external", "/directories/" + itoa(*f.dir.ExternalID),
+		"/books/" + itoa(*f.hosted.BookID), "/books/" + itoa(*f.hosted.BookID) + "/edit",
 		"/key-templates", "/key-templates/new", "/key-templates/" + itoa(keys.ID), "/regions", "/audit"}
 	for _, tab := range []string{"accounts", "calls", "features", "general", "media", "security", "directories", "advanced"} {
 		paths = append(paths, "/config-templates/"+cfg+"?tab="+tab)

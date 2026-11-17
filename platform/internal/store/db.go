@@ -17,6 +17,8 @@ import (
 	"strings"
 	"time"
 
+	"siplink/internal/secret"
+
 	_ "modernc.org/sqlite" // registers the "sqlite" driver
 )
 
@@ -42,8 +44,10 @@ type Store struct {
 // FileName is the name of the database inside the data directory.
 const FileName = "siplink.db"
 
-// Open opens (and creates) the database file and applies pending migrations.
-func Open(ctx context.Context, path string) (*Store, error) {
+// Open opens (and creates) the database file and applies pending migrations. box is the
+// secret box of the key file: a migration that moves sealed values to other rows needs it
+// (goSteps).
+func Open(ctx context.Context, path string, box *secret.Box) (*Store, error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return nil, err
 	}
@@ -59,7 +63,7 @@ func Open(ctx context.Context, path string) (*Store, error) {
 	}
 	db.SetMaxOpenConns(8)
 	s := &Store{DB: db, Now: time.Now}
-	if err := s.Migrate(ctx); err != nil {
+	if err := s.Migrate(ctx, box); err != nil {
 		db.Close()
 		return nil, err
 	}
@@ -95,9 +99,15 @@ func (s *Store) SchemaVersion(ctx context.Context) (int, error) {
 	return strconv.Atoi(v)
 }
 
+// goSteps are the parts of migrations written in Go, by migration number. Each runs in
+// the transaction of its migration, after the migration's SQL.
+var goSteps = map[int]func(ctx context.Context, tx *sql.Tx, box *secret.Box, now string) error{
+	8: moveExternalDirectories,
+}
+
 // Migrate applies every embedded migration newer than the schema version, each in
 // its own transaction.
-func (s *Store) Migrate(ctx context.Context) error {
+func (s *Store) Migrate(ctx context.Context, box *secret.Box) error {
 	names, err := fs.Glob(migrationFiles, "migrations/*.sql")
 	if err != nil {
 		return err
@@ -123,6 +133,11 @@ func (s *Store) Migrate(ctx context.Context) error {
 		err = s.Tx(ctx, func(tx *sql.Tx) error {
 			if _, err := tx.ExecContext(ctx, string(body)); err != nil {
 				return fmt.Errorf("migration %s: %w", base, err)
+			}
+			if step := goSteps[n]; step != nil {
+				if err := step(ctx, tx, box, s.NowText()); err != nil {
+					return fmt.Errorf("migration %s: %w", base, err)
+				}
 			}
 			_, err := tx.ExecContext(ctx, `INSERT INTO meta(key, value) VALUES('schema_version', ?)
 				ON CONFLICT(key) DO UPDATE SET value = excluded.value`, strconv.Itoa(n))

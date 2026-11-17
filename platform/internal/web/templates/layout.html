@@ -119,6 +119,15 @@
 
 {{define "help"}}<button type="button" class="help-tip" aria-label="格式说明" aria-describedby="{{.}}">{{icon "circle-question-mark"}}</button>{{end}}
 
+{{define "kind_choice"}}<form method="get" action="/books/new" class="card scope-bar">
+  <span class="field-label" id="l-kind">类型</span>
+  <div class="segmented" role="radiogroup" aria-labelledby="l-kind">
+    <label><input type="radio" name="kind" value="hosted" data-autosubmit{{if eq . "hosted"}} checked{{end}}><span>内部</span></label>
+    <label><input type="radio" name="kind" value="external" data-autosubmit{{if eq . "external"}} checked{{end}}><span>外部</span></label>
+  </div>
+  <button type="submit" class="btn small" data-js-hide>切换</button>
+</form>{{end}}
+
 {{define "grip"}}<button type="button" class="grip" data-sort-handle aria-label="调整「{{.}}」的顺序" title="拖动排序">{{icon "grip-vertical"}}</button>{{end}}
 
 {{define "audit-table"}}

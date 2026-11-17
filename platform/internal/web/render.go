@@ -10,6 +10,7 @@ import (
 	"html/template"
 	"io/fs"
 	"net/http"
+	"net/url"
 	"path"
 	"strconv"
 	"strings"
@@ -324,3 +325,7 @@ func formIDs(r *http.Request, name string) []int64 {
 }
 
 func trimmed(r *http.Request, name string) string { return strings.TrimSpace(r.FormValue(name)) }
+
+// pageQuery is a filter as the query string of paging links. Encode escapes every value,
+// so the text is safe in a URL; as template.URL the template keeps its "=" and "&".
+func pageQuery(v url.Values) template.URL { return template.URL(v.Encode()) }

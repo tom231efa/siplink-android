@@ -12,13 +12,13 @@ import (
 func TestMigrateTwice(t *testing.T) {
 	ctx := context.Background()
 	path := filepath.Join(t.TempDir(), "x.db")
-	st, err := store.Open(ctx, path)
+	st, err := store.Open(ctx, path, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	v1, _ := st.SchemaVersion(ctx)
 	st.Close()
-	st, err = store.Open(ctx, path)
+	st, err = store.Open(ctx, path, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

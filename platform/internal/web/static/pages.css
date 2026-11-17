@@ -134,7 +134,7 @@ a.tile:hover { text-decoration: none; }
 .config-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; min-width: 0; }
 .config-body > *, .config-body form > fieldset > * { animation: settle var(--t) var(--ease) both; }
 .config-body .card + .card { margin-top: 0; }
-.config-body fieldset.bare { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
+.config-body fieldset.bare, .form-stack > fieldset.bare { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
 .config-body .card-head h2 + .hint { margin-top: 2px; }
 .card-body.settings { padding-top: 8px; padding-bottom: 8px; }
 .card-body.form { max-width: none; }

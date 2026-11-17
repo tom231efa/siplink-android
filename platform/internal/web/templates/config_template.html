@@ -236,23 +236,23 @@
 
   {{if eq $d.Tab "directories"}}
   {{if $d.HostedNote}}<div class="flash warn">{{$d.HostedNote}}</div>{{end}}
-  {{if $d.HostedPlain}}<div class="flash warn">平台 LDAP 地址为 IP 且未要求 TLS，托管通讯录将不加密下发。</div>{{end}}
+  {{if $d.HostedPlain}}<div class="flash warn">平台 LDAP 地址为 IP 且未要求 TLS，内部通讯录将不加密下发。</div>{{end}}
   <section class="card table-card">
     <div class="card-head"><h2>{{$label}}</h2>
-      {{if not $ro}}<div class="actions">{{if not $d.HostedNote}}<a class="btn small" href="/config-templates/{{$id}}/directories/new?kind=hosted">添加托管通讯录</a>{{end}}<a class="btn small primary" href="/config-templates/{{$id}}/directories/new?kind=external">{{icon "plus"}}添加外部 LDAP</a></div>{{end}}</div>
+      {{if not $ro}}<div class="actions"><a class="btn small primary" href="/config-templates/{{$id}}/directories/new">{{icon "plus"}}添加通讯录</a></div>{{end}}</div>
     {{if $d.Directories}}
-    <div class="table-wrap"><table class="table">
-      <thead><tr>{{if not $ro}}<th class="grip-col"><span class="sr-only">顺序</span></th>{{end}}<th>名称</th><th>类型</th><th>服务器 / 通讯录</th><th>加密</th><th>密码</th><th>线路</th><th class="actions-col"><span class="sr-only">操作</span></th></tr></thead>
+    <div class="table-wrap"><table class="table fit-sm">
+      <thead><tr>{{if not $ro}}<th class="grip-col"><span class="sr-only">顺序</span></th>{{end}}<th>名称</th><th>类型</th><th class="hide-sm">通讯录</th><th class="hide-sm">加密</th><th class="hide-sm">密码</th><th class="hide-sm">线路</th><th class="actions-col"><span class="sr-only">操作</span></th></tr></thead>
       <tbody{{if not $ro}} data-sortable data-sort-url="/config-templates/{{$id}}/directories/order"{{end}}>{{range $d.Directories}}<tr data-sort-id="{{.ID}}">
-        {{if not $ro}}<td class="grip-col">{{template "grip" (or .Name .BookName)}}</td>{{end}}<td class="strong"><span class="fade-line"><span class="fade">{{if .Name}}{{.Name}}{{else}}{{.BookName}}{{end}}</span>{{if not .Enabled}}<span class="tag">停用</span>{{end}}</span></td>
-        <td class="nowrap">{{if eq .Kind "hosted"}}托管{{else}}外部{{end}}</td>
-        <td class="mono"><span class="fade">{{if eq .Kind "hosted"}}{{.BookName}}{{else}}{{.Host}}:{{.Port}}{{end}}</span></td>
-        <td class="nowrap">{{if eq .Kind "hosted"}}{{if $d.HostedPlain}}<span class="status warn">不加密</span>{{else}}StartTLS{{end}}{{else}}{{if eq .Security "START_TLS"}}StartTLS{{else}}<span class="status warn">不加密</span>{{end}}{{end}}</td>
-        <td class="nowrap">{{if and (eq .Kind "hosted") (not .LDAPAccountID)}}自动{{else}}{{if .LDAPAccountID}}手动：{{end}}{{if eq .PasswordMode "template"}}模板{{else if eq .PasswordMode "client"}}每个客户端{{else}}匿名{{end}}{{end}}</td>
-        <td><span class="fade">{{.Line}}</span></td>
+        {{if not $ro}}<td class="grip-col">{{template "grip" .DisplayName}}</td>{{end}}<td class="strong"><span class="fade-line"><span class="fade">{{.DisplayName}}</span>{{if not .Enabled}}<span class="tag">停用</span>{{end}}</span>{{if or .Name .External}}<span class="sub show-sm fade">{{if .Name}}{{.Source}} {{end}}{{with .External}}{{.Host}}:{{.Port}}{{end}}</span>{{end}}</td>
+        <td class="nowrap">{{if eq .Kind "hosted"}}内部{{else}}外部{{end}}</td>
+        <td class="hide-sm"><a class="fade" href="{{if eq .Kind "hosted"}}/books/{{.BookID | deref}}{{else}}/directories/{{.ExternalID | deref}}{{end}}">{{.Source}}</a>{{with .External}}<span class="sub mono fade">{{.Host}}:{{.Port}}</span>{{end}}</td>
+        <td class="nowrap hide-sm">{{if eq .Kind "hosted"}}{{if $d.HostedPlain}}<span class="status warn">不加密</span>{{else}}StartTLS{{end}}{{else}}{{if eq .External.Security "START_TLS"}}StartTLS{{else}}<span class="status warn">不加密</span>{{end}}{{end}}</td>
+        <td class="nowrap hide-sm">{{if and (eq .Kind "hosted") (not .LDAPAccountID)}}自动{{else}}{{if .LDAPAccountID}}手动：{{end}}{{if eq .Mode "template"}}统一设置{{else if eq .Mode "client"}}每个客户端{{else}}匿名{{end}}{{end}}</td>
+        <td class="hide-sm"><span class="fade">{{.Line}}</span></td>
         <td class="actions-col">{{if not $ro}}<div class="row-actions">
           <a class="btn" href="/config-templates/{{$id}}/directories/{{.ID}}">编辑</a>
-          <form method="post" action="/config-templates/{{$id}}/directories/{{.ID}}/delete" class="inline" data-confirm="确认删除此通讯录？"><button class="btn danger" title="删除" aria-label="删除">{{icon "trash"}}</button></form>
+          <form method="post" action="/config-templates/{{$id}}/directories/{{.ID}}/delete" class="inline" data-confirm="确认从此模板移除通讯录「{{.DisplayName}}」？"><button class="btn danger" title="移除" aria-label="移除">{{icon "trash"}}</button></form>
         </div>{{end}}</td></tr>{{end}}</tbody>
     </table></div>
     {{else}}<div class="empty-state">{{icon "book-user"}}<p>暂无通讯录</p></div>{{end}}

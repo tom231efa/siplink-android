@@ -25,7 +25,7 @@ func TestAdminResetTwoStep(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
-	st, err := store.Open(ctx, filepath.Join(dir, store.FileName))
+	st, err := store.Open(ctx, filepath.Join(dir, store.FileName), nil)
 	if err != nil {
 		t.Fatal(err)
 	}

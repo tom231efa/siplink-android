@@ -6,6 +6,8 @@ import (
 	"errors"
 	"slices"
 	"strings"
+
+	"siplink/internal/secret"
 )
 
 // ConfigTemplate holds everything handed out except shortcut keys (design §2.1).
@@ -42,31 +44,49 @@ type Profile struct {
 	IsDefault    bool
 }
 
-// Directory is an external LDAP server or a hosted book of a template.
+// Directory is the use of a directory in a template (template_directories): it refers
+// to a hosted book or an external directory and adds what belongs to this use.
 type Directory struct {
-	ID               int64
-	TemplateID       int64
-	Position         int
-	Kind             string // external / hosted
-	BookID           *int64
-	Name             string
-	Enabled          bool
-	Host             string
-	Port             int
-	Security         string
-	BindDN           string
-	PasswordMode     string // none / template / client
-	PasswordEnc      string // sealed, password_mode = template only
-	BaseDN           string
-	LineProfileID    *int64
-	LookupIncoming   bool
-	LookupOutgoing   bool
-	MaxResults       int
-	NameAttributes   string
-	NumberAttributes string
-	NameFilter       string
-	NumberFilter     string
-	LDAPAccountID    *int64 // hosted only: bind with this service account; nil = each client's derived login
+	ID             int64
+	TemplateID     int64
+	Position       int
+	Kind           string // KindHosted / KindExternal; fixed with the source when the use is made
+	BookID         *int64 // hosted
+	ExternalID     *int64 // external
+	Name           string // shown on the phone; "" = the directory's name
+	Enabled        bool
+	LineProfileID  *int64
+	LookupIncoming bool
+	LookupOutgoing bool
+	MaxResults     int    // hosted only (an external directory has its own)
+	PasswordMode   string // hosted bound by hand only: template / client; else none
+	PasswordEnc    string // sealed, hosted bound by hand with password_mode = template only
+	LDAPAccountID  *int64 // hosted only: bind with this service account; nil = each client's derived login
+
+	Source   string             // name of the book or external directory (read only)
+	External *ExternalDirectory // the external directory (read only), loaded with the use
+}
+
+// DisplayName is the name the phone shows: the use's own, else the directory's.
+func (d *Directory) DisplayName() string {
+	if d.Name != "" {
+		return d.Name
+	}
+	return d.Source
+}
+
+// Password returns the password handling that applies to the use and, for mode
+// template, the sealed password and its associated data: the external directory's, or
+// the use's own for a hosted book bound by hand. Mode client passwords are the client's
+// (DirectoryPasswordAAD).
+func (d *Directory) Password() (mode, enc string, aad []byte) {
+	if d.Kind == KindExternal {
+		if d.External == nil {
+			return "none", "", nil
+		}
+		return d.External.PasswordMode, d.External.PasswordEnc, ExternalDirectoryAAD(d.External.ID)
+	}
+	return d.PasswordMode, d.PasswordEnc, secret.AAD("template_directories", d.ID, "password_enc")
 }
 
 const configTemplateCols = `id, region_id, name, note, settings_json, codecs_json, ca_pems, config_password_hash,
@@ -81,9 +101,10 @@ func scanConfigTemplate(row interface{ Scan(...any) error }) (*ConfigTemplate, e
 	return t, mapErr(err)
 }
 
-// scopeWhere builds the WHERE part for objects of a region or global.
-func scopeWhere(sc BookScope) (string, []any) {
-	var where []string
+// scopeConds are the conditions for objects of a scope: global ones and those of the
+// given regions (or all), narrowed to one region when the scope says so.
+func scopeConds(sc BookScope) ([]string, []any) {
+	var conds []string
 	var args []any
 	if !sc.All {
 		cond := `region_id IS NULL`
@@ -91,15 +112,21 @@ func scopeWhere(sc BookScope) (string, []any) {
 			cond = `(region_id IS NULL OR region_id IN (` + placeholders(len(sc.Regions)) + `))`
 			args = append(args, int64Args(sc.Regions)...)
 		}
-		where = append(where, cond)
+		conds = append(conds, cond)
 	}
 	if sc.Region != 0 {
-		where, args = append(where, `region_id = ?`), append(args, sc.Region)
+		conds, args = append(conds, `region_id = ?`), append(args, sc.Region)
 	}
-	if len(where) == 0 {
+	return conds, args
+}
+
+// scopeWhere builds the WHERE part for objects of a scope.
+func scopeWhere(sc BookScope) (string, []any) {
+	conds, args := scopeConds(sc)
+	if len(conds) == 0 {
 		return "", nil
 	}
-	return ` WHERE ` + strings.Join(where, ` AND `), args
+	return ` WHERE ` + strings.Join(conds, ` AND `), args
 }
 
 // ListConfigTemplates returns the templates of a scope by name.
@@ -397,52 +424,88 @@ func orderedIDs(ctx context.Context, q querier, query string, args ...any) ([]in
 
 // ---- directories ----
 
-const directoryCols = `id, config_template_id, position, kind, book_id, name, enabled, host, port, security, bind_dn,
-	password_mode, COALESCE(password_enc, ''), base_dn, line_profile_id, lookup_incoming, lookup_outgoing, max_results,
-	name_attributes, number_attributes, name_filter, number_filter, ldap_account_id`
+const directoryCols = `d.id, d.config_template_id, d.position, d.kind, d.book_id, d.external_id, d.name, d.enabled,
+	d.password_mode, COALESCE(d.password_enc, ''), d.line_profile_id, d.lookup_incoming, d.lookup_outgoing, d.max_results,
+	d.ldap_account_id, COALESCE((SELECT name FROM address_books WHERE id = d.book_id),
+	(SELECT name FROM external_directories WHERE id = d.external_id), '')`
 
 func scanDirectory(row interface{ Scan(...any) error }) (*Directory, error) {
 	d := &Directory{}
-	var book, line, account sql.NullInt64
-	err := row.Scan(&d.ID, &d.TemplateID, &d.Position, &d.Kind, &book, &d.Name, &d.Enabled, &d.Host, &d.Port, &d.Security,
-		&d.BindDN, &d.PasswordMode, &d.PasswordEnc, &d.BaseDN, &line, &d.LookupIncoming, &d.LookupOutgoing, &d.MaxResults,
-		&d.NameAttributes, &d.NumberAttributes, &d.NameFilter, &d.NumberFilter, &account)
-	d.BookID, d.LineProfileID, d.LDAPAccountID = ptrID(book), ptrID(line), ptrID(account)
+	var book, external, line, account sql.NullInt64
+	err := row.Scan(&d.ID, &d.TemplateID, &d.Position, &d.Kind, &book, &external, &d.Name, &d.Enabled, &d.PasswordMode,
+		&d.PasswordEnc, &line, &d.LookupIncoming, &d.LookupOutgoing, &d.MaxResults, &account, &d.Source)
+	d.BookID, d.ExternalID, d.LineProfileID, d.LDAPAccountID = ptrID(book), ptrID(external), ptrID(line), ptrID(account)
 	return d, mapErr(err)
 }
 
-// Directories returns the directories of a template in order.
-func (s *Store) Directories(ctx context.Context, templateID int64) ([]*Directory, error) {
-	rows, err := s.DB.QueryContext(ctx, `SELECT `+directoryCols+` FROM template_directories WHERE config_template_id = ? ORDER BY position, id`, templateID)
+// queryDirectories loads uses with their external directories.
+func (s *Store) queryDirectories(ctx context.Context, where string, args ...any) ([]*Directory, error) {
+	rows, err := s.DB.QueryContext(ctx, `SELECT `+directoryCols+` FROM template_directories d WHERE `+where+` ORDER BY d.position, d.id`, args...)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 	var out []*Directory
+	var ids []int64
 	for rows.Next() {
 		d, err := scanDirectory(rows)
 		if err != nil {
+			rows.Close()
 			return nil, err
 		}
 		out = append(out, d)
+		if d.ExternalID != nil {
+			ids = append(ids, *d.ExternalID)
+		}
 	}
-	return out, rows.Err()
+	rows.Close()
+	if err := rows.Err(); err != nil || len(ids) == 0 {
+		return out, err
+	}
+	list, err := queryExternals(ctx, s.DB, ` WHERE id IN (`+placeholders(len(ids))+`)`, int64Args(ids)...)
+	if err != nil {
+		return nil, err
+	}
+	byID := map[int64]*ExternalDirectory{}
+	for _, e := range list {
+		byID[e.ID] = e
+	}
+	for _, d := range out {
+		if d.ExternalID != nil {
+			d.External = byID[*d.ExternalID]
+		}
+	}
+	return out, nil
 }
 
-// DirectoryByID loads one directory of a template.
+// Directories returns the directory uses of a template in order.
+func (s *Store) Directories(ctx context.Context, templateID int64) ([]*Directory, error) {
+	return s.queryDirectories(ctx, `d.config_template_id = ?`, templateID)
+}
+
+// DirectoryByID loads one directory use of a template.
 func (s *Store) DirectoryByID(ctx context.Context, templateID, id int64) (*Directory, error) {
-	return scanDirectory(s.DB.QueryRowContext(ctx, `SELECT `+directoryCols+` FROM template_directories WHERE id = ? AND config_template_id = ?`, id, templateID))
+	list, err := s.queryDirectories(ctx, `d.id = ? AND d.config_template_id = ?`, id, templateID)
+	if err != nil {
+		return nil, err
+	}
+	if len(list) == 0 {
+		return nil, ErrNotFound
+	}
+	return list[0], nil
 }
 
-// SaveDirectory inserts (ID 0) or updates a directory, at most max per template. seal,
-// when not nil, makes the sealed template password for the row id (the id is part of
-// the encryption's associated data); nil keeps the stored password.
+// SaveDirectory inserts (ID 0) or updates a directory use, at most max per template.
+// The kind and the directory it refers to are written only when the use is made. seal,
+// when not nil, makes the sealed password of a hosted book bound by hand for the row id
+// (the id is part of the encryption's associated data); nil keeps the stored password.
 func (s *Store) SaveDirectory(ctx context.Context, d *Directory, max int, seal func(id int64) (string, error)) error {
+	if d.Kind == KindExternal { // the external directory keeps the password
+		d.PasswordMode, d.LDAPAccountID = "none", nil
+	}
 	now := s.NowText()
 	return s.Tx(ctx, func(tx *sql.Tx) error {
-		args := []any{d.Kind, nullID(d.BookID), d.Name, boolInt(d.Enabled), d.Host, d.Port, d.Security, d.BindDN, d.PasswordMode,
-			d.BaseDN, nullID(d.LineProfileID), boolInt(d.LookupIncoming), boolInt(d.LookupOutgoing), d.MaxResults,
-			d.NameAttributes, d.NumberAttributes, d.NameFilter, d.NumberFilter, nullID(d.LDAPAccountID), now}
+		args := []any{d.Name, boolInt(d.Enabled), d.PasswordMode, nullID(d.LineProfileID), boolInt(d.LookupIncoming),
+			boolInt(d.LookupOutgoing), d.MaxResults, nullID(d.LDAPAccountID), now}
 		if d.ID == 0 {
 			var n, pos int
 			if err := tx.QueryRowContext(ctx, `SELECT count(*), COALESCE(max(position), 0) FROM template_directories WHERE config_template_id = ?`,
@@ -453,18 +516,17 @@ func (s *Store) SaveDirectory(ctx context.Context, d *Directory, max int, seal f
 				return ErrLimit
 			}
 			d.Position = pos + 1
-			res, err := tx.ExecContext(ctx, `INSERT INTO template_directories(kind, book_id, name, enabled, host, port, security, bind_dn,
-				password_mode, base_dn, line_profile_id, lookup_incoming, lookup_outgoing, max_results, name_attributes, number_attributes,
-				name_filter, number_filter, ldap_account_id, updated_at, config_template_id, position, created_at)
-				VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, append(args, d.TemplateID, d.Position, now)...)
+			res, err := tx.ExecContext(ctx, `INSERT INTO template_directories(name, enabled, password_mode, line_profile_id,
+				lookup_incoming, lookup_outgoing, max_results, ldap_account_id, updated_at, kind, book_id, external_id,
+				config_template_id, position, created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+				append(args, d.Kind, nullID(d.BookID), nullID(d.ExternalID), d.TemplateID, d.Position, now)...)
 			if err != nil {
 				return mapErr(err)
 			}
 			d.ID, _ = res.LastInsertId()
-		} else if err := deleteRowLike(ctx, tx, `UPDATE template_directories SET kind = ?, book_id = ?, name = ?, enabled = ?, host = ?,
-			port = ?, security = ?, bind_dn = ?, password_mode = ?, base_dn = ?, line_profile_id = ?, lookup_incoming = ?,
-			lookup_outgoing = ?, max_results = ?, name_attributes = ?, number_attributes = ?, name_filter = ?, number_filter = ?,
-			ldap_account_id = ?, updated_at = ? WHERE id = ? AND config_template_id = ?`, append(args, d.ID, d.TemplateID)...); err != nil {
+		} else if err := deleteRowLike(ctx, tx, `UPDATE template_directories SET name = ?, enabled = ?, password_mode = ?,
+			line_profile_id = ?, lookup_incoming = ?, lookup_outgoing = ?, max_results = ?, ldap_account_id = ?, updated_at = ?
+			WHERE id = ? AND config_template_id = ?`, append(args, d.ID, d.TemplateID)...); err != nil {
 			return err
 		}
 		switch {

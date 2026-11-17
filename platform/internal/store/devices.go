@@ -148,6 +148,7 @@ type Report struct {
 	LastIP            string
 	AppVersion        string
 	AppVersionCode    int64
+	UserAgent         string // the User-Agent header of the phone's last request
 	AndroidRelease    string
 	AndroidSDK        int64
 	DeviceModel       string
@@ -161,12 +162,12 @@ type Report struct {
 	BuildError        string
 }
 
-const reportCols = `client_id, last_seen_at, last_ip, app_version, app_version_code, android_release, android_sdk,
+const reportCols = `client_id, last_seen_at, last_ip, app_version, app_version_code, user_agent, android_release, android_sdk,
 	device_model, sent_version, revision_key, last_doc_enc, applied_version, applied_at, apply_error, registrations_json, build_error`
 
 func scanReport(row interface{ Scan(...any) error }) (*Report, error) {
 	r := &Report{}
-	err := row.Scan(&r.ClientID, &r.LastSeenAt, &r.LastIP, &r.AppVersion, &r.AppVersionCode, &r.AndroidRelease, &r.AndroidSDK,
+	err := row.Scan(&r.ClientID, &r.LastSeenAt, &r.LastIP, &r.AppVersion, &r.AppVersionCode, &r.UserAgent, &r.AndroidRelease, &r.AndroidSDK,
 		&r.DeviceModel, &r.SentVersion, &r.RevisionKey, &r.LastDocEnc, &r.AppliedVersion, &r.AppliedAt, &r.ApplyError,
 		&r.RegistrationsJSON, &r.BuildError)
 	return r, mapErr(err)
@@ -205,14 +206,14 @@ func (s *Store) ClientReports(ctx context.Context, ids []int64) (map[int64]*Repo
 
 // SaveReport writes a whole report (overwritten on every sync).
 func (s *Store) SaveReport(ctx context.Context, r *Report) error {
-	_, err := s.DB.ExecContext(ctx, `INSERT INTO client_reports(`+reportCols+`) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+	_, err := s.DB.ExecContext(ctx, `INSERT INTO client_reports(`+reportCols+`) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
 		ON CONFLICT(client_id) DO UPDATE SET last_seen_at = excluded.last_seen_at, last_ip = excluded.last_ip,
-		app_version = excluded.app_version, app_version_code = excluded.app_version_code,
+		app_version = excluded.app_version, app_version_code = excluded.app_version_code, user_agent = excluded.user_agent,
 		android_release = excluded.android_release, android_sdk = excluded.android_sdk, device_model = excluded.device_model,
 		sent_version = excluded.sent_version, revision_key = excluded.revision_key, last_doc_enc = excluded.last_doc_enc,
 		applied_version = excluded.applied_version, applied_at = excluded.applied_at, apply_error = excluded.apply_error,
 		registrations_json = excluded.registrations_json, build_error = excluded.build_error`,
-		r.ClientID, r.LastSeenAt, r.LastIP, r.AppVersion, r.AppVersionCode, r.AndroidRelease, r.AndroidSDK, r.DeviceModel,
+		r.ClientID, r.LastSeenAt, r.LastIP, r.AppVersion, r.AppVersionCode, r.UserAgent, r.AndroidRelease, r.AndroidSDK, r.DeviceModel,
 		r.SentVersion, r.RevisionKey, r.LastDocEnc, r.AppliedVersion, r.AppliedAt, r.ApplyError, r.RegistrationsJSON, r.BuildError)
 	return err
 }

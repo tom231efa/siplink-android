@@ -30,12 +30,20 @@ func (h Hosted) Security() (rules.LdapSecurity, bool) {
 	return rules.HostedSecurity(h.Host, h.RequireTLS)
 }
 
-// LdapOf turns a stored external directory into the app's LdapDirectory, with password.
+// ExternalLdap turns an external directory into the app's LdapDirectory, with password;
+// name, enabled and lookups are those of the directory on its own.
+func ExternalLdap(e *store.ExternalDirectory, password string) rules.LdapDirectory {
+	return rules.LdapDirectory{Name: e.Name, Enabled: true, Host: e.Host, Port: e.Port, Security: rules.LdapSecurity(e.Security),
+		BindDn: e.BindDN, Password: password, BaseDn: e.BaseDN, LookupIncoming: true, LookupOutgoing: true, MaxResults: e.MaxResults,
+		NameAttributes: e.NameAttributes, NumberAttributes: e.NumberAttributes, NameFilter: e.NameFilter, NumberFilter: e.NumberFilter}
+}
+
+// LdapOf is the directory a phone gets for the use of an external directory: the
+// directory's connection with the use's name, switch and lookups.
 func LdapOf(d *store.Directory, password string) rules.LdapDirectory {
-	return rules.LdapDirectory{Name: d.Name, Enabled: d.Enabled, Host: d.Host, Port: d.Port,
-		Security: rules.LdapSecurity(d.Security), BindDn: d.BindDN, Password: password, BaseDn: d.BaseDN,
-		LookupIncoming: d.LookupIncoming, LookupOutgoing: d.LookupOutgoing, MaxResults: d.MaxResults,
-		NameAttributes: d.NameAttributes, NumberAttributes: d.NumberAttributes, NameFilter: d.NameFilter, NumberFilter: d.NumberFilter}
+	l := ExternalLdap(d.External, password)
+	l.Name, l.Enabled, l.LookupIncoming, l.LookupOutgoing = d.DisplayName(), d.Enabled, d.LookupIncoming, d.LookupOutgoing
+	return l
 }
 
 // HostedLdap is the directory a phone gets for a hosted book (§3.5.5, derived values).
@@ -73,69 +81,72 @@ func HostedAccountProblem(d *store.Directory, book *store.Book, a *store.LDAPAcc
 	return ""
 }
 
-// NormalizeDirectory applies LdapRules.normalize to an external directory.
-func NormalizeDirectory(d *store.Directory) {
-	d.Name = strings.TrimSpace(d.Name)
-	if d.Kind != "external" {
-		return
-	}
-	l := rules.NormalizeLdap(LdapOf(d, ""))
-	d.Name, d.Host, d.Port, d.BindDN, d.BaseDN = l.Name, l.Host, l.Port, l.BindDn, l.BaseDn
-	d.NameAttributes, d.NumberAttributes, d.NameFilter, d.NumberFilter = l.NameAttributes, l.NumberAttributes, l.NameFilter, l.NumberFilter
+// NormalizeExternal applies LdapRules.normalize to an external directory.
+func NormalizeExternal(e *store.ExternalDirectory) {
+	e.Note = strings.TrimSpace(e.Note)
+	l := rules.NormalizeLdap(ExternalLdap(e, ""))
+	e.Name, e.Host, e.Port, e.BindDN, e.BaseDN = l.Name, l.Host, l.Port, l.BindDn, l.BaseDn
+	e.NameAttributes, e.NumberAttributes, e.NameFilter, e.NumberFilter = l.NameAttributes, l.NumberAttributes, l.NameFilter, l.NumberFilter
 }
 
-// DirectoryProblems checks a normalized directory. others are the other directories of
-// the template (for unique names); book is the hosted book (nil for external).
-func DirectoryProblems(d *store.Directory, others []*store.Directory, book *store.Book, h Hosted, isNew bool) []string {
-	var taken []string
-	for _, o := range others {
-		if o.ID != d.ID {
-			taken = append(taken, displayName(o))
-		}
-	}
+// ExternalProblems checks a normalized external directory with LdapRules.validate; its
+// name is required here (it names the directory in lists and is the phone's default).
+func ExternalProblems(e *store.ExternalDirectory) []string {
 	var out []string
-	if d.MaxResults < 1 || d.MaxResults > rules.MaxResults {
-		out = append(out, rules.LdapMaxResultsOutOfRange.Full())
+	if e.Name == "" {
+		out = append(out, "名称必填")
 	}
-	if d.Kind == "hosted" {
-		if book == nil {
-			return append(out, "请选择托管通讯录")
-		}
-		if _, ok := h.Security(); !ok {
-			return append(out, rules.HostedNeedsName)
-		}
-		probe := h.HostedLdap(d, book, "uid=x", "x")
-		for _, e := range rules.ValidateLdap(probe, taken, isNew) {
-			out = append(out, e.Full())
-		}
-		return out
-	}
-	if d.Kind != "external" {
-		return append(out, "类型无效")
-	}
-	switch d.PasswordMode {
+	switch e.PasswordMode {
 	case PasswordNone, PasswordTemplate, PasswordClient:
 	default:
 		out = append(out, "密码方式无效")
 	}
-	if d.Name == "" {
-		out = append(out, "名称必填")
-	}
-	probe := LdapOf(d, "")
-	if d.PasswordMode != PasswordNone {
+	probe := ExternalLdap(e, "")
+	if e.PasswordMode != PasswordNone {
 		probe.Password = "x" // a password without a bind DN is refused (PASSWORD_WITHOUT_USER)
 	}
-	for _, e := range rules.ValidateLdap(probe, taken, isNew) {
-		out = append(out, e.Full())
+	for _, err := range rules.ValidateLdap(probe, nil, false) {
+		out = append(out, err.Full())
 	}
 	return out
 }
 
-func displayName(d *store.Directory) string {
-	if d.Name != "" {
-		return d.Name
+// DirectoryProblems checks a directory use with a trimmed name. others are the other
+// uses of the template (for unique names on the phone); book is the hosted book (nil for
+// external).
+func DirectoryProblems(d *store.Directory, others []*store.Directory, book *store.Book, h Hosted, isNew bool) []string {
+	var taken []string
+	for _, o := range others {
+		if o.ID != d.ID {
+			taken = append(taken, o.DisplayName())
+		}
 	}
-	return "#" + strings.TrimSpace(d.Kind)
+	var out []string
+	switch d.Kind {
+	case store.KindHosted:
+		if d.MaxResults < 1 || d.MaxResults > rules.MaxResults {
+			out = append(out, rules.LdapMaxResultsOutOfRange.Full())
+		}
+		if book == nil {
+			return append(out, "请选择通讯录")
+		}
+		if _, ok := h.Security(); !ok {
+			return append(out, rules.HostedNeedsName)
+		}
+		for _, e := range rules.ValidateLdap(h.HostedLdap(d, book, "uid=x", "x"), taken, isNew) {
+			out = append(out, e.Full())
+		}
+	case store.KindExternal:
+		if d.External == nil {
+			return append(out, "请选择通讯录")
+		}
+		for _, e := range rules.ValidateLdap(LdapOf(d, ""), taken, isNew) {
+			out = append(out, e.Full())
+		}
+	default:
+		out = append(out, "类型无效")
+	}
+	return out
 }
 
 // ---- shortcut keys ----

@@ -24,8 +24,8 @@ func (e *env) client(name, slug string, bound bool) *store.Client {
 	must(e.t, e.st.CreateRegion(ctx, r))
 	ct := &store.ConfigTemplate{Name: name, SettingsJSON: "{}", RefreshMinutes: 60}
 	must(e.t, e.st.CreateConfigTemplate(ctx, ct))
-	d := &store.Directory{TemplateID: ct.ID, Kind: "hosted", BookID: &e.books[slug].ID, Name: slug, Enabled: true,
-		Security: "START_TLS", PasswordMode: "none", MaxResults: 50, NameAttributes: "cn", NumberAttributes: "telephoneNumber mobile"}
+	d := &store.Directory{TemplateID: ct.ID, Kind: store.KindHosted, BookID: &e.books[slug].ID, Name: slug, Enabled: true,
+		PasswordMode: "none", MaxResults: 50}
 	must(e.t, e.st.SaveDirectory(ctx, d, 50, nil))
 	tpl := &store.ClientTemplate{Name: name, ConfigTemplateID: ct.ID}
 	must(e.t, e.st.CreateClientTemplate(ctx, tpl))

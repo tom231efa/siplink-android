@@ -222,8 +222,8 @@ type configData struct {
 
 type directoryRow struct {
 	*store.Directory
-	BookName string
-	Line     string
+	Line string
+	Mode string // the password handling that applies (store.Directory.Password)
 }
 
 type codecRow struct {
@@ -287,11 +287,7 @@ func (s *Server) renderConfig(w http.ResponseWriter, r *http.Request, status int
 	}
 	for _, dir := range dirs {
 		row := directoryRow{Directory: dir}
-		if dir.BookID != nil {
-			if b, err := s.St.BookByID(ctx, *dir.BookID); err == nil {
-				row.BookName = b.Name
-			}
-		}
+		row.Mode, _, _ = dir.Password()
 		for _, p := range d.Profiles {
 			if dir.LineProfileID != nil && *dir.LineProfileID == p.ID {
 				row.Line = p.Name
@@ -388,15 +384,20 @@ func (s *Server) configMeta(w http.ResponseWriter, r *http.Request) {
 }
 
 // configMoveProblem refuses a move that would break the ownership rule (§2.3): the
-// template's hosted books and its client templates must stay compatible.
+// template's directories and its client templates must stay compatible.
 func (s *Server) configMoveProblem(r *http.Request, t *store.ConfigTemplate) string {
 	dirs, _ := s.St.Directories(r.Context(), t.ID)
 	for _, d := range dirs {
-		if d.BookID == nil {
-			continue
+		var region *int64
+		if d.BookID != nil {
+			if b, err := s.St.BookByID(r.Context(), *d.BookID); err == nil {
+				region = b.RegionID
+			}
+		} else if d.External != nil {
+			region = d.External.RegionID
 		}
-		if b, err := s.St.BookByID(r.Context(), *d.BookID); err == nil && b.RegionID != nil && (t.RegionID == nil || *t.RegionID != *b.RegionID) {
-			return "模板引用了其他区域的通讯录「" + b.Name + "」，无法移至该区域。"
+		if !compatible(t.RegionID, region) {
+			return "模板引用了其他区域的通讯录「" + d.Source + "」，无法移至该区域。"
 		}
 	}
 	users, _ := s.St.ListClientTemplates(r.Context(), store.BookScope{All: true})

@@ -1,25 +1,44 @@
 {{define "content"}}
+{{$d := .Data}}{{$filtered := or $d.Q $d.Kind}}
 <header class="page-head">
-  <div><h1>通讯录</h1><p class="page-sub">{{.Data.Total}} / {{.Data.Limit}} 本<span class="dot-sep"></span>每本最多 {{.Data.Max}} 人</p></div>
+  <div><h1>通讯录</h1></div>
   <div class="page-actions"><a class="btn primary" href="/books/new">{{icon "plus"}}新建通讯录</a></div>
 </header>
 <div class="card table-card">
-  {{if .Data.Rows}}
-  <div class="table-wrap"><table class="table">
-    <thead><tr><th>名称</th><th>区域</th><th class="hide-sm">标识</th><th class="num">人数</th><th class="hide-sm"><span class="sr-only">占用</span></th><th class="hide-sm">匿名读取</th></tr></thead>
+  <form method="get" action="/books" class="filters card-toolbar" role="search">
+    <label class="search">{{icon "search"}}<input type="search" name="q" value="{{$d.Q}}" placeholder="名称、标识或服务器" aria-label="搜索"></label>
+    <select name="kind" aria-label="类型" class="compact" data-autosubmit><option value="">全部类型</option>
+      <option value="hosted"{{if eq $d.Kind "hosted"}} selected{{end}}>内部</option>
+      <option value="external"{{if eq $d.Kind "external"}} selected{{end}}>外部</option></select>
+    <button type="submit" class="btn small" data-js-hide>筛选</button>
+    {{if $filtered}}<a class="btn ghost small" href="/books">{{icon "x"}}清除</a>{{end}}
+  </form>
+  {{if $d.Rows}}
+  <div class="table-wrap"><table class="table fit-sm">
+    <thead><tr><th>名称</th><th>类型</th><th class="hide-sm">区域</th><th class="hide-sm">服务器 / 人数</th><th class="num hide-sm">被引用</th></tr></thead>
     <tbody>
-    {{range .Data.Rows}}
+    {{range $d.Rows}}
     <tr>
-      <td class="strong"><a class="fade" href="/books/{{.ID}}">{{.Name}}</a></td>
-      <td>{{if .RegionID}}<span class="fade">{{.Region}}</span>{{else}}<span class="tag">全局</span>{{end}}</td>
-      <td class="mono muted hide-sm"><span class="fade">{{.Slug}}</span></td>
-      <td class="num nowrap">{{.EntryCount}} <span class="muted">/ {{$.Data.Max}}</span></td>
-      <td class="hide-sm"><meter class="bar" min="0" max="{{$.Data.Max}}" high="{{pct90 $.Data.Max}}" value="{{.EntryCount}}">{{pct .EntryCount $.Data.Max}}%</meter></td>
-      <td class="hide-sm">{{if .AllowAnonymous}}<span class="status warn">允许</span>{{else}}<span class="muted">否</span>{{end}}</td>
+      <td class="strong"><a class="fade" href="{{.Link}}">{{.Name}}</a><span class="sub show-sm fade">{{.Region}} · {{if eq .Kind "hosted"}}{{.EntryCount}} 人{{else}}{{.Host}}:{{.Port}}{{end}}</span></td>
+      <td class="nowrap">{{if eq .Kind "hosted"}}内部{{else}}外部{{end}}</td>
+      <td class="hide-sm">{{if .RegionID}}<span class="fade">{{.Region}}</span>{{else}}<span class="tag">全局</span>{{end}}</td>
+      <td class="hide-sm">{{if eq .Kind "hosted"}}<span class="nowrap">{{.EntryCount}} <span class="muted">/ {{$d.Max}}</span></span>{{else}}<span class="mono fade">{{.Host}}:{{.Port}}</span>{{end}}</td>
+      <td class="num nowrap hide-sm">{{if .Templates}}{{.Templates}}{{else}}<span class="muted">—</span>{{end}}</td>
     </tr>
     {{end}}
     </tbody>
   </table></div>
+  <div class="card-foot">
+    {{if gt $d.Pages 1}}
+    <span class="muted">第 {{$d.Page}} / {{$d.Pages}} 页，共 {{$d.Total}} 个</span>
+    <div class="actions">
+      {{if gt $d.Page 1}}<a class="btn small" href="/books?{{$d.Query}}&page={{add $d.Page -1}}">上一页</a>{{end}}
+      {{if lt $d.Page $d.Pages}}<a class="btn small" href="/books?{{$d.Query}}&page={{add $d.Page 1}}">下一页</a>{{end}}
+    </div>
+    {{else}}<span class="muted">共 {{$d.Total}} 个通讯录</span>{{end}}
+  </div>
+  {{else if $filtered}}
+  <div class="empty-state">{{icon "search"}}<p>无匹配的通讯录</p><div class="actions"><a class="btn small" href="/books">清除筛选</a></div></div>
   {{else}}
   <div class="empty-state">{{icon "book-user"}}<p>暂无通讯录</p><div class="actions"><a class="btn small primary" href="/books/new">{{icon "plus"}}新建通讯录</a></div></div>
   {{end}}

@@ -25,6 +25,9 @@ var actionLabels = map[string]string{
 	"book.delete":             "删除通讯录",
 	"book.import":             "导入通讯录",
 	"book.export":             "导出通讯录",
+	"directory.create":        "新建外部通讯录",
+	"directory.update":        "修改外部通讯录",
+	"directory.delete":        "删除外部通讯录",
 	"entry.create":            "新建联系人",
 	"entry.update":            "修改联系人",
 	"entry.delete":            "删除联系人",
@@ -86,6 +89,7 @@ var objectLabels = map[string]string{
 	"region":          "区域",
 	"book":            "通讯录",
 	"entry":           "联系人",
+	"directory":       "外部通讯录",
 	"ldap_account":    "LDAP 账号",
 	"config_template": "配置模板",
 	"key_template":    "功能键模板",
@@ -120,6 +124,8 @@ var fieldLabels = map[string]string{
 	"issuer": "签发者", "names": "证书名称", "not_after": "到期", "fingerprint": "指纹", "https": "HTTPS", "ldap": "LDAP", "public": "公共 CA",
 	"method": "验证方式", "required": "必须启用", "host": "服务器", "port": "端口", "security": "加密方式", "username": "用户名",
 	"from_address": "发件地址", "from_name": "发件人名称", "to": "收件地址",
+	"bind_dn": "登录名", "base_dn": "搜索基准", "password_mode": "密码方式", "max_results": "最大结果数",
+	"name_attributes": "姓名属性", "number_attributes": "号码属性", "name_filter": "姓名过滤器", "number_filter": "号码过滤器",
 }
 
 // fieldLabel is the Chinese name of an audit detail key (the key itself when unknown).

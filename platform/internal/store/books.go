@@ -63,24 +63,8 @@ type BookScope struct {
 
 // ListBooks returns the books of a scope ordered by name.
 func (s *Store) ListBooks(ctx context.Context, sc BookScope) ([]*Book, error) {
-	q := `SELECT ` + bookCols + ` FROM address_books`
-	var where []string
-	var args []any
-	if !sc.All {
-		cond := `region_id IS NULL`
-		if len(sc.Regions) > 0 {
-			cond = `(region_id IS NULL OR region_id IN (` + placeholders(len(sc.Regions)) + `))`
-			args = append(args, int64Args(sc.Regions)...)
-		}
-		where = append(where, cond)
-	}
-	if sc.Region != 0 {
-		where, args = append(where, `region_id = ?`), append(args, sc.Region)
-	}
-	if len(where) > 0 {
-		q += ` WHERE ` + strings.Join(where, ` AND `)
-	}
-	rows, err := s.DB.QueryContext(ctx, q+` ORDER BY name COLLATE NOCASE, id`, args...)
+	where, args := scopeWhere(sc)
+	rows, err := s.DB.QueryContext(ctx, `SELECT `+bookCols+` FROM address_books`+where+` ORDER BY name COLLATE NOCASE, id`, args...)
 	if err != nil {
 		return nil, err
 	}

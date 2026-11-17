@@ -17,7 +17,6 @@ import (
 	"siplink/internal/catalog"
 	"siplink/internal/config"
 	"siplink/internal/pki"
-	"siplink/internal/secret"
 	"siplink/internal/store"
 )
 
@@ -152,25 +151,27 @@ func TestConfigTemplates(t *testing.T) {
 	// Directories: a hosted book goes out with StartTLS when the LDAP host is a name.
 	book := h.book("global", nil)
 	eastBook := h.book("east", &east)
-	if r := root.post(base+"/directories", url.Values{"kind": {"hosted"}, "book": {itoa(eastBook.ID)}, "enabled": {"1"}, "maxResults": {"50"}}); r.code != http.StatusBadRequest {
+	if r := root.post(base+"/directories", url.Values{"source": {"hosted:" + itoa(eastBook.ID)}, "enabled": {"1"}, "maxResults": {"50"}}); r.code != http.StatusBadRequest {
 		t.Errorf("global template with a region book: %d", r.code)
 	}
-	created(t, root.post(base+"/directories", url.Values{"kind": {"hosted"}, "book": {itoa(book.ID)}, "enabled": {"1"},
+	created(t, root.post(base+"/directories", url.Values{"source": {"hosted:" + itoa(book.ID)}, "enabled": {"1"},
 		"lookupIncoming": {"1"}, "maxResults": {"50"}}), base)
 	dirs, _ := h.st.Directories(t.Context(), gid)
-	if len(dirs) != 1 || dirs[0].Security != "START_TLS" {
+	if len(dirs) != 1 || dirs[0].Kind != store.KindHosted || dirs[0].Source != book.Name {
 		t.Fatalf("hosted directory: %+v", dirs)
 	}
-	// An external directory with a template password keeps it sealed.
-	created(t, root.post(base+"/directories", url.Values{"kind": {"external"}, "name": {"公司"}, "host": {"ldap.example.com"},
+	// An external directory with its password keeps it sealed; the template uses it.
+	extID := created(t, root.post("/directories", url.Values{"name": {"公司"}, "region": {"0"}, "host": {"ldap.example.com"},
 		"port": {"389"}, "security": {"START_TLS"}, "bindDn": {"cn=reader,dc=example,dc=com"}, "baseDn": {"dc=example,dc=com"},
-		"passwordMode": {"template"}, "password": {"reader-secret"}, "enabled": {"1"}, "maxResults": {"50"},
-		"nameAttributes": {"cn"}, "numberAttributes": {"telephoneNumber"}}), base)
+		"passwordMode": {"template"}, "password": {"reader-secret"}, "maxResults": {"50"},
+		"nameAttributes": {"cn"}, "numberAttributes": {"telephoneNumber"}}), "/directories/")
+	created(t, root.post(base+"/directories", url.Values{"source": {"external:" + itoa(extID)}, "enabled": {"1"}}), base)
 	dirs, _ = h.st.Directories(t.Context(), gid)
-	if len(dirs) != 2 || dirs[1].PasswordEnc == "" || strings.Contains(dirs[1].PasswordEnc, "reader-secret") {
+	if len(dirs) != 2 || dirs[1].External == nil || dirs[1].External.PasswordEnc == "" || dirs[1].PasswordEnc != "" ||
+		strings.Contains(dirs[1].External.PasswordEnc, "reader-secret") {
 		t.Fatalf("external directory: %+v", dirs)
 	}
-	plain, err := h.srv.Ext.Box.Open(dirs[1].PasswordEnc, secret.AAD("template_directories", dirs[1].ID, "password_enc"))
+	plain, err := h.srv.Ext.Box.Open(dirs[1].External.PasswordEnc, store.ExternalDirectoryAAD(extID))
 	if err != nil || string(plain) != "reader-secret" {
 		t.Error("sealed password does not open")
 	}
@@ -196,10 +197,13 @@ func TestHostedRuleWithAddress(t *testing.T) {
 	book := strict.book("global", nil)
 	id := created(t, root.post("/config-templates", url.Values{"name": {"t"}, "region": {"0"}}), "/config-templates/")
 	base := "/config-templates/" + itoa(id)
-	if r := root.get(base + "?tab=directories"); !strings.Contains(r.body, "SIPLINK_LDAP_REQUIRE_TLS=false") || strings.Contains(r.body, "kind=hosted") {
-		t.Error("strict mode: no explanation or hosted link offered")
+	if r := root.get(base + "?tab=directories"); !strings.Contains(r.body, "SIPLINK_LDAP_REQUIRE_TLS=false") {
+		t.Error("strict mode: no explanation")
 	}
-	if r := root.post(base+"/directories", url.Values{"kind": {"hosted"}, "book": {itoa(book.ID)}, "enabled": {"1"}, "maxResults": {"50"}}); r.code != http.StatusBadRequest {
+	if r := root.get(base + "/directories/new"); strings.Contains(r.body, "hosted:") {
+		t.Error("strict mode: a hosted book offered")
+	}
+	if r := root.post(base+"/directories", url.Values{"source": {"hosted:" + itoa(book.ID)}, "enabled": {"1"}, "maxResults": {"50"}}); r.code != http.StatusBadRequest {
 		t.Errorf("hosted directory accepted with an address: %d", r.code)
 	}
 
@@ -208,9 +212,8 @@ func TestHostedRuleWithAddress(t *testing.T) {
 	book = loose.book("global", nil)
 	id = created(t, root.post("/config-templates", url.Values{"name": {"t"}, "region": {"0"}}), "/config-templates/")
 	base = "/config-templates/" + itoa(id)
-	created(t, root.post(base+"/directories", url.Values{"kind": {"hosted"}, "book": {itoa(book.ID)}, "enabled": {"1"}, "maxResults": {"50"}}), base)
-	dirs, _ := loose.st.Directories(t.Context(), id)
-	if len(dirs) != 1 || dirs[0].Security != "NONE" {
+	created(t, root.post(base+"/directories", url.Values{"source": {"hosted:" + itoa(book.ID)}, "enabled": {"1"}, "maxResults": {"50"}}), base)
+	if dirs, _ := loose.st.Directories(t.Context(), id); len(dirs) != 1 {
 		t.Fatalf("loose mode: %+v", dirs)
 	}
 	if r := root.get(base + "?tab=directories"); !strings.Contains(r.body, "不加密") {

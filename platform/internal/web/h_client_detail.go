@@ -128,7 +128,7 @@ func (s *Server) renderClient(w http.ResponseWriter, r *http.Request, status int
 		d.Dirs = append(d.Dirs, dirPassRow{D: dir, HasPassword: dirPass[dir.ID] != ""})
 		if d.Show && dirPass[dir.ID] != "" {
 			if pw, err := s.Ext.Box.Open(dirPass[dir.ID], store.DirectoryPasswordAAD(c.ID, dir.ID)); err == nil {
-				d.Secrets = append(d.Secrets, secretRow{"LDAP 密码（" + dir.Name + "）", string(pw)})
+				d.Secrets = append(d.Secrets, secretRow{"LDAP 密码（" + dir.DisplayName() + "）", string(pw)})
 			}
 		}
 	}

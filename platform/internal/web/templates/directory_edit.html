@@ -3,23 +3,44 @@
 <div class="narrow-page">
 <header class="page-head"><div><h1 class="fade">{{.Title}}</h1><p class="page-sub fade"><a href="/config-templates/{{$d.T.ID}}?tab=directories">{{$d.T.Name}}</a></p></div></header>
 {{with $d.Errors}}<div class="flash error" role="alert"><ul class="errors">{{range .}}<li>{{.}}</li>{{end}}</ul></div>{{end}}
-<form method="post" action="/config-templates/{{$d.T.ID}}/directories{{if not $d.New}}/{{$d.D.ID}}{{end}}" class="form-stack"
+{{if $d.New}}
+<form method="get" action="/config-templates/{{$d.T.ID}}/directories/new" class="card scope-bar">
+  <label>通讯录<select name="source" class="compact" data-autosubmit><option value="">请选择</option>
+    {{with $d.Books}}<optgroup label="内部">{{range .}}<option value="{{.Value}}"{{if eq .Value $d.Source}} selected{{end}}>{{.Name}}{{if .Global}}（全局）{{end}}</option>{{end}}</optgroup>{{end}}
+    {{with $d.Externals}}<optgroup label="外部">{{range .}}<option value="{{.Value}}"{{if eq .Value $d.Source}} selected{{end}}>{{.Name}}{{if .Global}}（全局）{{end}}</option>{{end}}</optgroup>{{end}}
+  </select></label>
+  <button type="submit" class="btn small" data-js-hide>选择</button>
+</form>
+{{end}}
+{{with $d.D}}
+<form method="post" action="/config-templates/{{$d.T.ID}}/directories{{if not $d.New}}/{{.ID}}{{end}}" class="form-stack"
   {{if gt $d.Clients 0}}data-confirm="此模板已被 {{$d.Clients}} 个客户端使用，保存后将于下次同步时生效。确认保存？"{{end}}>
-  <input type="hidden" name="kind" value="{{$d.D.Kind}}">
-  {{if eq $d.D.Kind "hosted"}}
+  {{if $d.New}}<input type="hidden" name="source" value="{{$d.Source}}">{{end}}
   {{if $d.HostedNote}}<div class="flash warn">{{$d.HostedNote}}</div>{{end}}
   {{if $d.Plain}}<div class="flash warn">平台 LDAP 地址为 IP 且未要求 TLS，此通讯录将不加密下发。</div>{{end}}
   <section class="card">
     <div class="card-body form">
-      <label>托管通讯录
-        <select name="book" required>
-          <option value="">请选择</option>
-          {{range $d.Books}}<option value="{{.ID}}"{{if eq .ID (deref $d.D.BookID)}} selected{{end}}>{{.Name}}（{{.Slug}}）</option>{{end}}
-        </select>
-      </label>
-      <label>显示名称<input name="name" value="{{$d.D.Name}}" maxlength="40" placeholder="通讯录名称"></label>
+      {{if not $d.New}}<label>通讯录<input value="{{.Source}}（{{if eq .Kind "hosted"}}内部{{else}}外部{{end}}）" disabled></label>{{end}}
+      <label>显示名称<input name="name" value="{{.Name}}" maxlength="40" placeholder="{{.Source}}"></label>
+      <div class="grid2">
+        {{if eq .Kind "hosted"}}<label>最大结果数<input type="number" name="maxResults" value="{{.MaxResults}}" min="1" max="1000" required></label>{{end}}
+        <label>线路
+          <select name="line"><option value="0">不限</option>
+            {{range $d.Profiles}}<option value="{{.ID}}"{{if eq .ID (deref $d.D.LineProfileID)}} selected{{end}}>{{.Name}}</option>{{end}}
+          </select>
+        </label>
+      </div>
+      <div class="settings">
+        <label class="setting toggle"><span class="setting-text"><span class="setting-name">来电时查询姓名</span></span>
+          <span class="switch"><input type="checkbox" role="switch" name="lookupIncoming" value="1"{{if .LookupIncoming}} checked{{end}}><span></span></span></label>
+        <label class="setting toggle"><span class="setting-text"><span class="setting-name">去电时查询姓名</span></span>
+          <span class="switch"><input type="checkbox" role="switch" name="lookupOutgoing" value="1"{{if .LookupOutgoing}} checked{{end}}><span></span></span></label>
+        <label class="setting toggle"><span class="setting-text"><span class="setting-name">启用</span></span>
+          <span class="switch"><input type="checkbox" role="switch" name="enabled" value="1"{{if .Enabled}} checked{{end}}><span></span></span></label>
+      </div>
     </div>
   </section>
+  {{if eq .Kind "hosted"}}
   <section class="card">
     <div class="card-head"><h2>凭据</h2></div>
     <div class="card-body form">
@@ -35,76 +56,18 @@
       </label>
       <div class="field"><span class="field-label" id="l-hpm">密码</span>
         <div class="segmented" role="radiogroup" aria-labelledby="l-hpm">
-          <label><input type="radio" name="passwordMode" value="template"{{if or (eq $d.D.PasswordMode "template") (not $d.Manual)}} checked{{end}}><span>模板统一设置</span></label>
-          <label><input type="radio" name="passwordMode" value="client"{{if and $d.Manual (eq $d.D.PasswordMode "client")}} checked{{end}}><span>按客户端设置</span></label>
+          <label><input type="radio" name="passwordMode" value="template"{{if or (eq .PasswordMode "template") (not $d.Manual)}} checked{{end}}><span>模板统一设置</span></label>
+          <label><input type="radio" name="passwordMode" value="client"{{if and $d.Manual (eq .PasswordMode "client")}} checked{{end}}><span>按客户端设置</span></label>
         </div></div>
       <label>LDAP 账号密码<input type="password" name="password" autocomplete="new-password"{{if and $d.Manual $d.HasPass}} placeholder="已设置，留空保持不变"{{end}}></label>
       </fieldset>
     </div>
   </section>
-  {{else}}
-  <section class="card">
-    <div class="card-head"><h2>服务器</h2></div>
-    <div class="card-body form">
-      <label>名称<input name="name" value="{{$d.D.Name}}" required maxlength="40"></label>
-      <div class="grid2 domain-port">
-        <label>服务器<input name="host" value="{{$d.D.Host}}" required placeholder="ldap.example.com"></label>
-        <label>端口<input name="port" value="{{$d.D.Port}}" inputmode="numeric"></label>
-      </div>
-      <div class="field"><span class="field-label" id="l-sec">加密</span>
-        <div class="segmented" role="radiogroup" aria-labelledby="l-sec">
-          <label><input type="radio" name="security" value="START_TLS"{{if ne $d.D.Security "NONE"}} checked{{end}}><span>StartTLS</span></label>
-          <label><input type="radio" name="security" value="NONE"{{if eq $d.D.Security "NONE"}} checked{{end}}><span>不加密</span></label>
-        </div></div>
-      <label>搜索基准（Base DN）<input name="baseDn" value="{{$d.D.BaseDN}}" required class="mono"></label>
-    </div>
-  </section>
-  <section class="card">
-    <div class="card-head"><h2>登录</h2></div>
-    <div class="card-body form">
-      <label>登录名（Bind DN）<input name="bindDn" value="{{$d.D.BindDN}}" class="mono" placeholder="留空为匿名"></label>
-      <div class="field"><span class="field-label" id="l-epm">密码</span>
-        <div class="segmented" role="radiogroup" aria-labelledby="l-epm">
-          <label><input type="radio" name="passwordMode" value="none"{{if eq $d.D.PasswordMode "none"}} checked{{end}}><span>匿名</span></label>
-          <label><input type="radio" name="passwordMode" value="template"{{if eq $d.D.PasswordMode "template"}} checked{{end}}><span>模板统一设置</span></label>
-          <label><input type="radio" name="passwordMode" value="client"{{if eq $d.D.PasswordMode "client"}} checked{{end}}><span>按客户端设置</span></label>
-        </div></div>
-      <label>模板密码<input type="password" name="password" autocomplete="new-password"{{if $d.HasPass}} placeholder="已设置，留空保持不变"{{end}}></label>
-    </div>
-  </section>
-  <section class="card">
-    <div class="card-head"><h2>查询</h2></div>
-    <div class="card-body form">
-      <div class="grid2">
-        <label>姓名属性<input name="nameAttributes" value="{{$d.D.NameAttributes}}" class="mono"></label>
-        <label>号码属性<input name="numberAttributes" value="{{$d.D.NumberAttributes}}" class="mono"></label>
-        <label>姓名过滤器<input name="nameFilter" value="{{$d.D.NameFilter}}" class="mono" placeholder="自动（需含 %）"></label>
-        <label>号码过滤器<input name="numberFilter" value="{{$d.D.NumberFilter}}" class="mono" placeholder="自动（需含 %）"></label>
-      </div>
-    </div>
-  </section>
   {{end}}
-  <section class="card">
-    <div class="card-body form">
-      <div class="grid2">
-        <label>最大结果数<input type="number" name="maxResults" value="{{$d.D.MaxResults}}" min="1" max="1000" required></label>
-        <label>线路
-          <select name="line"><option value="0">不限</option>
-            {{range $d.Profiles}}<option value="{{.ID}}"{{if eq .ID (deref $d.D.LineProfileID)}} selected{{end}}>{{.Name}}</option>{{end}}
-          </select>
-        </label>
-      </div>
-      <div class="settings">
-        <label class="setting toggle"><span class="setting-text"><span class="setting-name">来电时查询姓名</span></span>
-          <span class="switch"><input type="checkbox" role="switch" name="lookupIncoming" value="1"{{if $d.D.LookupIncoming}} checked{{end}}><span></span></span></label>
-        <label class="setting toggle"><span class="setting-text"><span class="setting-name">去电时查询姓名</span></span>
-          <span class="switch"><input type="checkbox" role="switch" name="lookupOutgoing" value="1"{{if $d.D.LookupOutgoing}} checked{{end}}><span></span></span></label>
-        <label class="setting toggle"><span class="setting-text"><span class="setting-name">启用</span></span>
-          <span class="switch"><input type="checkbox" role="switch" name="enabled" value="1"{{if $d.D.Enabled}} checked{{end}}><span></span></span></label>
-      </div>
-    </div>
-  </section>
   <div class="savebar"><a class="btn" href="/config-templates/{{$d.T.ID}}?tab=directories">取消</a><button type="submit" class="btn primary">{{icon "check"}}保存</button></div>
 </form>
+{{else}}
+<div class="card"><div class="empty-state compact">{{icon "book-user"}}<p>{{if or $d.Books $d.Externals}}请选择通讯录{{else}}暂无可用的通讯录{{end}}</p>{{if not (or $d.Books $d.Externals)}}<div class="actions"><a class="btn small primary" href="/books/new">{{icon "plus"}}新建通讯录</a></div>{{end}}</div></div>
+{{end}}
 </div>
 {{end}}

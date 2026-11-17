@@ -185,13 +185,13 @@ func TestHostedManualCredentials(t *testing.T) {
 	}
 	id := created(t, root.post("/config-templates", url.Values{"name": {"m"}, "region": {itoa(east)}}), "/config-templates/")
 	base := "/config-templates/" + itoa(id)
-	if r := root.get(base + "/directories/new?kind=hosted"); !strings.Contains(r.body, "<strong>自动</strong>") ||
+	if r := root.get(base + "/directories/new?source=hosted:" + itoa(book.ID)); !strings.Contains(r.body, "<strong>自动</strong>") ||
 		!strings.Contains(r.body, "手动指定") || strings.Contains(r.body, ">west") ||
 		!strings.Contains(r.body, `<fieldset class="plain manual" data-manual>`) {
 		t.Error("hosted form: credentials choice or account list")
 	}
 	post := func(account *store.LDAPAccount, mode, password string) resp {
-		return root.post(base+"/directories", url.Values{"kind": {"hosted"}, "book": {itoa(book.ID)}, "enabled": {"1"},
+		return root.post(base+"/directories", url.Values{"source": {"hosted:" + itoa(book.ID)}, "enabled": {"1"},
 			"maxResults": {"50"}, "credentials": {"manual"}, "account": {itoa(account.ID)}, "passwordMode": {mode}, "password": {password}})
 	}
 	for name, r := range map[string]resp{
@@ -236,7 +236,7 @@ func TestHostedManualCredentials(t *testing.T) {
 		t.Errorf("account in use deleted: %d", r.code)
 	}
 	// Auto stays the default and switching back clears the account.
-	created(t, root.post(base+"/directories/"+itoa(dirs[0].ID), url.Values{"book": {itoa(book.ID)}, "enabled": {"1"},
+	created(t, root.post(base+"/directories/"+itoa(dirs[0].ID), url.Values{"enabled": {"1"},
 		"maxResults": {"50"}, "credentials": {"auto"}}), base)
 	if d, _ := h.st.DirectoryByID(t.Context(), id, dirs[0].ID); d.LDAPAccountID != nil || d.PasswordMode != "none" {
 		t.Errorf("back to auto: %+v", d)

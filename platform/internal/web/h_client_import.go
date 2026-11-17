@@ -77,7 +77,7 @@ func (s *Server) clientImportTemplate(w http.ResponseWriter, r *http.Request) {
 		head = append(head, p.Name+sufUser, p.Name+sufPass, p.Name+sufAuth, p.Name+sufDisp)
 	}
 	for _, d := range dirs {
-		head = append(head, d.Name+sufDir)
+		head = append(head, d.DisplayName()+sufDir)
 	}
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="clients-%d.csv"`, t.ID))
@@ -202,11 +202,11 @@ func (s *Server) importRow(r *http.Request, row rules.CsvRow, col map[string]int
 	}
 	ic.dirs = map[int64]string{}
 	for _, d := range dirs {
-		ic.dirs[d.ID] = get(d.Name + sufDir)
+		ic.dirs[d.ID] = get(d.DisplayName() + sufDir)
 		if d.LDAPAccountID != nil && ic.dirs[d.ID] != "" {
 			a, err := s.St.LDAPAccountByID(r.Context(), *d.LDAPAccountID)
 			if p := s.accountPasswordProblem(a, ic.dirs[d.ID]); err == nil && p != "" {
-				ic.Problems = append(ic.Problems, "通讯录「"+d.Name+"」："+p)
+				ic.Problems = append(ic.Problems, "通讯录「"+d.DisplayName()+"」："+p)
 			}
 		}
 	}

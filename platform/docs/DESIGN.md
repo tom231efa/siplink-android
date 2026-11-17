@@ -51,17 +51,28 @@ own project directory.
 
 ```
 region ──< client >── client template ──> configuration template ──< account profile
-   │                                 └──> key template ──< key          ──< directory ──> address book (hosted) | external LDAP
+   │                                 └──> key template ──< key          ──< directory ──> address book (内部) | external directory (外部)
    ├──< configuration / key / client templates (or global: region = NULL)
    ├──< address books (or global) ──< entry
+   ├──< external directories (or global)
    └──< LDAP service accounts (or global)
 client ──< client credentials (one per account profile), client directory passwords
 ```
 
+- A **directory** (通讯录) is either an **address book** hosted by the platform (内部, table
+  `address_books`, served by the LDAP service of §4) or an **external directory** (外部, table
+  `external_directories`): how to reach another LDAP server (host, port, security, bind DN, the
+  password handling, base DN, maximum results, attributes, filters). Both are made and kept on
+  one page, 通讯录 (§5.2); the type is chosen when one is made and never changes (they are two
+  tables, so nothing can turn one into the other; the forms refuse a `kind` that differs).
 - A **configuration template** (配置模板) holds everything handed out except shortcut keys:
   settings, codecs, CA certificates, the configuration password, the refresh interval, a list
   of **account profiles** (the server side of an account: domain, transport, servers, expiry, …)
-  and a list of **directories** (external LDAP servers or hosted address books).
+  and a list of **directory uses** (`template_directories`): each refers to one address book or
+  one external directory and adds only what belongs to its use in this template — the name
+  shown on the phone (empty = the directory's name), enabled, the line, lookup for incoming
+  and outgoing calls, the order, and for address books the maximum results and the credentials
+  choice (§3.5.5). A template never holds how to reach an external server.
 - A **key template** (功能键模板) holds shortcut keys.
 - A **client template** (客户端模板) = one configuration template + at most one key template.
 - A **client** (客户端) = one installed SipLink, in one region, using one client template, plus
@@ -94,14 +105,15 @@ every change and feed the document version.
 | `regions` | `name` UNIQUE, `note` | |
 | `config_templates` | `region_id` NULL=global, `name`, `note`, `settings_json`, `codecs_json`, `ca_pems` (text, PEM bundle), `config_password_hash` (SHA-256 hex or ''), `refresh_minutes`, `revision` | UNIQUE(`region_id`,`name`) |
 | `account_profiles` | `config_template_id`, `position`, `name` (≤30, unique per template, case-insensitive), `domain`, `port` (text), `server`, `backup_server`, `dns_server`, `transport` (`UDP`/`TCP`/`TLS`), `expires`, `subscribe_mwi`, `enabled`, `is_default` | ≤100 per template |
-| `template_directories` | `config_template_id`, `position`, `kind` (`external`/`hosted`), `book_id` NULL, `name`, `enabled`, `host`, `port`, `security` (`NONE`/`START_TLS`), `bind_dn`, `password_mode` (`none`/`template`/`client`), `password_enc` NULL, `base_dn`, `line_profile_id` NULL, `ldap_account_id` NULL (hosted only, migration 0006), `lookup_incoming`, `lookup_outgoing`, `max_results`, `name_attributes`, `number_attributes`, `name_filter`, `number_filter` | ≤50 per template; for `hosted` the host/port/security/bind/base fields are derived (§3.5.5) and stay empty |
+| `template_directories` | `config_template_id`, `position`, `kind` (`external`/`hosted`), `book_id` NULL (hosted), `external_id` NULL (external, migration 0008), `name` ('' = the directory's name), `enabled`, `password_mode` (`none`/`template`/`client`) and `password_enc` NULL (hosted bound by hand only), `line_profile_id` NULL, `ldap_account_id` NULL (hosted only, migration 0006), `lookup_incoming`, `lookup_outgoing`, `max_results` (hosted only) | ≤50 per template; the connection columns it had up to schema 7 moved to `external_directories` (migrations 0008/0009, §2.5); a trigger refuses an `external` row without `external_id` and a `hosted` row without `book_id` |
+| `external_directories` | `region_id` NULL, `name` (≤40, unique per region case-insensitive), `note`, `host`, `port`, `security` (`NONE`/`START_TLS`), `bind_dn`, `password_mode` (`none`/`template`/`client`), `password_enc` NULL, `base_dn`, `max_results`, `name_attributes`, `number_attributes`, `name_filter`, `number_filter` | 0008; `password_mode=template` = one password kept by the platform for every client (the word is historic: it was kept in the template) |
 | `key_templates` | `region_id` NULL, `name`, `note`, `revision` | UNIQUE(`region_id`,`name`) |
 | `template_keys` | `key_template_id`, `position`, `label`, `number`, `action`, `category`, `line`, `icon` | ≤2000 per template |
 | `client_templates` | `region_id` NULL, `name`, `note`, `config_template_id`, `key_template_id` NULL | UNIQUE(`region_id`,`name`) |
 | `clients` | `region_id`, `client_template_id`, `name`, `note`, `public_id` UNIQUE (10 chars base32, used in LDAP DN), `status` (`pending`/`active`), `enroll_token_hash` UNIQUE, `enroll_token_enc`, `enroll_expires_at`, `device_key_hash` UNIQUE NULL, `bound_at`, `install_id`, `ldap_generation` (int), `forward_always` NULL, `forward_busy` NULL, `forward_no_answer` NULL, `revision` | NULL forward fields = template value |
-| `client_reports` | `client_id` PK, `last_seen_at`, `last_ip`, `app_version`, `app_version_code`, `android_release`, `android_sdk`, `device_model`, `sent_version`, `applied_version`, `applied_at`, `apply_error`, `registrations_json` | overwritten on every sync |
+| `client_reports` | `client_id` PK, `last_seen_at`, `last_ip`, `app_version`, `app_version_code`, `user_agent` (0008), `android_release`, `android_sdk`, `device_model`, `sent_version`, `applied_version`, `applied_at`, `apply_error`, `registrations_json` | overwritten on every sync |
 | `client_credentials` | `client_id`, `profile_id` (PK both), `username`, `auth_user`, `password_enc`, `display_name`, `account_name` NULL | |
-| `client_directory_passwords` | `client_id`, `directory_id` (PK both), `password_enc` | only for `password_mode=client` |
+| `client_directory_passwords` | `client_id`, `directory_id` (PK both; `directory_id` = `template_directories.id`), `password_enc` | only for `password_mode=client` (of the external directory, or of a hosted book bound by hand); per use in a template, so one external directory used by two templates asks twice |
 | `revoked_devices` | `device_key_hash` PK, `client_name`, `reason` (`deleted`/`unbound`), `revoked_at` | kept `SIPLINK_REVOKED_KEEP_DAYS` (default 365) so the phone gets 410 |
 | `address_books` | `region_id` NULL, `slug` UNIQUE (`[a-z0-9-]{2,32}`), `name`, `note`, `allow_anonymous`, `entry_count`, `revision` | ≤500 rows in total |
 | `book_entries` | `book_id`, `name`, `surname`, `given_name`, `phones` (newline-separated, ≤4), `mobiles` (newline-separated, ≤4), `organization`, `department`, `title`, `email`, `sort_key` | ≤10,000 per book; INDEX(`book_id`,`sort_key`) |
@@ -121,19 +133,21 @@ also by a `CHECK`-style trigger as a second line:
   size (§8).
 
 Deleting: a region only when empty; a template only when nothing uses it; an address book only
-when no template directory and no LDAP account refers to it (the UI lists the users). A client
-is deleted for real (its rows go) and its device key moves to `revoked_devices`.
+when no template directory and no LDAP account refers to it, an external directory only when no
+template directory refers to it (the UI lists the users). A client is deleted for real (its rows
+go) and its device key moves to `revoked_devices`.
 
 ### 2.3 Ownership rule
 
-Templates (all three kinds), address books and LDAP service accounts belong to one region or are
-**global** (`region_id IS NULL`). Global objects are made and changed by super administrators
-only; region administrators can see and **use** them (pick them in their own templates and
-clients) but not change or delete them. A client template may only combine a configuration
-template and a key template that are global or of its own region; a configuration template may
-only refer to address books that are global or of its own region; a client may only use a
-client template that is global or of its own region. Moving an object between regions is a
-super-administrator action and is refused when it would break one of these rules.
+Templates (all three kinds), address books, external directories and LDAP service accounts
+belong to one region or are **global** (`region_id IS NULL`). Global objects are made and changed
+by super administrators only; region administrators can see and **use** them (pick them in their
+own templates and clients) but not change or delete them. A client template may only combine a
+configuration template and a key template that are global or of its own region; a configuration
+template may only refer to address books and external directories that are global or of its own
+region; a client may only use a client template that is global or of its own region. Moving an
+object between regions is a super-administrator action and is refused when it would break one
+of these rules (for a directory: a template of another region, or a global one, uses it).
 
 ### 2.4 Permission matrix
 
@@ -154,14 +168,43 @@ super-administrator action and is refused when it would break one of these rules
 | Configuration / key / client templates: view | all | own + global |
 | … create / edit / delete | all (incl. global) | own only |
 | … use (reference) | all | own + global |
-| Address books: view entries, export CSV | all | own + global |
-| … create / edit entries / import / delete | all | own only |
+| Directories (通讯录, internal and external): list, view entries, export CSV, view an external one's connection | all | own + global |
+| … create / edit (entries, import, connection, stored password) / delete | all | own only |
+| … use in a configuration template | all | own + global (of the template's region) |
 | LDAP service accounts | all | own regions; may grant only own + global books |
 | Audit log | all | entries whose `region_id` is one of own regions, plus own actions |
 | System page (backup, instance settings) | yes | no |
 
 The last super administrator cannot be disabled, demoted or deleted. An administrator cannot
 change their own role.
+
+### 2.5 External directories moved out of templates (migrations 0008, 0009; 2026-11-18)
+
+Up to schema 7 an external LDAP server was typed into each configuration template. Migration
+0008 turns every such row into an `external_directories` entry and points the row at it:
+
+- region = the template's region; the entry's name = the row's name, made unique within the
+  region by a suffix `（2）`, `（3）` … (cut so the whole stays ≤40 characters) when another
+  entry of the region already has it; the row keeps its own `name`, so the phone sees the same
+  name as before.
+- Rows of the same region whose connection is the same in every field — host, port, security,
+  bind DN, password mode, the password itself (compared after opening), base DN, maximum
+  results, attributes and filters — share one entry; any difference makes its own entry.
+- The row's `password_mode` and `password_enc` become `none` / NULL; `max_results` stays but no
+  longer counts for external rows. `client_directory_passwords` refer to the row, whose id does
+  not change, so per-client passwords keep working untouched, and so does the document key
+  `"d" + id`.
+- A sealed password's associated data names its row (§6.1), and the row changes from
+  `template_directories` to `external_directories`. A plain SQL migration does not have the key,
+  so 0008 has a Go step that runs in the same transaction as its SQL (`store.Open` takes the
+  secret box for it): it opens each password with the old associated data and seals it again
+  with the new one. A database that holds such passwords cannot be migrated without its key
+  file; the migration then fails as a whole and the database stays at schema 7. No code reads
+  a password under the old associated data afterwards.
+- Migration 0009 drops the connection columns from `template_directories`.
+
+The document a phone gets is the same before and after (same fields, keys and values, so the same
+`version`); the template revisions are not bumped by the migration.
 
 ---
 
@@ -257,7 +300,10 @@ used for authorization.
 | `registrations` | `[{ "account": "<account key>", "state": "OK" }]` — `RegState` names from `core/model/Models.kt` (`DISABLED`, `NONE`, `PROGRESS`, `OK`, `FAILED`) plus `error` (`SipAccount.error`) |
 | `codecs` | `{ "audio": ["opus/48000/2", …], "video": [...] }` — `Codec.key` of `CodecManager.codecs` / `videoCodecs`; the platform keeps the union per app version to offer in the codec editor |
 
-No phone number, contacts, call history or location is sent.
+No phone number, contacts, call history or location is sent. Besides the `device` object the
+platform keeps the `User-Agent` header of the request (`client_reports.user_agent`, at most 200
+characters, 0008). The client list shows `appVersion`; the client page shows `appVersion` with
+`appVersionCode` next to it and the User-Agent, so that a later need can tell versions apart.
 
 ### 3.5 The provisioning document
 
@@ -274,6 +320,12 @@ first compares a "revision key" (template revisions + client revision + book rev
 hosted books it refers to + `ldap_generation` + server settings that appear in the document); the
 full hash is computed only when that key changed since the last document sent to this client
 (`client_reports.sent_version` plus a cached revision key).
+
+Versions of the app: the platform sends one document to every app version and has no
+per-version branch anywhere. The app ignores fields it does not know and takes its own default
+for a field that is missing, so a new field reaches new versions and older ones go on without
+it. The version each phone reports is stored (§3.4) for a later need, never used to shape the
+document.
 
 #### 3.5.2 Top level
 
@@ -398,28 +450,39 @@ The platform validates every account with the rules of `AccountRules.normalize` 
 
 Order = template order. Up to 50 (`LdapRules.MAX_DIRECTORIES`).
 
+"Use" = the template's row (`template_directories`); "entry" = the external directory it refers
+to (`external_directories`).
+
 | JSON field | External directory | Hosted address book | `LdapDirectory` field |
 |---|---|---|---|
-| `key` | `"d" + directory id` | same | — (loader maps key → local id) |
-| `name` | template (≤40) | template, default = book name | `name` |
-| `enabled` | template | template | `enabled` |
-| `host` | template | `SIPLINK_LDAP_PUBLIC_HOST` | `host` |
-| `port` | template | `SIPLINK_LDAP_PUBLIC_PORT` (default 389) | `port` |
-| `security` | `NONE` / `START_TLS`; the form starts with `START_TLS` | `START_TLS` by default (there is always a certificate, §4.8); see the note on literal addresses below | `security` (`enum LdapSecurity`) |
-| `bindDn` | template | `uid={client public_id},ou=clients,{suffix}` | `bindDn` |
-| `password` | `password_mode`: `template` → template's; `client` → client's; `none` → `""` | derived per client (§4.3) | `password` |
-| `baseDn` | template | `ou={book slug},ou=books,{suffix}` | `baseDn` |
-| `line` | account key of `line_profile_id`, or `""` | same | `line` (loader maps account key → local account id) |
-| `lookupIncoming`, `lookupOutgoing` | template | template | same names |
-| `maxResults` | 1–1000 | 1–1000, default 50 | `maxResults` (`LdapRules.MAX_RESULTS`) |
-| `nameAttributes` | template, default `cn sn` | `cn` | `nameAttributes` |
-| `numberAttributes` | template, default `telephoneNumber mobile` | `telephoneNumber mobile` | `numberAttributes` |
-| `nameFilter`, `numberFilter` | template, `""` = made by the app; must contain `%` | `""` | same names |
+| `key` | `"d" + id of the use` | same | — (loader maps key → local id) |
+| `name` | use, default = entry name (≤40) | use, default = book name | `name` |
+| `enabled` | use | use | `enabled` |
+| `host` | entry | `SIPLINK_LDAP_PUBLIC_HOST` | `host` |
+| `port` | entry | `SIPLINK_LDAP_PUBLIC_PORT` (default 389) | `port` |
+| `security` | entry, `NONE` / `START_TLS`; the form starts with `START_TLS` | `START_TLS` by default (there is always a certificate, §4.8); see the note on literal addresses below | `security` (`enum LdapSecurity`) |
+| `bindDn` | entry | `uid={client public_id},ou=clients,{suffix}` | `bindDn` |
+| `password` | entry's `password_mode`: `template` → the entry's; `client` → the client's for this use; `none` → `""` | derived per client (§4.3) | `password` |
+| `baseDn` | entry | `ou={book slug},ou=books,{suffix}` | `baseDn` |
+| `line` | account key of the use's `line_profile_id`, or `""` | same | `line` (loader maps account key → local account id) |
+| `lookupIncoming`, `lookupOutgoing` | use | use | same names |
+| `maxResults` | entry, 1–1000 | use, 1–1000, default 50 | `maxResults` (`LdapRules.MAX_RESULTS`) |
+| `nameAttributes` | entry, default `cn sn` | `cn` | `nameAttributes` |
+| `numberAttributes` | entry, default `telephoneNumber mobile` | `telephoneNumber mobile` | `numberAttributes` |
+| `nameFilter`, `numberFilter` | entry, `""` = made by the app; must contain `%` | `""` | same names |
 
 Validation mirrors `LdapRules.validate`: no `ldaps://` (`HOST_LDAPS`), StartTLS needs a host
 name, not an address (`STARTTLS_NEEDS_HOST_NAME`), password needs a bind DN, base DN required,
-filters contain `%`, names unique case-insensitive. The platform refuses to save a hosted
-directory with `START_TLS` while `SIPLINK_LDAP_PUBLIC_HOST` is an IP address and says why.
+filters contain `%`. The connection is checked when the entry is saved (its own name ≤40 and
+required); the names shown on the phone are checked unique case-insensitive within the template
+when a use is saved. The platform refuses to save a hosted directory with `START_TLS` while
+`SIPLINK_LDAP_PUBLIC_HOST` is an IP address and says why. A change of an entry bumps the
+revision of every configuration template that uses it, so phones get it at their next sync.
+
+Adding a directory to a template = choosing one of the address books and external directories
+that are global or of the template's region (and that the administrator may use, §2.4). The
+choice is made once: editing a use changes only its own fields; to point at another directory
+the use is removed and another added.
 
 Hosted directories and literal addresses: the app today refuses StartTLS to a literal address
 (`LdapRules.Error.STARTTLS_NEEDS_HOST_NAME`: its LDAP library wants a host name). The briefing
@@ -428,12 +491,13 @@ decides before P6. Until then the rule is ported in P5 as it is in the app, and 
 hosted directory's security is kept in one function. External directories in a configuration
 template: the form starts with `START_TLS` (P6).
 
-The LDAP bind password of an **external** directory:
-- `password_mode=template`: stored (encrypted) in the configuration template, same for all its
-  clients — this is the owner's "ldap的密码可以选择加入配置模板";
-- `password_mode=client` (default when the bind DN is per person): entered per client on the
-  client page or in the client CSV import; a client without it gets the directory with an empty
-  password and a warning on the client page;
+The LDAP bind password of an **external** directory (set on its entry):
+- `password_mode=template` (统一设置): stored (encrypted) with the entry, same for all clients of
+  every template that uses it; write-only on the page ("已设置，留空保持不变"), never shown, never
+  in the audit log (only "已修改");
+- `password_mode=client` (按客户端设置, when the bind DN is per person): entered per client and
+  per use on the client page or in the client CSV import; a client without it gets the
+  directory with an empty password and a warning on the client page;
 - `password_mode=none`: anonymous bind (bind DN empty).
 Hosted books never need a password from anyone: each client gets its own derived LDAP
 credentials automatically (§4.3).
@@ -483,7 +547,7 @@ a profile is renamed).
 #### 3.5.8 Merge order
 
 1. Configuration template: settings, codecs, CAs, config password hash, refresh interval,
-   account profiles, directories.
+   account profiles, directory uses with the external directories they refer to.
 2. Client values: credentials per profile (+ optional account name); forwarding targets that are
    not NULL replace the template's; directory passwords of `password_mode=client`.
 3. Derived values: hosted directories (host, port, security, bind DN, password, base DN).
@@ -727,10 +791,12 @@ regions; "全部区域" for super), the administrator's name → 我的账号 / 
 | 批量导入客户端 `/clients/import` | CSV: `名称,区域,客户端模板,{profile}用户名,{profile}密码,…`; template download per client template; dry run → confirm |
 | 打印二维码 `/clients/print?ids=…` | print-only page: grid of cards (name, region, QR, short instruction), A4, no navigation |
 | 客户端模板 | list; edit = name, region/global, configuration template, key template; shows how many clients use it |
-| 配置模板 `/config-templates/{id}` | tabs: 账号 (profiles, order, default), 呼叫处理 (DND mode, call waiting, anonymous, DTMF, forwarding), 功能码, 接听与保活 (regular call auto answer and its wait, intercom, keep-alive), 音视频 (codecs order/on-off, video on, size, frame rate), 安全 (TLS verification, SRTP, CA certificates upload/list with subject and expiry; fixed first row "平台 CA（自动下发）" that cannot be removed, §3.5.2), 通讯录 (directories: external or hosted, password mode; security starts with `START_TLS`), 高级 (configuration password set/clear, refresh interval, update check); "已被 N 个客户端使用" with a confirmation when saving a template in use |
+| 配置模板 `/config-templates/{id}` | tabs: 账号 (profiles, order, default), 呼叫处理 (DND mode, call waiting, anonymous, DTMF, forwarding), 功能码, 接听与保活 (regular call auto answer and its wait, intercom, keep-alive), 音视频 (codecs order/on-off, video on, size, frame rate), 安全 (TLS verification, SRTP, CA certificates upload/list with subject and expiry; fixed first row "平台 CA（自动下发）" that cannot be removed, §3.5.2), 通讯录 (the directories used: one "添加通讯录" whose page first picks one of the usable directories, then the use's own fields; §3.5.5), 高级 (configuration password set/clear, refresh interval, update check); "已被 N 个客户端使用" with a confirmation when saving a template in use |
 | 功能键模板 `/key-templates/{id}` | table editor (label, number, type, category, line, icon) in a list that scrolls inside its card (search as you type, which turns reordering off; height adjustable by a bar, remembered per browser) with reorder (drag a row by its grip, or arrow keys on the grip; one `POST …/keys/order` with every id in the new order, as for profiles and directories); CSV import/export in the app's format; line picker offers the profile names of the configuration templates that use it |
-| 通讯录 `/books` | list: name, region, slug, entries/10,000, used by; new book |
-| 通讯录详情 `/books/{id}` | entries table with search and paging (50 per page), add/edit/delete entry, import (dry run), export CSV/LDIF; "连接信息" box: host, port, base DN, StartTLS yes/no |
+| 通讯录 `/books` | one list of internal and external directories: name, type (内部 · 外部), region, entries/10,000 or the server address, how many configuration templates use it; search (name, slug, server address) and type filter in one row, 50 per page; "新建通讯录" |
+| 新建通讯录 `/books/new?kind=hosted\|external` | the type (内部 / 外部) chosen at the top, then the fields of that type; the type is fixed after creation |
+| 通讯录详情 `/books/{id}` (internal) | entries table with search and paging (50 per page), add/edit/delete entry, import (dry run), export CSV/LDIF; "连接信息" box: host, port, base DN, StartTLS yes/no; 设置 shows the type as a fixed value |
+| 外部通讯录 `/directories/{id}` | the entry's connection (§3.5.5) as a form (read-only for who may not edit it), the type as a fixed value, the stored password write-only; "使用情况": the templates that use it; delete only while unused |
 | LDAP 账号 `/ldap-accounts` | service accounts: name, region, books granted, disabled; password shown once on create/reset |
 | 区域 `/regions` | list, create, rename, delete (empty only), counts |
 | 管理员 `/admins` | list, create (role, regions), disable, reset password (one-time password shown once) |
@@ -777,7 +843,7 @@ encoder. Level M. The page never puts the token into a URL other than the QR tar
 | Session tokens | SHA-256 | only looked up |
 | Enrollment token | SHA-256 (lookup) + AES-GCM (to show the QR again) | single-use, expires |
 | Device key | SHA-256 | only looked up |
-| SIP passwords, external LDAP passwords (template or client) | AES-256-GCM, random 12-byte nonce, AAD = table + row id + column | the phone needs them in clear |
+| SIP passwords, external LDAP passwords (of the external directory or per client), hosted-book account passwords | AES-256-GCM, random 12-byte nonce, AAD = table + row id + column (`external_directories`/`password_enc` for a directory's own password since 0008, §2.5) | the phone needs them in clear |
 | Hosted-book client LDAP passwords | not stored; HMAC-derived (§4.3) | |
 | Service account LDAP passwords | SHA-256 of a 32-char random secret | only verified, cheap per bind |
 | Configuration password | the SHA-256 hex the app expects (`ManagedConfig.isPassword`) | the app's format; it is unsalted, so the UI asks for at least 8 characters and says it protects only against casual viewing |
@@ -1302,6 +1368,10 @@ docker build -t ghcr.io/tom231efa/siplink:dev .
   `not`, presence, unknown attribute = Undefined.
 - `books/csv`: UTF-8, UTF-8 BOM, GB18030, quotes, too many numbers, 10,001 lines, replace mode
   atomicity.
+- `store` migration 0008/0009 (§2.5): a database built at schema 7 with inline external
+  directories in each password mode (two identical rows sharing an entry, a name taken in the
+  region, a global template) is migrated with the key; entries, names, re-sealed passwords,
+  per-client passwords and the document are checked; without the key it refuses and stays at 7.
 
 ### 8.2 HTTP integration tests (`httptest`, real SQLite in a temp dir)
 - Login, lockout, session idle/absolute expiry, CSRF rejection of cross-site POST.
@@ -1310,6 +1380,11 @@ docker build -t ghcr.io/tom231efa/siplink:dev .
   reminder setting, the notices on 系统, 概览 and `/healthz`.
 - Region admin cannot read/modify another region's clients/templates/books (404, not 403, to
   avoid leaking existence), can use but not modify global templates.
+- Directories (`web_directories_test.go`): the list with search, type filter and paging; creating
+  each type; the type staying fixed; the external page and its validation; the stored password
+  write-only and never in the audit log or the log; region rules for use and moves; delete
+  refused while in use; the template's directory part; the client's reported version code and
+  User-Agent.
 - Enrollment: 200 + deviceKey; second enrollment with same token → 404; expired token → 404;
   GET info page identical for valid and invalid tokens.
 - Sync: 200 then 204 with `have`; template edit → 200 with new version; unbind → 410 `unbound`;

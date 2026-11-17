@@ -116,7 +116,7 @@ func open(ctx context.Context) (*env, error) {
 	if e.box, err = secret.NewBox(keys.Data); err != nil {
 		return nil, err
 	}
-	if e.st, err = store.Open(ctx, filepath.Join(cfg.DataDir, store.FileName)); err != nil {
+	if e.st, err = store.Open(ctx, filepath.Join(cfg.DataDir, store.FileName), e.box); err != nil {
 		return nil, err
 	}
 	return e, nil

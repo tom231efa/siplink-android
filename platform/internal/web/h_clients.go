@@ -2,6 +2,7 @@ package web
 
 import (
 	"errors"
+	"html/template"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -58,7 +59,7 @@ type clientsData struct {
 	Status    string
 	Template  int64
 	Templates []*store.ClientTemplate
-	Query     string // the filter as a query string, for paging links
+	Query     template.URL // the filter as a query string, for paging links
 }
 
 func (s *Server) clientList(w http.ResponseWriter, r *http.Request) {
@@ -82,7 +83,7 @@ func (s *Server) clientList(w http.ResponseWriter, r *http.Request) {
 	d := clientsData{Total: total, Page: page, Pages: (total + clientsPerPage - 1) / clientsPerPage, Q: f.Query,
 		Status: f.Status, Template: f.Template}
 	d.Templates, _ = s.St.ListClientTemplates(ctx, s.templateScope(r))
-	d.Query = url.Values{"q": {f.Query}, "status": {f.Status}, "template": {itoa(f.Template)}}.Encode()
+	d.Query = pageQuery(url.Values{"q": {f.Query}, "status": {f.Status}, "template": {itoa(f.Template)}})
 	names, _ := s.allRegionNames(r)
 	tplNames := map[int64]string{}
 	all, _ := s.St.ListClientTemplates(ctx, store.BookScope{All: true})
@@ -174,15 +175,9 @@ func (s *Server) clientParts(r *http.Request, templateID int64) (*store.ClientTe
 	all, err := s.St.Directories(ctx, t.ConfigTemplateID)
 	var dirs []*store.Directory
 	for _, d := range all {
-		if d.PasswordMode != catalog.PasswordClient {
-			continue
+		if mode, _, _ := d.Password(); mode == catalog.PasswordClient {
+			dirs = append(dirs, d)
 		}
-		if d.Name == "" && d.BookID != nil { // a hosted book bound by hand shows its book's name
-			if b, err := s.St.BookByID(ctx, *d.BookID); err == nil {
-				d.Name = b.Name
-			}
-		}
-		dirs = append(dirs, d)
 	}
 	return t, profiles, dirs, err
 }
@@ -322,7 +317,7 @@ func (s *Server) clientSave(w http.ResponseWriter, r *http.Request) {
 			if d.LDAPAccountID != nil && dirs[d.ID] != "" {
 				a, err := s.St.LDAPAccountByID(ctx, *d.LDAPAccountID)
 				if p := s.accountPasswordProblem(a, dirs[d.ID]); err == nil && p != "" {
-					problems = append(problems, "通讯录「"+d.Name+"」："+p)
+					problems = append(problems, "通讯录「"+d.DisplayName()+"」："+p)
 				}
 			}
 		}

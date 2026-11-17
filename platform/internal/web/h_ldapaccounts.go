@@ -235,10 +235,14 @@ func (s *Server) ldapAccountDelete(w http.ResponseWriter, r *http.Request) {
 }
 
 // bookMoveProblem says why a book cannot move to another region, or "": an LDAP
-// account of another region that uses the book would break the ownership rule (§2.3).
+// account or a configuration template of another region that uses the book would break
+// the ownership rule (§2.3).
 func (s *Server) bookMoveProblem(r *http.Request, b *store.Book, to *int64) string {
 	if to == nil {
 		return "" // a global book can be used from every region
+	}
+	if p := s.directoryMoveProblem(r, store.KindHosted, b.ID, to); p != "" {
+		return p
 	}
 	regions, err := s.St.AccountRegionsOfBook(r.Context(), b.ID)
 	if err != nil {

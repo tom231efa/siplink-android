@@ -40,7 +40,7 @@
     <div class="card-head"><h2>{{icon "book-user"}}通讯录密码</h2></div>
     <div class="card-body form wide">
       {{range $d.Dirs}}
-      <label>{{.D.Name}}<input type="password" name="dir_{{.D.ID}}" autocomplete="new-password"{{if .HasPassword}} placeholder="已保存，留空保持不变"{{end}}></label>
+      <label>{{.D.DisplayName}}<input type="password" name="dir_{{.D.ID}}" autocomplete="new-password"{{if .HasPassword}} placeholder="已保存，留空保持不变"{{end}}></label>
       {{end}}
     </div>
   </section>

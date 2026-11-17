@@ -12,7 +12,7 @@ import (
 )
 
 func (s *Server) routesBooks() {
-	s.page("GET /books", s.bookList)
+	s.page("GET /books", s.directoryList)
 	s.page("GET /books/new", s.bookNew)
 	s.page("POST /books", s.bookCreate)
 	s.page("GET /books/{id}", s.bookShow)
@@ -29,6 +29,7 @@ func (s *Server) routesBooks() {
 	s.page("POST /books/{id}/import/confirm", s.importConfirm)
 	s.page("GET /books/{id}/export.csv", s.exportCSV)
 	s.page("GET /books/{id}/export.ldif", s.exportLDIF)
+	s.routesDirectories()
 }
 
 // bookScope is what an administrator may see, narrowed by the top-bar filter.
@@ -37,39 +38,6 @@ func (s *Server) bookScope(r *http.Request) store.BookScope {
 	sc := store.BookScope{All: a.Role == store.RoleSuper, Regions: a.RegionIDs}
 	sc.Region = s.selectedRegion(r)
 	return sc
-}
-
-type bookRow struct {
-	*store.Book
-	Region  string
-	CanEdit bool
-}
-
-type booksData struct {
-	Rows  []bookRow
-	Max   int
-	Total int
-	Limit int
-}
-
-func (s *Server) bookList(w http.ResponseWriter, r *http.Request) {
-	list, err := s.St.ListBooks(r.Context(), s.bookScope(r))
-	if err != nil {
-		s.internal(w, r, err)
-		return
-	}
-	names, err := s.allRegionNames(r)
-	if err != nil {
-		s.internal(w, r, err)
-		return
-	}
-	act := actor(r)
-	d := booksData{Max: s.Cfg.MaxBookEntries, Limit: s.Cfg.MaxBooks}
-	d.Total, _ = s.St.CountBooks(r.Context())
-	for _, b := range list {
-		d.Rows = append(d.Rows, bookRow{Book: b, Region: regionLabel(names, b.RegionID), CanEdit: act.Can(auth.BookEdit, b.RegionID)})
-	}
-	s.ok(w, r, "books", &Page{Title: "通讯录", Nav: "books", Data: d})
 }
 
 func (s *Server) allRegionNames(r *http.Request) (map[int64]string, error) {
@@ -114,6 +82,7 @@ func (s *Server) loadBook(w http.ResponseWriter, r *http.Request, edit bool) *st
 type bookForm struct {
 	Book    *store.Book
 	New     bool
+	Kind    string // for the type choice of a new directory
 	Regions []store.Region
 	Global  bool // the administrator may choose "global"
 	Error   string
@@ -127,7 +96,7 @@ func (s *Server) bookFormPage(w http.ResponseWriter, r *http.Request, status int
 		s.internal(w, r, err)
 		return
 	}
-	f.Regions, f.Global = regions, a.Role == store.RoleSuper
+	f.Regions, f.Global, f.Kind = regions, a.Role == store.RoleSuper, store.KindHosted
 	title := "编辑通讯录"
 	if f.New {
 		title = "新建通讯录"
@@ -135,14 +104,14 @@ func (s *Server) bookFormPage(w http.ResponseWriter, r *http.Request, status int
 	s.render(w, r, status, "book_edit", &Page{Title: title, Nav: "books", Data: f})
 }
 
+// bookNew is the page of a new directory: an address book unless the type chosen at its
+// top is external.
 func (s *Server) bookNew(w http.ResponseWriter, r *http.Request) {
-	b := &store.Book{}
-	if sel := s.selectedRegion(r); sel != 0 {
-		b.RegionID = &sel
-	} else if a := current(r); a.Role != store.RoleSuper && len(a.RegionIDs) > 0 {
-		b.RegionID = &a.RegionIDs[0]
+	if kindOf(r.URL.Query().Get("kind")) == store.KindExternal {
+		s.externalNew(w, r)
+		return
 	}
-	s.bookFormPage(w, r, http.StatusOK, bookForm{New: true, Book: b})
+	s.bookFormPage(w, r, http.StatusOK, bookForm{New: true, Book: &store.Book{RegionID: s.defaultRegion(r)}})
 }
 
 // formRegion reads the region select: "" or "0" = global.
@@ -204,7 +173,7 @@ func (s *Server) bookEdit(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) bookUpdate(w http.ResponseWriter, r *http.Request) {
 	old := s.loadBook(w, r, true)
-	if old == nil {
+	if old == nil || s.kindRefused(w, r, store.KindHosted) {
 		return
 	}
 	b := *old

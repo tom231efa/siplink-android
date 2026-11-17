@@ -10,7 +10,7 @@
 </header>
 {{with $d.Error}}<div class="flash error" role="alert">{{.}}</div>{{end}}
 {{if $d.Missing}}<div class="flash warn">以下账号未填写凭据，将不下发：{{join $d.Missing "、"}}</div>{{end}}
-{{range $d.Dirs}}{{if not .HasPassword}}<div class="flash warn">通讯录「{{.D.Name}}」需按客户端设置密码，此客户端未设置，将以空密码下发。</div>{{end}}{{end}}
+{{range $d.Dirs}}{{if not .HasPassword}}<div class="flash warn">通讯录「{{.D.DisplayName}}」需按客户端设置密码，此客户端未设置，将以空密码下发。</div>{{end}}{{end}}
 {{if $d.Problems}}<div class="flash error" role="alert">当前配置未通过校验，将不下发；已绑定的设备继续使用上一次的有效配置。<ul class="errors">{{range $d.Problems}}<li>{{.}}</li>{{end}}</ul></div>{{end}}
 
 <div class="detail-grid">
@@ -43,7 +43,8 @@
           <dt>状态</dt><dd>{{if $d.Offline}}<span class="status warn">离线</span>{{else}}<span class="status ok">已绑定</span>{{end}} <span class="muted">{{when $c.BoundAt}}</span></dd>
           <dt>最后同步</dt><dd>{{when $d.Report.LastSeenAt}}{{with $d.Report.LastIP}}<span class="dot-sep"></span><span class="mono">{{.}}</span>{{end}}</dd>
           <dt>型号</dt><dd class="fade">{{with $d.Report.DeviceModel}}{{.}}{{else}}—{{end}}{{with $d.Report.AndroidRelease}}<span class="dot-sep"></span>Android {{.}}{{end}}</dd>
-          <dt>SipLink 版本</dt><dd class="fade">{{with $d.Report.AppVersion}}{{.}}{{else}}—{{end}}</dd>
+          <dt>SipLink 版本</dt><dd class="fade">{{with $d.Report.AppVersion}}{{.}}{{else}}—{{end}}{{with $d.Report.AppVersionCode}}<span class="dot-sep"></span><span class="muted">版本号</span> <span class="mono">{{.}}</span>{{end}}</dd>
+          {{with $d.Report.UserAgent}}<dt>User-Agent</dt><dd class="mono fade">{{.}}</dd>{{end}}
           <dt>已应用的配置</dt><dd class="mono">{{if $d.Report.AppliedVersion}}{{printf "%.12s" $d.Report.AppliedVersion}}{{if eq $d.Report.AppliedVersion $d.Version}} <span class="badge ok">最新</span>{{else}}（当前版本 {{printf "%.12s" $d.Version}}，将于下次同步时更新）{{end}}{{else}}—{{end}}</dd>
           {{with $d.Report.ApplyError}}<dt>应用错误</dt><dd class="danger-text">{{.}}</dd>{{end}}
           <dt>注册状态</dt><dd>{{regSummary $d.Report.RegistrationsJSON}}</dd>

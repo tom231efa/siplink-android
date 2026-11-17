@@ -40,13 +40,16 @@ func (h *harness) fixture(name string, region *int64) *fixture {
 		must(h.st.SaveProfile(ctx, p, 100))
 		f.profiles = append(f.profiles, p)
 	}
-	f.dir = &store.Directory{TemplateID: f.config.ID, Kind: "external", Name: "公司", Enabled: true, Host: "ldap.example.com", Port: 389,
-		Security: "START_TLS", BindDN: "uid=x,dc=example,dc=com", PasswordMode: "client", BaseDN: "dc=example,dc=com", MaxResults: 50,
+	ext := &store.ExternalDirectory{RegionID: region, Name: "公司-" + name, Host: "ldap.example.com", Port: 389, Security: "START_TLS",
+		BindDN: "uid=x,dc=example,dc=com", PasswordMode: "client", BaseDN: "dc=example,dc=com", MaxResults: 50,
 		NameAttributes: "cn", NumberAttributes: "telephoneNumber"}
+	must(h.st.SaveExternalDirectory(ctx, ext, nil))
+	f.dir = &store.Directory{TemplateID: f.config.ID, Kind: store.KindExternal, ExternalID: &ext.ID, Name: "公司", Enabled: true,
+		PasswordMode: "none", MaxResults: 50}
 	must(h.st.SaveDirectory(ctx, f.dir, 50, nil))
 	book := h.book(strings.ToLower("b-"+secret.RandomText(6)), region)
-	f.hosted = &store.Directory{TemplateID: f.config.ID, Kind: "hosted", BookID: &book.ID, Name: "内部", Enabled: true, Port: 389,
-		Security: "START_TLS", PasswordMode: "none", MaxResults: 50, NameAttributes: "cn", NumberAttributes: "telephoneNumber mobile"}
+	f.hosted = &store.Directory{TemplateID: f.config.ID, Kind: store.KindHosted, BookID: &book.ID, Name: "内部", Enabled: true,
+		PasswordMode: "none", MaxResults: 50}
 	must(h.st.SaveDirectory(ctx, f.hosted, 50, nil))
 	f.tpl = &store.ClientTemplate{Name: name, ConfigTemplateID: f.config.ID, RegionID: region}
 	must(h.st.CreateClientTemplate(ctx, f.tpl))

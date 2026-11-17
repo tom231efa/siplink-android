@@ -61,7 +61,7 @@ type seedDir struct {
 	Security     string `json:"security"`
 	BindDN       string `json:"bindDn"`
 	BaseDN       string `json:"baseDn"`
-	PasswordMode string `json:"passwordMode"` // none / template
+	PasswordMode string `json:"passwordMode"` // none / template (one password for every client) / client
 	Password     string `json:"password"`
 	PasswordEnv  string `json:"passwordEnv"`
 }
@@ -306,7 +306,7 @@ func (sd *seeder) config(spec *seedSpec, rid *int64) (*store.ConfigTemplate, err
 		}
 	}
 	if cs.ExternalDirectory != nil {
-		if err := sd.external(t, cs.ExternalDirectory); err != nil {
+		if err := sd.external(t, cs.ExternalDirectory, rid); err != nil {
 			return nil, fmt.Errorf("外部通讯录: %w", err)
 		}
 	}
@@ -368,44 +368,62 @@ func (sd *seeder) hostedBook(t *store.ConfigTemplate, sb *seedBook, rid *int64) 
 	if err != nil || d != nil {
 		return err // already there
 	}
-	sec, _ := sd.hosted().Security()
-	d = &store.Directory{TemplateID: t.ID, Kind: "hosted", BookID: &b.ID, Enabled: true, Port: 389, Security: string(sec),
-		PasswordMode: catalog.PasswordNone, LookupIncoming: true, LookupOutgoing: true, MaxResults: 50,
-		NameAttributes: "cn", NumberAttributes: "telephoneNumber mobile"}
+	d = &store.Directory{TemplateID: t.ID, Kind: store.KindHosted, BookID: &b.ID, Source: b.Name, Enabled: true,
+		PasswordMode: catalog.PasswordNone, LookupIncoming: true, LookupOutgoing: true, MaxResults: 50}
 	if err := problems(catalog.DirectoryProblems(d, others, b, sd.hosted(), true)); err != nil {
 		return err
 	}
 	return st.SaveDirectory(ctx, d, rules.MaxDirectories, nil)
 }
 
-func (sd *seeder) external(t *store.ConfigTemplate, sx *seedDir) error {
-	d, others, err := sd.directory(t, func(d *store.Directory) bool { return d.Kind == "external" && strings.EqualFold(d.Name, sx.Name) })
+// external creates or updates the external directory of the region by its name and
+// makes the template use it.
+func (sd *seeder) external(t *store.ConfigTemplate, sx *seedDir, rid *int64) error {
+	st, ctx := sd.e.st, sd.ctx
+	list, err := st.ListExternalDirectories(ctx, store.BookScope{All: true, Region: *rid})
 	if err != nil {
 		return err
 	}
-	if d == nil {
-		d = &store.Directory{TemplateID: t.ID, Kind: "external", Enabled: true, LookupIncoming: true, LookupOutgoing: true,
-			MaxResults: 50, NameAttributes: rules.LdapDefaultNameAttributes, NumberAttributes: rules.LdapDefaultNumberAttributes}
+	e := &store.ExternalDirectory{RegionID: rid, MaxResults: 50, NameAttributes: rules.LdapDefaultNameAttributes,
+		NumberAttributes: rules.LdapDefaultNumberAttributes}
+	for _, x := range list {
+		if strings.EqualFold(x.Name, sx.Name) {
+			e = x
+		}
 	}
-	d.Name, d.Host, d.Port, d.Security, d.BindDN, d.BaseDN = sx.Name, sx.Host, sx.Port, strings.ToUpper(sx.Security), sx.BindDN, sx.BaseDN
-	d.PasswordMode = sx.PasswordMode
-	if d.PasswordMode == "" {
-		d.PasswordMode = catalog.PasswordNone
+	isNew := e.ID == 0
+	e.Name, e.Host, e.Port, e.Security, e.BindDN, e.BaseDN = sx.Name, sx.Host, sx.Port, strings.ToUpper(sx.Security), sx.BindDN, sx.BaseDN
+	e.PasswordMode = sx.PasswordMode
+	if e.PasswordMode == "" {
+		e.PasswordMode = catalog.PasswordNone
 	}
-	if d.Port == 0 {
-		d.Port = 389
+	if e.Port == 0 {
+		e.Port = 389
 	}
-	catalog.NormalizeDirectory(d)
-	if err := problems(catalog.DirectoryProblems(d, others, nil, sd.hosted(), d.ID == 0)); err != nil {
+	catalog.NormalizeExternal(e)
+	if err := problems(catalog.ExternalProblems(e)); err != nil {
 		return err
 	}
 	var seal func(int64) (string, error)
-	if pw := secretValue(sx.Password, sx.PasswordEnv); d.PasswordMode == catalog.PasswordTemplate && pw != "" {
-		seal = func(id int64) (string, error) {
-			return sd.e.box.Seal([]byte(pw), secret.AAD("template_directories", id, "password_enc"))
-		}
+	if pw := secretValue(sx.Password, sx.PasswordEnv); e.PasswordMode == catalog.PasswordTemplate && pw != "" {
+		seal = func(id int64) (string, error) { return sd.e.box.Seal([]byte(pw), store.ExternalDirectoryAAD(id)) }
 	}
-	return sd.e.st.SaveDirectory(sd.ctx, d, rules.MaxDirectories, seal)
+	if err := st.SaveExternalDirectory(ctx, e, seal); err != nil {
+		return err
+	}
+	if isNew {
+		sd.audit("directory.create", "directory", e.ID, e.Name, rid)
+	}
+	d, others, err := sd.directory(t, func(d *store.Directory) bool { return d.ExternalID != nil && *d.ExternalID == e.ID })
+	if err != nil || d != nil {
+		return err // already used by the template
+	}
+	d = &store.Directory{TemplateID: t.ID, Kind: store.KindExternal, ExternalID: &e.ID, External: e, Source: e.Name, Enabled: true,
+		PasswordMode: catalog.PasswordNone, LookupIncoming: true, LookupOutgoing: true, MaxResults: 50}
+	if err := problems(catalog.DirectoryProblems(d, others, nil, sd.hosted(), true)); err != nil {
+		return err
+	}
+	return st.SaveDirectory(ctx, d, rules.MaxDirectories, nil)
 }
 
 func (sd *seeder) keys(name, csvFile string, rid *int64) (*store.KeyTemplate, error) {

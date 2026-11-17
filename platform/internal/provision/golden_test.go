@@ -56,7 +56,11 @@ type world struct {
 }
 
 func newWorld(t *testing.T, ldapHost string, requireTLS bool) *world {
-	st := testutil.Store(t)
+	return newWorldOn(t, testutil.Store(t), ldapHost, requireTLS)
+}
+
+// newWorldOn is newWorld on a given database.
+func newWorldOn(t *testing.T, st *store.Store, ldapHost string, requireTLS bool) *world {
 	st.Now = func() time.Time { return fixedTime }
 	w := &world{t: t, st: st, box: testutil.Box(t), region: &store.Region{Name: "华东"}}
 	w.must(st.CreateRegion(context.Background(), w.region))
@@ -83,6 +87,18 @@ func (w *world) config(name string, edit func(*provision.Settings, *store.Config
 	c.SettingsJSON = catalog.SettingsJSON(s)
 	w.must(w.st.CreateConfigTemplate(context.Background(), c))
 	return c
+}
+
+// external stores an external directory, with the password kept for every client when
+// one is given.
+func (w *world) external(e *store.ExternalDirectory, password string) *store.ExternalDirectory {
+	w.t.Helper()
+	var seal func(int64) (string, error)
+	if password != "" {
+		seal = func(id int64) (string, error) { return w.box.Seal([]byte(password), store.ExternalDirectoryAAD(id)) }
+	}
+	w.must(w.st.SaveExternalDirectory(context.Background(), e, seal))
+	return e
 }
 
 func (w *world) profile(c *store.ConfigTemplate, name, domain, transport string, def bool) *store.Profile {
@@ -160,9 +176,14 @@ func TestGoldenMinimal(t *testing.T) {
 	golden(t, "testdata/minimal.json", d)
 }
 
+// directoryMaker adds the four directories of the full example to a template and
+// returns the id of the use whose password each client sets.
+type directoryMaker func(cfg *store.ConfigTemplate, hq *store.Profile, book *store.Book) (personal int64)
+
 // full builds the example of docs/examples: two profiles, the three password modes of
-// external directories, a hosted book, forwarding overrides, codecs, CAs and keys.
-func full(t *testing.T, w *world) (*store.Client, *store.ClientTemplate) {
+// external directories, a hosted book, forwarding overrides, codecs, CAs and keys. The
+// directories are made by w.directories unless another maker is given.
+func full(t *testing.T, w *world, makers ...directoryMaker) (*store.Client, *store.ClientTemplate) {
 	ctx := context.Background()
 	cfg := w.config("标准", func(s *provision.Settings, c *store.ConfigTemplate) {
 		s.ForwardBusy, s.Features.Park, s.VideoCalls = "8000", "*85", true
@@ -178,29 +199,11 @@ func full(t *testing.T, w *world) (*store.Client, *store.ClientTemplate) {
 	branch := w.profile(cfg, "分部", "192.0.2.20:5070", "UDP", true)
 	book := &store.Book{Slug: "staff", Name: "员工通讯录"}
 	w.must(w.st.CreateBook(ctx, book, 500))
-	dirs := []*store.Directory{
-		{Kind: "hosted", BookID: &book.ID, Enabled: true, Security: "START_TLS", Port: 389, PasswordMode: catalog.PasswordNone, MaxResults: 50, LookupIncoming: true, LookupOutgoing: true, LineProfileID: &hq.ID},
-		{Kind: "external", Name: "公司目录", Enabled: true, Host: "ldap.example.com", Port: 389, Security: "START_TLS",
-			BindDN: "cn=reader,dc=example,dc=com", PasswordMode: catalog.PasswordTemplate, BaseDN: "ou=people,dc=example,dc=com",
-			LookupIncoming: true, LookupOutgoing: true, MaxResults: 100, NameAttributes: "cn sn", NumberAttributes: "telephoneNumber mobile"},
-		{Kind: "external", Name: "个人目录", Enabled: true, Host: "ldap.example.com", Port: 389, Security: "START_TLS",
-			BindDN: "uid=1001,ou=people,dc=example,dc=com", PasswordMode: catalog.PasswordClient, BaseDN: "ou=people,dc=example,dc=com",
-			LookupIncoming: false, LookupOutgoing: true, MaxResults: 50, NameAttributes: "displayName", NumberAttributes: "telephoneNumber",
-			NameFilter: "(displayName=*%s*)"},
-		{Kind: "external", Name: "公共目录", Enabled: false, Host: "directory.example.com", Port: 389, Security: "NONE",
-			PasswordMode: catalog.PasswordNone, BaseDN: "dc=example,dc=com", LookupIncoming: true, LookupOutgoing: true, MaxResults: 20,
-			NameAttributes: "cn", NumberAttributes: "telephoneNumber"},
+	makeDirs := w.directories
+	if len(makers) > 0 {
+		makeDirs = makers[0]
 	}
-	for _, d := range dirs {
-		d.TemplateID = cfg.ID
-		var seal func(int64) (string, error)
-		if d.PasswordMode == catalog.PasswordTemplate {
-			seal = func(id int64) (string, error) {
-				return w.box.Seal([]byte("test-directory-password"), secret.AAD("template_directories", id, "password_enc"))
-			}
-		}
-		w.must(w.st.SaveDirectory(ctx, d, rules.MaxDirectories, seal))
-	}
+	personal := makeDirs(cfg, hq, book)
 	keys := &store.KeyTemplate{Name: "前台"}
 	w.must(w.st.CreateKeyTemplate(ctx, keys))
 	w.must(w.st.AddKeys(ctx, keys.ID, []*store.TemplateKey{
@@ -214,11 +217,37 @@ func full(t *testing.T, w *world) (*store.Client, *store.ClientTemplate) {
 	c := w.client("desk1", tpl, []store.CredentialInput{
 		{ProfileID: hq.ID, Username: "1001", Password: "test-password-1001", DisplayName: "前台", AccountName: &name},
 		{ProfileID: branch.ID, Username: "2001", AuthUser: "auth2001", Password: "test-password-2001"},
-	}, map[int64]string{dirs[2].ID: "test-personal-password"}, func(c *store.Client) {
+	}, map[int64]string{personal: "test-personal-password"}, func(c *store.Client) {
 		always := "13800000000"
 		c.ForwardAlways = &always
 	})
 	return c, tpl
+}
+
+// directories makes the directories of the full example as they are stored now: three
+// external directories and four uses.
+func (w *world) directories(cfg *store.ConfigTemplate, hq *store.Profile, book *store.Book) int64 {
+	ctx := context.Background()
+	company := w.external(&store.ExternalDirectory{Name: "公司目录", Host: "ldap.example.com", Port: 389, Security: "START_TLS",
+		BindDN: "cn=reader,dc=example,dc=com", PasswordMode: catalog.PasswordTemplate, BaseDN: "ou=people,dc=example,dc=com",
+		MaxResults: 100, NameAttributes: "cn sn", NumberAttributes: "telephoneNumber mobile"}, "test-directory-password")
+	personal := w.external(&store.ExternalDirectory{Name: "个人目录", Host: "ldap.example.com", Port: 389, Security: "START_TLS",
+		BindDN: "uid=1001,ou=people,dc=example,dc=com", PasswordMode: catalog.PasswordClient, BaseDN: "ou=people,dc=example,dc=com",
+		MaxResults: 50, NameAttributes: "displayName", NumberAttributes: "telephoneNumber", NameFilter: "(displayName=*%s*)"}, "")
+	public := w.external(&store.ExternalDirectory{Name: "公共目录", Host: "directory.example.com", Port: 389, Security: "NONE",
+		PasswordMode: catalog.PasswordNone, BaseDN: "dc=example,dc=com", MaxResults: 20, NameAttributes: "cn",
+		NumberAttributes: "telephoneNumber"}, "")
+	dirs := []*store.Directory{
+		{Kind: store.KindHosted, BookID: &book.ID, Enabled: true, PasswordMode: catalog.PasswordNone, MaxResults: 50, LookupIncoming: true, LookupOutgoing: true, LineProfileID: &hq.ID},
+		{Kind: store.KindExternal, ExternalID: &company.ID, Enabled: true, LookupIncoming: true, LookupOutgoing: true},
+		{Kind: store.KindExternal, ExternalID: &personal.ID, Name: "个人目录", Enabled: true, LookupIncoming: false, LookupOutgoing: true},
+		{Kind: store.KindExternal, ExternalID: &public.ID, Enabled: false, LookupIncoming: true, LookupOutgoing: true},
+	}
+	for _, d := range dirs {
+		d.TemplateID = cfg.ID
+		w.must(w.st.SaveDirectory(ctx, d, rules.MaxDirectories, nil))
+	}
+	return dirs[2].ID
 }
 
 func TestGoldenFull(t *testing.T) {
@@ -330,7 +359,7 @@ func TestHostedByAccount(t *testing.T) {
 	pw := secret.RandomText(32) // made at test time, never printed
 	acct := &store.LDAPAccount{Name: "desk-phones", PasswordHash: secret.HashHex(pw), BookIDs: []int64{book.ID}}
 	w.must(w.st.CreateLDAPAccount(ctx, acct))
-	d := &store.Directory{TemplateID: cfg.ID, Kind: "hosted", BookID: &book.ID, Enabled: true, Security: "START_TLS", Port: 389,
+	d := &store.Directory{TemplateID: cfg.ID, Kind: store.KindHosted, BookID: &book.ID, Enabled: true,
 		PasswordMode: catalog.PasswordTemplate, MaxResults: 50, LDAPAccountID: &acct.ID}
 	w.must(w.st.SaveDirectory(ctx, d, rules.MaxDirectories, func(id int64) (string, error) {
 		return w.box.Seal([]byte(pw), secret.AAD("template_directories", id, "password_enc"))

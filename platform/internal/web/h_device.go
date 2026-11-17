@@ -124,7 +124,7 @@ func clip(s string, n int) string {
 // updateReport copies the device report into the stored one.
 func (s *Server) updateReport(r *http.Request, rep *store.Report, d *deviceReport) {
 	rep.LastSeenAt, rep.LastIP = s.Now().UTC().Format(store.TimeFormat), s.clientIP(r)
-	rep.AppVersion, rep.AppVersionCode = clip(d.AppVersion, 40), d.AppVersionCode
+	rep.AppVersion, rep.AppVersionCode, rep.UserAgent = clip(d.AppVersion, 40), d.AppVersionCode, clip(r.UserAgent(), 200)
 	rep.AndroidRelease, rep.AndroidSDK, rep.DeviceModel = clip(d.AndroidRelease, 20), d.AndroidSDK, clip(d.Model, 80)
 	rep.AppliedVersion, rep.AppliedAt, rep.ApplyError = clip(d.Applied.Version, 64), clip(d.Applied.At, 40), clip(d.Applied.Error, 500)
 	regs := d.Registrations
