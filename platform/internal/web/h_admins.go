@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"siplink/internal/auth"
+	"siplink/internal/mail"
 	"siplink/internal/secret"
 	"siplink/internal/store"
 )
@@ -16,6 +17,7 @@ import (
 type adminsData struct {
 	Admins  []*store.Admin
 	Regions map[int64]string
+	TwoStep map[int64]bool // administrators with a two-step method on
 }
 
 func (s *Server) adminList(w http.ResponseWriter, r *http.Request) {
@@ -27,6 +29,10 @@ func (s *Server) adminList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	d.Regions = regionNames(regions)
+	if d.TwoStep, err = s.St.TwoStepAdmins(r.Context()); err != nil {
+		s.internal(w, r, err)
+		return
+	}
 	if a.Role == store.RoleSuper {
 		if d.Admins, err = s.St.ListAdmins(r.Context()); err != nil {
 			s.internal(w, r, err)
@@ -45,6 +51,8 @@ type adminForm struct {
 	Regions  []store.Region
 	Error    string
 	Password string // one-time password, shown once after create / reset
+	TwoStep  store.TwoStep
+	EmailWas string // the address the form was shown with
 }
 
 func (s *Server) adminFormPage(w http.ResponseWriter, r *http.Request, status int, f adminForm) {
@@ -54,6 +62,12 @@ func (s *Server) adminFormPage(w http.ResponseWriter, r *http.Request, status in
 		return
 	}
 	f.Regions = regions
+	if !f.New {
+		if f.TwoStep, err = s.St.TwoStepState(r.Context(), f.Admin.ID); err != nil {
+			s.internal(w, r, err)
+			return
+		}
+	}
 	title := "编辑管理员"
 	if f.New {
 		title = "新建管理员"
@@ -65,9 +79,14 @@ func (s *Server) adminNew(w http.ResponseWriter, r *http.Request) {
 	s.adminFormPage(w, r, http.StatusOK, adminForm{New: true, Admin: &store.Admin{Role: store.RoleRegion}})
 }
 
-// readAdminForm reads role, display name and regions; it checks that every region exists.
+// readAdminForm reads role, display name, e-mail address and regions; it checks that
+// every region exists.
 func (s *Server) readAdminForm(r *http.Request, a *store.Admin) string {
 	a.DisplayName = truncate(trimmed(r, "display_name"), 64)
+	a.Email = trimmed(r, "email")
+	if a.Email != "" && mail.ValidAddress(a.Email) != nil {
+		return "邮箱地址无效。"
+	}
 	a.Role = r.FormValue("role")
 	a.RegionIDs = formIDs(r, "regions")
 	if a.Role != store.RoleSuper && a.Role != store.RoleRegion {
@@ -112,6 +131,10 @@ func (s *Server) adminCreate(w http.ResponseWriter, r *http.Request) {
 		s.internal(w, r, err)
 		return
 	}
+	if err := s.St.SetAdminEmail(r.Context(), a.ID, a.Email, nil); err != nil {
+		s.internal(w, r, err)
+		return
+	}
 	s.audit(r, "admin.create", "admin", a.ID, a.Username, nil, map[string]any{"role": a.Role, "regions": a.RegionIDs})
 	s.ok(w, r, "admin_password", &Page{Title: "管理员已创建", Nav: "admins", Data: adminForm{Admin: a, Password: password}})
 }
@@ -135,7 +158,7 @@ func (s *Server) adminEdit(w http.ResponseWriter, r *http.Request) {
 	if a == nil {
 		return
 	}
-	s.adminFormPage(w, r, http.StatusOK, adminForm{Admin: a, Self: a.ID == current(r).ID})
+	s.adminFormPage(w, r, http.StatusOK, adminForm{Admin: a, Self: a.ID == current(r).ID, EmailWas: a.Email})
 }
 
 func (s *Server) adminUpdate(w http.ResponseWriter, r *http.Request) {
@@ -147,18 +170,38 @@ func (s *Server) adminUpdate(w http.ResponseWriter, r *http.Request) {
 	a := *old
 	msg := s.readAdminForm(r, &a)
 	a.Disabled = r.FormValue("disabled") == "1"
-	if self && (a.Role != old.Role || a.Disabled) {
+	// The address is written only when the form changed the one it was shown with, and
+	// never for a super administrator here (their own goes through 我的账号, §6.8).
+	emailChanged := r.PostForm.Has("email") && a.Email != trimmed(r, "email_was")
+	if !emailChanged {
+		a.Email = old.Email
+	}
+	ts, err := s.St.TwoStepState(r.Context(), old.ID)
+	if err != nil {
+		s.internal(w, r, err)
+		return
+	}
+	switch {
+	case msg != "": // the form's own problem first
+	case self && (a.Role != old.Role || a.Disabled):
 		msg = "不可修改本人角色或停用本人账号。"
+	case emailChanged && old.Role == store.RoleSuper:
+		msg = "超级管理员的邮箱只能由本人在「我的账号」中修改。"
+	case old.Role == store.RoleSuper && a.Role != old.Role && ts.Methods() > 0:
+		msg = "已启用两步验证的超级管理员不可修改角色。"
 	}
 	if msg != "" {
-		s.adminFormPage(w, r, http.StatusBadRequest, adminForm{Admin: &a, Self: self, Error: msg})
+		s.adminFormPage(w, r, http.StatusBadRequest, adminForm{Admin: &a, Self: self, Error: msg, EmailWas: trimmed(r, "email_was")})
 		return
 	}
-	err := s.St.UpdateAdmin(r.Context(), &a)
+	err = s.St.UpdateAdmin(r.Context(), &a)
 	if errors.Is(err, store.ErrLastSuper) {
-		s.adminFormPage(w, r, http.StatusBadRequest, adminForm{Admin: &a, Self: self,
+		s.adminFormPage(w, r, http.StatusBadRequest, adminForm{Admin: &a, Self: self, EmailWas: trimmed(r, "email_was"),
 			Error: "此为最后一个启用的超级管理员，无法停用或降级。"})
 		return
+	}
+	if err == nil && emailChanged {
+		err = s.St.SetAdminEmail(r.Context(), a.ID, a.Email, nil) // unconfirmed; a region administrator's
 	}
 	if err != nil {
 		s.internal(w, r, err)
@@ -173,7 +216,7 @@ func (s *Server) adminUpdate(w http.ResponseWriter, r *http.Request) {
 	slices.Sort(newRegions)
 	s.audit(r, action, "admin", a.ID, a.Username, nil, changes(
 		field{"display_name", old.DisplayName, a.DisplayName}, field{"role", old.Role, a.Role},
-		field{"disabled", old.Disabled, a.Disabled}, field{"regions", oldRegions, newRegions}))
+		field{"disabled", old.Disabled, a.Disabled}, field{"regions", oldRegions, newRegions}, field{"email", old.Email, a.Email}))
 	s.redirect(w, r, "/admins", "ok", "管理员「"+a.Username+"」已保存。")
 }
 

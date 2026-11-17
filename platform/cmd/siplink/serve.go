@@ -60,7 +60,7 @@ func serve() error {
 	if err != nil {
 		return err
 	}
-	srv.Ext = web.Extensions{Box: e.box, LDAPKey: e.keys.LDAP, Certs: certs}
+	srv.Ext = web.Extensions{Box: e.box, LDAPKey: e.keys.LDAP, CodeKey: e.keys.CodeKey(), Certs: certs}
 	if _, ok := rules.HostedSecurity(e.cfg.LDAPPublicHost, e.cfg.LDAPRequireTLS); !ok {
 		e.log.Warn("hosted directories cannot be handed out", "reason", rules.HostedNeedsName)
 	}

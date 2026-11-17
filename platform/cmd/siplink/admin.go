@@ -18,11 +18,11 @@ type multiFlag []string
 func (m *multiFlag) String() string     { return strings.Join(*m, ",") }
 func (m *multiFlag) Set(v string) error { *m = append(*m, v); return nil }
 
-// adminCommand handles "admin create" and "admin reset-password". The one-time
-// password goes to out (the terminal), never to the log.
+// adminCommand handles "admin create", "admin reset-password" and "admin reset-2fa".
+// The one-time password goes to out (the terminal), never to the log.
 func adminCommand(args []string, out io.Writer) error {
 	if len(args) == 0 {
-		return errors.New("admin 需要子命令: create, reset-password")
+		return errors.New("admin 需要子命令: create, reset-password, reset-2fa")
 	}
 	ctx := context.Background()
 	e, err := open(ctx)
@@ -35,6 +35,8 @@ func adminCommand(args []string, out io.Writer) error {
 		return adminCreate(ctx, e.st, args[1:], out)
 	case "reset-password":
 		return adminReset(ctx, e.st, args[1:], out)
+	case "reset-2fa":
+		return adminResetTwoStep(ctx, e.st, args[1:], out)
 	}
 	return fmt.Errorf("未知的 admin 子命令 %q", args[0])
 }
@@ -113,6 +115,28 @@ func adminReset(ctx context.Context, st *store.Store, args []string, out io.Writ
 	_ = st.AddAudit(ctx, &store.AuditEntry{AdminName: "CLI", Action: "admin.password_reset", ObjectType: "admin",
 		ObjectID: &a.ID, ObjectName: a.Username, Detail: map[string]any{"password": "已修改"}})
 	fmt.Fprintf(out, "已重置 %s 的密码\n一次性密码: %s\n该管理员的全部会话已结束，登录后须修改密码。\n", a.Username, password)
+	return nil
+}
+
+// adminResetTwoStep removes every two-step method of an administrator (design §6.8),
+// for one who lost them all; their sessions end.
+func adminResetTwoStep(ctx context.Context, st *store.Store, args []string, out io.Writer) error {
+	if len(args) != 1 {
+		return errors.New("用法: siplink admin reset-2fa <用户名>")
+	}
+	a, err := st.AdminByUsername(ctx, args[0])
+	if errors.Is(err, store.ErrNotFound) {
+		return fmt.Errorf("管理员 %q 不存在", args[0])
+	}
+	if err != nil {
+		return err
+	}
+	if err := st.ResetTwoStep(ctx, a.ID); err != nil {
+		return err
+	}
+	_ = st.AddAudit(ctx, &store.AuditEntry{AdminName: "CLI", Action: "two_step.reset", ObjectType: "admin",
+		ObjectID: &a.ID, ObjectName: a.Username})
+	fmt.Fprintf(out, "已重置 %s 的两步验证\n全部验证方式和恢复码已删除，该管理员的全部会话已结束。\n", a.Username)
 	return nil
 }
 

@@ -3,9 +3,11 @@ package web
 import (
 	"errors"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"siplink/internal/auth"
 	"siplink/internal/store"
@@ -17,17 +19,34 @@ type loginData struct {
 	Error    string
 }
 
+// safeNext keeps a local path for the redirect after a sign-in, else "/". It refuses
+// every control character and backslash (browsers drop tabs and newlines and read "\\"
+// as "/", so "/\t/host" would become "//host"), anything that is not a path-only
+// reference, and paths that start with "//" before or after decoding.
 func safeNext(next string) string {
-	// Only local paths: no scheme, no host, no protocol-relative URL.
-	if !strings.HasPrefix(next, "/") || strings.HasPrefix(next, "//") || strings.HasPrefix(next, "/\\") {
+	if !strings.HasPrefix(next, "/") || strings.HasPrefix(next, "//") || strings.ContainsRune(next, '\\') {
+		return "/"
+	}
+	for _, r := range next {
+		if unicode.IsControl(r) {
+			return "/"
+		}
+	}
+	u, err := url.Parse(next)
+	if err != nil || u.Scheme != "" || u.Host != "" || u.User != nil || u.Opaque != "" ||
+		!strings.HasPrefix(u.Path, "/") || strings.HasPrefix(u.Path, "//") {
 		return "/"
 	}
 	return next
 }
 
 func (s *Server) loginForm(w http.ResponseWriter, r *http.Request) {
-	if a, _, err := s.Sessions.Check(r.Context(), sessionToken(r)); err == nil && a != nil {
-		http.Redirect(w, r, "/", http.StatusSeeOther)
+	if a, se, err := s.Sessions.Check(r.Context(), sessionToken(r)); err == nil && a != nil {
+		to := "/"
+		if se.Stage != "" {
+			to = "/login/step"
+		}
+		http.Redirect(w, r, to, http.StatusSeeOther)
 		return
 	}
 	s.ok(w, r, "login", &Page{Title: "登录", Data: loginData{Next: safeNext(r.URL.Query().Get("next"))}})
@@ -61,7 +80,6 @@ func (s *Server) loginSubmit(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if !okPassword || admin.Disabled {
-		s.Logins.Failed(key, ip)
 		e := &store.AuditEntry{Action: "login.failure", ObjectType: "admin", ObjectName: truncate(username, 64), IP: ip}
 		if admin != nil {
 			e.ObjectID = &admin.ID
@@ -74,19 +92,46 @@ func (s *Server) loginSubmit(w http.ResponseWriter, r *http.Request) {
 	s.Logins.Succeeded(key, ip)
 	// A new token at every login; an old cookie of this browser is ended first.
 	_ = s.Sessions.Destroy(r.Context(), sessionToken(r))
-	token, err := s.Sessions.Create(r.Context(), admin.ID, ip, r.UserAgent())
+	ts, err := s.St.TwoStepState(r.Context(), admin.ID)
 	if err != nil {
 		s.internal(w, r, err)
 		return
 	}
+	if ts.Methods() > 0 {
+		token, err := s.Sessions.CreatePending(r.Context(), admin.ID, ip, r.UserAgent())
+		if err != nil {
+			s.internal(w, r, err)
+			return
+		}
+		s.setSessionCookie(w, r, token)
+		http.Redirect(w, r, "/login/step?next="+url.QueryEscape(next), http.StatusSeeOther)
+		return
+	}
+	to, err := s.signIn(w, r, admin, next, nil)
+	if err != nil {
+		s.internal(w, r, err)
+		return
+	}
+	http.Redirect(w, r, to, http.StatusSeeOther)
+}
+
+// signIn starts a complete session after the password and, when due, the second step:
+// a new token, the login audit entry. It returns where the browser goes next: the forced
+// password change if any, else next.
+func (s *Server) signIn(w http.ResponseWriter, r *http.Request, admin *store.Admin, next string, detail map[string]any) (string, error) {
+	ip := s.clientIP(r)
+	token, err := s.Sessions.Create(r.Context(), admin.ID, ip, r.UserAgent())
+	if err != nil {
+		return "", err
+	}
 	_ = s.St.TouchLogin(r.Context(), admin.ID)
 	s.addAudit(r, &store.AuditEntry{AdminID: &admin.ID, AdminName: admin.Username, Action: "login.success",
-		ObjectType: "admin", ObjectID: &admin.ID, ObjectName: admin.Username, IP: ip})
+		ObjectType: "admin", ObjectID: &admin.ID, ObjectName: admin.Username, IP: ip, Detail: detail})
 	s.setSessionCookie(w, r, token)
 	if admin.MustChangePassword {
-		next = "/me"
+		return "/me", nil
 	}
-	http.Redirect(w, r, next, http.StatusSeeOther)
+	return next, nil
 }
 
 func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
@@ -95,57 +140,6 @@ func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
 	s.clearSessionCookie(w, r)
 	s.audit(r, "logout", "admin", a.ID, a.Username, nil, nil)
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
-}
-
-// ---- own password (修改密码) ----
-
-type meData struct {
-	Error  string
-	Forced bool
-}
-
-func (s *Server) meForm(w http.ResponseWriter, r *http.Request) {
-	a := current(r)
-	s.ok(w, r, "me", &Page{Title: "修改密码", Nav: "me", Data: meData{Forced: a.MustChangePassword}})
-}
-
-func (s *Server) meSubmit(w http.ResponseWriter, r *http.Request) {
-	a := current(r)
-	data := meData{Forced: a.MustChangePassword}
-	old, pw, again := r.FormValue("current"), r.FormValue("password"), r.FormValue("password2")
-	ok, _ := auth.VerifyPassword(a.PasswordHash, old)
-	switch {
-	case !ok:
-		data.Error = "当前密码不正确。"
-	case pw != again:
-		data.Error = "两次输入的新密码不一致。"
-	case pw == old:
-		data.Error = "新密码不得与当前密码相同。"
-	default:
-		data.Error = auth.PasswordProblem(pw, a.Username)
-	}
-	if data.Error != "" {
-		s.render(w, r, http.StatusBadRequest, "me", &Page{Title: "修改密码", Nav: "me", Data: data})
-		return
-	}
-	hash, err := auth.HashPassword(pw)
-	if err != nil {
-		s.internal(w, r, err)
-		return
-	}
-	// Ends every session of this administrator, then starts a fresh one here.
-	if err := s.St.SetAdminPassword(r.Context(), a.ID, hash, false); err != nil {
-		s.internal(w, r, err)
-		return
-	}
-	s.audit(r, "admin.password_change", "admin", a.ID, a.Username, nil, map[string]any{"password": "已修改"})
-	token, err := s.Sessions.Create(r.Context(), a.ID, s.clientIP(r), r.UserAgent())
-	if err != nil {
-		s.internal(w, r, err)
-		return
-	}
-	s.setSessionCookie(w, r, token)
-	s.redirect(w, r, "/", "ok", "密码已修改。")
 }
 
 // ---- region filter of the top bar ----

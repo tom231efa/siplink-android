@@ -23,6 +23,9 @@ func TestKeyFile(t *testing.T) {
 	if k1.Data == k1.LDAP {
 		t.Error("data and LDAP keys equal")
 	}
+	if ck := k1.CodeKey(); ck == k1.Data || ck == k1.LDAP || ck != k2.CodeKey() {
+		t.Error("code key not derived apart from the other keys, or not stable")
+	}
 	os.WriteFile(path, []byte("short"), 0o600)
 	if _, _, err := LoadOrCreate(path); err == nil {
 		t.Error("short key file accepted")

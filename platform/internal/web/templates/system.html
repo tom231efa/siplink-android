@@ -15,6 +15,15 @@
   </div>
 </section>
 
+<section class="card section-gap" id="two-step">
+  <div class="card-head"><h2>{{icon "shield-check"}}两步验证</h2></div>
+  <form method="post" action="/system/two-step" class="card-body settings">
+    <label class="setting toggle"><span class="setting-text"><span class="setting-name">区域管理员必须启用两步验证</span></span>
+      <span class="switch"><input type="checkbox" role="switch" name="required" value="1" data-autosubmit{{if $d.TwoStepRequired}} checked{{end}}><span></span></span></label>
+    <noscript><div class="form-foot"><button type="submit" class="btn">保存</button></div></noscript>
+  </form>
+</section>
+
 <section class="card section-gap" id="certificate" aria-labelledby="cert-title">
   {{$c := $d.Cert}}
   <div class="card-head"><h2 id="cert-title">{{icon "shield-check"}}证书</h2>

@@ -61,6 +61,8 @@ type systemData struct {
 	BackupTime  string
 	BackupKeep  int
 	KeyFile     string
+	// TwoStepRequired: region administrators must use two-step sign-in (§6.8).
+	TwoStepRequired bool
 }
 
 func (s *Server) systemPage(w http.ResponseWriter, r *http.Request) {
@@ -91,6 +93,11 @@ func (s *Server) renderSystem(w http.ResponseWriter, r *http.Request, status int
 		}
 	}
 	d.Backups, _ = backup.List(backup.Dir(c.DataDir))
+	var err error
+	if d.TwoStepRequired, err = s.St.TwoStepRequired(r.Context()); err != nil {
+		s.internal(w, r, err)
+		return
+	}
 	s.render(w, r, status, "system", &Page{Title: "系统", Nav: "system", Data: d})
 }
 

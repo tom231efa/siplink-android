@@ -13,6 +13,8 @@
       {{end}}
       <label>显示名<input name="display_name" value="{{$d.Admin.DisplayName}}" maxlength="64"></label>
     </div>
+    {{if not $d.New}}<input type="hidden" name="email_was" value="{{$d.EmailWas}}">{{end}}
+    <label>邮箱<input name="email" type="email" value="{{$d.Admin.Email}}" maxlength="254" autocomplete="off"{{if and (not $d.New) (eq $d.Admin.Role "super")}} disabled{{end}}></label>
     <fieldset class="plain">
       <legend class="field-label">角色</legend>
       {{if $d.Self}}<p class="hint">不可修改本人角色</p><input type="hidden" name="role" value="{{$d.Admin.Role}}">{{end}}
@@ -35,11 +37,31 @@
   <div class="card-foot form-actions"><a class="btn" href="/admins">取消</a><button type="submit" class="btn primary">保存</button></div>
 </form>
 {{if not $d.New}}
+<section class="card section-gap">
+  <div class="card-head"><h2>{{icon "shield-check"}}两步验证</h2></div>
+  <div class="card-body">
+    <dl class="kv">
+      <dt>邮箱</dt><dd>{{if not $d.Admin.Email}}<span class="muted">—</span>{{else if $d.Admin.EmailConfirmed}}<span class="status ok">已验证</span>{{else}}<span class="status warn">未验证</span>{{end}}</dd>
+      <dt>身份验证器</dt><dd>{{if $d.TwoStep.TOTP}}<span class="status ok">已启用</span>{{else}}<span class="muted">—</span>{{end}}</dd>
+      <dt>通行密钥</dt><dd>{{if $d.TwoStep.Passkeys}}{{$d.TwoStep.Passkeys}} 个{{else}}<span class="muted">—</span>{{end}}</dd>
+      <dt>邮箱验证码</dt><dd>{{if $d.TwoStep.Email}}<span class="status ok">已启用</span>{{else}}<span class="muted">—</span>{{end}}</dd>
+      <dt>恢复码</dt><dd>{{if $d.TwoStep.Methods}}剩余 {{$d.TwoStep.RecoveryLeft}} 个{{else}}<span class="muted">—</span>{{end}}</dd>
+    </dl>
+  </div>
+</section>
 <section class="card danger-card">
-  <form method="post" action="/admins/{{$d.Admin.ID}}/reset-password" class="card-body op" data-confirm="确认重置「{{$d.Admin.Username}}」的密码？该管理员的全部会话将结束。">
+  <div class="op-list">
+  <form method="post" action="/admins/{{$d.Admin.ID}}/reset-password" class="op" data-confirm="确认重置「{{$d.Admin.Username}}」的密码？该管理员的全部会话将结束。">
     <div><strong>重置密码</strong></div>
     <button type="submit" class="btn danger">{{icon "key-round"}}重置密码</button>
   </form>
+  {{if and (eq $d.Admin.Role "region") $d.TwoStep.Methods}}
+  <form method="post" action="/admins/{{$d.Admin.ID}}/reset-2fa" class="op" data-confirm="确认重置「{{$d.Admin.Username}}」的两步验证？全部验证方式和恢复码将被删除，该管理员的全部会话将结束。">
+    <div><strong>重置两步验证</strong></div>
+    <button type="submit" class="btn danger">{{icon "shield-check"}}重置两步验证</button>
+  </form>
+  {{end}}
+  </div>
 </section>
 {{end}}
 </div>

@@ -57,10 +57,14 @@ func jsonError(w http.ResponseWriter, status int, code string, extra ...string) 
 	for i := 0; i+1 < len(extra); i += 2 {
 		body[extra[i]] = extra[i+1]
 	}
+	writeJSON(w, status, body)
+}
+
+func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(body)
+	json.NewEncoder(w).Encode(v)
 }
 
 // enrollInfo is the page a browser sees for a QR code: the same for every token.

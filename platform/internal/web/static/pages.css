@@ -109,7 +109,7 @@ a.tile:hover { text-decoration: none; }
 .url-box .mono { flex: 1; font-size: 12px; color: var(--text-2); }
 .inline-form { display: flex; gap: 8px; flex-wrap: wrap; }
 .inline-form input { max-width: 260px; }
-.op-list { display: grid; }
+.op-list { display: grid; grid-template-columns: minmax(0, 1fr); }
 .op { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .op-list .op { flex-direction: column; align-items: stretch; padding: 14px 20px; }
 .op-list .op + .op { border-top: 1px solid var(--border); }
@@ -190,3 +190,19 @@ a.tile:hover { text-decoration: none; }
   .print-grid { grid-template-columns: repeat(3, 1fr); }
   .print-card { border-color: #ccc; }
 }
+
+/* ---- two-step sign-in ---- */
+.recovery-codes {
+  display: grid; grid-template-columns: repeat(2, max-content); gap: 8px 32px; margin: 0; padding: 12px 16px; list-style: none;
+  font-family: var(--mono); font-size: 15px; background: var(--surface-2); border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm); user-select: all;
+}
+.step-passkey { display: grid; gap: 8px; }
+.step-more summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+.step-more[open] summary { margin-bottom: 12px; }
+.op .table-wrap { position: relative; margin: 8px 0; }
+.op .table-wrap > .table { min-width: 0; }
+.form .qr-frame { justify-self: center; }
+.op .inline-form input { flex: 1 1 140px; min-width: 0; }
+.op .actions-col .inline-form { flex-wrap: nowrap; justify-content: flex-end; }
+.op .actions-col input { flex: 0 0 120px; }

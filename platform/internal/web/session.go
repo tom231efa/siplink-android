@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"siplink/internal/auth"
 	"siplink/internal/store"
@@ -51,11 +52,13 @@ func sessionToken(r *http.Request) string {
 	return c.Value
 }
 
-// requireLogin loads the session; without one it sends the browser to /login.
-// An administrator who must change their password only reaches /me and /logout.
+// requireLogin loads the session; without one it sends the browser to /login. A
+// session waiting for the second step reaches only /logout here (§6.8). An
+// administrator who must change their password, or (policy) switch a two-step method
+// on, reaches only their own account page and /logout until they did.
 func (s *Server) requireLogin(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		admin, _, err := s.Sessions.Check(r.Context(), sessionToken(r))
+		admin, se, err := s.Sessions.Check(r.Context(), sessionToken(r))
 		if err != nil {
 			if !errors.Is(err, auth.ErrNoSession) {
 				s.Log.Error("session check failed", "err", err)
@@ -73,12 +76,70 @@ func (s *Server) requireLogin(next http.HandlerFunc) http.HandlerFunc {
 		if info := logInfoFrom(r.Context()); info != nil {
 			info.adminID = admin.ID
 		}
-		if admin.MustChangePassword && r.URL.Path != "/me" && r.URL.Path != "/logout" {
+		path := r.URL.Path
+		if se.Stage != "" && path != "/logout" {
+			http.Redirect(w, r, "/login/step", http.StatusSeeOther)
+			return
+		}
+		own := path == "/me" || strings.HasPrefix(path, "/me/") || path == "/logout"
+		if admin.MustChangePassword && path != "/me" && path != "/logout" {
 			http.Redirect(w, r, "/me", http.StatusSeeOther)
 			return
 		}
+		if !own {
+			switch must, err := s.mustSetUp(r.Context(), admin); {
+			case err != nil:
+				s.internal(w, r, err)
+				return
+			case must:
+				http.Redirect(w, r, "/me", http.StatusSeeOther)
+				return
+			}
+		}
 		next(w, r.WithContext(context.WithValue(r.Context(), adminKey{}, admin)))
 	}
+}
+
+// requirePending lets only a session that waits for the second step through (§6.8);
+// a complete session goes to the dashboard, none to /login. The administrator is kept
+// apart from current(r), so these pages render like the login page, without navigation.
+func (s *Server) requirePending(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		admin, se, err := s.Sessions.Check(r.Context(), sessionToken(r))
+		switch {
+		case errors.Is(err, auth.ErrNoSession):
+			s.clearSessionCookie(w, r)
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		case err != nil:
+			s.internal(w, r, err)
+			return
+		case se.Stage != store.StageSecond:
+			http.Redirect(w, r, "/", http.StatusSeeOther)
+			return
+		}
+		if info := logInfoFrom(r.Context()); info != nil {
+			info.adminID = admin.ID
+		}
+		next(w, r.WithContext(context.WithValue(r.Context(), pendingKey{}, admin)))
+	}
+}
+
+type pendingKey struct{}
+
+// pendingAdmin returns the administrator of a session waiting for the second step.
+func pendingAdmin(r *http.Request) *store.Admin {
+	a, _ := r.Context().Value(pendingKey{}).(*store.Admin)
+	return a
+}
+
+// fullSession returns the administrator of a complete session of the request, or nil.
+func (s *Server) fullSession(r *http.Request) *store.Admin {
+	a, se, err := s.Sessions.Check(r.Context(), sessionToken(r))
+	if err != nil || se.Stage != "" {
+		return nil
+	}
+	return a
 }
 
 // requireSuper lets only super administrators through; others get 404.

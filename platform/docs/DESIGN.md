@@ -23,7 +23,7 @@ own project directory.
   - the provisioning endpoint the SipLink app fetches its managed configuration from;
   - a read-only LDAPv3 server that serves the hosted address books;
   - a built-in certificate authority that signs the certificates of its own listeners (§6.7);
-  - a small CLI for operations (`admin create`, `admin reset-password`, `backup`, `migrate`,
+  - a small CLI for operations (`admin create`, `admin reset-password`, `admin reset-2fa`, `backup`, `migrate`,
     `version`, `pki show`, `pki export-ca {path}`, `pki renew`).
 - Regions, clients, configuration templates, key templates, client templates, address books,
   LDAP service accounts, administrators with two roles, audit trail, backups.
@@ -36,8 +36,9 @@ own project directory.
 - Pushing changes to phones instantly (phones poll; "sync now" exists on the phone).
 - Remote control of a phone (wipe on demand, call logs upload, remote logs, screenshots).
 - Writing to LDAP from outside (no LDAP add/modify/delete; the web UI is the only editor).
-- Syncing address books from another LDAP/AD server, multi-tenant hosting, SSO/OIDC, 2FA,
-  high availability / clustering (one process, one SQLite file).
+- Syncing address books from another LDAP/AD server, multi-tenant hosting, SSO/OIDC,
+  high availability / clustering (one process, one SQLite file). (Two-step sign-in for
+  administrators was added on 2026-11-17, §6.8.)
 - Provisioning other phone brands (Yealink etc.). The hosted LDAP books can still be read by any
   LDAP-capable phone through an LDAP service account.
 - App updates through the platform (the app has its own GitHub update check, see §3.6).
@@ -82,9 +83,14 @@ every change and feed the document version.
 
 | Table | Columns (besides id/timestamps) | Notes |
 |---|---|---|
-| `admins` | `username` UNIQUE (case-insensitive), `display_name`, `password_hash` (argon2id PHC string), `role` (`super`/`region`), `disabled`, `must_change_password`, `last_login_at` | |
+| `admins` | `username` UNIQUE (case-insensitive), `display_name`, `password_hash` (argon2id PHC string), `role` (`super`/`region`), `disabled`, `must_change_password`, `last_login_at`, `email` (''= none), `email_confirmed`, `two_step_email` (migration 0007) | |
 | `admin_regions` | `admin_id`, `region_id` (PK both) | only for role `region` |
-| `sessions` | `token_hash` PK (SHA-256 hex), `admin_id`, `expires_at`, `last_seen_at`, `ip`, `user_agent` | |
+| `sessions` | `token_hash` PK (SHA-256 hex), `admin_id`, `expires_at`, `last_seen_at`, `ip`, `user_agent`, `stage` (`''` complete, `second` waiting for the second step; 0007) | |
+| `admin_totp` | `admin_id` PK, `secret_enc`, `confirmed`, `last_step` | 0007; §6.8 |
+| `admin_passkeys` | `admin_id`, `name`, `credential_id` UNIQUE (base64url), `credential_json`, `last_used_at` | 0007; public data only |
+| `admin_recovery_codes` | `admin_id`, `code_hash`, `used_at` NULL | 0007; no `updated_at` |
+| `admin_email_codes` | `admin_id`, `purpose` (`login`/`confirm`) (PK both), `code_hash`, `address`, `expires_at`, `tries` | 0007; no `updated_at` |
+| `mail_settings` | `id` = 1 only, `host`, `port`, `security`, `username`, `password_enc`, `from_address`, `from_name` | 0007; §6.8 |
 | `regions` | `name` UNIQUE, `note` | |
 | `config_templates` | `region_id` NULL=global, `name`, `note`, `settings_json`, `codecs_json`, `ca_pems` (text, PEM bundle), `config_password_hash` (SHA-256 hex or ''), `refresh_minutes`, `revision` | UNIQUE(`region_id`,`name`) |
 | `account_profiles` | `config_template_id`, `position`, `name` (≤30, unique per template, case-insensitive), `domain`, `port` (text), `server`, `backup_server`, `dns_server`, `transport` (`UDP`/`TCP`/`TLS`), `expires`, `subscribe_mwi`, `enabled`, `is_default` | ≤100 per template |
@@ -102,7 +108,7 @@ every change and feed the document version.
 | `ldap_accounts` | `region_id` NULL, `name` UNIQUE (`[a-z0-9-]{2,32}`), `password_hash` (SHA-256 of a 32-char random secret), `note`, `disabled` | service accounts for other phones and tools |
 | `ldap_account_books` | `account_id`, `book_id` (PK both) | |
 | `audit_log` | `at`, `admin_id`, `admin_name`, `region_id` NULL, `action`, `object_type`, `object_id`, `object_name`, `detail_json`, `ip` | append-only; no `updated_at` |
-| `meta` | `key` PK, `value` | schema version, install id, instance name |
+| `meta` | `key` PK, `value` | schema version, install id, instance name, `two_step_required` |
 
 Limits enforced in Go (inside the same transaction as the write) and, for the two LDAP limits,
 also by a `CHECK`-style trigger as a second line:
@@ -139,6 +145,9 @@ super-administrator action and is refused when it would break one of these rules
 | Regions: create / rename / delete | yes | no |
 | Administrators: list / create / disable / reset password / assign regions | yes | no (sees only own profile) |
 | Own password change | yes | yes |
+| Own e-mail address and two-step sign-in (§6.8) | yes | yes |
+| Reset another administrator's two-step sign-in | region administrators only (super ones by CLI) | no |
+| Mail settings, two-step policy | yes | no |
 | Clients: list / view / create / edit / delete / regenerate QR / unbind / bulk import / print QR | all regions | own regions |
 | Client: move to another region | yes | only between own regions |
 | Client: view stored passwords (SIP, directory) | yes (re-enter own password first) | own regions (re-enter own password first) |
@@ -702,14 +711,15 @@ it.
 Left sidebar (collapses to a top bar on narrow screens), items shown by role:
 
 概览 · 客户端 · 客户端模板 · 配置模板 · 功能键模板 · 通讯录 · LDAP 账号 · 区域 (super) ·
-管理员 (super) · 审计日志 · 系统 (super). Top right: region filter (for administrators with several
-regions; "全部区域" for super), the administrator's name → 修改密码 / 退出.
+管理员 (super) · 审计日志 · 系统 (super) · 邮件 (super). Top right: region filter (for administrators with several
+regions; "全部区域" for super), the administrator's name → 我的账号 / 退出.
 
 ### 5.2 Pages
 
 | Page | What it does |
 |---|---|
-| 登录 `/login` | user name + password; rate-limited; after `must_change_password` goes to 修改密码 |
+| 登录 `/login` | user name + password; rate-limited; then 两步验证 when the administrator has a method; after `must_change_password` goes to 我的账号 |
+| 两步验证 `/login/step` | the administrator's methods (passkey, TOTP code, e-mail code, recovery code), §6.8 |
 | 概览 `/` | counts (clients active / pending / 离线 = bound and not seen for more than 3× the refresh interval, the same rule as the 离线 status and filter of the client list), clients with apply errors or failed registrations, for super administrators the expiry notice of an operator's certificate (§6.7), books near the limit, last 20 audit entries of visible regions |
 | 客户端 `/clients` | table: name, region, client template, status, app version, last seen, registration summary; filter by region/template/status, search by name or SIP user; bulk actions: change template, print QR, delete |
 | 新建客户端 `/clients/new` | region, client template, name, credentials for each account profile of the template, directory passwords where the template asks for them, optional forwarding overrides |
@@ -726,7 +736,12 @@ regions; "全部区域" for super), the administrator's name → 修改密码 / 
 | 管理员 `/admins` | list, create (role, regions), disable, reset password (one-time password shown once) |
 | 审计日志 `/audit` | filter by admin, region, object, date; detail shows changed field names, never secret values |
 | 系统 `/system` | version, public URL and LDAP host as configured, last backups, "立即备份", database size; card "证书" (§6.7): the mode and the source of each listener, the operator's certificates (subject, issuer, names, expiry with days left, how phones trust it, which listeners use it), expiry notices, the built-in CA's subject, validity and SHA-256 fingerprint (written the way the app shows fingerprints in its CA list; the form is read from the app's `CertificateTools`, not guessed), the names and expiry of the built-in server certificate, "下载 CA 证书" (PEM, for the administrators' browsers and for desk phones), "重新签发服务器证书" unless issuing is paused, the upload of an own certificate, "停用自有证书" and "到期前提醒天数" (all POST with CSRF and an audit entry) |
-| 修改密码 `/me` | own password |
+| 我的账号 `/me` | own e-mail address (confirmed by code), own password, two-step sign-in (TOTP set-up `/me/totp`, passkeys, e-mail code, recovery codes shown once at `/me/recovery`), §6.8 |
+| 邮件 `/mail` | SMTP settings and "发送测试邮件" (super), §6.8 |
+
+The 系统 page also carries the switch "区域管理员必须启用两步验证"; an administrator's page (super)
+carries the e-mail address and "重置两步验证" for region administrators; the 管理员 list shows
+whether two-step sign-in is on.
 
 ### 5.3 Visual direction
 
@@ -766,13 +781,17 @@ encoder. Level M. The page never puts the token into a URL other than the QR tar
 | Hosted-book client LDAP passwords | not stored; HMAC-derived (§4.3) | |
 | Service account LDAP passwords | SHA-256 of a 32-char random secret | only verified, cheap per bind |
 | Configuration password | the SHA-256 hex the app expects (`ManagedConfig.isPassword`) | the app's format; it is unsalted, so the UI asks for at least 8 characters and says it protects only against casual viewing |
+| TOTP secrets, SMTP password (§6.8) | AES-256-GCM like SIP passwords | needed in clear to compute codes / to log in to the mail server |
+| E-mail codes, recovery codes (§6.8) | HMAC-SHA256 under the code key (below) of `{admin id}:{purpose}:{code}` | only verified; a database backup alone cannot test guesses |
 | Private keys of the built-in CA and of its server certificate (§6.7) | in the database, AES-256-GCM with the data-encryption key (the secret box above) | a database backup carries them but is useless without the key file; never written to the log |
 
 Key file: `SIPLINK_KEY_FILE` (default `/run/secrets/siplink-key`, else `{data}/key`), 64 random
 bytes made at first start with mode 0600: 32 bytes data-encryption key, 32 bytes `ldapKey`. It is
 deliberately separate from the database so that a leaked database backup alone reveals no
-password. The key file is backed up separately (§6.6). Key rotation: CLI `rotate-key` re-encrypts
-all `*_enc` columns in one transaction (keyed by a key id prefix in each ciphertext).
+password. The key file is backed up separately (§6.6). The code key of §6.8 is derived from the
+data-encryption key (HMAC-SHA256 with the label `siplink two-step codes v1`); it is not stored.
+Key rotation: there is no command for it (no `rotate-key` subcommand exists); a new key file
+makes every sealed value and every stored code unreadable.
 
 ### 6.2 Sessions
 
@@ -799,6 +818,12 @@ own password (valid 5 minutes) and writes an audit entry `secret.view`.
 - Enrollment: 10 failed tokens per IP per 10 min → `429`; device sync: 120 requests per device
   key per hour, 600 per IP per minute (NAT of a whole office).
 - LDAP: §4.5.
+- Second step and password re-entries (我的账号, 显示 of a client password): 5 failures per
+  administrator per 15 min, then 15 min refused; e-mail codes: one a minute, 5 an hour per
+  administrator (§6.8).
+- Every limit that counts failures takes its slot before the check (`auth.Window.Take`, one
+  lock: refuse at the limit, else count) and gives it back on success (`Release`), so parallel
+  requests cannot check more than the limit allows. The login lockout does the same.
 Client IP = remote address, or `X-Forwarded-For` only when the peer is in
 `SIPLINK_TRUSTED_PROXIES`.
 
@@ -973,6 +998,138 @@ the built-in CA stops issuing.
   under the name `CLI`).
 - The README explains that a browser warns until the CA is imported.
 
+### 6.8 Two-step sign-in and mail (added 2026-11-17)
+
+Request of the owner (2026-11-17): "管理平台加上邮箱验证码的功能，还有totp，或者passkey，可以选择开2fa，可以给区域管理员强制需要2fa，smtp配置加一个页面". Package
+`internal/twostep` (TOTP, one-time and recovery codes, the policy rules), `internal/mail` (SMTP),
+store file `twostep.go`, web handlers `h_signin_step.go`, `h_account.go`, `h_twostep.go`,
+`h_passkeys.go`, `h_mail.go`, script `static/passkey.js`. Migration `0007_two_step.sql`.
+
+**Methods.** Every method is a second step after the password; none replaces it.
+- *TOTP* (RFC 6238: HMAC-SHA1, 30 s, 6 digits; standard library only). Secret: 20 random bytes,
+  shown base32 without padding and as a QR code (`internal/qr`, the code of §5.4) of
+  `otpauth://totp/SipLink:{user}?secret=…&issuer=SipLink&algorithm=SHA1&digits=6&period=30`.
+  "启用" stores a new secret (sealed, AAD `admin_totp`/admin id/`secret_enc`) as *pending*; it is on
+  only after one valid code. Accepted: the steps now−1, now, now+1; a step is used once
+  (`last_step`, updated with `WHERE last_step < ?`, so two parallel requests cannot both pass).
+- *Passkeys* (WebAuthn, `github.com/go-webauthn/webauthn`, §7.2). Several per administrator, each
+  with a name (≤40), creation time and last use; added and deleted on 我的账号 (no rename: delete
+  and add again). RP ID = host of `SIPLINK_PUBLIC_URL` in lower case, origin = the public URL with scheme and host in lower case (default port
+  left out); user handle = the administrator id as 8 bytes; resident key "preferred", user
+  verification "preferred", attestation "none". The ceremony state (`webauthn.SessionData`) lives
+  in memory for 5 minutes, bound to the administrator and to a random token the page sends back.
+  A sign count that goes backwards (clone warning) refuses the sign-in. The credential is stored
+  as the library's JSON (public data only). WebAuthn needs a secure context and a domain name as
+  relying party ID: when the public URL is `http://` to a host other than `localhost` or
+  `*.localhost`, or its host is an IP address, passkeys are neither offered nor accepted
+  (`twostep.PasskeysUsable`). The browser must reach the platform at exactly the public URL
+  and trust its certificate (the built-in CA must be imported; WebAuthn refuses pages with
+  certificate errors).
+- *E-mail code*: needs an e-mail address on the administrator that was confirmed once by a code
+  sent to it, and SMTP to be configured (host and sender address set); otherwise not offered.
+  Codes: 6 digits from `crypto/rand`, valid 10 minutes, at most 5 wrong tries per code (then the
+  code is void), one live code per administrator and purpose (`login`, `confirm`); a new code at
+  most once a minute and 5 per hour per administrator (in memory, §6.5).
+- *Recovery codes*: when the first method is switched on, ten codes of 10 characters (alphabet
+  without look-alikes, shown `xxxxx-xxxxx`) are made and shown once (`/me/recovery`, through a
+  token kept in memory for 5 minutes). The same administrator can reload the page with the token
+  until the 5 minutes are over or "完成" (a POST) drops the codes. "重新生成恢复码" voids the old set. A recovery
+  code is accepted in place of any method and is then used up (audit `two_step.recovery_used`).
+  Switching off the last method deletes the codes.
+- Hashes: HMAC-SHA256 with the code key (§6.1, derived from the key file, not the sealing key)
+  of `{admin id}:{purpose}:{code}`, purpose `recovery` for recovery codes (normalised code) and
+  `login` / `confirm` for e-mail codes. A database backup alone does not let anyone test guesses;
+  a restore without the key file leaves the codes unverifiable as well (the administrator then
+  needs `reset-2fa`). Nothing of this is logged or audited in clear.
+
+**Sign-in flow.** Order: password → second step (if the administrator has a method) → forced
+password change (`must_change_password`) → forced set-up (policy). The second step comes first
+because it proves the identity; the password change comes before the set-up because a new or
+reset administrator knows a one-time password that another administrator has seen.
+- A correct password for an administrator with at least one method starts a *pending* session
+  (`sessions.stage = 'second'`, absolute lifetime 10 minutes). It reaches only `/login/step…`
+  (the step page, its forms and the passkey endpoints) and `/logout`; every other route sends it
+  to `/login/step`, and an unknown path answers the plain 404 (as it does for an administrator held by a forced
+  password change or a forced set-up). Completing the step deletes the
+  pending session and starts a normal one with a new token (§6.2); `next` is carried through.
+- The step page offers the administrator's usable methods, passkey first, then TOTP, then e-mail
+  ("发送验证码" is a POST), and "使用恢复码" folded.
+- Failed second steps: 5 per administrator in 15 minutes (`auth.Window` with hold, as the login
+  lockout of §6.5), then 15 minutes refused (429) for that administrator from any address; each
+  failure is audited `login.second_failure` with the method. Password re-entries (我的账号,
+  "当前密码" of a password change, 显示 of a client password) and the first code of a TOTP set-up
+  count against the same limit (§6.5: slot taken before the check).
+- `next` is kept only when it is a path-only reference: it starts with one `/`, has no backslash
+  and no control character, and parses to a path without scheme, host or user that does not start
+  with `//`; otherwise `/`. The passkey step's JSON redirect is such a value.
+- Existing sessions stay valid across the upgrade (`stage` defaults to `''` = complete).
+
+**Own settings (我的账号 `/me`).** Account card (user name, e-mail address with its confirmation
+by code), password card (as before), card "两步验证": TOTP (启用 / 关闭), passkeys (list, 添加,
+删除), e-mail code (启用 / 关闭), recovery codes (remaining count, 重新生成). Switching a method
+off, deleting the last passkey, making new recovery codes and changing the e-mail address ask for
+the password again. Changing the e-mail address makes it unconfirmed and switches the e-mail
+method off. A super administrator edits a region administrator's address on that
+administrator's page (unconfirmed afterwards); the form carries the address it was shown with
+(`email_was`) and the address is written only when the form changed it. A super administrator's
+address (another's or one's own) cannot be changed there ("超级管理员的邮箱只能由本人在「我的账号」中修改。"),
+and the role of a super administrator with any method cannot be changed ("已启用两步验证的超级管理员不可修改角色。"),
+which closes demote → reset → promote.
+- Switching on the first method ends the administrator's other sessions; the current one stays.
+- TOTP set-up: the confirmation names the sealed secret whose code it checked (`UPDATE … WHERE
+  secret_enc = ?`), so a code for a secret replaced in another tab confirms nothing. "取消" on the
+  set-up page (a POST) drops the pending secret.
+- Removing a method (TOTP off, e-mail off, passkey delete, an address change that switches the
+  e-mail method off) reads the state, applies the rule (`twostep.MayRemove`, and "the last passkey
+  needs the password") and deletes in one store transaction (`RemoveMethod`, `SetAdminEmail`);
+  the store returns `ErrLastMethod` and the handler shows the usual message.
+
+**Policy.** Meta key `two_step_required` (`1`/absent), switch "区域管理员必须启用两步验证" on the
+系统 page (super administrators; audit `two_step.policy`). While it is on, a region administrator
+without a method reaches only `/me`, `/me/…` and `/logout` after the password (and after a forced
+password change) until one method is on, and cannot switch off or delete their last method (also
+not by changing the e-mail address). It does not bind super administrators. The rules are pure
+functions in `twostep` (`MustSetUp`, `MayRemove`).
+
+**Getting back in.** `siplink admin reset-2fa {用户名}` removes every method, the recovery codes and
+pending codes of that administrator and ends their sessions (audit `two_step.reset` by `CLI`); the
+e-mail address stays (unconfirmed). A super administrator can do the same for a region
+administrator from that administrator's page ("重置两步验证", confirmation, audit); a region
+administrator cannot reset anyone, and super administrators are reset only through the CLI.
+
+**Super administrators against each other.** What protects a super administrator's account from
+another super administrator: the second step (a reset password alone does not sign in when a
+method is on), the address rule and the role rule above, and `reset-2fa` for super
+administrators only on the CLI. What does not: "重置密码" (`adminResetPassword`) still works on
+another super administrator and ends their sessions; disabling the account; anyone with the CLI
+or the database and key file; and a super administrator without any method, whose account is
+taken over by a password reset.
+
+**Known limit.** An administrator whose only method has become unusable (passkeys after the
+public URL changed to an IP address, the e-mail method while SMTP is not configured) still gets the
+second step and needs a recovery code or `reset-2fa`; the policy does not ask them for another
+method.
+
+**SMTP (邮件 `/mail`, super administrators).** Single row `mail_settings`: host, port (1–65535;
+default 587/465/25 by security), security `starttls` / `tls` / `none` (STARTTLS / TLS / 不加密),
+user name, password (sealed, AAD `mail_settings`/1/`password_enc`; write-only: the page shows
+已设置 / 未设置, an empty field keeps it, an empty user name drops it), sender address and sender
+name. "发送测试邮件" to an address typed in; on failure the page shows the server's answer. Sending
+uses `net/smtp` + `crypto/tls` (system roots, server name = host): dial 10 s, the whole exchange
+30 s; with STARTTLS the upgrade is required (a server without it fails); authentication is
+PLAIN, which `net/smtp` refuses on an unencrypted connection except to localhost. Mail: plain
+text, UTF-8, base64 body, subject "SipLink 管理平台验证码", body with the code and "10 分钟内有效".
+Once the server accepted DATA, an error on QUIT still counts as sent. Outside the 邮件 page a
+failed send shows only "邮件发送失败。"; the cause goes to the log. Changing host, port or
+security without typing the password again is refused ("修改服务器、端口或加密方式后，须重新输入密码。")
+unless no user name is set, so the stored password is never sent to a new server.
+Audit `mail.update` (field names, password as "已修改") and `mail.test`.
+
+**Audit actions.** `login.second_failure`, `two_step.enable` / `two_step.disable` (detail
+`method`: `totp`, `email`), `passkey.create`, `passkey.delete`, `two_step.recovery_renew`,
+`two_step.recovery_used`, `two_step.reset`, `two_step.policy`, `admin.email`,
+`admin.email_confirm`, `mail.update`, `mail.test`.
+
 ---
 
 ## 7. Tech stack, dependencies, layout, build
@@ -996,6 +1153,7 @@ proxy.golang.org)
 | `golang.org/x/crypto` v0.59.0 | argon2id | Official Go sub-repository (go.googlesource.com/crypto, mirror github.com/golang/crypto since 2014), released 2026-11-11. BSD-3. |
 | `golang.org/x/text` (current) | GB18030 decoding of CSV (`encoding/simplifiedchinese`) | Official Go sub-repository. |
 | `github.com/skip2/go-qrcode` (v0.0.0-20200617195104-da1b6568686e) | QR matrix and PNG | Repo since 2015-03, ~3,000 stars, MIT, **zero dependencies** (its go.mod has no requires). Last code change 2020-06: the QR standard does not change, the library is feature-complete; risk accepted because it is tiny and dependency-free. Alternative if the owner prefers an active project: `github.com/yeqown/go-qrcode/v2` v2.3.0 (2026-08, active, but adds `yeqown/reedsolomon` and `x/text`). |
+| `github.com/go-webauthn/webauthn` v0.18.2 (added 2026-11-17, evidence fetched that day from the GitHub API and proxy.golang.org) | WebAuthn ceremonies for passkeys (§6.8) | Organization `go-webauthn`, repo since 2021-12-15, ~1,365 stars, BSD-3, not archived, last push 2026-11-17, release v0.18.2 on 2026-09-19 (v0.18.0 2026-08-27, v0.18.1 2026-09-10). It is the maintained successor of `duo-labs/webauthn`: that repository (since 2017-10, ~1,028 stars) is archived since 2022-12 and its README opens with "THIS LIBRARY IS DEPRECATED" and points to `github.com/go-webauthn/webauthn` and its migration guide. Pulls in (linked or in `go.sum`): `fxamacker/cbor/v2` (since 2019, ~1,100 stars, MIT), `go-viper/mapstructure/v2` (org, MIT), `go-webauthn/x` (same org), `golang-jwt/jwt/v5` (org, ~9,300 stars, MIT), `google/go-tpm` (Google org, Apache-2.0), `google/uuid` (already present), `tinylib/msgp` (org, ~1,960 stars, MIT) with `philhofer/fwd`, `x448/float16` (MIT); `testify` and `go.uber.org/mock` are its test dependencies only. TOTP and SMTP use the standard library (no dependency). No virtual-authenticator library: the Go tests build authenticator responses themselves (P-256 key, CBOR and COSE through the library's own `protocol/webauthncbor` and `protocol/webauthncose`). |
 | Test only: `github.com/go-ldap/ldap/v3` v3.4.15 | LDAP client in Go integration tests | Organization `go-ldap`, repo since 2014-10, ~2,500 stars, release 2026-10-07. Not linked into the binary. |
 
 Not used, and why: `github.com/jimlambrt/gldap` (an LDAP server library; last release v0.1.14 on
@@ -1009,7 +1167,7 @@ session or CSRF library, no JS build.
 
 ```
 siplink/
-  cmd/siplink/main.go     flags/subcommands: serve (default), admin, backup, migrate, rotate-key, pki, version
+  cmd/siplink/main.go     flags/subcommands: serve (default), admin, pki, seed, backup, health, migrate, version
   internal/config/        config.go           environment variables → Config, validation
   internal/pki/           built-in CA (§6.7): CA, server certificates, renewal, choice of certificate per listener, pin
   internal/store/         db.go, migrate.go, migrations/0001_init.sql …,
@@ -1025,6 +1183,8 @@ siplink/
                           dit.go (DNs, root DSE, entries), acl.go, cache.go (book snapshots), starttls.go
   internal/books/         csv.go (import/export, GB18030), ldif.go
   internal/qr/            qr.go (SVG/PNG)
+  internal/twostep/       totp.go, codes.go, policy.go   two-step sign-in rules (§6.8)
+  internal/mail/          mail.go                        SMTP settings and sending (§6.8)
   internal/web/           server.go (routes, middleware), render.go, flash.go,
                           h_login.go, h_dashboard.go, h_clients.go, h_client_import.go, h_templates_config.go,
                           h_templates_key.go, h_templates_client.go, h_books.go, h_ldapaccounts.go,
@@ -1064,6 +1224,9 @@ Every file stays under 800 lines (user rule); handlers split per area as above.
 | `SIPLINK_BACKUP_TIME` / `SIPLINK_BACKUP_KEEP` | `03:30` / `14` | §6.6 |
 | `SIPLINK_LOG_LEVEL` | `info` | |
 | `TZ` | `Asia/Shanghai` in compose | display times |
+
+Two-step sign-in and mail (§6.8) add no variables: the SMTP settings and the policy are kept in
+the database and set on the web pages; passkeys follow `SIPLINK_PUBLIC_URL`.
 
 First administrator: `docker compose exec siplink siplink admin create --super
 {username}` prints a one-time password to the terminal (not to the log) and sets
@@ -1110,6 +1273,11 @@ docker build -t ghcr.io/tom231efa/siplink:dev .
 ## 8. Test plan
 
 ### 8.1 Unit tests (Go)
+- `twostep` (§6.8): the SHA-1 vectors of RFC 6238 appendix B, the ±1 window and replay, the
+  `otpauth://` URI, codes and recovery codes (format, hashing bound to administrator and purpose),
+  the policy rules, when passkeys are usable. `mail`: sending over STARTTLS and implicit TLS to an
+  in-process server, refused recipient and wrong password with the server's answer, unknown CA,
+  a silent server (timeout), validation of the settings.
 - `rules`: every case of the app's `AccountRulesTest`, `LdapRulesTest`, `ShortcutRulesTest`
   (ported, same inputs and expected errors), forward seconds range, frame rates, video sizes.
 - `provision`: golden documents in `testdata/` for: minimal template; two profiles with default;
@@ -1148,6 +1316,22 @@ docker build -t ghcr.io/tom231efa/siplink:dev .
   delete → 410 `deleted`; unknown key → 401; plain HTTP refused unless allowed.
 - Logging test: capture slog output during a full enrollment + sync and assert that no token,
   device key or password substring appears.
+- Two-step sign-in (§6.8): password then TOTP (replay, window), e-mail code against an
+  in-process SMTP server (STARTTLS and implicit TLS, throwaway certificate; once a minute, five an
+  hour, five tries, expiry), recovery codes (once, renewal voids), the pending session reaching
+  nothing else, the policy (region administrators forced into set-up after the password change,
+  super administrators not bound, last method kept), reset by a super administrator and by the
+  CLI, the 邮件 page (super only, write-only password, the server's answer on failure), the
+  per-administrator limit. Passkeys with a software authenticator built in the test (P-256,
+  "none" attestation, signed assertions; counter going back and a foreign origin refused; an
+  upper-case public host). Parallel requests over warmed-up connections against every limit
+  (second step, password re-entries, login, TOTP set-up, sending codes) and against removal
+  under the policy (`web_twostep_race_test.go`); the rules of super administrators, `next`,
+  keyed code hashes, the mail error text, the SMTP password guard, sessions ended by the first
+  method, the plain 404 while held, the TOTP set-up (`web_twostep_rules_test.go`); a QUIT error
+  after DATA (`mail`).
+  Outside `go test`: a real registration and sign-in in headless Chrome with a CDP virtual
+  authenticator against `http://localhost`.
 
 ### 8.3 LDAP integration tests
 - Go client (`go-ldap/ldap/v3`, test-only): binds (client derived, service account, anonymous

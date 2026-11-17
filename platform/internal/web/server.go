@@ -13,9 +13,12 @@ import (
 
 	"siplink/internal/auth"
 	"siplink/internal/config"
+	"siplink/internal/mail"
 	"siplink/internal/pki"
 	"siplink/internal/secret"
 	"siplink/internal/store"
+
+	"github.com/go-webauthn/webauthn/webauthn"
 )
 
 // Version is set by main.
@@ -30,14 +33,24 @@ type Server struct {
 	Logins   *auth.LoginLimiter
 	Now      func() time.Time
 	Ext      Extensions
+	// Mailer sends the e-mail codes and test mails (§6.8).
+	Mailer *mail.Sender
 
 	pages   *pages
 	imports importCache
 	reveals revealGrants
-	pending pendingCerts
+	pending holding[*pki.Own] // uploads that wait for a confirmation
 	limits  deviceLimits
 	csrf    *http.CrossOriginProtection
 	mux     *http.ServeMux
+
+	// Two-step sign-in (§6.8).
+	stepFails  *auth.Window // failed second steps and password re-entries, per administrator
+	mailMinute *auth.Window // e-mail codes per administrator
+	mailHour   *auth.Window
+	passkeys   *webauthn.WebAuthn // nil when browsers refuse WebAuthn at the public URL
+	ceremonies holding[*webauthn.SessionData]
+	shown      holding[[]string] // recovery codes to be shown once
 }
 
 // Extensions are the parts wired in by main.
@@ -46,6 +59,8 @@ type Extensions struct {
 	Box *secret.Box
 	// LDAPKey derives the LDAP passwords of clients (design §4.3).
 	LDAPKey [32]byte
+	// CodeKey keys the stored e-mail and recovery codes (§6.8).
+	CodeKey [32]byte
 	// Certs chooses the certificate of every listener: the built-in CA's, the
 	// operator's uploaded one or files (§6.7). It gives the pin of QR codes and the
 	// platform's CAs of documents.
@@ -67,8 +82,19 @@ func New(cfg *config.Config, st *store.Store, log *slog.Logger, now func() time.
 		csrf:     http.NewCrossOriginProtection(),
 		mux:      http.NewServeMux(),
 		limits:   newDeviceLimits(now),
+		Mailer:   &mail.Sender{},
+
+		pending:    holding[*pki.Own]{ttl: 10 * time.Minute},
+		stepFails:  auth.NewWindow(5, 15*time.Minute, now),
+		mailMinute: auth.NewWindow(1, time.Minute, now),
+		mailHour:   auth.NewWindow(5, time.Hour, now),
+		ceremonies: holding[*webauthn.SessionData]{ttl: 5 * time.Minute},
+		shown:      holding[[]string]{ttl: 5 * time.Minute},
 	}
 	var err error
+	if s.passkeys, err = newPasskeys(cfg); err != nil {
+		return nil, err
+	}
 	if s.pages, err = loadPages(); err != nil {
 		return nil, err
 	}
@@ -113,8 +139,6 @@ func (s *Server) routes() {
 	s.publicPage("POST /login", s.loginSubmit)
 	s.page("POST /logout", s.logout)
 	s.page("GET /{$}", s.dashboard)
-	s.page("GET /me", s.meForm)
-	s.page("POST /me", s.meSubmit)
 	s.page("POST /filter", s.setFilter)
 	s.page("POST /theme", s.setTheme)
 	s.handle("GET /", s.requireSecure(s.unknownPath))
@@ -125,6 +149,9 @@ func (s *Server) routes() {
 	s.routesClients()
 	s.routesDevice()
 	s.routesSystem()
+	s.routesAccount()
+	s.routesTwoStep()
+	s.routesMail()
 }
 
 // ---- middleware ----

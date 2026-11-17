@@ -26,6 +26,16 @@ type Keys struct {
 	LDAP [32]byte // HMAC key for derived LDAP passwords
 }
 
+// CodeKey is the HMAC key of the stored two-step codes (design §6.8), derived from the
+// data-encryption key under its own label, so that it is never the sealing key itself.
+func (k *Keys) CodeKey() [32]byte {
+	m := hmac.New(sha256.New, k.Data[:])
+	m.Write([]byte("siplink two-step codes v1"))
+	var out [32]byte
+	copy(out[:], m.Sum(nil))
+	return out
+}
+
 // LoadOrCreate reads the key file, or creates it with mode 0600 when it does not exist.
 // created is true when a new file was written.
 func LoadOrCreate(path string) (keys *Keys, created bool, err error) {

@@ -25,6 +25,7 @@ const usage = `用法: siplink <命令> [参数]
   admin create [--super] [--region 名称]... [--name 显示名] <用户名>
                                  新建管理员，一次性密码打印到终端
   admin reset-password <用户名>  重置管理员密码，一次性密码打印到终端
+  admin reset-2fa <用户名>       删除管理员的全部两步验证方式和恢复码
   pki show                       显示证书模式、内置 CA、服务器证书和自有证书
   pki export-ca <路径>           导出内置 CA 证书（PEM）
   pki renew                      立即重新签发服务器证书（自动签发暂停时不可用）

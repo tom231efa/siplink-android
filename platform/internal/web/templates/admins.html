@@ -5,7 +5,7 @@
 </header>
 <div class="card table-card">
   <div class="table-wrap"><table class="table">
-    <thead><tr><th>用户名</th><th class="hide-sm">显示名</th><th>角色</th><th class="hide-sm">区域</th><th>状态</th><th class="hide-sm">上次登录</th>{{if .Super}}<th class="actions-col"><span class="sr-only">操作</span></th>{{end}}</tr></thead>
+    <thead><tr><th>用户名</th><th class="hide-sm">显示名</th><th>角色</th><th class="hide-sm">区域</th><th>状态</th><th class="hide-sm">两步验证</th><th class="hide-sm">上次登录</th>{{if .Super}}<th class="actions-col"><span class="sr-only">操作</span></th>{{end}}</tr></thead>
     <tbody>
     {{range .Data.Admins}}
     <tr>
@@ -14,6 +14,7 @@
       <td class="nowrap">{{if eq .Role "super"}}超级管理员{{else}}区域管理员{{end}}</td>
       <td class="hide-sm">{{range .RegionIDs}}<span class="tag"><span class="fade">{{index $.Data.Regions .}}</span></span>{{end}}</td>
       <td>{{if .Disabled}}<span class="status">已停用</span>{{else if .MustChangePassword}}<span class="status warn">待修改密码</span>{{else}}<span class="status ok">已启用</span>{{end}}</td>
+      <td class="hide-sm">{{if index $.Data.TwoStep .ID}}<span class="status ok">已启用</span>{{else}}<span class="muted">—</span>{{end}}</td>
       <td class="nowrap muted hide-sm">{{since .LastLoginAt}}</td>
       {{if $.Super}}<td class="actions-col"><div class="row-actions"><a class="btn" href="/admins/{{.ID}}">编辑</a></div></td>{{end}}
     </tr>

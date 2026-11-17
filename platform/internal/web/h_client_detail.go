@@ -221,9 +221,9 @@ func (s *Server) clientReveal(w http.ResponseWriter, r *http.Request) {
 		s.notFound(w, r)
 		return
 	}
-	if ok, err := auth.VerifyPassword(a.PasswordHash, r.FormValue("password")); err != nil || !ok {
+	if msg := s.recheckPassword(a, r.FormValue("password")); msg != "" {
 		s.audit(r, "secret.view_denied", "client", c.ID, c.Name, &c.RegionID, nil)
-		s.renderClient(w, r, http.StatusBadRequest, c, false, "密码不正确。")
+		s.renderClient(w, r, http.StatusBadRequest, c, false, msg)
 		return
 	}
 	s.reveals.grant(a.ID, s.Now())

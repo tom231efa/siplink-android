@@ -42,6 +42,7 @@ var navGroups = []navGroup{
 		{Key: "admins", Href: "/admins", Label: "管理员", Icon: "shield-user", Super: true},
 		{Key: "audit", Href: "/audit", Label: "审计日志", Icon: "scroll-text"},
 		{Key: "system", Href: "/system", Label: "系统", Icon: "server", Super: true},
+		{Key: "mail", Href: "/mail", Label: "邮件", Icon: "mail", Super: true},
 	}},
 }
 
@@ -133,10 +134,19 @@ func sinceText(s string) template.HTML {
 }
 
 // unknownPath answers a GET that no route matches: the framed "not found" page for a
-// signed-in administrator, Go's plain 404 for everyone else (no session is created).
+// signed-in administrator who may use the UI, Go's plain 404 for everyone else (no
+// session is created), including one held on 我的账号 (password change, set-up).
 func (s *Server) unknownPath(w http.ResponseWriter, r *http.Request) {
-	a, _, err := s.Sessions.Check(r.Context(), sessionToken(r))
-	if err != nil || a == nil {
+	a := s.fullSession(r)
+	if a != nil && a.MustChangePassword {
+		a = nil
+	}
+	if a != nil {
+		if must, err := s.mustSetUp(r.Context(), a); err != nil || must {
+			a = nil
+		}
+	}
+	if a == nil { // like a session that waits for the second step: nothing of the UI
 		http.NotFound(w, r)
 		return
 	}

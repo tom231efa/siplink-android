@@ -14,6 +14,8 @@ const (
 	IdleTimeout     = 2 * time.Hour
 	AbsoluteTimeout = 12 * time.Hour
 	touchEvery      = time.Minute
+	// PendingTimeout is the absolute lifetime of a session waiting for the second step (§6.8).
+	PendingTimeout = 10 * time.Minute
 )
 
 // ErrNoSession is returned for a missing, expired or revoked session.
@@ -27,6 +29,15 @@ type Sessions struct {
 
 // Create starts a session and returns the token for the cookie.
 func (m *Sessions) Create(ctx context.Context, adminID int64, ip, userAgent string) (string, error) {
+	return m.create(ctx, adminID, ip, userAgent, "", AbsoluteTimeout)
+}
+
+// CreatePending starts a session that can only complete the second step (§6.8).
+func (m *Sessions) CreatePending(ctx context.Context, adminID int64, ip, userAgent string) (string, error) {
+	return m.create(ctx, adminID, ip, userAgent, store.StageSecond, PendingTimeout)
+}
+
+func (m *Sessions) create(ctx context.Context, adminID int64, ip, userAgent, stage string, lifetime time.Duration) (string, error) {
 	token := secret.Token(32)
 	now := m.Now().UTC()
 	if len(userAgent) > 200 {
@@ -36,15 +47,17 @@ func (m *Sessions) Create(ctx context.Context, adminID int64, ip, userAgent stri
 		TokenHash:  secret.HashHex(token),
 		AdminID:    adminID,
 		CreatedAt:  now.Format(store.TimeFormat),
-		ExpiresAt:  now.Add(AbsoluteTimeout).Format(store.TimeFormat),
+		ExpiresAt:  now.Add(lifetime).Format(store.TimeFormat),
 		LastSeenAt: now.Format(store.TimeFormat),
 		IP:         ip,
 		UserAgent:  userAgent,
+		Stage:      stage,
 	})
 	return token, err
 }
 
 // Check returns the administrator of a valid session token and refreshes its idle timer.
+// The session's Stage tells whether the second step is still due.
 func (m *Sessions) Check(ctx context.Context, token string) (*store.Admin, *store.Session, error) {
 	if token == "" {
 		return nil, nil, ErrNoSession

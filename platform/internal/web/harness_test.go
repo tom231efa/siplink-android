@@ -69,6 +69,7 @@ func newHarness(t *testing.T, mutate ...func(*config.Config)) *harness {
 	}
 	srv.Ext = Extensions{Box: box, Certs: certs}
 	copy(srv.Ext.LDAPKey[:], "ldap-key-ldap-key-ldap-key-ldap!")
+	copy(srv.Ext.CodeKey[:], "code-key-code-key-code-key-code!")
 	h := &harness{t: t, srv: srv, st: st, clock: clock, logs: logs, roots: opt.Roots}
 	h.ts = httptest.NewTLSServer(srv.Handler())
 	t.Cleanup(h.ts.Close)

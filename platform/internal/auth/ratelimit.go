@@ -75,6 +75,35 @@ func (w *Window) AddHold(key string) {
 	}
 }
 
+// Take records one attempt and answers whether it is within the limit, under one lock,
+// so that parallel attempts cannot all pass a check made before they are counted. A
+// refused attempt is not recorded. The attempt that reaches the limit restarts the
+// window, so the key stays refused for a full period after it. An attempt that turns
+// out to be good gives its slot back with Release (or clears the key with Reset).
+func (w *Window) Take(key string) bool {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	now := w.now()
+	s := w.state(key, now)
+	if s.count >= w.limit {
+		return false
+	}
+	s.count++
+	if s.count >= w.limit {
+		s.start = now
+	}
+	return true
+}
+
+// Release gives back the slot of one attempt taken with Take.
+func (w *Window) Release(key string) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if s := w.keys[key]; s != nil && s.count > 0 {
+		s.count--
+	}
+}
+
 // Exceeded reports whether the key has reached the limit, without recording.
 func (w *Window) Exceeded(key string) bool {
 	w.mu.Lock()
@@ -107,14 +136,12 @@ func NewLoginLimiter(now func() time.Time) *LoginLimiter {
 
 func loginKey(username, ip string) string { return ip + "\x00" + username }
 
-// Attempt reports whether a login attempt may be checked at all.
+// Attempt reports whether a login attempt may be checked at all. It counts as a failure
+// of that name and address until Succeeded clears them, so parallel guesses cannot pass
+// the lock before their failures are recorded.
 func (l *LoginLimiter) Attempt(username, ip string) bool {
-	ipOK := l.perIP.Allow(ip)
-	return ipOK && !l.failures.Exceeded(loginKey(username, ip))
+	return l.perIP.Allow(ip) && l.failures.Take(loginKey(username, ip))
 }
-
-// Failed records a failed attempt.
-func (l *LoginLimiter) Failed(username, ip string) { l.failures.AddHold(loginKey(username, ip)) }
 
 // Succeeded clears the failures of that name and address.
 func (l *LoginLimiter) Succeeded(username, ip string) { l.failures.Reset(loginKey(username, ip)) }

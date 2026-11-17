@@ -7,11 +7,9 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"siplink/internal/pki"
-	"siplink/internal/secret"
 )
 
 // The operator's own certificate on the system page (design §6.7).
@@ -186,8 +184,8 @@ func (s *Server) certRefused(w http.ResponseWriter, r *http.Request, reason stri
 // certConfirm uses an upload whose warnings the administrator has read. It is checked
 // again: time may have passed.
 func (s *Server) certConfirm(w http.ResponseWriter, r *http.Request) {
-	o := s.pending.take(s.Now(), r.FormValue("token"), current(r).ID)
-	if o == nil {
+	o, ok := s.pending.take(s.Now(), r.FormValue("token"), current(r).ID)
+	if !ok {
 		s.redirect(w, r, "/system", "error", "确认已失效，请重新上传证书。")
 		return
 	}
@@ -284,45 +282,4 @@ func (s *Server) healthz(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	w.Write([]byte(b.String()))
-}
-
-// pendingCerts keeps uploads that wait for a confirmation, in memory only, briefly.
-type pendingCerts struct {
-	mu    sync.Mutex
-	items map[string]*pendingCert
-}
-
-type pendingCert struct {
-	own     *pki.Own
-	adminID int64
-	expires time.Time
-}
-
-const pendingCertTTL = 10 * time.Minute
-
-func (p *pendingCerts) put(now time.Time, adminID int64, o *pki.Own) string {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if p.items == nil {
-		p.items = map[string]*pendingCert{}
-	}
-	for k, v := range p.items {
-		if now.After(v.expires) || v.adminID == adminID {
-			delete(p.items, k)
-		}
-	}
-	token := secret.Token(18)
-	p.items[token] = &pendingCert{own: o, adminID: adminID, expires: now.Add(pendingCertTTL)}
-	return token
-}
-
-func (p *pendingCerts) take(now time.Time, token string, adminID int64) *pki.Own {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	v := p.items[token]
-	if v == nil || v.adminID != adminID || now.After(v.expires) {
-		return nil
-	}
-	delete(p.items, token)
-	return v.own
 }

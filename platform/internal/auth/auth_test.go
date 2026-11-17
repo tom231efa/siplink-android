@@ -3,6 +3,8 @@ package auth_test
 import (
 	"context"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -58,7 +60,6 @@ func TestLoginLimiter(t *testing.T) {
 		if !l.Attempt("alice", "192.0.2.1") {
 			t.Fatalf("attempt %d refused", i)
 		}
-		l.Failed("alice", "192.0.2.1")
 	}
 	if l.Attempt("alice", "192.0.2.1") {
 		t.Error("6th attempt allowed")
@@ -89,7 +90,54 @@ func TestLoginLimiter(t *testing.T) {
 	}
 }
 
+// TestWindowTake: parallel attempts are counted before any of them is checked; a good
+// attempt gives its slot back.
+func TestWindowTake(t *testing.T) {
+	clock := &testutil.Clock{T: time.Unix(1_000_000, 0)}
+	w := NewWindow(5, 15*time.Minute, clock.Now)
+	var ok atomic.Int32
+	var wg sync.WaitGroup
+	for range 100 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if w.Take("k") {
+				ok.Add(1)
+			}
+		}()
+	}
+	wg.Wait()
+	if ok.Load() != 5 {
+		t.Fatalf("%d of 100 parallel attempts passed, want 5", ok.Load())
+	}
+	clock.Advance(16 * time.Minute)
+	for range 3 {
+		w.Take("k")
+	}
+	w.Release("k")
+	w.Release("k")
+	for range 4 {
+		if !w.Take("k") {
+			t.Fatal("released slots not given back")
+		}
+	}
+	if w.Take("k") {
+		t.Error("sixth slot")
+	}
+	clock.Advance(14 * time.Minute)
+	if w.Take("k") {
+		t.Error("lock ended before a full period after the attempt that reached the limit")
+	}
+	clock.Advance(2 * time.Minute)
+	if !w.Take("k") {
+		t.Error("lock did not end")
+	}
+}
+
 func TestSessions(t *testing.T) {
+	// Restored afterwards: TestPasswordDefaultParams of a repeated run (-count) needs the defaults.
+	defaults := HashParams
+	t.Cleanup(func() { HashParams = defaults })
 	testutil.FastHashes()
 	ctx := context.Background()
 	st := testutil.Store(t)

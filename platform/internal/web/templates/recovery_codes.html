@@ -1,0 +1,15 @@
+{{define "content"}}
+<div class="narrow-page">
+<header class="page-head"><div><h1>恢复码</h1></div></header>
+<section class="card secret-card">
+  <div class="card-body">
+    <ul class="recovery-codes" id="recovery-codes">{{range .Data.Codes}}
+      <li>{{.}}</li>{{end}}
+    </ul>
+    <div class="secret-row"><button type="button" class="btn" data-copy="#recovery-codes" hidden>{{icon "copy"}}<span>复制</span></button></div>
+    <div class="flash warn">恢复码仅在此页显示，每个只能使用一次。</div>
+  </div>
+  <form method="post" action="/me/recovery/done" class="card-foot form-actions"><input type="hidden" name="t" value="{{.Data.Token}}"><button type="submit" class="btn primary">完成</button></form>
+</section>
+</div>
+{{end}}

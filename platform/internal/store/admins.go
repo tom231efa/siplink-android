@@ -23,6 +23,9 @@ type Admin struct {
 	Disabled           bool
 	MustChangePassword bool
 	LastLoginAt        string
+	Email              string // "" = none (§6.8)
+	EmailConfirmed     bool
+	TwoStepEmail       bool // the e-mail code method is on
 	CreatedAt          string
 	UpdatedAt          string
 	RegionIDs          []int64
@@ -32,12 +35,12 @@ type Admin struct {
 var ErrLastSuper = errors.New("store: the last super administrator cannot be disabled or demoted")
 
 const adminCols = `id, username, display_name, password_hash, role, disabled, must_change_password,
-	COALESCE(last_login_at, ''), created_at, updated_at`
+	COALESCE(last_login_at, ''), created_at, updated_at, email, email_confirmed, two_step_email`
 
 func scanAdmin(row interface{ Scan(...any) error }) (*Admin, error) {
 	a := &Admin{}
 	err := row.Scan(&a.ID, &a.Username, &a.DisplayName, &a.PasswordHash, &a.Role, &a.Disabled,
-		&a.MustChangePassword, &a.LastLoginAt, &a.CreatedAt, &a.UpdatedAt)
+		&a.MustChangePassword, &a.LastLoginAt, &a.CreatedAt, &a.UpdatedAt, &a.Email, &a.EmailConfirmed, &a.TwoStepEmail)
 	return a, mapErr(err)
 }
 

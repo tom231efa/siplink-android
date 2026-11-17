@@ -1,0 +1,42 @@
+{{define "content"}}
+{{$d := .Data}}
+<section class="login">
+  <div class="login-brand">{{template "brand-mark"}}<span>SipLink</span></div>
+  <div class="card login-card">
+    <h1>两步验证</h1>
+    <div class="form">
+      {{with $d.Error}}<div class="flash error" role="alert">{{.}}</div>{{end}}
+      {{if $d.Passkey}}
+      <div class="step-passkey" data-passkey-login data-next="{{$d.Next}}" hidden>
+        <button type="button" class="btn primary wide">{{icon "fingerprint"}}使用通行密钥</button>
+        <span class="flash error" data-passkey-error hidden></span>
+      </div>
+      {{end}}
+      {{if $d.TOTP}}
+      <form method="post" action="/login/step" class="form">
+        <input type="hidden" name="method" value="totp"><input type="hidden" name="next" value="{{$d.Next}}">
+        <label>身份验证器验证码<input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" required{{if not $d.Passkey}} autofocus{{end}}></label>
+        <button type="submit" class="btn{{if not $d.Passkey}} primary{{end}} wide">验证</button>
+      </form>
+      {{end}}
+      {{with $d.Email}}
+      <form method="post" action="/login/step" class="form">
+        <input type="hidden" name="method" value="email"><input type="hidden" name="next" value="{{$d.Next}}">
+        <label>邮箱验证码<span class="hint">{{.}}</span><input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" required></label>
+        <div class="actions"><button type="submit" class="btn wide">验证</button><button type="submit" class="btn ghost wide" formaction="/login/step/email" formnovalidate>发送验证码</button></div>
+      </form>
+      {{end}}
+      <details class="step-more">
+        <summary>使用恢复码</summary>
+        <form method="post" action="/login/step" class="form">
+          <input type="hidden" name="method" value="recovery"><input type="hidden" name="next" value="{{$d.Next}}">
+          <label>恢复码<input name="code" autocomplete="off" spellcheck="false" maxlength="16" required></label>
+          <button type="submit" class="btn wide">验证</button>
+        </form>
+      </details>
+      <form method="post" action="/logout"><button type="submit" class="btn ghost wide">取消</button></form>
+    </div>
+  </div>
+  <p class="login-foot"><span>SipLink 管理平台 {{.Version}}</span>{{template "repo-link"}}</p>
+</section>
+{{end}}
