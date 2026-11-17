@@ -1,0 +1,36 @@
+{{define "content"}}
+{{$d := .Data}}
+<div class="narrow-page">
+<header class="page-head"><div><h1 class="fade">{{.Title}}</h1><p class="page-sub fade"><a href="/config-templates/{{$d.T.ID}}?tab=accounts">{{$d.T.Name}}</a></p></div></header>
+{{with $d.Errors}}<div class="flash error" role="alert"><ul class="errors">{{range .}}<li>{{.}}</li>{{end}}</ul></div>{{end}}
+<form method="post" action="/config-templates/{{$d.T.ID}}/profiles{{if not $d.New}}/{{$d.P.ID}}{{end}}" class="card form-card"
+  {{if gt $d.Clients 0}}data-confirm="此模板已被 {{$d.Clients}} 个客户端使用，保存后将于下次同步时生效。确认保存？"{{end}}>
+  <div class="card-body form">
+    <label>账号名称<input name="name" value="{{$d.P.Name}}" required maxlength="30"></label>
+    <div class="grid2 domain-port">
+      <label>域名<input name="domain" value="{{$d.P.Domain}}" required placeholder="pbx.example.com"></label>
+      <label>端口<input name="port" value="{{$d.P.Port}}" inputmode="numeric" placeholder="默认"></label>
+    </div>
+    <div class="field"><span class="field-label" id="l-transport">传输方式</span>
+      <div class="segmented" role="radiogroup" aria-labelledby="l-transport">{{range $d.Options.Transports}}<label><input type="radio" name="transport" value="{{.}}"{{if eq (print .) $d.P.Transport}} checked{{end}}><span>{{.}}</span></label>{{end}}</div></div>
+    <div class="grid2">
+      <label>代理服务器<input name="server" value="{{$d.P.Server}}" placeholder="主机[:端口]"></label>
+      <label>备用服务器<input name="backupServer" value="{{$d.P.BackupServer}}" placeholder="主机[:端口]"></label>
+    </div>
+    <div class="grid2">
+      <label>DNS 服务器<input name="dnsServer" value="{{$d.P.DNSServer}}" placeholder="IP[:端口]"></label>
+      <label>注册有效期<span class="input-suffix"><input type="number" name="expires" value="{{$d.P.Expires}}" min="60" max="86400" required><span>秒</span></span></label>
+    </div>
+    <div class="settings">
+      <label class="setting toggle"><span class="setting-text"><span class="setting-name">订阅语音信箱通知</span></span>
+        <span class="switch"><input type="checkbox" role="switch" name="subscribeMwi" value="1"{{if $d.P.SubscribeMWI}} checked{{end}}><span></span></span></label>
+      <label class="setting toggle"><span class="setting-text"><span class="setting-name">启用</span></span>
+        <span class="switch"><input type="checkbox" role="switch" name="enabled" value="1"{{if $d.P.Enabled}} checked{{end}}><span></span></span></label>
+      <label class="setting toggle"><span class="setting-text"><span class="setting-name">默认账号</span></span>
+        <span class="switch"><input type="checkbox" role="switch" name="isDefault" value="1"{{if $d.P.IsDefault}} checked{{end}}><span></span></span></label>
+    </div>
+  </div>
+  <div class="card-foot form-actions"><a class="btn" href="/config-templates/{{$d.T.ID}}?tab=accounts">取消</a><button type="submit" class="btn primary">保存</button></div>
+</form>
+</div>
+{{end}}

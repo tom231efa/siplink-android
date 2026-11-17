@@ -1,0 +1,29 @@
+# SipLink management platform. Before the first start (docs/platform.md, 部署):
+#   - put SIPLINK_PUBLIC_URL (and optionally SIPLINK_LDAP_PUBLIC_HOST) into .env next to this file;
+#   - make the key file outside this folder and point SIPLINK_KEY_PATH at it;
+#   - give ./data and the key file to uid 10001.
+# SIPLINK_TAG picks the version of the image (default: latest).
+services:
+  siplink:
+    image: ghcr.io/tom231efa/siplink:${SIPLINK_TAG:-latest}
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    environment:
+      SIPLINK_PUBLIC_URL: ${SIPLINK_PUBLIC_URL:?set SIPLINK_PUBLIC_URL in .env}
+      SIPLINK_LDAP_PUBLIC_HOST: ${SIPLINK_LDAP_PUBLIC_HOST:-}
+      SIPLINK_LDAP_PUBLIC_PORT: ${SIPLINK_LDAP_PUBLIC_PORT:-389}
+      SIPLINK_TLS_EXTRA_NAMES: ${SIPLINK_TLS_EXTRA_NAMES:-}
+      TZ: Asia/Shanghai
+    ports:
+      - "443:8080"
+      - "389:1389"
+    volumes:
+      - ./data:/data
+    secrets:
+      - siplink-key
+
+secrets:
+  siplink-key:
+    file: ${SIPLINK_KEY_PATH:?set SIPLINK_KEY_PATH in .env to the key file outside the project}

@@ -1,0 +1,62 @@
+{{define "content"}}
+{{$d := .Data}}
+<div class="narrow-page wide">
+<header class="page-head"><div><h1 class="fade">{{.Title}}</h1></div></header>
+{{if $d.Errors}}<div class="flash error" role="alert"><ul class="errors">{{range $d.Errors}}<li>{{.}}</li>{{end}}</ul></div>{{end}}
+<form method="get" action="{{if $d.New}}/clients/new{{else}}/clients/{{$d.C.ID}}/edit{{end}}" class="card scope-bar">
+  <label>区域<select name="region" class="compact" data-autosubmit>{{range $d.Regions}}<option value="{{.ID}}"{{if eq .ID $d.C.RegionID}} selected{{end}}>{{.Name}}</option>{{end}}</select></label>
+  <label>客户端模板<select name="template" class="compact" data-autosubmit><option value="0">请选择</option>
+    {{range $d.Templates}}<option value="{{.ID}}"{{if eq .ID $d.C.ClientTemplateID}} selected{{end}}>{{.Name}}{{if not .RegionID}}（全局）{{end}}</option>{{end}}</select></label>
+  <button type="submit" class="btn small" data-js-hide>切换</button>
+</form>
+{{if $d.Template}}
+<form method="post" action="{{if $d.New}}/clients{{else}}/clients/{{$d.C.ID}}{{end}}" class="form-stack">
+  <input type="hidden" name="region" value="{{$d.C.RegionID}}">
+  <input type="hidden" name="template" value="{{$d.C.ClientTemplateID}}">
+  <section class="card">
+    <div class="card-body form wide">
+      <div class="grid2">
+        <label>名称<input name="name" value="{{$d.C.Name}}" required maxlength="64"></label>
+        <label>备注<input name="note" value="{{$d.C.Note}}" maxlength="200"></label>
+      </div>
+    </div>
+  </section>
+  {{range $d.Creds}}{{$id := .P.ID}}
+  <section class="card">
+    <div class="card-head"><h2>{{icon "users"}}<span class="fade">账号「{{.P.Name}}」</span></h2><span class="mono muted small-text fade">{{.P.Domain}}{{if .P.Port}}:{{.P.Port}}{{end}} · {{.P.Transport}}</span></div>
+    <div class="card-body form wide">
+      <div class="grid2">
+        <label>用户名<input name="user_{{$id}}" value="{{.In.Username}}" autocomplete="off" placeholder="留空则不使用"></label>
+        <label>密码<input type="password" name="pass_{{$id}}" autocomplete="new-password"{{if .HasPassword}} placeholder="已保存，留空保持不变"{{end}}></label>
+        <label>认证用户<input name="auth_{{$id}}" value="{{.In.AuthUser}}" autocomplete="off" placeholder="可选"></label>
+        <label>显示名<input name="disp_{{$id}}" value="{{.In.DisplayName}}" placeholder="可选"></label>
+        <label>账号名称<input name="acct_{{$id}}" value="{{with .In.AccountName}}{{.}}{{end}}" maxlength="30" placeholder="{{.P.Name}}"></label>
+      </div>
+    </div>
+  </section>
+  {{else}}<div class="card"><div class="empty-state compact">{{icon "users"}}<p>配置模板中暂无账号</p></div></div>{{end}}
+  {{if $d.Dirs}}
+  <section class="card">
+    <div class="card-head"><h2>{{icon "book-user"}}通讯录密码</h2></div>
+    <div class="card-body form wide">
+      {{range $d.Dirs}}
+      <label>{{.D.Name}}<input type="password" name="dir_{{.D.ID}}" autocomplete="new-password"{{if .HasPassword}} placeholder="已保存，留空保持不变"{{end}}></label>
+      {{end}}
+    </div>
+  </section>
+  {{end}}
+  <section class="card">
+    <div class="card-head"><h2>{{icon "arrow-right"}}呼叫转移</h2></div>
+    <div class="card-body settings">
+      <div class="setting fwd"><label class="check"><input type="checkbox" name="fwdAlwaysSet" value="1"{{if $d.FwdSet.Always}} checked{{end}}> 无条件转移</label><span class="setting-control"><input name="fwdAlways" value="{{$d.Fwd.Always}}" aria-label="无条件转移号码" placeholder="不转移"></span></div>
+      <div class="setting fwd"><label class="check"><input type="checkbox" name="fwdBusySet" value="1"{{if $d.FwdSet.Busy}} checked{{end}}> 遇忙转移</label><span class="setting-control"><input name="fwdBusy" value="{{$d.Fwd.Busy}}" aria-label="遇忙转移号码" placeholder="不转移"></span></div>
+      <div class="setting fwd"><label class="check"><input type="checkbox" name="fwdNoAnswerSet" value="1"{{if $d.FwdSet.NoAnswer}} checked{{end}}> 无应答转移</label><span class="setting-control"><input name="fwdNoAnswer" value="{{$d.Fwd.NoAnswer}}" aria-label="无应答转移号码" placeholder="不转移"></span></div>
+    </div>
+  </section>
+  <div class="savebar"><a class="btn" href="{{if $d.New}}/clients{{else}}/clients/{{$d.C.ID}}{{end}}">取消</a><button type="submit" class="btn primary">{{icon "check"}}保存</button></div>
+</form>
+{{else}}
+<div class="card"><div class="empty-state compact">{{icon "layers"}}<p>请选择区域和客户端模板</p></div></div>
+{{end}}
+</div>
+{{end}}

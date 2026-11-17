@@ -1,0 +1,16 @@
+{{define "content"}}
+<section class="login">
+  <div class="login-brand">{{template "brand-mark"}}<span>SipLink</span></div>
+  <div class="card login-card">
+    <h1>登录管理平台</h1>
+    <form method="post" action="/login" class="form">
+      {{with .Data.Error}}<div class="flash error" role="alert">{{.}}</div>{{end}}
+      <input type="hidden" name="next" value="{{.Data.Next}}">
+      <label>用户名<input name="username" value="{{.Data.Username}}" autocomplete="username" required autofocus></label>
+      <label>密码<input name="password" type="password" autocomplete="current-password" required></label>
+      <button type="submit" class="btn primary wide login-submit">登录</button>
+    </form>
+  </div>
+  <p class="login-foot"><span>SipLink 管理平台 {{.Version}}</span>{{template "repo-link"}}</p>
+</section>
+{{end}}

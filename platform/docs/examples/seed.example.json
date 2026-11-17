@@ -1,0 +1,18 @@
+{
+  "region": "测试区域",
+  "configTemplate": {
+    "name": "测试配置",
+    "refreshMinutes": 5,
+    "profile": { "name": "总部", "domain": "pbx.example.com", "port": "5061", "transport": "TLS", "default": true },
+    "caPemFile": "ca.pem",
+    "hostedBook": { "slug": "staff", "name": "员工通讯录", "csvFile": "seed-people.csv" },
+    "externalDirectory": {
+      "name": "公司目录", "host": "ldap.example.com", "port": 389, "security": "START_TLS",
+      "bindDn": "cn=reader,dc=example,dc=com", "baseDn": "ou=people,dc=example,dc=com",
+      "passwordMode": "template", "passwordEnv": "SEED_LDAP_PASSWORD"
+    }
+  },
+  "keyTemplate": { "name": "测试功能键", "csvFile": "seed-keys.csv" },
+  "clientTemplate": { "name": "测试客户端模板" },
+  "client": { "name": "测试手机", "username": "1001", "passwordEnv": "SEED_SIP_PASSWORD", "displayName": "测试" }
+}

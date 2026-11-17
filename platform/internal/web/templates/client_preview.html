@@ -1,0 +1,9 @@
+{{define "content"}}
+<header class="page-head"><div><h1 class="fade">{{.Title}}</h1><p class="page-sub">密码已隐藏</p></div>
+  <div class="page-actions"><a class="btn" href="/clients/{{.Data.C.ID}}">{{icon "arrow-left"}}返回</a></div></header>
+{{if .Data.Problems}}<div class="flash error" role="alert">配置未通过校验，将不下发：<ul class="errors">{{range .Data.Problems}}<li>{{.}}</li>{{end}}</ul></div>{{end}}
+<section class="card code-card">
+  <div class="card-head"><h2><span class="mono">JSON</span></h2><button type="button" class="btn small ghost" data-copy="#doc" hidden>{{icon "copy"}}<span>复制</span></button></div>
+  <pre class="mono" id="doc">{{.Data.JSON}}</pre>
+</section>
+{{end}}

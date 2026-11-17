@@ -1,0 +1,18 @@
+{{define "content"}}
+<div class="print-bar">
+  <a class="btn" href="/clients">{{icon "arrow-left"}}返回</a>
+  {{if .Data.Skipped}}<span class="muted">已跳过 {{.Data.Skipped}} 个已绑定或二维码已过期的客户端</span>{{end}}
+  <span class="spacer"></span>
+  {{if .Data.Cards}}<span class="muted">{{len .Data.Cards}} 张</span><button type="button" class="btn primary" data-print>{{icon "printer"}}打印</button>{{end}}
+</div>
+{{if .Data.Cards}}
+<div class="print-grid">
+  {{range .Data.Cards}}<div class="print-card">
+    <div class="qr">{{.QR}}</div>
+    <strong>{{.Name}}</strong>
+    <p>{{.Region}}</p>
+    <p>SipLink → 设置 → 远程配置 → 扫描二维码</p>
+  </div>{{end}}
+</div>
+{{else}}<div class="card"><div class="empty-state">{{icon "printer"}}<p>暂无可打印的二维码</p></div></div>{{end}}
+{{end}}

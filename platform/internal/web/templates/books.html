@@ -1,0 +1,27 @@
+{{define "content"}}
+<header class="page-head">
+  <div><h1>通讯录</h1><p class="page-sub">{{.Data.Total}} / {{.Data.Limit}} 本<span class="dot-sep"></span>每本最多 {{.Data.Max}} 人</p></div>
+  <div class="page-actions"><a class="btn primary" href="/books/new">{{icon "plus"}}新建通讯录</a></div>
+</header>
+<div class="card table-card">
+  {{if .Data.Rows}}
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>名称</th><th>区域</th><th class="hide-sm">标识</th><th class="num">人数</th><th class="hide-sm"><span class="sr-only">占用</span></th><th class="hide-sm">匿名读取</th></tr></thead>
+    <tbody>
+    {{range .Data.Rows}}
+    <tr>
+      <td class="strong"><a class="fade" href="/books/{{.ID}}">{{.Name}}</a></td>
+      <td>{{if .RegionID}}<span class="fade">{{.Region}}</span>{{else}}<span class="tag">全局</span>{{end}}</td>
+      <td class="mono muted hide-sm"><span class="fade">{{.Slug}}</span></td>
+      <td class="num nowrap">{{.EntryCount}} <span class="muted">/ {{$.Data.Max}}</span></td>
+      <td class="hide-sm"><meter class="bar" min="0" max="{{$.Data.Max}}" high="{{pct90 $.Data.Max}}" value="{{.EntryCount}}">{{pct .EntryCount $.Data.Max}}%</meter></td>
+      <td class="hide-sm">{{if .AllowAnonymous}}<span class="status warn">允许</span>{{else}}<span class="muted">否</span>{{end}}</td>
+    </tr>
+    {{end}}
+    </tbody>
+  </table></div>
+  {{else}}
+  <div class="empty-state">{{icon "book-user"}}<p>暂无通讯录</p><div class="actions"><a class="btn small primary" href="/books/new">{{icon "plus"}}新建通讯录</a></div></div>
+  {{end}}
+</div>
+{{end}}

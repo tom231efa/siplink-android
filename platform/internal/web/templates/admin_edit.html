@@ -1,0 +1,46 @@
+{{define "content"}}
+{{$d := .Data}}
+<div class="narrow-page">
+<header class="page-head"><div><h1 class="fade">{{.Title}}</h1></div></header>
+{{with $d.Error}}<div class="flash error" role="alert">{{.}}</div>{{end}}
+<form method="post" action="{{if $d.New}}/admins{{else}}/admins/{{$d.Admin.ID}}{{end}}" class="card form-card">
+  <div class="card-body form">
+    <div class="grid2">
+      {{if $d.New}}
+      <label>用户名<input name="username" value="{{$d.Admin.Username}}" required pattern="[A-Za-z0-9._-]{2,32}" maxlength="32" autocomplete="off"></label>
+      {{else}}
+      <label>用户名<input value="{{$d.Admin.Username}}" disabled></label>
+      {{end}}
+      <label>显示名<input name="display_name" value="{{$d.Admin.DisplayName}}" maxlength="64"></label>
+    </div>
+    <fieldset class="plain">
+      <legend class="field-label">角色</legend>
+      {{if $d.Self}}<p class="hint">不可修改本人角色</p><input type="hidden" name="role" value="{{$d.Admin.Role}}">{{end}}
+      <div class="option-cards">
+        <label class="option-card"><input type="radio" name="role" value="super"{{if eq $d.Admin.Role "super"}} checked{{end}}{{if $d.Self}} disabled{{end}}><span><strong>超级管理员</strong></span></label>
+        <label class="option-card"><input type="radio" name="role" value="region"{{if eq $d.Admin.Role "region"}} checked{{end}}{{if $d.Self}} disabled{{end}}><span><strong>区域管理员</strong></span></label>
+      </div>
+    </fieldset>
+    <fieldset class="plain">
+      <legend class="field-label">区域</legend>
+      {{if $d.Regions}}<div class="check-grid">
+      {{range $d.Regions}}<label class="check-chip"><input type="checkbox" name="regions" value="{{.ID}}"{{if hasID $d.Admin.RegionIDs .ID}} checked{{end}}><span>{{.Name}}</span></label>{{end}}
+      </div>{{else}}<p class="muted">暂无区域</p>{{end}}
+    </fieldset>
+    {{if not $d.New}}
+    <label class="setting toggle"><span class="setting-text"><span class="setting-name">停用</span><span class="hint">修改角色、区域或停用后，该管理员的全部会话将立即结束。</span></span>
+      <span class="switch"><input type="checkbox" role="switch" name="disabled" value="1"{{if $d.Admin.Disabled}} checked{{end}}{{if $d.Self}} disabled{{end}}><span></span></span></label>
+    {{end}}
+  </div>
+  <div class="card-foot form-actions"><a class="btn" href="/admins">取消</a><button type="submit" class="btn primary">保存</button></div>
+</form>
+{{if not $d.New}}
+<section class="card danger-card">
+  <form method="post" action="/admins/{{$d.Admin.ID}}/reset-password" class="card-body op" data-confirm="确认重置「{{$d.Admin.Username}}」的密码？该管理员的全部会话将结束。">
+    <div><strong>重置密码</strong></div>
+    <button type="submit" class="btn danger">{{icon "key-round"}}重置密码</button>
+  </form>
+</section>
+{{end}}
+</div>
+{{end}}

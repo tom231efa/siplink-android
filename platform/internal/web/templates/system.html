@@ -1,0 +1,111 @@
+{{define "content"}}
+{{$d := .Data}}
+<header class="page-head"><div><h1>系统</h1><p class="page-sub">版本 {{$d.Version}}</p></div></header>
+{{with $d.HostedNote}}<div class="flash warn">{{.}}</div>{{end}}
+{{if $d.HostedPlain}}<div class="flash warn">SIPLINK_LDAP_PUBLIC_HOST 为 IP 地址且 SIPLINK_LDAP_REQUIRE_TLS=false，托管通讯录的姓名和号码将以明文传输。</div>{{end}}
+<section class="card">
+  <div class="card-head"><h2>{{icon "server"}}平台</h2></div>
+  <div class="card-body">
+    <dl class="kv">
+      <dt>公开地址</dt><dd class="mono fade">{{$d.PublicURL}}</dd>
+      <dt>LDAP 地址（下发至客户端）</dt><dd class="mono fade">{{$d.LDAPHost}}:{{$d.LDAPPort}} · {{$d.LDAPSuffix}}</dd>
+      <dt>LDAP 必须加密</dt><dd>{{if $d.RequireTLS}}是{{else}}否{{end}}</dd>
+      <dt>托管通讯录</dt><dd>{{if $d.HostedNote}}<span class="status warn">无法下发</span>{{else if $d.HostedPlain}}<span class="status warn">不加密</span>{{else}}<span class="status ok">StartTLS</span>{{end}}</dd>
+    </dl>
+  </div>
+</section>
+
+<section class="card section-gap" id="certificate" aria-labelledby="cert-title">
+  {{$c := $d.Cert}}
+  <div class="card-head"><h2 id="cert-title">{{icon "shield-check"}}证书</h2>
+    <a class="btn small ghost" href="/system/ca.pem">{{icon "download"}}下载 CA 证书</a></div>
+  <div class="card-body">
+    {{range $c.Notices}}<div class="flash {{.Level}}" role="alert">{{.Text}}</div>{{end}}
+    {{with $c.Error}}<div class="flash error" role="alert">{{.}}</div>{{end}}
+    {{if $c.Warnings}}
+    <div class="flash warn" role="alert">
+      <ul>{{range $c.Warnings}}<li>{{.}}</li>{{end}}</ul>
+      {{if $c.Token}}
+      <form method="post" action="/system/certificate/confirm" class="actions spaced">
+        <input type="hidden" name="token" value="{{$c.Token}}">
+        <button type="submit" class="btn primary">{{icon "check"}}确认启用此证书</button><a class="btn ghost" href="/system">取消</a>
+      </form>
+      {{else if $c.RemoveAsk}}
+      <form method="post" action="/system/certificate/remove" class="actions spaced">
+        <input type="hidden" name="confirm" value="1">
+        <button type="submit" class="btn danger">{{icon "x"}}确认停用{{with $c.RemoveRescan}}，{{.}} 台设备需重新扫码{{end}}</button><a class="btn ghost" href="/system">取消</a>
+      </form>
+      {{end}}
+    </div>
+    {{end}}
+    <dl class="kv">
+      <dt>模式</dt><dd>{{$c.Mode}}</dd>
+      <dt>HTTPS</dt><dd>{{$c.HTTPS}}</dd>
+      <dt>LDAP</dt><dd>{{$c.LDAP}}</dd>
+    </dl>
+    {{range $c.Own}}
+    <h3>{{.Title}}</h3>
+    <dl class="kv">
+      <dt>主题</dt><dd class="fade">{{.Subject}}</dd>
+      <dt>签发者</dt><dd class="fade">{{.Issuer}}</dd>
+      <dt>名称</dt><dd class="mono">{{join .Names ", "}}</dd>
+      <dt>到期</dt><dd>{{day .NotAfter}} <span class="status{{if le .DaysLeft $c.ReminderDays}} warn{{end}}">剩余 {{.DaysLeft}} 天</span></dd>
+      <dt>设备信任</dt><dd>{{.Trust}}</dd>
+      {{with .Uses}}<dt>用于</dt><dd>{{.}}</dd>{{end}}
+      <dt>指纹</dt><dd class="mono small-text muted">{{.Fingerprint}}</dd>
+      {{with .EmptyAKI}}<dt>注意</dt><dd><span class="status warn">{{.}}</span></dd>{{end}}
+    </dl>
+    {{end}}
+    <h3>内置 CA</h3>
+    <dl class="kv">
+      {{with $d.CA}}
+      <dt>CA</dt><dd class="fade">{{.Subject}}</dd>
+      <dt>有效期</dt><dd>{{day .NotBefore}} 至 {{day .NotAfter}}</dd>
+      <dt>指纹</dt><dd class="mono small-text muted">{{.Fingerprint}}</dd>
+      {{end}}
+      {{with $d.Server}}
+      <dt>服务器证书</dt><dd class="mono">{{join .Names ", "}}</dd>
+      <dt>到期</dt><dd>{{day .NotAfter}}</dd>
+      {{end}}
+      <dt>自动签发</dt><dd>{{if $c.Paused}}<span class="status warn">已暂停</span>{{else}}<span class="status ok">运行中</span>{{end}}</dd>
+    </dl>
+  </div>
+  <form method="post" action="/system/certificate" enctype="multipart/form-data" class="card-body settings">
+    <h3>使用自有证书</h3>
+    <label class="setting"><span class="setting-text"><span class="setting-name">证书链（PEM）</span></span>
+      <span class="setting-control"><input type="file" name="chain" accept=".pem,.crt,.cer" required></span></label>
+    <label class="setting"><span class="setting-text"><span class="setting-name">私钥（PEM，未加密）</span></span>
+      <span class="setting-control"><input type="file" name="key" accept=".pem,.key" required></span></label>
+    <div class="form-foot"><button type="submit" class="btn">{{icon "upload"}}上传</button></div>
+  </form>
+  <form method="post" action="/system/certificate/reminder" class="card-body settings">
+    <label class="setting"><span class="setting-text"><span class="setting-name">到期前提醒（天）</span></span>
+      <span class="setting-control"><input type="number" name="days" min="1" max="{{$c.MaxDays}}" value="{{$c.ReminderDays}}" class="narrow-input" required><button type="submit" class="btn">保存</button></span></label>
+  </form>
+  {{if or (not $c.Paused) $c.HasUploaded}}
+  <div class="card-foot">
+    {{if not $c.Paused}}<form method="post" action="/system/reissue" data-confirm="确认重新签发服务器证书？CA 不变，设备无需重新扫码。"><button type="submit" class="btn">{{icon "refresh-cw"}}重新签发服务器证书</button></form>{{end}}
+    {{if $c.HasUploaded}}<form method="post" action="/system/certificate/remove" data-confirm="确认停用自有证书并恢复使用内置 CA？"><button type="submit" class="btn danger">{{icon "x"}}停用自有证书</button></form>{{end}}
+  </div>
+  {{end}}
+</section>
+
+<section class="card table-card">
+  <div class="card-head"><h2>{{icon "download"}}备份</h2>
+    <form method="post" action="/system/backup"><button type="submit" class="btn small primary">立即备份</button></form></div>
+  <div class="card-body">
+    <div class="stat-row">
+      <div><span class="card-label">自动备份</span><span class="stat-value small">每天 {{$d.BackupTime}}</span></div>
+      <div><span class="card-label">保留</span><span class="stat-value small">{{$d.BackupKeep}} 份</span></div>
+      <div><span class="card-label">数据库</span><span class="stat-value small">{{printf "%.1f" (mb $d.DBSize)}} MB</span></div>
+    </div>
+    <div class="flash warn spaced">备份中的密码已加密，须配合密钥文件（<span class="mono">{{$d.KeyFile}}</span>）方可使用，请另行妥善备份密钥文件。</div>
+  </div>
+  {{if $d.Backups}}
+  <div class="table-wrap codec-table"><table class="table">
+    <thead><tr><th>文件</th><th>时间</th><th class="num">大小</th></tr></thead>
+    <tbody>{{range $d.Backups}}<tr><td class="mono">{{.Name}}</td><td class="muted">{{at .ModTime}}</td><td class="num">{{printf "%.1f" (mb .Size)}} MB</td></tr>{{end}}</tbody>
+  </table></div>
+  {{else}}<div class="empty-state compact">{{icon "inbox"}}<p>暂无备份</p></div>{{end}}
+</section>
+{{end}}

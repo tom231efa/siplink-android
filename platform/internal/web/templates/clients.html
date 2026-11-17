@@ -1,0 +1,62 @@
+{{define "content"}}
+{{$d := .Data}}{{$filtered := or $d.Q $d.Status $d.Template}}
+<header class="page-head">
+  <div><h1>客户端</h1></div>
+  <div class="page-actions"><a class="btn" href="/clients/import">{{icon "upload"}}批量导入</a><a class="btn primary" href="/clients/new">{{icon "plus"}}新建客户端</a></div>
+</header>
+<div class="card table-card">
+  <form method="get" action="/clients" class="filters card-toolbar" role="search">
+    <label class="search">{{icon "search"}}<input type="search" name="q" value="{{$d.Q}}" placeholder="名称或 SIP 用户名" aria-label="搜索"></label>
+    <select name="template" aria-label="客户端模板" class="compact" data-autosubmit><option value="0">全部模板</option>
+      {{range $d.Templates}}<option value="{{.ID}}"{{if eq .ID $d.Template}} selected{{end}}>{{.Name}}</option>{{end}}</select>
+    <select name="status" aria-label="状态" class="compact" data-autosubmit><option value="">全部状态</option>
+      <option value="active"{{if eq $d.Status "active"}} selected{{end}}>已绑定</option>
+      <option value="offline"{{if eq $d.Status "offline"}} selected{{end}}>离线</option>
+      <option value="pending"{{if eq $d.Status "pending"}} selected{{end}}>待上线</option></select>
+    <button type="submit" class="btn small" data-js-hide>筛选</button>
+    {{if $filtered}}<a class="btn ghost small" href="/clients">{{icon "x"}}清除</a>{{end}}
+  </form>
+  {{if $d.Rows}}
+  <form method="post" action="/clients/bulk" id="bulk" class="bulk-form">
+  <div class="table-wrap"><table class="table fit-sm">
+    <thead><tr><th class="check-col"><input type="checkbox" data-check-all="ids" aria-label="全选"></th><th>名称</th><th class="hide-sm">区域</th><th class="hide-sm">客户端模板</th><th>状态</th><th class="hide-sm">版本</th><th class="hide-sm">最后同步</th><th class="hide-sm">注册</th></tr></thead>
+    <tbody>{{range $d.Rows}}<tr>
+      <td class="check-col"><input type="checkbox" name="ids" value="{{.ID}}" aria-label="选择 {{.Name}}"></td>
+      <td class="strong"><a class="fade" href="/clients/{{.ID}}">{{.Name}}</a><span class="sub show-sm fade">{{.Region}} · {{.Template}}</span></td>
+      <td class="hide-sm"><span class="fade">{{.Region}}</span></td><td class="muted hide-sm"><span class="fade">{{.Template}}</span></td>
+      <td class="nowrap">{{if .Offline}}<span class="status warn">离线</span>{{else if eq .Status "active"}}<span class="status ok">已绑定</span>{{else}}<span class="status">待上线</span>{{end}}
+        {{if .Report.BuildError}}<span class="status bad">配置无效</span>{{else if .Report.ApplyError}}<span class="status warn">应用失败</span>{{end}}</td>
+      <td class="mono muted hide-sm"><span class="fade">{{with .Report.AppVersion}}{{.}}{{else}}—{{end}}</span></td>
+      <td class="nowrap muted hide-sm">{{since .Report.LastSeenAt}}</td>
+      <td class="muted nowrap hide-sm">{{regSummary .Report.RegistrationsJSON}}</td>
+    </tr>{{end}}</tbody>
+  </table></div>
+  <div class="bulkbar" data-bulkbar>
+    <span class="bulk-count" data-bulk-count>对所选客户端</span>
+    <select name="action" aria-label="批量操作" class="compact" data-bulk-action>
+      <option value="print">打印二维码</option>
+      <option value="template">更换客户端模板</option>
+      <option value="delete">删除</option>
+    </select>
+    <select name="template" aria-label="新的客户端模板" class="compact" data-bulk-template>{{range $d.Templates}}<option value="{{.ID}}">{{.Name}}</option>{{end}}</select>
+    <button type="submit" class="btn small primary" data-confirm="确认对所选客户端执行此操作？删除操作不可撤销，已绑定的设备将在下次同步时移除远程配置。">执行</button>
+    <button type="button" class="btn small ghost" data-bulk-clear hidden>取消选择</button>
+  </div>
+  </form>
+  <div class="card-foot">
+    {{if gt $d.Pages 1}}
+    <span class="muted">第 {{$d.Page}} / {{$d.Pages}} 页，共 {{$d.Total}} 个</span>
+    <div class="actions">
+      {{if gt $d.Page 1}}<a class="btn small" href="/clients?{{$d.Query}}&page={{add $d.Page -1}}">上一页</a>{{end}}
+      {{if lt $d.Page $d.Pages}}<a class="btn small" href="/clients?{{$d.Query}}&page={{add $d.Page 1}}">下一页</a>{{end}}
+    </div>
+    {{else}}<span class="muted">共 {{$d.Total}} 个客户端</span>{{end}}
+  </div>
+  {{else if $filtered}}
+  <div class="empty-state">{{icon "search"}}<p>无匹配的客户端</p><div class="actions"><a class="btn small" href="/clients">清除筛选</a></div></div>
+  {{else}}
+  <div class="empty-state">{{icon "smartphone"}}<p>暂无客户端</p>
+    <div class="actions"><a class="btn small" href="/clients/import">{{icon "upload"}}批量导入</a><a class="btn small primary" href="/clients/new">{{icon "plus"}}新建客户端</a></div></div>
+  {{end}}
+</div>
+{{end}}

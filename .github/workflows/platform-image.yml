@@ -1,0 +1,67 @@
+# Builds the management platform (platform/) as a Docker image for amd64 and arm64 and publishes it
+# to GitHub Packages as ghcr.io/<owner>/siplink:<version> and :latest.
+# Runs for a tag named platform-v<version>, or by hand with the version typed in.
+name: Platform image
+
+on:
+  push:
+    tags: ['platform-v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to publish, such as 0.1.0
+        required: true
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE: ghcr.io/${{ github.repository_owner }}/siplink
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Version
+        id: version
+        env:
+          TYPED: ${{ inputs.version }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then version="$TYPED"; else version="${GITHUB_REF_NAME#platform-v}"; fi
+          case "$version" in
+            ''|*[!0-9A-Za-z.-]*) echo "Not a version: '$version'" >&2; exit 1 ;;
+          esac
+          echo "value=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GitHub Packages
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: platform
+          platforms: linux/amd64,linux/arm64
+          build-args: VERSION=${{ steps.version.outputs.value }}
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ steps.version.outputs.value }}
+            ${{ env.IMAGE }}:latest
+          labels: |
+            org.opencontainers.image.title=SipLink management platform
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.version=${{ steps.version.outputs.value }}
+            org.opencontainers.image.revision=${{ github.sha }}

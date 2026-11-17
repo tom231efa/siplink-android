@@ -1,0 +1,22 @@
+{{define "content"}}
+<div class="narrow-page">
+<header class="page-head"><div><h1 class="fade">{{.Title}}</h1></div></header>
+{{with .Data.Error}}<div class="flash error" role="alert">{{.}}</div>{{end}}
+<form method="post" action="{{.Data.Base}}" class="card form-card">
+  <div class="card-body form">
+    <label>名称<input name="name" value="{{.Data.Name}}" required maxlength="64"></label>
+    {{template "region-select" .}}
+    <label>备注<input name="note" value="{{.Data.Note}}" maxlength="200"></label>
+  </div>
+  <div class="card-foot form-actions"><a class="btn" href="{{.Data.Base}}">取消</a><button type="submit" class="btn primary">创建</button></div>
+</form>
+</div>
+{{end}}
+{{define "region-select"}}
+<label>区域
+  <select name="region">
+    {{if .Data.Global}}<option value="0"{{if not .Data.Region}} selected{{end}}>全局</option>{{end}}
+    {{range .Data.Regions}}<option value="{{.ID}}"{{if eq .ID (deref $.Data.Region)}} selected{{end}}>{{.Name}}</option>{{end}}
+  </select>
+</label>
+{{end}}

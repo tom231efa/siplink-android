@@ -1,0 +1,224 @@
+{
+  "schema": 1,
+  "version": "ea51c1450f1bf9ae6f88b1cb21255cc62567b6981402abcd31e82c20b125641f",
+  "generatedAt": "2026-11-16T08:00:00Z",
+  "deviceKey": "KKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK",
+  "platform": {
+    "name": "SipLink 管理平台",
+    "syncUrl": "https://platform.example.com/api/device/v1/sync"
+  },
+  "client": {
+    "name": "desk1",
+    "region": "华东"
+  },
+  "refreshMinutes": 30,
+  "configPasswordHash": "4b5ae2f2e1c6d27d16d43fae156c653347234dfb404fd3cb5104f5513efd6871",
+  "settings": {
+    "keepAlive": true,
+    "intercomAutoAnswer": false,
+    "intercomSpeaker": true,
+    "verifyTlsCertificate": true,
+    "verifyTlsHostname": true,
+    "mediaSecurity": "NONE",
+    "dndMode": "SOFTWARE",
+    "callWaiting": true,
+    "rejectAnonymous": false,
+    "dtmfMode": "RFC2833",
+    "forwardAlways": "13800000000",
+    "forwardBusy": "8000",
+    "forwardNoAnswer": "",
+    "forwardNoAnswerSeconds": 20,
+    "features": {
+      "park": "*85",
+      "listen": "*91",
+      "whisper": "*92",
+      "barge": "*93",
+      "forceHangUp": "*94",
+      "pickup": "**",
+      "groupPickup": "*8",
+      "voicemail": "*97",
+      "intercom": "*80",
+      "dndOn": "*78",
+      "dndOff": "*79"
+    },
+    "videoCalls": true,
+    "videoSize": "VGA",
+    "videoFrameRate": 0,
+    "autoUpdateCheck": true,
+    "userAgent": "SipLink-Example/1.0",
+    "adaptiveRateControl": true,
+    "echoCancellation": false,
+    "ipv6": true,
+    "callRecording": true,
+    "recordByDefault": true,
+    "autoAnswer": true,
+    "autoAnswerSeconds": 5
+  },
+  "accounts": [
+    {
+      "key": "p1",
+      "name": "前台一号",
+      "username": "1001",
+      "password": "test-password-1001",
+      "authUser": "",
+      "displayName": "前台",
+      "domain": "pbx.example.com",
+      "port": "",
+      "server": "",
+      "backupServer": "",
+      "dnsServer": "",
+      "transport": "TLS",
+      "expires": 3600,
+      "subscribeMwi": true,
+      "enabled": true
+    },
+    {
+      "key": "p2",
+      "name": "分部",
+      "username": "2001",
+      "password": "test-password-2001",
+      "authUser": "auth2001",
+      "displayName": "",
+      "domain": "192.0.2.20",
+      "port": "5070",
+      "server": "",
+      "backupServer": "",
+      "dnsServer": "",
+      "transport": "UDP",
+      "expires": 3600,
+      "subscribeMwi": true,
+      "enabled": true
+    }
+  ],
+  "defaultAccount": "p2",
+  "codecs": {
+    "audio": [
+      {
+        "key": "opus/48000/2",
+        "enabled": true
+      },
+      {
+        "key": "PCMA/8000/1",
+        "enabled": true
+      },
+      {
+        "key": "PCMU/8000/1",
+        "enabled": false
+      }
+    ],
+    "video": [
+      {
+        "key": "H264/90000/1",
+        "enabled": true
+      }
+    ]
+  },
+  "caCertificates": [
+    "-----BEGIN CERTIFICATE-----\nMIIBLDCB36ADAgECAgEBMAUGAytlcDAeMRwwGgYDVQQDExNTaXBMaW5rIENBIDAw\nMDAwMDAwMB4XDTI2MTExNjA4MDAwMFoXDTM2MTExNjA4MDAwMFowHjEcMBoGA1UE\nAxMTU2lwTGluayBDQSAwMDAwMDAwMDAqMAUGAytlcAMhAL9Kw/tZz3vY0Rzp0oQ7\ntMARBw6f8byQq2T+agJSHluPo0IwQDAOBgNVHQ8BAf8EBAMCAgQwDwYDVR0TAQH/\nBAUwAwEB/zAdBgNVHQ4EFgQUZhE8MiT28OP2cDWIUfCzTk+LsLUwBQYDK2VwA0EA\nI8L1ljFXhHl+I6d0USEzYMX/oHM1704Uo1SOdqIZi5IZ3TDIzyXC1bDZ6j7Q9sDK\n24xOFSq3yppbUUmBAa1BAw==\n-----END CERTIFICATE-----\n",
+    "-----BEGIN CERTIFICATE-----\nMIIBIjCB1aADAgECAgEBMAUGAytlcDAZMRcwFQYDVQQDEw5FeGFtcGxlIFBCWCBD\nQTAeFw0yNjExMTYwODAwMDBaFw0zNjExMTYwODAwMDBaMBkxFzAVBgNVBAMTDkV4\nYW1wbGUgUEJYIENBMCowBQYDK2VwAyEA/hwaizF0C/ElFfWW8okbs05U4uTFtjhc\nr2geR2KIdGKjQjBAMA4GA1UdDwEB/wQEAwICBDAPBgNVHRMBAf8EBTADAQH/MB0G\nA1UdDgQWBBTmqbI+RWQ/O7QN4STvqLWgz6NuPjAFBgMrZXADQQBH8Dhrk9oMKy2C\n+KqX6EDy5d23WtMzysBimNBxJK0Mj3iuU2rM7i63FJzlj73AFswbFOYCoQCuURwC\ndkTZJPgC\n-----END CERTIFICATE-----\n"
+  ],
+  "directories": [
+    {
+      "key": "d1",
+      "name": "员工通讯录",
+      "enabled": true,
+      "host": "platform.example.com",
+      "port": 389,
+      "security": "START_TLS",
+      "bindDn": "uid=pubxxdesk1,ou=clients,dc=siplink",
+      "password": "icJ4FbD6qgdLFejl282X3yjpw-wg9kqE",
+      "baseDn": "ou=staff,ou=books,dc=siplink",
+      "line": "p1",
+      "lookupIncoming": true,
+      "lookupOutgoing": true,
+      "maxResults": 50,
+      "nameAttributes": "cn",
+      "numberAttributes": "telephoneNumber mobile",
+      "nameFilter": "",
+      "numberFilter": ""
+    },
+    {
+      "key": "d2",
+      "name": "公司目录",
+      "enabled": true,
+      "host": "ldap.example.com",
+      "port": 389,
+      "security": "START_TLS",
+      "bindDn": "cn=reader,dc=example,dc=com",
+      "password": "test-directory-password",
+      "baseDn": "ou=people,dc=example,dc=com",
+      "line": "",
+      "lookupIncoming": true,
+      "lookupOutgoing": true,
+      "maxResults": 100,
+      "nameAttributes": "cn sn",
+      "numberAttributes": "telephoneNumber mobile",
+      "nameFilter": "",
+      "numberFilter": ""
+    },
+    {
+      "key": "d3",
+      "name": "个人目录",
+      "enabled": true,
+      "host": "ldap.example.com",
+      "port": 389,
+      "security": "START_TLS",
+      "bindDn": "uid=1001,ou=people,dc=example,dc=com",
+      "password": "test-personal-password",
+      "baseDn": "ou=people,dc=example,dc=com",
+      "line": "",
+      "lookupIncoming": false,
+      "lookupOutgoing": true,
+      "maxResults": 50,
+      "nameAttributes": "displayName",
+      "numberAttributes": "telephoneNumber",
+      "nameFilter": "(displayName=*%s*)",
+      "numberFilter": ""
+    },
+    {
+      "key": "d4",
+      "name": "公共目录",
+      "enabled": false,
+      "host": "directory.example.com",
+      "port": 389,
+      "security": "NONE",
+      "bindDn": "",
+      "password": "",
+      "baseDn": "dc=example,dc=com",
+      "line": "",
+      "lookupIncoming": true,
+      "lookupOutgoing": true,
+      "maxResults": 20,
+      "nameAttributes": "cn",
+      "numberAttributes": "telephoneNumber",
+      "nameFilter": "",
+      "numberFilter": ""
+    }
+  ],
+  "shortcuts": [
+    {
+      "label": "保安室",
+      "number": "8001",
+      "action": "speed",
+      "category": "内部",
+      "line": "前台一号",
+      "icon": "star"
+    },
+    {
+      "label": "转财务",
+      "number": "8002",
+      "action": "bxfer",
+      "category": "内部",
+      "line": "",
+      "icon": ""
+    },
+    {
+      "label": "免打扰",
+      "number": "",
+      "action": "dnd",
+      "category": "",
+      "line": "",
+      "icon": ""
+    }
+  ]
+}

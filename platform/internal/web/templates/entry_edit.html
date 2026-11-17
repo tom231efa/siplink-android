@@ -1,0 +1,29 @@
+{{define "content"}}
+{{$d := .Data}}
+<div class="narrow-page">
+<header class="page-head"><div><h1 class="fade">{{.Title}}</h1><p class="page-sub fade"><a href="/books/{{$d.Book.ID}}">{{$d.Book.Name}}</a></p></div></header>
+{{with $d.Errors}}<div class="flash error" role="alert"><ul class="errors">{{range .}}<li>{{.}}</li>{{end}}</ul></div>{{end}}
+<form method="post" action="{{if $d.New}}/books/{{$d.Book.ID}}/entries{{else}}/books/{{$d.Book.ID}}/entries/{{$d.Entry.ID}}{{end}}" class="card form-card">
+  <div class="card-body form">
+    <label>姓名<input name="name" value="{{$d.Entry.Name}}" required maxlength="64"></label>
+    <div class="grid2">
+      <label>姓<input name="surname" value="{{$d.Entry.Surname}}" maxlength="64"></label>
+      <label>名<input name="given_name" value="{{$d.Entry.GivenName}}" maxlength="64"></label>
+    </div>
+    <div class="grid2">
+      <label>办公电话<input name="phones" value="{{$d.Phones}}" placeholder="以 ; 分隔，最多 4 个"></label>
+      <label>手机<input name="mobiles" value="{{$d.Mobiles}}" placeholder="以 ; 分隔，最多 4 个"></label>
+    </div>
+    <div class="grid2">
+      <label>单位<input name="organization" value="{{$d.Entry.Organization}}" maxlength="64"></label>
+      <label>部门<input name="department" value="{{$d.Entry.Department}}" maxlength="64"></label>
+    </div>
+    <div class="grid2">
+      <label>职务<input name="title" value="{{$d.Entry.Title}}" maxlength="64"></label>
+      <label>邮箱<input name="email" type="email" value="{{$d.Entry.Email}}" maxlength="128"></label>
+    </div>
+  </div>
+  <div class="card-foot form-actions"><a class="btn" href="/books/{{$d.Book.ID}}">取消</a><button type="submit" class="btn primary">保存</button></div>
+</form>
+</div>
+{{end}}

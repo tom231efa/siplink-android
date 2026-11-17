@@ -1,0 +1,107 @@
+{{define "content"}}
+{{$d := .Data}}{{$c := .Data.C}}
+<header class="page-head">
+  <div>
+    <div class="title-row fade-line"><h1 class="fade">{{$c.Name}}</h1>{{if $d.Offline}}<span class="status warn">离线</span>{{else if eq $c.Status "active"}}<span class="status ok">已绑定</span>{{else}}<span class="status">待上线</span>{{end}}</div>
+    <p class="page-sub fade">{{$d.Region}}<span class="dot-sep"></span>客户端模板 <a href="/client-templates/{{$d.Template.ID}}">{{$d.Template.Name}}</a>
+      {{- with $d.Config}}<span class="dot-sep"></span>配置 <a href="/config-templates/{{.ID}}">{{.Name}}</a>{{end}}{{with $d.Keys}}<span class="dot-sep"></span>功能键 <a href="/key-templates/{{.ID}}">{{.Name}}</a>{{end}}</p>
+  </div>
+  <div class="page-actions"><a class="btn" href="/clients/{{$c.ID}}/preview">{{icon "eye"}}预览下发内容</a><a class="btn" href="/clients/{{$c.ID}}/edit">{{icon "pencil"}}编辑</a></div>
+</header>
+{{with $d.Error}}<div class="flash error" role="alert">{{.}}</div>{{end}}
+{{if $d.Missing}}<div class="flash warn">以下账号未填写凭据，将不下发：{{join $d.Missing "、"}}</div>{{end}}
+{{range $d.Dirs}}{{if not .HasPassword}}<div class="flash warn">通讯录「{{.D.Name}}」需按客户端设置密码，此客户端未设置，将以空密码下发。</div>{{end}}{{end}}
+{{if $d.Problems}}<div class="flash error" role="alert">当前配置未通过校验，将不下发；已绑定的设备继续使用上一次的有效配置。<ul class="errors">{{range $d.Problems}}<li>{{.}}</li>{{end}}</ul></div>{{end}}
+
+<div class="detail-grid">
+  <div class="detail-main">
+    {{if eq $c.Status "pending"}}
+    <section class="card enroll-card" aria-labelledby="enroll-title">
+      <div class="card-head"><h2 id="enroll-title">{{icon "qr-code"}}绑定设备</h2></div>
+      {{if $d.EnrollURL}}
+      <div class="enroll">
+        <div class="qr-frame"><div class="qr">{{$d.QR}}</div></div>
+        <div class="enroll-text">
+          <p class="path-line">SipLink → 设置 → 远程配置 → 扫描二维码</p>
+          <dl class="kv compact"><dt>有效期至</dt><dd>{{when $c.EnrollExpiresAt}}</dd><dt>可用次数</dt><dd>1 次</dd></dl>
+          <div class="url-box"><span class="mono fade" id="enroll-url">{{$d.EnrollURL}}</span><button type="button" class="btn small ghost" data-copy="#enroll-url" hidden>{{icon "copy"}}<span>复制地址</span></button></div>
+          <div class="actions">
+            <a class="btn small" href="/clients/{{$c.ID}}/qr.png">{{icon "download"}}下载 PNG</a>
+            <a class="btn small" href="/clients/print?ids={{$c.ID}}">{{icon "printer"}}打印</a>
+          </div>
+        </div>
+      </div>
+      {{else}}
+      <div class="card-body"><p class="flash warn">二维码已过期，请重新生成。</p></div>
+      {{end}}
+    </section>
+    {{else}}
+    <section class="card" aria-labelledby="phone-title">
+      <div class="card-head"><h2 id="phone-title">{{icon "smartphone"}}设备</h2><span class="hint">最后同步 {{since $d.Report.LastSeenAt}}</span></div>
+      <div class="card-body">
+        <dl class="kv">
+          <dt>状态</dt><dd>{{if $d.Offline}}<span class="status warn">离线</span>{{else}}<span class="status ok">已绑定</span>{{end}} <span class="muted">{{when $c.BoundAt}}</span></dd>
+          <dt>最后同步</dt><dd>{{when $d.Report.LastSeenAt}}{{with $d.Report.LastIP}}<span class="dot-sep"></span><span class="mono">{{.}}</span>{{end}}</dd>
+          <dt>型号</dt><dd class="fade">{{with $d.Report.DeviceModel}}{{.}}{{else}}—{{end}}{{with $d.Report.AndroidRelease}}<span class="dot-sep"></span>Android {{.}}{{end}}</dd>
+          <dt>SipLink 版本</dt><dd class="fade">{{with $d.Report.AppVersion}}{{.}}{{else}}—{{end}}</dd>
+          <dt>已应用的配置</dt><dd class="mono">{{if $d.Report.AppliedVersion}}{{printf "%.12s" $d.Report.AppliedVersion}}{{if eq $d.Report.AppliedVersion $d.Version}} <span class="badge ok">最新</span>{{else}}（当前版本 {{printf "%.12s" $d.Version}}，将于下次同步时更新）{{end}}{{else}}—{{end}}</dd>
+          {{with $d.Report.ApplyError}}<dt>应用错误</dt><dd class="danger-text">{{.}}</dd>{{end}}
+          <dt>注册状态</dt><dd>{{regSummary $d.Report.RegistrationsJSON}}</dd>
+        </dl>
+      </div>
+    </section>
+    {{end}}
+
+    <section class="card table-card" aria-labelledby="accounts-title">
+      <div class="card-head"><h2 id="accounts-title">{{icon "users"}}账号</h2></div>
+      {{if $d.Creds}}
+      <div class="table-wrap"><table class="table">
+        <thead><tr><th>账号</th><th>用户名</th><th>认证用户</th><th>显示名</th><th>服务器</th><th>密码</th></tr></thead>
+        <tbody>{{range $d.Creds}}<tr>
+          <td class="strong"><span class="fade">{{with .In.AccountName}}{{.}}{{else}}{{.P.Name}}{{end}}</span></td><td class="mono"><span class="fade">{{.In.Username}}</span></td><td class="mono"><span class="fade">{{.In.AuthUser}}</span></td>
+          <td><span class="fade">{{.In.DisplayName}}</span></td><td class="mono muted"><span class="fade">{{.P.Domain}}{{if .P.Port}}:{{.P.Port}}{{end}} · {{.P.Transport}}</span></td>
+          <td>{{if .HasPassword}}<span class="muted">••••••</span>{{else}}<span class="status warn">未设置</span>{{end}}</td>
+        </tr>{{end}}</tbody>
+      </table></div>
+      {{else}}<div class="empty-state compact">{{icon "users"}}<p>暂无账号</p></div>{{end}}
+      {{if $d.LDAPBindDN}}<div class="card-foot"><p class="hint fade-line"><span>托管通讯录绑定 DN</span><span class="mono fade">{{$d.LDAPBindDN}}</span></p></div>{{end}}
+    </section>
+
+    {{if $d.CanSecrets}}
+    <section class="card" id="secrets" aria-labelledby="secrets-title">
+      <div class="card-head"><h2 id="secrets-title">{{icon "key-round"}}查看密码</h2></div>
+      <div class="card-body">
+      {{if $d.Show}}
+      <dl class="kv">{{range $d.Secrets}}<dt>{{.Label}}</dt><dd class="mono">{{.Value}}</dd>{{else}}<dt>—</dt><dd>暂无已保存的密码</dd>{{end}}</dl>
+      {{else}}
+      <form method="post" action="/clients/{{$c.ID}}/reveal" class="inline-form">
+        <input type="password" name="password" autocomplete="current-password" placeholder="您的登录密码" aria-label="您的登录密码" required>
+        <button type="submit" class="btn">{{icon "eye"}}显示密码</button>
+      </form>
+      {{end}}
+      </div>
+    </section>
+    {{end}}
+  </div>
+
+  <aside class="detail-aside">
+    <section class="card" aria-labelledby="ops-title">
+      <div class="card-head"><h2 id="ops-title">操作</h2></div>
+      <div class="op-list">
+        <form method="post" action="/clients/{{$c.ID}}/unbind" class="op" data-confirm="确认重新生成二维码？{{if eq $c.Status "active"}}当前绑定的设备将在下次同步时移除远程配置。{{end}}">
+          <div><strong>重新生成二维码</strong>{{if eq $c.Status "active"}}<p class="hint">当前设备需重新扫码</p>{{end}}</div>
+          <button class="btn small">{{icon "refresh-cw"}}重新生成</button>
+        </form>
+        {{if $d.LDAPBindDN}}<form method="post" action="/clients/{{$c.ID}}/reset-ldap" class="op" data-confirm="确认重置此客户端的托管通讯录密码？">
+          <div><strong>重置 LDAP 凭据</strong></div>
+          <button class="btn small">{{icon "key-round"}}重置</button>
+        </form>{{end}}
+        <form method="post" action="/clients/{{$c.ID}}/delete" class="op danger-zone" data-confirm="确认删除客户端「{{$c.Name}}」？此操作不可撤销，已绑定的设备将在下次同步时移除远程配置。">
+          <div><strong>删除客户端</strong><p class="hint">此操作不可撤销</p></div>
+          <button class="btn small danger">{{icon "trash"}}删除</button>
+        </form>
+      </div>
+    </section>
+  </aside>
+</div>
+{{end}}

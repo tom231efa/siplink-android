@@ -1,0 +1,79 @@
+{{define "content"}}
+{{$d := .Data}}{{$id := .Data.Book.ID}}
+<header class="page-head">
+  <div>
+    <h1 class="fade">{{$d.Book.Name}}</h1>
+    <p class="page-sub fade">{{if $d.Book.RegionID}}{{$d.Region}}{{else}}全局{{end}}<span class="dot-sep"></span><span class="mono">{{$d.Book.Slug}}</span><span class="dot-sep"></span>{{$d.Book.EntryCount}} / {{$d.Max}} 人{{with $d.Book.Note}}<span class="dot-sep"></span>{{.}}{{end}}</p>
+  </div>
+  <div class="page-actions">
+    <details class="popover-host">
+      <summary class="btn">{{icon "download"}}导出</summary>
+      <div class="popover menu-pop align-end">
+        <a class="menu-item" href="/books/{{$id}}/export.csv">CSV</a>
+        <a class="menu-item" href="/books/{{$id}}/export.ldif">LDIF</a>
+      </div>
+    </details>
+    {{if $d.CanEdit}}
+    <a class="btn" href="/books/{{$id}}/edit">{{icon "settings-2"}}设置</a>
+    <a class="btn" href="/books/{{$id}}/import">{{icon "upload"}}导入</a>
+    <a class="btn primary" href="/books/{{$id}}/entries/new">{{icon "plus"}}添加联系人</a>
+    {{end}}
+  </div>
+</header>
+<div class="card table-card">
+  <form method="get" action="/books/{{$id}}" class="filters card-toolbar" role="search">
+    <label class="search wide">{{icon "search"}}<input type="search" name="q" value="{{$d.Q}}" placeholder="姓名、号码、单位、部门、邮箱" aria-label="搜索"></label>
+    <button type="submit" class="btn small" data-js-hide>搜索</button>
+    {{if $d.Q}}<a class="btn ghost small" href="/books/{{$id}}">{{icon "x"}}清除</a><span class="muted count">{{$d.Total}} 人</span>{{end}}
+  </form>
+  {{if $d.Entries}}
+  <div class="table-wrap"><table class="table fit-sm">
+    <thead><tr><th>姓名</th><th>办公电话</th><th class="hide-sm">手机</th><th class="hide-sm">单位</th><th class="hide-sm">部门</th><th class="hide-sm">职务</th><th class="hide-sm">邮箱</th>{{if $d.CanEdit}}<th class="actions-col"><span class="sr-only">操作</span></th>{{end}}</tr></thead>
+    <tbody>
+    {{range $d.Entries}}
+    <tr>
+      <td class="strong"><span class="fade">{{.Name}}</span></td>
+      <td><span class="fade">{{join .Phones "、"}}</span></td>
+      <td class="hide-sm"><span class="fade">{{join .Mobiles "、"}}</span></td>
+      <td class="hide-sm"><span class="fade">{{.Organization}}</span></td>
+      <td class="hide-sm"><span class="fade">{{.Department}}</span></td>
+      <td class="hide-sm"><span class="fade">{{.Title}}</span></td>
+      <td class="hide-sm muted"><span class="fade">{{.Email}}</span></td>
+      {{if $d.CanEdit}}
+      <td class="actions-col"><div class="row-actions">
+        <a class="btn" href="/books/{{$id}}/entries/{{.ID}}">编辑</a>
+        <form method="post" action="/books/{{$id}}/entries/{{.ID}}/delete" class="inline" data-confirm="确认删除联系人「{{.Name}}」？">
+          <button type="submit" class="btn danger" title="删除" aria-label="删除 {{.Name}}">{{icon "trash"}}</button>
+        </form>
+      </div></td>
+      {{end}}
+    </tr>
+    {{end}}
+    </tbody>
+  </table></div>
+  <div class="card-foot">
+    <span class="muted">第 {{$d.Page}} 页，共 {{$d.Total}} 人</span>
+    {{if or $d.Prev $d.Next}}<div class="actions">
+      {{with $d.Prev}}<a class="btn small" href="{{.}}">上一页</a>{{end}}
+      {{with $d.Next}}<a class="btn small" href="{{.}}">下一页</a>{{end}}
+    </div>{{end}}
+  </div>
+  {{else if $d.Q}}
+  <div class="empty-state">{{icon "search"}}<p>无匹配的联系人</p></div>
+  {{else}}
+  <div class="empty-state">{{icon "users"}}<p>暂无联系人</p>{{if $d.CanEdit}}<div class="actions"><a class="btn small" href="/books/{{$id}}/import">{{icon "upload"}}导入</a><a class="btn small primary" href="/books/{{$id}}/entries/new">{{icon "plus"}}添加联系人</a></div>{{end}}</div>
+  {{end}}
+</div>
+<section class="card conn-card">
+  <div class="card-head"><h2>{{icon "server"}}连接信息</h2><button type="button" class="btn small ghost" data-copy="#basedn" hidden>{{icon "copy"}}<span>复制 Base DN</span></button></div>
+  <div class="card-body">
+    <dl class="kv">
+      <dt>服务器</dt><dd class="mono fade">{{$d.Conn.Host}}:{{$d.Conn.Port}}</dd>
+      <dt>Base DN</dt><dd class="mono fade" id="basedn">{{$d.Conn.BaseDN}}</dd>
+      <dt>StartTLS</dt><dd>{{if $d.Conn.RequireTLS}}强制{{else}}支持{{end}}</dd>
+      {{if $d.Conn.LDAPS}}<dt>LDAPS</dt><dd>已开启</dd>{{end}}
+      <dt>匿名读取</dt><dd>{{if $d.Conn.Anonymous}}允许{{else}}不允许{{end}}</dd>
+    </dl>
+  </div>
+</section>
+{{end}}

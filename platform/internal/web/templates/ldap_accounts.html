@@ -1,0 +1,27 @@
+{{define "content"}}
+<header class="page-head">
+  <div><h1>LDAP 账号</h1></div>
+  <div class="page-actions"><a class="btn primary" href="/ldap-accounts/new">{{icon "plus"}}新建 LDAP 账号</a></div>
+</header>
+<div class="card table-card">
+  {{if .Data.Accounts}}
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>账号</th><th>区域</th><th class="hide-sm">可读取的通讯录</th><th>状态</th><th class="hide-sm">备注</th><th class="actions-col"><span class="sr-only">操作</span></th></tr></thead>
+    <tbody>
+    {{range .Data.Accounts}}
+    <tr>
+      <td class="strong mono"><a class="fade" href="/ldap-accounts/{{.ID}}">{{.Name}}</a></td>
+      <td>{{with .RegionID}}<span class="fade">{{index $.Data.Regions (deref .)}}</span>{{else}}<span class="tag">全局</span>{{end}}</td>
+      <td class="hide-sm">{{range .BookIDs}}<span class="tag"><span class="fade">{{index $.Data.Books .}}</span></span>{{else}}<span class="muted">无</span>{{end}}</td>
+      <td>{{if .Disabled}}<span class="status">已停用</span>{{else}}<span class="status ok">已启用</span>{{end}}</td>
+      <td class="muted hide-sm">{{.Note}}</td>
+      <td class="actions-col"><div class="row-actions"><a class="btn" href="/ldap-accounts/{{.ID}}">编辑</a></div></td>
+    </tr>
+    {{end}}
+    </tbody>
+  </table></div>
+  {{else}}
+  <div class="empty-state">{{icon "key-round"}}<p>暂无 LDAP 账号</p><div class="actions"><a class="btn small primary" href="/ldap-accounts/new">{{icon "plus"}}新建 LDAP 账号</a></div></div>
+  {{end}}
+</div>
+{{end}}

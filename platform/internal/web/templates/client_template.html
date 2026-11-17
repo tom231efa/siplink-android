@@ -1,0 +1,45 @@
+{{define "content"}}
+{{$d := .Data}}
+<div class="narrow-page">
+<header class="page-head"><div><h1 class="fade">{{.Title}}</h1>{{if not $d.New}}<p class="page-sub">已被 {{$d.Clients}} 个客户端使用</p>{{end}}</div></header>
+{{with $d.Error}}<div class="flash error" role="alert">{{.}}</div>{{end}}
+<form method="post" action="{{if $d.New}}/client-templates{{else}}/client-templates/{{$d.T.ID}}{{end}}" class="card form-card"
+  {{if gt $d.Clients 0}}data-confirm="此模板已被 {{$d.Clients}} 个客户端使用，保存后将于下次同步时生效。确认保存？"{{end}}>
+  <fieldset class="plain bare"{{if not $d.CanEdit}} disabled{{end}}>
+  <div class="card-body form">
+    <label>名称<input name="name" value="{{$d.T.Name}}" required maxlength="64"></label>
+    {{if or $d.New .Super}}
+    <label>区域
+      <select name="region">
+        {{if $d.Global}}<option value="0"{{if not $d.T.RegionID}} selected{{end}}>全局</option>{{end}}
+        {{range $d.Regions}}<option value="{{.ID}}"{{if eq .ID (deref $d.T.RegionID)}} selected{{end}}>{{.Name}}</option>{{end}}
+      </select>
+    </label>
+    {{end}}
+    <label>配置模板
+      <select name="config" required>
+        <option value="">请选择</option>
+        {{range $d.Configs}}<option value="{{.ID}}"{{if eq .ID $d.T.ConfigTemplateID}} selected{{end}}>{{.Name}}{{if not .RegionID}}（全局）{{end}}</option>{{end}}
+      </select>
+    </label>
+    <label>功能键模板
+      <select name="keys">
+        <option value="0">不下发功能键</option>
+        {{range $d.Keys}}<option value="{{.ID}}"{{if eq .ID (deref $d.T.KeyTemplateID)}} selected{{end}}>{{.Name}}{{if not .RegionID}}（全局）{{end}}</option>{{end}}
+      </select>
+    </label>
+    <label>备注<input name="note" value="{{$d.T.Note}}" maxlength="200"></label>
+  </div>
+  </fieldset>
+  <div class="card-foot form-actions"><a class="btn" href="/client-templates">{{if $d.CanEdit}}取消{{else}}返回{{end}}</a>{{if $d.CanEdit}}<button type="submit" class="btn primary">保存</button>{{end}}</div>
+</form>
+{{if and $d.CanEdit (not $d.New)}}
+<section class="card danger-card">
+  <form method="post" action="/client-templates/{{$d.T.ID}}/delete" class="card-body op" data-confirm="确认删除客户端模板「{{$d.T.Name}}」？">
+    <div><strong>删除模板</strong></div>
+    <button type="submit" class="btn danger">{{icon "trash"}}删除模板</button>
+  </form>
+</section>
+{{end}}
+</div>
+{{end}}

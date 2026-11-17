@@ -1,0 +1,28 @@
+{{define "content"}}
+<header class="page-head"><div><h1>审计日志</h1></div></header>
+<div class="card table-card">
+  <form method="get" action="/audit" class="filters card-toolbar" role="search">
+    <select name="admin" aria-label="管理员" class="compact" data-autosubmit>
+      <option value="0">全部管理员</option>
+      {{range .Data.Admins}}<option value="{{.ID}}"{{if eq .ID $.Data.Q.Admin}} selected{{end}}>{{.Username}}</option>{{end}}
+    </select>
+    <select name="region" aria-label="区域" class="compact" data-autosubmit>
+      <option value="0">全部区域</option>
+      {{range .Data.Regions}}<option value="{{.ID}}"{{if eq .ID $.Data.Q.Region}} selected{{end}}>{{.Name}}</option>{{end}}
+    </select>
+    <select name="object" aria-label="对象" class="compact" data-autosubmit>
+      <option value="">全部对象</option>
+      {{range $k, $v := objectLabels}}<option value="{{$k}}"{{if eq $k $.Data.Q.Object}} selected{{end}}>{{$v}}</option>{{end}}
+    </select>
+    <span class="date-range">{{icon "clock"}}<input type="date" name="from" value="{{.Data.Q.From}}" aria-label="开始日期" data-autosubmit><span class="muted">–</span><input type="date" name="to" value="{{.Data.Q.To}}" aria-label="结束日期" data-autosubmit></span>
+    <input type="hidden" name="tz" value="{{.Data.Q.TZ}}" data-tz>
+    <button type="submit" class="btn small" data-js-hide>筛选</button>
+    {{if or .Data.Q.Admin .Data.Q.Region .Data.Q.Object .Data.Q.From .Data.Q.To}}<a class="btn ghost small" href="/audit">{{icon "x"}}清除</a>{{end}}
+  </form>
+  {{template "audit-table" .Data}}
+  {{if or .Data.Prev .Data.Next}}<div class="card-foot"><span></span><div class="actions">
+    {{with .Data.Prev}}<a class="btn small" href="{{.}}">上一页</a>{{end}}
+    {{with .Data.Next}}<a class="btn small" href="{{.}}">下一页</a>{{end}}
+  </div></div>{{end}}
+</div>
+{{end}}

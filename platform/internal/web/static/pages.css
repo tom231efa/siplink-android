@@ -1,0 +1,192 @@
+/* SipLink management platform — layouts of particular pages. */
+
+.title-row { gap: 10px; }
+.danger-text { color: var(--danger-text); }
+input.short { max-width: 120px; flex: 0 1 120px !important; }
+.avatar.small { width: 26px; height: 26px; font-size: 11.5px; }
+
+/* ---- login ---- */
+.login { display: grid; gap: 20px; max-width: 400px; margin: 0 auto; }
+.login-brand { display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
+.login-brand .brand-mark { width: 32px; height: 32px; }
+.login-card { padding: 28px; border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); border: 0; }
+.login-card h1 { margin: 0 0 20px; font-size: 19px; }
+.login-card > p { margin: 4px 0 22px; font-size: 13.5px; }
+.login-card .form { gap: 14px; }
+.login-submit { height: 36px; margin-top: 6px; font-size: 14px; }
+.login-foot { text-align: center; color: var(--muted); font-size: 12px; margin: 0; }
+
+/* ---- dashboard: a bento of tiles and two lists ---- */
+.bento { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; }
+.bento > .tile-clients { grid-column: span 6; }
+.bento > .tile-grid { grid-column: span 6; }
+.bento > .attention { grid-column: span 5; }
+.bento > .activity { grid-column: span 7; }
+.bento > .attention, .bento > .activity { align-self: start; }
+.tile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.tile-grid > .tile:last-child:nth-child(odd) { grid-column: span 2; }
+.tile { display: flex; flex-direction: column; gap: 6px; padding: 16px 18px; color: var(--text); min-width: 0; }
+a.tile:hover { text-decoration: none; }
+.card-link:hover { border-color: var(--border-strong); box-shadow: var(--shadow-sm), 0 4px 12px -6px var(--shadow-c2); }
+.card-link:active { transform: translateY(1px); }
+.tile-head { display: flex; align-items: center; gap: 8px; margin-bottom: 2px; }
+.tile-head > .icon:last-child { margin-left: auto; color: var(--faint); transition: transform var(--t-fast) var(--ease), color var(--t-fast) var(--ease); }
+.card-link:hover .tile-head > .icon:last-child { transform: translateX(2px); color: var(--text-2); }
+.tile-icon {
+  width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; color: var(--text-2);
+  background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--border);
+}
+.tile-icon .icon { width: 14px; height: 14px; }
+.tile.is-warn .tile-icon { color: var(--warn-text); background: var(--warn-soft); box-shadow: none; }
+.tile-clients { gap: 10px; padding: 18px 20px; }
+.tile-figure { display: flex; align-items: baseline; gap: 8px; }
+.tile-clients .card-value { font-size: 34px; }
+.tile-unit { color: var(--text-2); font-weight: 500; }
+.tile-aside { margin-left: auto; color: var(--muted); font-size: 13px; }
+.stackbar { display: block; width: 100%; height: 8px; border-radius: 4px; overflow: hidden; margin-top: 6px; }
+.stackbar .track { fill: var(--surface-3); }
+.stackbar .seg { transform-origin: left; animation: grow 480ms var(--ease) both; }
+.stackbar .seg.ok { fill: var(--ok); }
+.stackbar .seg.warn { fill: var(--warn); }
+.stackbar .seg.idle { fill: light-dark(oklch(0.80 0.01 255), oklch(0.45 0.01 260)); }
+.dot.idle { background: light-dark(oklch(0.80 0.01 255), oklch(0.45 0.01 260)); }
+.stackbar + .legend { margin-top: 6px; }
+.legend { list-style: none; margin: 0; padding: 0; display: grid; font-size: 13px; color: var(--text-2); }
+.legend li { display: flex; align-items: center; gap: 8px; padding: 7px 0; }
+.legend li + li { border-top: 1px dashed var(--border); }
+.legend strong { margin-left: auto; color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.attention-list, .activity-list { list-style: none; margin: 0; padding: 4px 0; }
+.attention-list li { display: flex; gap: 12px; align-items: baseline; padding: 10px 20px; }
+.attention-list li + li { border-top: 1px solid var(--border); }
+.attention-list .dot { transform: translateY(-1px); }
+.attention-list li > div { min-width: 0; }
+.attention-list a { font-weight: 500; color: var(--text); }
+.attention-list a:hover { color: var(--link); }
+.sub { display: block; color: var(--muted); font-size: 12.5px; line-height: 1.5; margin: 0; }
+.empty-state.compact { padding: 28px 20px; }
+.empty-state.compact > .icon { width: 34px; height: 34px; padding: 8px; }
+.attention .empty-state > .icon { color: var(--ok-text); background: var(--ok-soft); box-shadow: none; }
+.activity-list li { display: flex; gap: 12px; padding: 10px 20px; align-items: flex-start; }
+.activity-list li + li { border-top: 1px solid var(--border); }
+.activity-list .avatar { margin-top: 1px; color: var(--text-2); background: var(--surface-3); }
+.activity-text { min-width: 0; }
+.activity-text p { margin: 0; }
+.activity-text strong { font-weight: 500; }
+.activity-action { color: var(--text-2); }
+
+/* ---- lists with a toolbar inside the card ---- */
+.card-toolbar { margin: 0; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.bulkbar {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 16px; border-top: 1px solid var(--border);
+}
+.bulk-count { font-size: 13px; color: var(--muted); margin-right: 4px; }
+.js .bulkbar {
+  position: sticky; bottom: 16px; z-index: 15; width: fit-content; max-width: calc(100% - 32px); margin: 0 auto 12px;
+  border: 0; border-radius: 12px; padding: 6px 6px 6px 14px; background: var(--surface); box-shadow: var(--shadow-lg);
+  animation: rise var(--t) var(--ease) both;
+}
+.js .bulkbar .bulk-count { color: var(--text); font-weight: 500; }
+.js .bulkbar[data-idle] { display: none; }
+
+/* ---- client detail ---- */
+.detail-grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
+.detail-main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; min-width: 0; }
+.detail-main > .card + .card { margin-top: 0; }
+.detail-aside { position: sticky; top: 76px; display: grid; gap: 20px; }
+.enroll { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 28px; padding: 24px; align-items: center; }
+.qr-frame {
+  padding: 12px; border-radius: 16px; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--border);
+}
+.qr-frame .qr { width: 208px; height: 208px; box-shadow: 0 1px 2px oklch(0 0 0 / .08), 0 6px 18px -8px oklch(0 0 0 / .25); animation: pop var(--t) var(--ease) 60ms both; }
+.enroll-text { display: grid; gap: 12px; min-width: 0; }
+.path-line { margin: 0; font-weight: 500; color: var(--text); letter-spacing: .01em; }
+.kv.compact { gap: 4px 16px; font-size: 13px; }
+.url-box {
+  display: flex; align-items: center; gap: 8px; padding: 4px 4px 4px 10px; min-width: 0;
+  border-radius: var(--radius-sm); background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--border);
+}
+.url-box .mono { flex: 1; font-size: 12px; color: var(--text-2); }
+.inline-form { display: flex; gap: 8px; flex-wrap: wrap; }
+.inline-form input { max-width: 260px; }
+.op-list { display: grid; }
+.op { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.op-list .op { flex-direction: column; align-items: stretch; padding: 14px 20px; }
+.op-list .op + .op { border-top: 1px solid var(--border); }
+.op strong { font-weight: 500; }
+.op .hint { margin: 2px 0 0; }
+.op-list .op .btn { align-self: flex-start; }
+.danger-card .op strong { color: var(--danger-text); }
+.danger-card .op-list .op { flex-direction: row; align-items: center; }
+.danger-card .op-list .op .btn { align-self: center; }
+
+/* ---- configuration template: section list on the left, the form on the right ---- */
+.config-layout { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 24px; align-items: start; }
+.subnav { position: sticky; top: 76px; display: grid; gap: 1px; }
+.subnav a {
+  display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px; border-radius: var(--radius-sm);
+  color: var(--text-2); font-size: 13.5px; white-space: nowrap;
+}
+.subnav a .icon { color: var(--muted); }
+.subnav a:hover { background: var(--surface-3); color: var(--text); text-decoration: none; }
+.subnav a[aria-current="page"] { background: var(--surface); color: var(--text); font-weight: 550; box-shadow: var(--shadow-sm), 0 0 0 1px var(--border); }
+.subnav a[aria-current="page"] .icon { color: var(--accent); }
+.config-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; min-width: 0; }
+.config-body > *, .config-body form > fieldset > * { animation: settle var(--t) var(--ease) both; }
+.config-body .card + .card { margin-top: 0; }
+.config-body fieldset.bare { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
+.config-body .card-head h2 + .hint { margin-top: 2px; }
+.card-body.settings { padding-top: 8px; padding-bottom: 8px; }
+.card-body.form { max-width: none; }
+.codes { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.add-codec { justify-content: flex-start; align-items: flex-end; gap: 12px; }
+.add-codec label { display: grid; gap: 6px; font-size: 12.5px; font-weight: 500; color: var(--text-2); }
+.add-codec input { width: 220px; }
+.codec-table { border-top: 1px solid var(--border); }
+.codec-table > .table { min-width: 0; }
+.ca-upload { display: grid; max-width: none; gap: 12px; }
+.savebar {
+  position: sticky; bottom: 16px; z-index: 10; display: flex; align-items: center; justify-content: flex-end; gap: 12px;
+  padding: 8px 8px 8px 16px; border-radius: 12px; background: var(--overlay);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); box-shadow: var(--shadow-lg);
+}
+.savebar .hint { margin-right: auto; }
+
+/* ---- print view: QR cards on A4 ---- */
+.print-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.print-card {
+  border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; text-align: center;
+  break-inside: avoid; background: #fff; color: #000;
+}
+.print-card .qr { width: 100%; height: auto; aspect-ratio: 1; padding: 0; box-shadow: none; }
+.print-card strong { display: block; font-size: 15px; }
+.print-card p { font-size: 12px; margin: 4px 0 0; }
+
+@media (max-width: 1100px) {
+  .bento > .tile-clients, .bento > .tile-grid, .bento > .attention, .bento > .activity { grid-column: span 12; }
+  .detail-grid { grid-template-columns: minmax(0, 1fr); }
+  .detail-aside { position: static; }
+}
+@media (max-width: 760px) {
+  .bento { gap: 12px; }
+  .tile-grid { gap: 12px; }
+  .tile { padding: 14px; }
+  .tile-clients .card-value { font-size: 30px; }
+  .config-layout { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .subnav {
+    position: static; display: flex; overflow-x: auto; gap: 4px; margin: 0 -16px; padding: 2px 16px 6px;
+    scrollbar-width: none; scroll-snap-type: x proximity;
+  }
+  .subnav a { scroll-snap-align: start; height: 32px; }
+  .enroll { grid-template-columns: 1fr; justify-items: center; padding: 20px 16px; gap: 20px; }
+  .enroll-text { width: 100%; }
+  .codes { grid-template-columns: 1fr 1fr; }
+  .savebar .hint { display: none; }
+  .attention-list li, .activity-list li { padding-left: 16px; padding-right: 16px; }
+  .print-grid { grid-template-columns: repeat(2, 1fr); }
+  .js .bulkbar { max-width: calc(100% - 16px); }
+}
+@media print {
+  .print-grid { grid-template-columns: repeat(3, 1fr); }
+  .print-card { border-color: #ccc; }
+}

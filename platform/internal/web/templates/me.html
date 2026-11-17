@@ -1,0 +1,15 @@
+{{define "content"}}
+<div class="narrow-page">
+<header class="page-head"><div><h1>修改密码</h1></div></header>
+{{if .Data.Forced}}<div class="flash warn">首次登录或密码重置后，须设置新密码方可继续使用。</div>{{end}}
+{{with .Data.Error}}<div class="flash error" role="alert">{{.}}</div>{{end}}
+<form method="post" action="/me" class="card form-card">
+  <div class="card-body form">
+    <label>当前密码<input name="current" type="password" autocomplete="current-password" required></label>
+    <label>新密码<input name="password" type="password" autocomplete="new-password" minlength="10" required placeholder="至少 10 个字符"></label>
+    <label>再次输入新密码<input name="password2" type="password" autocomplete="new-password" minlength="10" required></label>
+  </div>
+  <div class="card-foot form-actions"><span class="hint">保存后，其他已登录的会话将退出。</span><button type="submit" class="btn primary">保存</button></div>
+</form>
+</div>
+{{end}}
