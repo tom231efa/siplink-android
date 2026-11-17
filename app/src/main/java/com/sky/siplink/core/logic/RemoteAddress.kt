@@ -23,9 +23,9 @@ object RemoteAddress {
     private val token = Regex("^[A-Za-z0-9_-]+$")
 
     enum class Error(val message: String) {
-        NOT_AN_ADDRESS("不是有效的地址"),
+        NOT_AN_ADDRESS("无效的地址"),
         SCHEME("地址须以 https:// 开头"),
-        NOT_ENROLLMENT("不是远程配置地址"),
+        NOT_ENROLLMENT("非远程配置地址"),
         PIN_INVALID("地址中的证书指纹无效"),
     }
 

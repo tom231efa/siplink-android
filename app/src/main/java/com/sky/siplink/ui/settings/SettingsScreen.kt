@@ -86,13 +86,6 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             SectionCard(title = "账号") {
-                // Like the profiles of a proxy client: scanned or typed in, then in force until it is deleted here.
-                NavRow(
-                    title = "远程配置",
-                    subtitle = if (remote.enrolled) remote.clientName.ifEmpty { remote.platformName.ifEmpty { remote.host } } else null,
-                    icon = Icons.Rounded.CloudSync,
-                    onClick = onOpenRemoteConfig,
-                )
                 NavRow(
                     title = "SIP 账号",
                     // Registered / all.
@@ -118,9 +111,9 @@ fun SettingsScreen(
                     checked = settings.videoCalls,
                     onCheckedChange = { value -> engine.updateSettings { it.copy(videoCalls = value) } },
                 )
-                NavRow(title = "高级设置", icon = Icons.Rounded.Tune, onClick = onOpenAdvanced)
                 NavRow(title = "功能码", icon = Icons.Rounded.Dialpad, onClick = onOpenFeatureCodes)
                 NavRow(title = if (settings.videoCalls) "编码" else "音频编码", icon = Icons.Rounded.GraphicEq, onClick = onOpenCodecs)
+                NavRow(title = "高级设置", icon = Icons.Rounded.Tune, onClick = onOpenAdvanced)
             }
 
             SectionCard(title = "对讲来电") {
@@ -220,6 +213,16 @@ fun SettingsScreen(
                         )
                     }
                 }
+            }
+
+            SectionCard(title = null) {
+                // Like the profiles of a proxy client: scanned or typed in, then in force until it is deleted here.
+                NavRow(
+                    title = "远程配置",
+                    subtitle = if (remote.enrolled) remote.clientName.ifEmpty { remote.platformName.ifEmpty { remote.host } } else null,
+                    icon = Icons.Rounded.CloudSync,
+                    onClick = onOpenRemoteConfig,
+                )
             }
 
             AboutSection()

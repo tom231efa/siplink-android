@@ -23,6 +23,9 @@ import java.util.concurrent.Executors
  * [ShortcutRules.MAX_OWN] keys of their own ([Shortcut.own]), which stay theirs to change and to
  * remove. Those are kept in a file of their own beside [file], and go when the managed
  * configuration goes ([dropOwn]).
+ *
+ * The order of [shortcuts] is the order of every list of keys, and is stored with them: the
+ * user's own keys first, then those that were handed out ([ShortcutRules.ownFirst]).
  */
 class ShortcutManager(private val file: File, private val lock: ConfigLock) {
     private val state = MutableStateFlow<List<Shortcut>>(emptyList())
@@ -46,7 +49,7 @@ class ShortcutManager(private val file: File, private val lock: ConfigLock) {
             val own = read(ownFile, firstId = stored.size + 1L).map { it.copy(own = true) }
             main.post {
                 val kept = if (lock.managed.value) own else emptyList()
-                state.value = stored + kept
+                state.value = ShortcutRules.ownFirst(stored + kept)
                 nextId = stored.size + own.size + 1L
                 ready.value = true
                 // Keys of the user's own that outlived their managed configuration go now.
@@ -107,6 +110,19 @@ class ShortcutManager(private val file: File, private val lock: ConfigLock) {
     }
 
     /**
+     * Moves the key [movedId] to the place of the key [targetId] ([ShortcutRules.move]). While
+     * the configuration is managed only the user's own keys move, and only among themselves.
+     *
+     * @return false when nothing moved
+     */
+    fun move(movedId: Long, targetId: Long): Boolean {
+        if (!ready.value) return false
+        val moved = ShortcutRules.move(state.value, movedId, targetId, ownOnly = lock.refuses) ?: return false
+        publish(moved)
+        return true
+    }
+
+    /**
      * Gives every key of [category] the category [renamed]; an empty one ungroups them. While
      * the configuration is managed that takes a category of nothing but the user's own keys.
      *
@@ -131,7 +147,7 @@ class ShortcutManager(private val file: File, private val lock: ConfigLock) {
 
     /**
      * Replaces the keys that were handed out by [keys], in their order, and keeps every key of
-     * the user's own ([Shortcut.own]) behind them: for the remote side. Nothing is written when
+     * the user's own ([Shortcut.own]) ahead of them: for the remote side. Nothing is written when
      * the handed-out keys are [keys] already.
      *
      * @return false when nothing was replaced: the keys are not read yet, or the configuration is
@@ -144,7 +160,7 @@ class ShortcutManager(private val file: File, private val lock: ConfigLock) {
         if (handedOut.map { it.copy(id = 0) } == wanted) return true
         val replaced = wanted.mapIndexed { index, key -> key.copy(id = nextId + index) }
         nextId += replaced.size
-        publish(replaced + own)
+        publish(own + replaced)
         return true
     }
 
@@ -177,15 +193,18 @@ class ShortcutManager(private val file: File, private val lock: ConfigLock) {
     /** Every key as CSV text, the format [import] reads. */
     fun export(): String = ShortcutRules.encode(state.value)
 
+    /** Makes [list] the keys, in the order of [ShortcutRules.ownFirst], and stores the file of each group that changed. */
     private fun publish(list: List<Shortcut>) {
         if (!ready.value) return
-        val before = state.value
-        state.value = list
-        val (own, handedOut) = list.partition { it.own }
-        val ownChanged = own != before.filter { it.own }
+        val (ownBefore, handedOutBefore) = state.value.partition { it.own }
+        val ordered = ShortcutRules.ownFirst(list)
+        state.value = ordered
+        val (own, handedOut) = ordered.partition { it.own }
+        val ownChanged = own != ownBefore
+        val handedOutChanged = handedOut != handedOutBefore
         io.execute {
             runCatching {
-                write(file, handedOut)
+                if (handedOutChanged) write(file, handedOut)
                 if (ownChanged) {
                     if (own.isEmpty()) ownFile.delete() else write(ownFile, own)
                 }

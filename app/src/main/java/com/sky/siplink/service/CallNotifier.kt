@@ -34,7 +34,7 @@ class CallNotifier(private val context: Context) {
             .setSmallIcon(R.drawable.ic_stat_call)
             .setContentTitle("SipLink 运行中")
             .setContentText(
-                if (enabled == 0) "没有启用的 SIP 账号" else "$registered / $enabled 个账号已注册",
+                if (enabled == 0) "无已启用的 SIP 账号" else "$registered / $enabled 个账号已注册",
             )
             .setContentIntent(activity(MainActivity::class.java, null, REQUEST_MAIN))
             .setCategory(NotificationCompat.CATEGORY_SERVICE)

@@ -90,7 +90,7 @@ internal object RemoteConfigClient {
             val status = connection.responseCode
             val answer = if (status == HttpURLConnection.HTTP_OK) {
                 val read = connection.inputStream.use { it.readAtMost(MAX_ANSWER_BYTES + 1) }
-                if (read.size > MAX_ANSWER_BYTES) throw Failure("平台的回答过长")
+                if (read.size > MAX_ANSWER_BYTES) throw Failure("平台响应过长")
                 read.toString(Charsets.UTF_8)
             } else {
                 ""

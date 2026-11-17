@@ -77,7 +77,7 @@ internal class RemoteApplier(private val engine: SipEngine) {
         if (codecs == null) {
             engine.codecs.restoreDefaults()
         } else if (!engine.codecs.apply(codecs.audio, codecs.video)) {
-            errors += "没有可用的音频编码，已恢复默认编码"
+            errors += "无可用的音频编码，已恢复默认编码"
         }
 
         val directories = engine.directory
@@ -88,7 +88,7 @@ internal class RemoteApplier(private val engine: SipEngine) {
             RemotePlan.directoryPasswords(document.directories, directoryIds),
         )
 
-        if (!engine.shortcuts.replaceHandedOut(document.shortcuts)) errors += "快捷键尚未读取，未能更新"
+        if (!engine.shortcuts.replaceHandedOut(document.shortcuts)) errors += "快捷键尚未加载，未能更新"
         return Outcome(accountIds, directoryIds, errors, trustChanged)
     }
 

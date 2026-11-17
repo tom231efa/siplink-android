@@ -287,7 +287,7 @@ private fun AccountChip(account: SipAccount?, canAdd: Boolean, onClick: () -> Un
             if (account == null) {
                 Icon(if (canAdd) Icons.Rounded.PersonAdd else Icons.Rounded.PersonOff, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text(if (canAdd) "添加 SIP 账号" else "没有 SIP 账号", style = MaterialTheme.typography.labelLarge)
+                Text(if (canAdd) "添加 SIP 账号" else "暂无 SIP 账号", style = MaterialTheme.typography.labelLarge)
                 Spacer(Modifier.width(8.dp))
             } else {
                 StatusDot(account.state)

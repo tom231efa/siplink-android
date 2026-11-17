@@ -264,4 +264,69 @@ class ShortcutRulesTest {
         assertEquals(ShortcutRules.encode(listOf(own.copy(own = false))), ShortcutRules.encode(listOf(own)))
         assertFalse(ShortcutRules.decode(ShortcutRules.encode(listOf(own))).shortcuts.single().own)
     }
+
+    @Test
+    fun `the user's own keys come ahead of those that were handed out`() {
+        val handedOut = listOf(key(label = "A", id = 1), key(label = "B", id = 2))
+        val own = listOf(key(label = "x", id = 3).copy(own = true), key(label = "y", id = 4).copy(own = true))
+        val mixed = listOf(handedOut[0], own[0], handedOut[1], own[1])
+        assertEquals(listOf("x", "y", "A", "B"), ShortcutRules.ownFirst(mixed).map { it.label })
+        // Without keys of the user's own the list is taken as it is.
+        assertTrue(ShortcutRules.ownFirst(handedOut) === handedOut)
+    }
+
+    @Test
+    fun `a moved key takes the place of the key it was moved to`() {
+        val all = (1L..5L).map { key(label = "k$it", id = it) }
+        fun order(moved: List<Shortcut>?) = moved?.map { it.id }
+        assertEquals(listOf(2L, 3L, 4L, 1L, 5L), order(ShortcutRules.move(all, 1, 4, ownOnly = false)))
+        assertEquals(listOf(4L, 1L, 2L, 3L, 5L), order(ShortcutRules.move(all, 4, 1, ownOnly = false)))
+        assertEquals(listOf(1L, 2L, 3L, 5L, 4L), order(ShortcutRules.move(all, 4, 5, ownOnly = false)))
+        // Nothing moves onto itself, or from or to a key that is not there.
+        assertNull(ShortcutRules.move(all, 2, 2, ownOnly = false))
+        assertNull(ShortcutRules.move(all, 9, 2, ownOnly = false))
+        assertNull(ShortcutRules.move(all, 2, 9, ownOnly = false))
+    }
+
+    @Test
+    fun `under a managed configuration only the user's own keys move, among themselves`() {
+        val all = listOf(
+            key(label = "x", id = 3).copy(own = true),
+            key(label = "y", id = 4).copy(own = true),
+            key(label = "A", id = 1),
+            key(label = "B", id = 2),
+        )
+        assertEquals(listOf("y", "x", "A", "B"), ShortcutRules.move(all, 3, 4, ownOnly = true)?.map { it.label })
+        assertNull(ShortcutRules.move(all, 4, 1, ownOnly = true))
+        assertNull(ShortcutRules.move(all, 1, 3, ownOnly = true))
+        assertNull(ShortcutRules.move(all, 1, 2, ownOnly = true))
+        assertFalse(ShortcutRules.canMove(all[2], all[3], ownOnly = true))
+        assertTrue(ShortcutRules.canMove(all[2], all[0], ownOnly = false))
+    }
+
+    @Test
+    fun `a drag among the keys of a category lands in the same place among all of them`() {
+        // Keys 2, 4 and 6 are in the category shown; 1, 3 and 5 are not.
+        val all = (1L..6L).map { key(label = "k$it", category = if (it % 2 == 0L) "门禁" else "", id = it) }
+        val shown = ShortcutRules.filter(all, "", "门禁").map { it.id }
+
+        // Key 2 dragged to the end of what is shown.
+        val down = listOf(4L, 6L, 2L)
+        val downTarget = ShortcutRules.dropTarget(shown, down, 2)
+        assertEquals(6L, downTarget)
+        val movedDown = ShortcutRules.move(all, 2, downTarget!!, ownOnly = false)!!
+        assertEquals(listOf(1L, 3L, 4L, 5L, 6L, 2L), movedDown.map { it.id })
+        assertEquals(down, ShortcutRules.filter(movedDown, "", "门禁").map { it.id })
+
+        // Key 6 dragged to the front.
+        val up = listOf(6L, 2L, 4L)
+        val upTarget = ShortcutRules.dropTarget(shown, up, 6)
+        assertEquals(2L, upTarget)
+        val movedUp = ShortcutRules.move(all, 6, upTarget!!, ownOnly = false)!!
+        assertEquals(listOf(1L, 6L, 2L, 3L, 4L, 5L), movedUp.map { it.id })
+        assertEquals(up, ShortcutRules.filter(movedUp, "", "门禁").map { it.id })
+
+        // Dropped where it was picked up.
+        assertNull(ShortcutRules.dropTarget(shown, shown, 4))
+    }
 }

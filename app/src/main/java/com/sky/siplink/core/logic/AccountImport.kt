@@ -36,7 +36,7 @@ object AccountImport {
                 fields == null -> "引号未闭合"
                 fields.size < 3 -> "字段不足，格式：$FORMAT_HINT"
                 AccountRules.parseTransport(fields.getOrElse(3) { "" }) == null ->
-                    "未知的传输协议“${fields[3]}”，可用 udp / tcp / tls"
+                    "未知的传输协议“${fields[3]}”，可选 udp / tcp / tls"
                 else -> null
             }
             if (fields == null || error != null) {

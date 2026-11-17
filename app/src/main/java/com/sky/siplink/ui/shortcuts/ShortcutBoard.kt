@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -45,6 +46,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sky.siplink.core.logic.ShortcutRules
 import com.sky.siplink.core.model.Shortcut
@@ -60,6 +62,9 @@ import com.sky.siplink.ui.components.pressScale
  * @param all every key, not empty
  * @param category the chosen category, null for all of them
  * @param editing marks the keys as editable; what a tap does is up to [onKey]
+ * @param onMove where the keys can be put in order: in edit mode, while nothing is searched for,
+ *   a key picked up by a long press and dropped on another one is to take its place
+ *   ([ShortcutRules.move]). Under a managed configuration only the user's own keys move.
  */
 @Composable
 internal fun ShortcutBoard(
@@ -69,6 +74,7 @@ internal fun ShortcutBoard(
     editing: Boolean,
     onKey: (Shortcut) -> Unit,
     modifier: Modifier = Modifier,
+    onMove: ((movedId: Long, targetId: Long) -> Unit)? = null,
 ) {
     val engine = LocalContext.current.engine
     val settings by engine.settings.settings.collectAsStateWithLifecycle()
@@ -82,6 +88,28 @@ internal fun ShortcutBoard(
     LaunchedEffect(categories) {
         if (category != null && categories.none { it.first == category }) onCategoryChange(null)
     }
+
+    // While a key is dragged the board shows the order it would have; it is stored once the key is dropped.
+    var dragOrder by remember(shown) { mutableStateOf<List<Shortcut>?>(null) }
+    val order = dragOrder ?: shown
+    val grid = rememberLazyGridState()
+    val keyShape = MaterialTheme.shapes.medium
+    val reorder = rememberGridReorder(
+        grid = grid,
+        canPick = { key -> !managed || order.any { it.id == key && it.own } },
+        onHover = { moved, target ->
+            val reordered = ShortcutRules.move(order, moved as Long, target as Long, ownOnly = managed)
+            if (reordered != null) dragOrder = reordered
+            reordered != null
+        },
+        onDrop = { moved ->
+            dragOrder?.let { after ->
+                ShortcutRules.dropTarget(shown.map { it.id }, after.map { it.id }, moved as Long)
+                    ?.let { target -> onMove?.invoke(moved, target) }
+            }
+            dragOrder = null
+        },
+    )
 
     Column(modifier) {
         OutlinedTextField(
@@ -128,19 +156,25 @@ internal fun ShortcutBoard(
 
         if (shown.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("没有匹配的快捷键", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("无匹配的快捷键", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = 96.dp),
+                state = grid,
                 modifier = Modifier
                     .fillMaxSize()
-                    .navigationBarsPadding(),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
+                    .navigationBarsPadding()
+                    // Outside the content padding: dragging finds a key by its place counted from the side of the grid.
+                    .padding(horizontal = 16.dp)
+                    .reorderable(reorder, enabled = editing && onMove != null && query.isBlank()),
+                contentPadding = PaddingValues(bottom = 24.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                items(shown, key = { it.id }, contentType = { "key" }) { shortcut ->
+                items(order, key = { it.id }, contentType = { "key" }) { shortcut ->
+                    val dragged = reorder.draggedKey == shortcut.id
+                    val released = reorder.releasedKey == shortcut.id
                     ShortcutKey(
                         shortcut = shortcut,
                         editing = editing,
@@ -152,8 +186,27 @@ internal fun ShortcutBoard(
                         // Under a managed configuration forwarding belongs to it, and in edit mode so does
                         // every key that is not the user's own: such a key is grey, and a tap says why.
                         dimmed = managed && (shortcut.action == ShortcutAction.FORWARD || (editing && !shortcut.own)),
-                        onClick = { onKey(shortcut) },
-                        modifier = Modifier.animateItem(),
+                        // A key that was picked up is not opened when it is let go.
+                        onClick = { if (!dragged) onKey(shortcut) },
+                        modifier = when {
+                            dragged -> Modifier
+                                .zIndex(1f)
+                                .graphicsLayer {
+                                    val offset = reorder.draggedOffset
+                                    translationX = offset.x
+                                    translationY = offset.y
+                                    shadowElevation = 8.dp.toPx()
+                                    shape = keyShape
+                                }
+                            released -> Modifier
+                                .zIndex(1f)
+                                .graphicsLayer {
+                                    val offset = reorder.released.value
+                                    translationX = offset.x
+                                    translationY = offset.y
+                                }
+                            else -> Modifier.animateItem()
+                        },
                     )
                 }
             }

@@ -181,7 +181,7 @@ fun AccountsScreen(onBack: () -> Unit, onAdd: () -> Unit, onEdit: (String) -> Un
             if (accounts.isEmpty()) {
                 EmptyState(
                     icon = Icons.Rounded.ManageAccounts,
-                    title = if (locked) "没有 SIP 账号" else "添加第一个 SIP 账号",
+                    title = "暂无 SIP 账号",
                     modifier = Modifier.fillMaxSize(),
                     action = if (locked) null else ({ Button(onClick = ::add) { Text("添加账号") } }),
                 )
@@ -195,7 +195,7 @@ fun AccountsScreen(onBack: () -> Unit, onAdd: () -> Unit, onEdit: (String) -> Un
                     if (filtered.isEmpty()) {
                         item(key = "noMatch") {
                             Text(
-                                "没有匹配的账号",
+                                "无匹配的账号",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = TextAlign.Center,

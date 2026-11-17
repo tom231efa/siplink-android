@@ -74,7 +74,7 @@ fun RemoteConfigScreen(onBack: () -> Unit) {
 
     // The camera is asked for only here, when the user wants to scan; typing works without it.
     val camera = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) scanning = true else messenger("未获得相机权限，可改用输入地址")
+        if (granted) scanning = true else messenger("未获得相机权限，请改为输入地址")
     }
     val scan = {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
@@ -119,8 +119,8 @@ fun RemoteConfigScreen(onBack: () -> Unit) {
             title = { Text("载入远程配置？") },
             text = {
                 Text(
-                    "来自 ${enrollment.host}。载入后，本机的账号、通讯录、证书、编码和快捷键等配置将被远程配置替换，" +
-                        "并且不能在本机修改。通话记录、免打扰和外观设置不受影响。",
+                    "来源：${enrollment.host}。载入后，本机的账号、通讯录、证书、编码和快捷键等配置将被远程配置替换，" +
+                        "且不可在本机修改。通话记录、免打扰和外观设置不受影响。",
                 )
             },
             confirmButton = {
@@ -139,8 +139,8 @@ fun RemoteConfigScreen(onBack: () -> Unit) {
             title = { Text("删除远程配置？") },
             text = {
                 Text(
-                    "将通知平台解除绑定，并删除远程下发的账号、通讯录、证书和快捷键，以及自建的快捷键。" +
-                        "通话记录和外观设置保留。",
+                    "将通知平台解除绑定，并删除远程下发的账号、通讯录、证书、快捷键及自建快捷键。" +
+                        "通话记录和外观设置将保留。",
                 )
             },
             confirmButton = {

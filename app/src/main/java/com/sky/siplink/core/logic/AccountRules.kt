@@ -31,7 +31,7 @@ object AccountRules {
         DUPLICATE("", "账号已存在"),
 
         /** No password is saved to go along, only a digest that belongs to the user name and domain it was made for. */
-        PASSWORD_REQUIRED("密码", "必填（已改用户名、域名或端口）"),
+        PASSWORD_REQUIRED("密码", "必填（用户名、域名或端口已更改）"),
         ADDRESS_REJECTED("", "地址无法解析"),
         NOT_FOUND("", "账号不存在"),
 

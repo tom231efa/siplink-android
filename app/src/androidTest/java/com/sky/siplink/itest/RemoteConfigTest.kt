@@ -200,7 +200,8 @@ class RemoteConfigTest : ScreenTestBase(PICTURES) {
         assertEquals("The account was made anew instead of changed", account.id, renamed.id)
         assertEquals(RENAMED_LINE, renamed.name)
         assertEquals(directory.id, engine.directory.directories.value.single().id)
-        assertEquals(listOf(SPEED_KEY, SECOND_KEY, OWN_KEY), engine.shortcuts.shortcuts.value.map { it.label })
+        // The user's own key stays ahead of those the platform hands out.
+        assertEquals(listOf(OWN_KEY, SPEED_KEY, SECOND_KEY), engine.shortcuts.shortcuts.value.map { it.label })
         assertTrue("The user's own key is gone", engine.shortcuts.shortcuts.value.single { it.label == OWN_KEY }.own)
         assertEquals(ThemeMode.DARK, engine.settings.current.themeMode)
         awaitRegistered(APP)

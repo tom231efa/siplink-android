@@ -13,6 +13,7 @@ import com.sky.siplink.core.model.ShortcutAction
 import com.sky.siplink.core.model.ShortcutIcon
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -88,6 +89,22 @@ class ShortcutStoreTest {
             ),
             keys(third),
         )
+    }
+
+    @Test
+    fun keysKeepTheOrderTheyWereMovedInto() {
+        val first = open()
+        onMain { listOf("一", "二", "三", "四").forEachIndexed { index, label -> assertTrue(first.add(Shortcut(0, label, "${1001 + index}")).isEmpty()) } }
+        fun labels(manager: ShortcutManager) = manager.shortcuts.value.map { it.label }
+        val ids = first.shortcuts.value.map { it.id }
+        assertTrue(onMain { first.move(ids[3], ids[0]) })
+        assertTrue(onMain { first.move(ids[1], ids[2]) })
+        assertFalse(onMain { first.move(ids[2], ids[2]) })
+        assertEquals(listOf("四", "一", "三", "二"), labels(first))
+        await("the new order in the file") { file.isFile && file.readLines().map { it.substringBefore(',') } == listOf("四", "一", "三", "二") }
+
+        val second = open()
+        assertEquals(keys(first), keys(second))
     }
 
     @Test

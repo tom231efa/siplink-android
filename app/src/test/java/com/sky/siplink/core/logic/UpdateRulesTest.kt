@@ -131,10 +131,10 @@ class UpdateRulesTest {
     @Test
     fun aFailureIsNamedShortly() {
         assertEquals("无法连接 GitHub", UpdateRules.failureText(null))
-        assertEquals("检查失败：无法读取 GitHub 的回复", UpdateRules.failureText(200))
+        assertEquals("检查失败：无法解析 GitHub 的响应", UpdateRules.failureText(200))
         assertEquals("检查失败：尚无发布版本", UpdateRules.failureText(404))
-        assertEquals("检查失败：GitHub 暂时拒绝了请求", UpdateRules.failureText(403))
-        assertEquals("检查失败：GitHub 暂时拒绝了请求", UpdateRules.failureText(429))
+        assertEquals("检查失败：GitHub 暂时拒绝请求", UpdateRules.failureText(403))
+        assertEquals("检查失败：GitHub 暂时拒绝请求", UpdateRules.failureText(429))
         assertEquals("检查失败（HTTP 502）", UpdateRules.failureText(502))
     }
 }

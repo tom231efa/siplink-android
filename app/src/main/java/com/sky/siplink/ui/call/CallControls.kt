@@ -119,7 +119,7 @@ internal fun ActiveControls(
             ) {
                 Icon(Icons.AutoMirrored.Rounded.PhoneForwarded, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.size(8.dp))
-                Text("完成转接：把 ${info.heldCall?.name.orEmpty()} 转给对方")
+                Text("完成转接：将 ${info.heldCall?.name.orEmpty()} 转给对方")
             }
         }
 

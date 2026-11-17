@@ -213,7 +213,7 @@ fun LdapEditScreen(directoryId: String?, onBack: () -> Unit, onOpenTls: () -> Un
                             value = password,
                             onValueChange = { password = it },
                             label = "密码",
-                            placeholder = if (stored != null && stored.bindDn.isNotEmpty() && !locked) "留空则保持已保存的密码" else null,
+                            placeholder = if (stored != null && stored.bindDn.isNotEmpty() && !locked) "留空则保留已保存的密码" else null,
                             password = true,
                             onUnlock = if (stored != null && passwordsProtected && !passwordOpened) ({ askConfigPassword = true }) else null,
                         )
@@ -333,7 +333,7 @@ fun LdapEditScreen(directoryId: String?, onBack: () -> Unit, onOpenTls: () -> Un
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
             title = { Text("删除“${stored.title}”？") },
-            text = { Text("其设置和本机缓存的联系人都会被移除。") },
+            text = { Text("其设置及本机缓存的联系人将被移除。") },
             confirmButton = {
                 TextButton(onClick = {
                     manager.remove(stored.id)

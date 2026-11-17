@@ -53,7 +53,7 @@ fun ConfigPasswordDialog(onDismiss: () -> Unit, onOpened: (String) -> Unit) {
         title = { Text("查看密码") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("此配置的密码受保护，输入配置密码后才能查看。")
+                Text("密码受保护，请输入配置密码后查看。")
                 // The dialog stands on a locked screen; what is typed into it changes no configuration.
                 CompositionLocalProvider(LocalConfigLocked provides false) {
                     FormField(

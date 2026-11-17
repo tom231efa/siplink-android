@@ -106,7 +106,7 @@ fun TlsScreen(onBack: () -> Unit) {
                         restartPrompt = engine.directory.tlsChangeNeedsRestart
                         "已导入 ${result.count} 个证书，正在重新注册账号"
                     }
-                    TlsManager.ImportResult.AlreadyTrusted -> "证书已导入过"
+                    TlsManager.ImportResult.AlreadyTrusted -> "证书已存在"
                     is TlsManager.ImportResult.Invalid -> result.reason
                     TlsManager.ImportResult.Managed -> ManagedConfig.NOTICE
                 }
@@ -161,7 +161,7 @@ fun TlsScreen(onBack: () -> Unit) {
                     Icon(Icons.Rounded.GppMaybe, contentDescription = null, tint = Brand.Amber)
                     Spacer(Modifier.width(12.dp))
                     Text(
-                        "关闭校验后可能被窃听",
+                        "关闭校验存在被窃听风险",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -189,7 +189,7 @@ fun TlsScreen(onBack: () -> Unit) {
         AlertDialog(
             onDismissRequest = { pendingRemoval = null },
             title = { Text("移除证书？") },
-            text = { Text("将不再信任“${certificate.subject}”签发的服务器证书，依赖它的 TLS 账号会注册失败。") },
+            text = { Text("将不再信任“${certificate.subject}”签发的服务器证书，依赖该证书的 TLS 账号将注册失败。") },
             confirmButton = {
                 TextButton(onClick = {
                     engine.tls.remove(certificate.fingerprint)

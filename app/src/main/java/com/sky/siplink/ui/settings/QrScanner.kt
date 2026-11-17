@@ -145,5 +145,5 @@ private fun decode(image: ImageProxy): String? {
     return QrDecoder.decode(bytes, image.width, image.height, plane.rowStride)
 }
 
-private const val NOT_OURS = "这不是远程配置的二维码"
+private const val NOT_OURS = "非远程配置二维码"
 private const val NO_CAMERA = "无法打开相机"

@@ -184,7 +184,7 @@ fun DirectoryScreen(onOpenSettings: () -> Unit) {
                 when {
                     contacts.isEmpty() && !state.searching && state.directory == current.id && state.query == trimmed -> EmptyState(
                         icon = Icons.Rounded.SearchOff,
-                        title = "没有匹配的联系人",
+                        title = "无匹配的联系人",
                         modifier = Modifier.fillMaxSize(),
                     )
 

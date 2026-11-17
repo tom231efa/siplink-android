@@ -274,7 +274,7 @@ internal fun ShortcutEditSheet(shortcut: Shortcut, onDismiss: () -> Unit) {
                                 },
                                 modifier = Modifier.weight(1f),
                             ) {
-                                Text(if (confirmDelete) "再点一次确认删除" else "删除", color = MaterialTheme.colorScheme.error)
+                                Text(if (confirmDelete) "再次点按以确认删除" else "删除", color = MaterialTheme.colorScheme.error)
                             }
                         }
                         Button(onClick = ::save, modifier = Modifier.weight(1f)) { Text("保存") }

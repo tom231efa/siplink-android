@@ -54,8 +54,8 @@ internal class VideoController(
 
     /** Adds video to [call], or ends it (re-INVITE). */
     fun toggleVideo(call: Call?, inConference: Boolean): String? {
-        if (call?.state != Call.State.StreamsRunning) return "通话接通后才能开启视频"
-        if (!allowed || inConference) return "此通话不能使用视频"
+        if (call?.state != Call.State.StreamsRunning) return "通话接通后方可开启视频"
+        if (!allowed || inConference) return "此通话不支持视频"
         val params = core.createCallParams(call) ?: return "无法更改通话"
         val on = !CallVideoSupport.hasVideo(call)
         CallVideoSupport.apply(params, on, cameraPermitted())
@@ -66,8 +66,8 @@ internal class VideoController(
 
     /** Stops or starts sending the own camera in [call]; the picture of the other side keeps coming. */
     fun toggleCamera(call: Call?): String? {
-        if (call?.state != Call.State.StreamsRunning) return "通话接通后才能使用摄像头"
-        val video = CallVideoSupport.stateOf(call) ?: return "此通话没有视频"
+        if (call?.state != Call.State.StreamsRunning) return "通话接通后方可使用摄像头"
+        val video = CallVideoSupport.stateOf(call) ?: return "此通话无视频"
         if (!video.sending && !cameraPermitted()) return "需要摄像头权限"
         val params = core.createCallParams(call) ?: return "无法更改通话"
         CallVideoSupport.apply(params, video = true, camera = !video.sending)

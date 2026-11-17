@@ -22,15 +22,15 @@ fun LdapRestartDialog(onDismiss: () -> Unit) {
         title = { Text("重启后对 LDAP 生效") },
         text = {
             Text(
-                "SIP 账号已经使用新的证书设置。LDAP 通讯录的加密连接在本次运行中已经建立过，" +
-                    "它要到应用重启后才会改用新的 CA 证书。",
+                "SIP 账号已启用新的证书设置。LDAP 通讯录的加密连接已在本次运行中建立，" +
+                    "需重启应用后方可使用新的 CA 证书。",
             )
         },
         confirmButton = {
             TextButton(onClick = {
                 if (context.engine.calls.call.value != null) {
                     onDismiss()
-                    messenger("通话结束后再重启应用")
+                    messenger("请在通话结束后重启应用")
                 } else {
                     context.restartApp()
                 }

@@ -135,7 +135,7 @@ fun FeatureSheet(
             DialRow(FeatureDial.Action.BARGE, Icons.Rounded.GroupAdd)
             FeatureRow(
                 icon = Icons.Rounded.PhoneDisabled,
-                title = if (confirmForce) "再点一次确认强拆 $extension" else FeatureDial.Action.FORCE_HANG_UP.label,
+                title = if (confirmForce) "再次点按以确认强拆 $extension" else FeatureDial.Action.FORCE_HANG_UP.label,
                 enabled = hasTarget || !forceConfigured,
                 destructive = true,
                 dimmed = !forceConfigured,

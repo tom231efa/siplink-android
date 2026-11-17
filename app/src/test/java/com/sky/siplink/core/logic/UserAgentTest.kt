@@ -23,7 +23,7 @@ class UserAgentTest {
         assertEquals(UserAgent.Error.SPACE_AT_ENDS, UserAgent.error(" SipLink"))
         assertEquals(UserAgent.Error.SPACE_AT_ENDS, UserAgent.error("SipLink "))
         assertEquals(UserAgent.Error.SPACE_AT_ENDS, UserAgent.error(" "))
-        assertEquals("客户端名称（User-Agent）前后不能有空格", UserAgent.Error.SPACE_AT_ENDS.full)
+        assertEquals("客户端名称（User-Agent）首尾不能包含空格", UserAgent.Error.SPACE_AT_ENDS.full)
     }
 
     /** What the SIP core makes of a name and a version: `name/version`, or the name alone without a version. */

@@ -182,6 +182,7 @@ fun ShortcutsScreen(accountId: String?, onBack: () -> Unit) {
                     }
                 },
                 modifier = Modifier.fillMaxSize(),
+                onMove = { moved, target -> manager.move(moved, target) },
             )
         }
     }
@@ -194,7 +195,7 @@ fun ShortcutsScreen(accountId: String?, onBack: () -> Unit) {
             formatHint = ShortcutRules.FORMAT_HINT +
                 "\n类型：" + ShortcutRules.typeWords.joinToString(" / ") +
                 "\n线路：账号名称或 user@domain；留空则拨出时选择" +
-                "\n图标：" + ShortcutRules.iconWords.joinToString(" / ") + "；留空随类型",
+                "\n图标：" + ShortcutRules.iconWords.joinToString(" / ") + "；留空则随类型",
             placeholder = "前台,1001,speed,常用,,reception\n对讲仓库,*801005,speed,对讲,,warehouse\n开门,#9,dtmf,门禁,,door\n转总机,1000,bxfer,转接",
             onImport = { text ->
                 val result = manager.import(text)
@@ -241,7 +242,7 @@ fun ShortcutsScreen(accountId: String?, onBack: () -> Unit) {
 /** @param canImport false where the configuration is locked: keys are then made one by one, as the user's own */
 @Composable
 private fun EmptyBoard(canImport: Boolean, onAdd: () -> Unit, onImport: () -> Unit) {
-    EmptyState(icon = Icons.Rounded.Apps, title = "还没有快捷键", modifier = Modifier.fillMaxSize()) {
+    EmptyState(icon = Icons.Rounded.Apps, title = "暂无快捷键", modifier = Modifier.fillMaxSize()) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             if (canImport) OutlinedButton(onClick = onImport) { Text("批量导入") }
             Button(onClick = onAdd) { Text("新建快捷键") }

@@ -71,14 +71,14 @@ private fun LockScreenCallPrompt() {
     AlertDialog(
         onDismissRequest = { open = false },
         title = { Text("允许在锁屏时显示来电") },
-        text = { Text("系统目前没有允许 SipLink 显示全屏通知，手机锁屏时有来电只会出现一条通知，不会亮出来电界面。") },
+        text = { Text("SipLink 未获得全屏通知权限，锁屏时来电仅显示通知，不显示来电界面。") },
         confirmButton = {
             TextButton(onClick = {
                 if (!context.openLockScreenCallSettings()) {
                     open = false
                     messenger("无法打开全屏通知设置")
                 }
-            }) { Text("去设置") }
+            }) { Text("前往设置") }
         },
         dismissButton = {
             TextButton(onClick = { engine.updateSettings { it.copy(lockScreenPromptDeclined = true) } }) { Text("不再提醒") }

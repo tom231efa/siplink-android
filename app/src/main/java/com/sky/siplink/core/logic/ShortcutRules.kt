@@ -45,7 +45,7 @@ object ShortcutRules {
         LIMIT_REACHED("", "最多 $MAX_SHORTCUTS 个快捷键"),
         OWN_LIMIT_REACHED("", "最多自建 $MAX_OWN 个快捷键"),
         NUMBER_EMPTY("号码", "必填"),
-        NUMBER_INVALID("号码", "不能有空格"),
+        NUMBER_INVALID("号码", "不能包含空格"),
         DTMF_INVALID("按键", "仅限 0-9 * #"),
         NUMBER_TOO_LONG("号码", "最多 $MAX_NUMBER_LENGTH 个字符"),
         LABEL_TOO_LONG("名称", "最多 $MAX_LABEL_LENGTH 个字符"),
@@ -66,6 +66,48 @@ object ShortcutRules {
 
     /** Whether the user may make one more key of their own next to a managed configuration. */
     fun canAddOwn(all: List<Shortcut>): Boolean = all.count { it.own } < MAX_OWN
+
+    /**
+     * The keys in the order every list shows and stores them: the user's own ([Shortcut.own])
+     * first, then those that were handed out, each group in its own order.
+     */
+    fun ownFirst(all: List<Shortcut>): List<Shortcut> {
+        if (all.none { it.own }) return all
+        val (own, handedOut) = all.partition { it.own }
+        return own + handedOut
+    }
+
+    /**
+     * Whether [moved] may take the place of [target] in the order of the keys.
+     *
+     * @param ownOnly the configuration is managed: only the user's own keys move, and only among
+     *   themselves, so that they stay ahead of those that were handed out
+     */
+    fun canMove(moved: Shortcut, target: Shortcut, ownOnly: Boolean): Boolean = !ownOnly || (moved.own && target.own)
+
+    /**
+     * [all] with the key [movedId] in the place of the key [targetId]; the keys between the two
+     * move up or down by one. Null when nothing moves: one of them is missing, they are the same
+     * key, or [canMove] refuses.
+     */
+    fun move(all: List<Shortcut>, movedId: Long, targetId: Long, ownOnly: Boolean): List<Shortcut>? {
+        if (movedId == targetId) return null
+        val from = all.indexOfFirst { it.id == movedId }
+        val to = all.indexOfFirst { it.id == targetId }
+        if (from < 0 || to < 0 || !canMove(all[from], all[to], ownOnly)) return null
+        return all.toMutableList().apply { add(to, removeAt(from)) }
+    }
+
+    /**
+     * The key a dragged key was dropped on: the one that stood in [before] where [movedId] stands
+     * in [after], a reordering of [before] (ids). Moving [movedId] to the place of that key in a
+     * longer list ([move]) puts it in the same place among the keys of [before]. Null when it
+     * ended where it started.
+     */
+    fun dropTarget(before: List<Long>, after: List<Long>, movedId: Long): Long? {
+        val target = before.getOrNull(after.indexOf(movedId)) ?: return null
+        return target.takeIf { it != movedId }
+    }
 
     /**
      * Whether the keys of [category] are the user's to rename as a group while the
@@ -214,8 +256,8 @@ object ShortcutRules {
             val error = when {
                 fields == null -> "引号未闭合"
                 fields.size < 2 -> "字段不足，格式：$FORMAT_HINT"
-                action == null -> "未知的类型“${fields[2]}”，可用 ${typeWords.joinToString(" / ")}"
-                iconWord.isNotEmpty() && icon == null -> "未知的图标“$iconWord”，可用 ${iconWords.joinToString(" / ")}"
+                action == null -> "未知的类型“${fields[2]}”，可选 ${typeWords.joinToString(" / ")}"
+                iconWord.isNotEmpty() && icon == null -> "未知的图标“$iconWord”，可选 ${iconWords.joinToString(" / ")}"
                 else -> null
             }
             if (fields == null || action == null || error != null) {

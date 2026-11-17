@@ -112,7 +112,7 @@ fun HistoryScreen() {
         if (entries.isEmpty()) {
             EmptyState(
                 icon = Icons.Rounded.History,
-                title = "还没有通话记录",
+                title = "暂无通话记录",
                 modifier = Modifier.fillMaxSize(),
             )
         } else {

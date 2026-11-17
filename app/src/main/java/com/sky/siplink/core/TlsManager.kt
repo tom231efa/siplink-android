@@ -56,7 +56,7 @@ class TlsManager(context: Context, private val core: Core, private val lock: Con
         val parsed = try {
             CertificateTools.parse(data)
         } catch (e: Exception) {
-            return ImportResult.Invalid("不是有效的 X.509 证书文件（支持 PEM / CRT / CER / DER）")
+            return ImportResult.Invalid("无效的 X.509 证书文件（支持 PEM / CRT / CER / DER）")
         }
         val (merged, added) = CertificateTools.merge(userCertificates, parsed)
         if (added == 0) return ImportResult.AlreadyTrusted

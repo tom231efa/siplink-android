@@ -323,7 +323,7 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
                 val keys = ShortcutLines.fixedTo(existing, shortcuts)
                 Text(
                     "${existing.identity} 将从本机移除并注销。" +
-                        if (keys > 0) "\n$keys 个快捷键固定用这条线路，将改为拨出时选择。" else "",
+                        if (keys > 0) "\n$keys 个快捷键固定使用此线路，将改为拨出时选择。" else "",
                 )
             },
             confirmButton = {

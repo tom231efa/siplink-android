@@ -123,10 +123,10 @@ class CallManager(
 
     /** Puts the current call on hold and calls [target]: first step of an attended transfer. */
     fun startConsultation(target: String): String? {
-        val active = live(current) ?: return "当前没有通话"
-        if (other != null) return "已经有两路通话"
+        val active = live(current) ?: return "当前无通话"
+        if (other != null) return "已有两路通话"
         val phase = phaseOf(active)
-        if (phase != CallPhase.CONNECTED && phase != CallPhase.HELD) return "通话接通后才能发起咨询"
+        if (phase != CallPhase.CONNECTED && phase != CallPhase.HELD) return "通话接通后方可发起咨询"
         return invite(target, active.params.account ?: core.defaultAccount, Pending(null, consultation = true))
     }
 
@@ -229,7 +229,7 @@ class CallManager(
 
     /** Sends a string of digits one after the other (a DTMF shortcut key). */
     fun sendDtmfs(digits: String): String? {
-        val call = live(current)?.takeIf { it.state == Call.State.StreamsRunning } ?: return "通话中才能发送按键"
+        val call = live(current)?.takeIf { it.state == Call.State.StreamsRunning } ?: return "仅可在通话中发送按键"
         call.sendDtmfs(digits.filter(Formatters::isDtmf))
         return null
     }
@@ -295,9 +295,9 @@ class CallManager(
 
     /** Blind transfer: the PBX connects the other party to [target] and releases us. */
     fun blindTransfer(target: String): String? {
-        val call = live(current) ?: return "当前没有通话"
+        val call = live(current) ?: return "当前无通话"
         val phase = phaseOf(call)
-        if (phase != CallPhase.CONNECTED && phase != CallPhase.HELD) return "通话接通后才能转接"
+        if (phase != CallPhase.CONNECTED && phase != CallPhase.HELD) return "通话接通后方可转接"
         val cleaned = DialTarget.of(target)
         if (cleaned.isEmpty()) return "请输入转接号码"
         val address = (call.params.account ?: core.defaultAccount)?.normalizeSipUri(cleaned)
@@ -327,8 +327,8 @@ class CallManager(
     fun completeTransfer(): String? {
         val consulted = live(current)
         val held = live(other)
-        if (!consulting || consulted == null || held == null) return "没有待完成的转接"
-        if (phaseOf(consulted) != CallPhase.CONNECTED) return "对方接听后才能转接"
+        if (!consulting || consulted == null || held == null) return "无待完成的转接"
+        if (phaseOf(consulted) != CallPhase.CONNECTED) return "对方接听后方可转接"
         attendedTransfer = true
         transferStatus = TransferStatus.IN_PROGRESS
         if (held.transferToAnother(consulted) != 0) {

@@ -185,7 +185,7 @@ internal fun ShortcutsSheet(onDismiss: () -> Unit, onNotice: (String) -> Unit) {
         AppBottomSheet(onDismiss) {
             if (all.isEmpty()) {
                 Text(
-                    "还没有快捷键",
+                    "暂无快捷键",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 32.dp),

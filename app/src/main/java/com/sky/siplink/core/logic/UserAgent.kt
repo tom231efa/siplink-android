@@ -22,8 +22,8 @@ object UserAgent {
      */
     enum class Error(val subject: String, val message: String) {
         TOO_LONG(SUBJECT, "最多 $MAX_LENGTH 个字符"),
-        NOT_PRINTABLE_ASCII(SUBJECT, "只能使用可打印的 ASCII 字符"),
-        SPACE_AT_ENDS(SUBJECT, "前后不能有空格"),
+        NOT_PRINTABLE_ASCII(SUBJECT, "仅限可打印的 ASCII 字符"),
+        SPACE_AT_ENDS(SUBJECT, "首尾不能包含空格"),
         ;
 
         /** The error where no field stands next to it. */

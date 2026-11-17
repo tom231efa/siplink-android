@@ -79,7 +79,7 @@ fun CodecsScreen(onBack: () -> Unit) {
                             manager.restoreDefaults()
                             val defaults = Settings()
                             engine.updateSettings { it.copy(videoSize = defaults.videoSize, videoFrameRate = defaults.videoFrameRate) }
-                            messenger("已恢复默认的编码设置")
+                            messenger("已恢复默认编码设置")
                         },
                     ) { Text("恢复默认") }
                 }

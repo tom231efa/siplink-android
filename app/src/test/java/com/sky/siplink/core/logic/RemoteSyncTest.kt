@@ -26,7 +26,7 @@ class RemoteSyncTest {
     fun failuresAreToldInChinese() {
         assertEquals(RemoteSync.UNAUTHORIZED, RemoteSync.failureText(401))
         assertEquals("二维码无效、已使用或已过期", RemoteSync.failureText(404))
-        assertEquals("请求过于频繁，稍后重试", RemoteSync.failureText(429))
+        assertEquals("请求过于频繁，请稍后重试", RemoteSync.failureText(429))
         assertEquals("平台暂时不可用（HTTP 503）", RemoteSync.failureText(503))
         assertEquals("平台返回错误（HTTP 400）", RemoteSync.failureText(400))
     }

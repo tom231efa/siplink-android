@@ -115,9 +115,9 @@ object UpdateRules {
      */
     fun failureText(httpStatus: Int?): String = when (httpStatus) {
         null -> "无法连接 GitHub"
-        HTTP_OK -> "检查失败：无法读取 GitHub 的回复"
+        HTTP_OK -> "检查失败：无法解析 GitHub 的响应"
         HTTP_NOT_FOUND -> "检查失败：尚无发布版本"
-        HTTP_FORBIDDEN, HTTP_TOO_MANY_REQUESTS -> "检查失败：GitHub 暂时拒绝了请求"
+        HTTP_FORBIDDEN, HTTP_TOO_MANY_REQUESTS -> "检查失败：GitHub 暂时拒绝请求"
         else -> "检查失败（HTTP $httpStatus）"
     }
 

@@ -413,8 +413,8 @@ private val SideCornerWidth = 172.dp
 
 private fun transferLabel(info: CallInfo): String? = when (info.transfer) {
     TransferStatus.IN_PROGRESS -> "正在转接…"
-    TransferStatus.SUCCEEDED -> if (info.parked) "已驻留，请听 PBX 播报的车位号" else "转接成功"
-    TransferStatus.FAILED -> "转接失败，通话仍然保留"
+    TransferStatus.SUCCEEDED -> if (info.parked) "已驻留，请收听 PBX 播报的车位号" else "转接成功"
+    TransferStatus.FAILED -> "转接失败，通话仍处于保留状态"
     null -> null
 }
 

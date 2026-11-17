@@ -52,7 +52,7 @@ object RemoteSync {
     fun failureText(status: Int): String = when {
         status == 401 -> UNAUTHORIZED
         status == 404 -> "二维码无效、已使用或已过期"
-        status == 429 -> "请求过于频繁，稍后重试"
+        status == 429 -> "请求过于频繁，请稍后重试"
         status >= 500 -> "平台暂时不可用（HTTP $status）"
         else -> "平台返回错误（HTTP $status）"
     }

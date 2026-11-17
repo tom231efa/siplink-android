@@ -382,6 +382,47 @@ class ManagedLockTest : PbxTestBase() {
     }
 
     @Test
+    fun theUsersOwnKeysComeFirstAndMoveOnlyAmongThemselves() {
+        val keys = engine.shortcuts
+        val files = InstrumentationRegistry.getInstrumentation().targetContext.filesDir
+        fun labels() = shortcuts.map { it.label }
+        fun labelsIn(file: File) = file.readLines().filter { it.isNotBlank() }.map { it.substringBefore(',') }
+        manage(true)
+        onMain {
+            assertTrue(keys.add(Shortcut(0, "自建甲", "$AGENT")).isEmpty())
+            assertTrue(keys.add(Shortcut(0, "自建乙", "$CUSTOMER")).isEmpty())
+        }
+        assertEquals(listOf("自建甲", "自建乙", key.label), labels())
+        val (ownA, ownB) = shortcuts.take(2)
+        onMain {
+            // The user's own keys move among themselves.
+            assertTrue(keys.move(ownB.id, ownA.id))
+            assertEquals(listOf("自建乙", "自建甲", key.label), labels())
+            // A key that was handed out does not move, and none of the user's own goes past it.
+            assertFalse(keys.move(key.id, ownB.id))
+            assertFalse(keys.move(ownA.id, key.id))
+            assertFalse(keys.move(ownA.id, ownA.id))
+            assertEquals(listOf("自建乙", "自建甲", key.label), labels())
+            // The remote side hands out other keys: they come after the user's own, in the platform's order.
+            engine.lock.fromRemote { assertTrue(keys.replaceHandedOut(listOf(Shortcut(0, REMOTE_KEY, "$CUSTOMER"), key))) }
+            assertEquals(listOf("自建乙", "自建甲", REMOTE_KEY, key.label), labels())
+            // A new key of the user's own joins the end of theirs.
+            assertTrue(keys.add(Shortcut(0, "自建丙", "$RINGING_PHONE")).isEmpty())
+            assertEquals(listOf("自建乙", "自建甲", "自建丙", REMOTE_KEY, key.label), labels())
+        }
+
+        // Each order is stored in its file, and comes back at the next start.
+        val ownFile = File(files, OWN_SHORTCUTS_FILE)
+        val mainFile = File(files, SHORTCUTS_FILE)
+        await("the keys to be written in their order") {
+            ownFile.isFile && labelsIn(ownFile) == listOf("自建乙", "自建甲", "自建丙") && labelsIn(mainFile) == listOf(REMOTE_KEY, key.label)
+        }
+        val restarted = onMain { ShortcutManager(mainFile, engine.lock) }
+        await("the keys to be read again") { restarted.loaded.value }
+        assertEquals(labels(), restarted.shortcuts.value.map { it.label })
+    }
+
+    @Test
     fun aPasswordOfTheConfigurationKeepsTheStoredOnesBack() {
         val lock = engine.lock
         onMain { lock.setManaged(true, sha256(CONFIG_PASSWORD)) }

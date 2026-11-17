@@ -265,7 +265,7 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
         see("编辑快捷键")
         usable("名称")
         tap("删除")
-        tap("再点一次确认删除")
+        tap("再次点按以确认删除")
         await("the key to be removed") { engine.shortcuts.shortcuts.value.none { it.own } }
         see(ownKeysCounter(0))
         tap("完成")
@@ -384,6 +384,40 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
     }
 
     @Test
+    fun keysOfTheUsersOwnAreDraggedIntoOrderAboveThoseHandedOut() {
+        await("the shortcut keys to be read") { engine.shortcuts.loaded.value }
+        onMain {
+            assertTrue(engine.updateSettings { it.copy(lockScreenPromptDeclined = true) })
+            engine.shortcuts.remove(engine.shortcuts.shortcuts.value.map { it.id })
+            assertTrue(engine.shortcuts.add(Shortcut(0, SPEED_KEY, "$AGENT")).isEmpty())
+            engine.lock.setManaged(true)
+            // Made next to the managed configuration, after the key that was handed out, and still shown ahead of it.
+            assertTrue(engine.shortcuts.add(Shortcut(0, OWN_KEY, "$AGENT")).isEmpty())
+            assertTrue(engine.shortcuts.add(Shortcut(0, SECOND_OWN_KEY, "$CUSTOMER")).isEmpty())
+        }
+        fun order() = engine.shortcuts.shortcuts.value.map { it.label }
+        assertEquals(listOf(OWN_KEY, SECOND_OWN_KEY, SPEED_KEY), order())
+        showApp()
+        tap("快捷键")
+        tap("编辑")
+
+        // A key of the user's own takes the place of the other one it is dropped on.
+        drag(see(SECOND_OWN_KEY), see(OWN_KEY))
+        await("the keys to be in their new order") { order() == listOf(SECOND_OWN_KEY, OWN_KEY, SPEED_KEY) }
+        picture("shortcuts-dragged")
+        // The key that was let go is not opened for editing.
+        absent("编辑快捷键")
+
+        // A key that was handed out stays where the platform put it, and nothing moves past it.
+        drag(see(SPEED_KEY), see(SECOND_OWN_KEY))
+        drag(see(OWN_KEY), see(SPEED_KEY))
+        settle()
+        assertEquals(listOf(SECOND_OWN_KEY, OWN_KEY, SPEED_KEY), order())
+        absent("编辑快捷键")
+        tap("完成")
+    }
+
+    @Test
     fun anEmptyManagedConfigurationOffersOnlyKeysOfTheUsersOwnToAdd() {
         await("the shortcut keys to be read") { engine.shortcuts.loaded.value }
         onMain {
@@ -394,13 +428,13 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
         showApp()
 
         // The dial pad says that there is no account instead of offering to add one.
-        see("没有 SIP 账号")
+        see("暂无 SIP 账号")
         absent("添加 SIP 账号")
         picture("empty-dialer")
-        tap("没有 SIP 账号")
+        tap("暂无 SIP 账号")
         await("the dial pad to say why") { shown(ManagedConfig.NOTICE).isNotEmpty() }
         tap("快捷键")
-        see("还没有快捷键")
+        see("暂无快捷键")
         see(ownKeysCounter(0))
         // Keys of the user's own are made one by one; nothing is imported.
         see("新建快捷键")
@@ -410,9 +444,9 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
 
         tap("设置")
         tap("SIP 账号")
-        see("没有 SIP 账号")
+        see("暂无 SIP 账号")
         see(ManagedConfig.LOCKED)
-        absent("添加账号", "添加第一个 SIP 账号", "批量导入账号")
+        absent("添加账号", "批量导入账号")
         picture("empty-accounts")
         back()
         tap("LDAP 通讯录")
@@ -433,7 +467,7 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
         see("添加通讯录")
         back()
         tap("SIP 账号")
-        listOf("添加第一个 SIP 账号", "添加账号", "批量导入账号").forEach(::see)
+        listOf("暂无 SIP 账号", "添加账号", "批量导入账号").forEach(::see)
         back()
         tap("拨号")
         see("添加 SIP 账号")
@@ -449,6 +483,7 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
         const val SPEED_KEY = "前台"
         const val FORWARD_KEY = "转总机"
         const val OWN_KEY = "我的自建键"
+        const val SECOND_OWN_KEY = "第二个自建键"
         const val VERSION_ROW = "版本 ${BuildConfig.VERSION_NAME}"
 
         /** How many dots a password field shows that keeps its password back, whatever the password. */

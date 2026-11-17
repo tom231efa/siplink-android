@@ -47,7 +47,7 @@ fun importReport(created: Int, unit: String, skipped: Int, limit: Int, errors: L
     append("已导入 $created 个$unit")
     if (skipped > 0) append("；$skipped 个因超过 $limit 个上限被跳过")
     if (errors.isNotEmpty()) {
-        append("；${errors.size} 行有问题：")
+        append("；${errors.size} 行有误：")
         errors.take(8).forEach { append("\n第 ${it.line} 行：${it.reason}") }
         if (errors.size > 8) append("\n……")
     }

@@ -5,6 +5,10 @@ import android.graphics.Bitmap
 import android.graphics.Rect
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
+import android.view.InputDevice
+import android.view.MotionEvent
+import android.view.ViewConfiguration
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertFalse
@@ -126,6 +130,33 @@ abstract class ScreenTestBase(private val pictures: String) : PbxTestBase() {
         settle()
     }
 
+    /**
+     * Holds a finger on [from] until it counts as a long press, moves it onto [to] and lifts it
+     * there: the way an item is dragged to another place.
+     */
+    protected fun drag(from: AccessibilityNodeInfo, to: AccessibilityNodeInfo) {
+        val start = Rect().also(from::getBoundsInScreen)
+        val end = Rect().also(to::getBoundsInScreen)
+        val downTime = SystemClock.uptimeMillis()
+        fun touch(action: Int, fraction: Float) {
+            val x = start.exactCenterX() + (end.exactCenterX() - start.exactCenterX()) * fraction
+            val y = start.exactCenterY() + (end.exactCenterY() - start.exactCenterY()) * fraction
+            val event = MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), action, x, y, 0)
+            event.source = InputDevice.SOURCE_TOUCHSCREEN
+            assertTrue("The touch was not taken", automation.injectInputEvent(event, true))
+            event.recycle()
+        }
+        touch(MotionEvent.ACTION_DOWN, 0f)
+        Thread.sleep(ViewConfiguration.getLongPressTimeout() * 2L)
+        for (step in 1..DRAG_STEPS) {
+            touch(MotionEvent.ACTION_MOVE, step.toFloat() / DRAG_STEPS)
+            Thread.sleep(DRAG_STEP_MS)
+        }
+        Thread.sleep(DRAG_HOLD_MS)
+        touch(MotionEvent.ACTION_UP, 1f)
+        settle()
+    }
+
     /** Sets the text of the field that [field] finds; a screen that is still moving may not have it at once. */
     protected fun setText(text: String, field: () -> AccessibilityNodeInfo?) {
         val arguments = Bundle().apply { putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text) }
@@ -153,5 +184,10 @@ abstract class ScreenTestBase(private val pictures: String) : PbxTestBase() {
         const val SETTLE_TIMEOUT_MS = 4_000L
         const val SCREEN_TIMEOUT_MS = 10_000L
         const val MAX_SCROLLS = 12
+
+        /** How a drag moves: in this many steps this far apart, and how long it rests before the finger is lifted. */
+        const val DRAG_STEPS = 20
+        const val DRAG_STEP_MS = 16L
+        const val DRAG_HOLD_MS = 300L
     }
 }
