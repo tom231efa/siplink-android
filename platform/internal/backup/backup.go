@@ -75,6 +75,22 @@ func List(dir string) ([]File, error) {
 	return out, nil
 }
 
+// Open opens the backup of dir named name for reading. The name must be one that List
+// returns: anything else (a path, an unknown name) is os.ErrNotExist.
+func Open(dir, name string) (*os.File, File, error) {
+	list, err := List(dir)
+	if err != nil {
+		return nil, File{}, err
+	}
+	for _, f := range list {
+		if f.Name == name {
+			file, err := os.Open(filepath.Join(dir, f.Name))
+			return file, f, err
+		}
+	}
+	return nil, File{}, os.ErrNotExist
+}
+
 // Prune keeps the newest keep backups of dir and removes the others, one by one.
 func Prune(dir string, keep int) ([]string, error) {
 	list, err := List(dir)

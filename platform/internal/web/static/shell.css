@@ -18,7 +18,7 @@
 /* The app's launcher icon; on dark surfaces a hairline keeps its dark tile apart. */
 .brand-mark { width: 26px; height: 26px; flex: none; border-radius: 29%; box-shadow: 0 0 0 1px light-dark(transparent, oklch(1 0 0 / .14)); }
 .brand-sub { color: var(--muted); font-weight: 500; font-size: 12px; letter-spacing: 0; margin-left: -2px; padding-top: 1px; }
-.nav { flex: 1; overflow-y: auto; margin: 0 -4px; padding: 0 4px; scrollbar-width: thin; }
+.nav { flex: 1; overflow-y: auto; margin: 0 -4px; padding: 0 4px; }
 .nav-group + .nav-group { margin-top: 14px; }
 .nav-label { font-size: 11.5px; font-weight: 500; color: var(--muted); padding: 0 10px 4px; letter-spacing: .02em; }
 .nav ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; }
@@ -55,7 +55,7 @@
 .theme-switch { padding: 0 6px 6px; }
 .theme-switch .menu-label { padding-left: 4px; }
 .theme-switch .segmented { display: flex; }
-.theme-switch .segmented button { flex: 1 1 0; min-width: 0; justify-content: center; gap: 4px; padding: 0 2px; font-size: 12px; }
+.theme-switch .segmented button { flex: 1 1 0; min-width: 0; justify-content: center; gap: 5px; padding: 0 4px; font-size: 12px; }
 
 /* ---- main column and top bar ---- */
 .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
@@ -86,7 +86,7 @@
 .nav-open { display: none; margin-left: -6px; }
 
 .content { flex: 1; width: 100%; max-width: var(--content-max); margin: 0 auto; padding: 24px 28px 40px; }
-.content > * { animation: settle var(--t) var(--ease) both; }
+.content > * { animation: settle var(--t) var(--ease) backwards; }
 .content > * + * { animation-delay: 30ms; }
 .footer { color: var(--muted); font-size: 12px; padding: 0 28px 20px; max-width: var(--content-max); width: 100%; margin: 0 auto; }
 .footer, .login-foot { display: flex; align-items: center; gap: 10px; }
@@ -117,7 +117,7 @@
 
 /* ---- pages without the frame: login, enrollment info, print ---- */
 .bare-main { max-width: 400px; margin: 0 auto; padding: 12vh 16px 40px; }
-.bare-main > * { animation: settle var(--t) var(--ease) both; }
+.bare-main > * { animation: settle var(--t) var(--ease) backwards; }
 .bare-main.wide { max-width: 1000px; padding: 24px 16px; }
 
 /* ---- narrow screens: the sidebar becomes an off-canvas drawer, opened by a checkbox ---- */
@@ -138,6 +138,7 @@
     backdrop-filter: blur(2px); opacity: 0; pointer-events: none; transition: opacity var(--t) var(--ease);
   }
   .nav-toggle:checked ~ .shell .scrim { opacity: 1; pointer-events: auto; }
+  html:has(#nav-toggle:checked) { overflow: hidden; }
   .topbar { padding: 0 16px; height: 52px; }
   .content { padding: 16px 16px 32px; }
   .footer { padding: 0 16px 16px; }

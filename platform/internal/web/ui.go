@@ -40,9 +40,9 @@ var navGroups = []navGroup{
 	{"管理", []navItem{
 		{Key: "regions", Href: "/regions", Label: "区域", Icon: "map-pin"},
 		{Key: "admins", Href: "/admins", Label: "管理员", Icon: "shield-user", Super: true},
+		{Key: "mail", Href: "/mail", Label: "邮件", Icon: "mail", Super: true},
 		{Key: "audit", Href: "/audit", Label: "审计日志", Icon: "scroll-text"},
 		{Key: "system", Href: "/system", Label: "系统", Icon: "server", Super: true},
-		{Key: "mail", Href: "/mail", Label: "邮件", Icon: "mail", Super: true},
 	}},
 }
 
@@ -96,6 +96,16 @@ func iconSVG(name string) (template.HTML, error) {
 		return "", fmt.Errorf("unknown icon %q", name)
 	}
 	return template.HTML(`<svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">` + inner + `</svg>`), nil
+}
+
+// fieldTip is the template helper {{tip "id" "text"}}: the "?" beside a field's name
+// whose tooltip (with that id, for the input's aria-describedby) carries the field's
+// hint. It is the same component as the help of a card title (.help, app.js).
+func fieldTip(id, text string) template.HTML {
+	q, _ := iconSVG("circle-question-mark")
+	id = template.HTMLEscapeString(id)
+	return template.HTML(`<span class="help"><button type="button" class="help-tip" aria-label="说明" aria-describedby="` + id + `">` +
+		string(q) + `</button><span class="tooltip" role="tooltip" id="` + id + `">` + template.HTMLEscapeString(text) + `</span></span>`)
 }
 
 // configTabIcons gives each tab of a configuration template its icon.

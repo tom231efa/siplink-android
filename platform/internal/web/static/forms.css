@@ -16,6 +16,13 @@
 fieldset.bare { border: 0; padding: 0; margin: 0; min-width: 0; }
 
 /* ---- form cards ---- */
+/* switch rows among the fields of a form: the line between field and row has the form's gap (16 px)
+   on both sides, and a row that ends the form ends at the body's padding like any other field */
+.form .setting { padding: 16px 0; }
+.form .setting:first-child { padding-top: 0; }
+/* groups inside a form keep the form's gap between their rows, also when a grid stacks on a phone */
+.form .grid2, .form fieldset { row-gap: 16px; }
+.form > .setting:last-child, .form > .settings:last-child > .setting:last-child { padding-bottom: 0; }
 .form-card { display: block; }
 .form-card .card-body.form, .card-body.form { max-width: none; }
 .form-actions { justify-content: flex-end; }
@@ -26,6 +33,12 @@ fieldset.bare { border: 0; padding: 0; margin: 0; min-width: 0; }
   font-size: 13px; font-weight: 500; color: var(--text-2); padding: 0; margin-bottom: 6px;
 }
 .field .field-label { margin: 0; }
+/* a field's name with its "?" tip (the label holds only the name, so the tip is not part of its activation) */
+.label-line { display: flex; align-items: center; gap: 2px; min-width: 0; min-height: 20px; }
+.label-line > label { display: inline; font-size: 13px; font-weight: 500; color: var(--text-2); }
+.setting-name.label-line > label { font-size: inherit; color: inherit; }
+.label-line .help-tip { width: 20px; height: 20px; margin: -2px 0; }
+.label-line .help-tip .icon { width: 14px; height: 14px; }
 .input-suffix { position: relative; display: flex; align-items: center; }
 .input-suffix input { padding-right: 44px; }
 .input-suffix > span { position: absolute; right: 10px; color: var(--muted); font-size: 13px; pointer-events: none; }
@@ -33,6 +46,7 @@ fieldset.bare { border: 0; padding: 0; margin: 0; min-width: 0; }
 input[type=number] { -moz-appearance: textfield; }
 input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .domain-port { grid-template-columns: minmax(0, 1fr) 140px; }
+.domain-port.trio { grid-template-columns: minmax(0, 1fr) 110px 150px; }
 
 /* multi-selection: chips for short names, rows for names with details */
 .check-grid { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -86,7 +100,7 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
 .row-body {
   display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px;
   padding: 14px 20px 16px; background: var(--surface-2); border-top: 1px solid var(--border);
-  animation: settle var(--t) var(--ease) both;
+  animation: settle var(--t) var(--ease) backwards;
 }
 .inline-fields { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; }
 .inline-fields label { display: grid; gap: 4px; font-size: 12.5px; font-weight: 500; color: var(--text-2); }
@@ -126,6 +140,8 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
 @media (max-width: 760px) {
   .two-col { grid-template-columns: minmax(0, 1fr); }
   .domain-port, .setting.fwd { grid-template-columns: 1fr; }
+  .domain-port.trio { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .domain-port.trio > :first-child { grid-column: 1 / -1; }
   .list-head, .list-row > summary, .list-row > .row-line { grid-template-columns: minmax(0, 1fr) repeat(3, 52px) 32px; padding: 0 16px; }
   .list-row > summary, .list-row > .row-line { padding-top: 8px; padding-bottom: 8px; }
   .list-head .hide-sm, .list-row .hide-sm { display: none; }
@@ -141,5 +157,11 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
   .print-bar { display: none !important; }
 }
 
-/* The shared password of an external directory shows only for "统一设置". */
-.form:not(:has(input[name="passwordMode"][value="template"]:checked)) > .shared-password { display: none; }
+/* A shared password (external directory, hosted book use) shows only while the template-wide mode is chosen. */
+.form:not(:has(select[name="passwordMode"] option[value="template"]:checked)) .shared-password { display: none; }
+
+/* the passphrase of a backup download shows only while 加密 is on */
+.form:not(:has(input[name="encrypt"]:checked)) .passphrase { display: none; }
+.backup-download { border-top: 1px solid var(--border); }
+.backup-download > h3 { margin: 0; display: flex; gap: 8px; align-items: baseline; }
+.backup-download .grid2 > .setting { padding: 0; border: 0; align-self: end; min-height: 34px; }

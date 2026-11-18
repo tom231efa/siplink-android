@@ -11,6 +11,8 @@
     var form = ev.target;
     var text = form.getAttribute("data-confirm") ||
       (ev.submitter && ev.submitter.getAttribute("data-confirm"));
+    var unless = form.getAttribute("data-confirm-unless");
+    if (unless && form.elements[unless] && form.elements[unless].checked) return;
     if (!text || !dialog || form.dataset.confirmed === "1") return;
     ev.preventDefault();
     dialog.querySelector(".dialog-text").textContent = text;

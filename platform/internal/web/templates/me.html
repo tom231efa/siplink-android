@@ -10,8 +10,9 @@
   <div class="card-body form">
     {{with $d.Error}}<div class="flash error" role="alert">{{.}}</div>{{end}}
     <label>当前密码<input name="current" type="password" autocomplete="current-password" required></label>
-    <label>新密码<input name="password" type="password" autocomplete="new-password" minlength="10" required placeholder="至少 10 个字符"></label>
-    <label>再次输入新密码<input name="password2" type="password" autocomplete="new-password" minlength="10" required></label>
+    {{if $d.Strict}}<div class="field"><span class="label-line"><label for="f-new">新密码</label>{{tip "f-new-tip" "至少 10 个字符"}}</span><input id="f-new" aria-describedby="f-new-tip" name="password" type="password" autocomplete="new-password" minlength="10" required></div>
+    {{else}}<label>新密码<input name="password" type="password" autocomplete="new-password" required></label>{{end}}
+    <label>再次输入新密码<input name="password2" type="password" autocomplete="new-password"{{if $d.Strict}} minlength="10"{{end}} required></label>
   </div>
   <div class="card-foot form-actions"><span class="hint">保存后，其他已登录的会话将退出。</span><button type="submit" class="btn primary">保存</button></div>
 </form>

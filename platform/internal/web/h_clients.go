@@ -161,6 +161,33 @@ func (s *Server) usableClientTemplates(r *http.Request, region int64) []*store.C
 	return out
 }
 
+// clientScopeChoice settles the region and template a client form is for, with the templates usable
+// there: the region is one the administrator may choose (the first one when none fits) and the
+// template is dropped (0) unless it is usable in that region, so the template list, the form and
+// its hidden fields always agree.
+func (s *Server) clientScopeChoice(r *http.Request, regions []store.Region, region, tpl int64) (int64, int64, []*store.ClientTemplate) {
+	known := false
+	for _, g := range regions {
+		known = known || g.ID == region
+	}
+	if !known {
+		region = 0
+		if len(regions) > 0 {
+			region = regions[0].ID
+		}
+	}
+	if region == 0 {
+		return 0, 0, nil
+	}
+	usable := s.usableClientTemplates(r, region)
+	for _, t := range usable {
+		if t.ID == tpl {
+			return region, tpl, usable
+		}
+	}
+	return region, 0, usable
+}
+
 // clientParts loads the profiles and client-password directories of a client template.
 func (s *Server) clientParts(r *http.Request, templateID int64) (*store.ClientTemplate, []*store.Profile, []*store.Directory, error) {
 	ctx := r.Context()
@@ -186,7 +213,7 @@ func (s *Server) clientFormPage(w http.ResponseWriter, r *http.Request, status i
 	ctx := r.Context()
 	a := current(r)
 	d.Regions, _ = s.St.ListRegions(ctx, a.RegionIDs, a.Role == store.RoleSuper)
-	d.Templates = s.usableClientTemplates(r, d.C.RegionID)
+	d.C.RegionID, d.C.ClientTemplateID, d.Templates = s.clientScopeChoice(r, d.Regions, d.C.RegionID, d.C.ClientTemplateID)
 	var stored map[int64]*store.Credential
 	var dirPass map[int64]string
 	if !d.New {

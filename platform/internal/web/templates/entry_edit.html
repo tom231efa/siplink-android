@@ -11,8 +11,8 @@
       <label>名<input name="given_name" value="{{$d.Entry.GivenName}}" maxlength="64"></label>
     </div>
     <div class="grid2">
-      <label>办公电话<input name="phones" value="{{$d.Phones}}" placeholder="以 ; 分隔，最多 4 个"></label>
-      <label>手机<input name="mobiles" value="{{$d.Mobiles}}" placeholder="以 ; 分隔，最多 4 个"></label>
+      <div class="field"><span class="label-line"><label for="f-phones">办公电话</label>{{tip "f-phones-tip" "以 ; 分隔，最多 4 个"}}</span><input id="f-phones" aria-describedby="f-phones-tip" name="phones" value="{{$d.Phones}}"></div>
+      <div class="field"><span class="label-line"><label for="f-mobiles">手机</label>{{tip "f-mobiles-tip" "以 ; 分隔，最多 4 个"}}</span><input id="f-mobiles" aria-describedby="f-mobiles-tip" name="mobiles" value="{{$d.Mobiles}}"></div>
     </div>
     <div class="grid2">
       <label>单位<input name="organization" value="{{$d.Entry.Organization}}" maxlength="64"></label>

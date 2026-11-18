@@ -464,6 +464,27 @@ func (s *Store) SetTwoStepRequired(ctx context.Context, on bool) error {
 	return s.SetMeta(ctx, metaTwoStepRequired, "1")
 }
 
+const metaPasswordCheck = "password_check"
+
+// PasswordCheck reports whether new administrator passwords are checked for strength
+// (on unless switched off).
+func (s *Store) PasswordCheck(ctx context.Context) (bool, error) {
+	v, err := s.Meta(ctx, metaPasswordCheck)
+	if errors.Is(err, ErrNotFound) {
+		return true, nil
+	}
+	return v != "0", err
+}
+
+// SetPasswordCheck switches the strength check.
+func (s *Store) SetPasswordCheck(ctx context.Context, on bool) error {
+	if on {
+		_, err := s.DB.ExecContext(ctx, `DELETE FROM meta WHERE key = ?`, metaPasswordCheck)
+		return err
+	}
+	return s.SetMeta(ctx, metaPasswordCheck, "0")
+}
+
 // ---- SMTP settings ----
 
 // MailRow is the stored SMTP configuration (one row).

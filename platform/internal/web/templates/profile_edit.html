@@ -7,18 +7,19 @@
   {{if gt $d.Clients 0}}data-confirm="此模板已被 {{$d.Clients}} 个客户端使用，保存后将于下次同步时生效。确认保存？"{{end}}>
   <div class="card-body form">
     <label>账号名称<input name="name" value="{{$d.P.Name}}" required maxlength="30"></label>
-    <div class="grid2 domain-port">
+    <div class="grid2 domain-port trio">
       <label>域名<input name="domain" value="{{$d.P.Domain}}" required placeholder="pbx.example.com"></label>
-      <label>端口<input name="port" value="{{$d.P.Port}}" inputmode="numeric" placeholder="默认"></label>
-    </div>
-    <div class="field"><span class="field-label" id="l-transport">传输方式</span>
-      <div class="segmented" role="radiogroup" aria-labelledby="l-transport">{{range $d.Options.Transports}}<label><input type="radio" name="transport" value="{{.}}"{{if eq (print .) $d.P.Transport}} checked{{end}}><span>{{.}}</span></label>{{end}}</div></div>
-    <div class="grid2">
-      <label>代理服务器<input name="server" value="{{$d.P.Server}}" placeholder="主机[:端口]"></label>
-      <label>备用服务器<input name="backupServer" value="{{$d.P.BackupServer}}" placeholder="主机[:端口]"></label>
+      <div class="field"><span class="label-line"><label for="f-port">端口</label>{{tip "f-port-tip" "默认"}}</span><input id="f-port" aria-describedby="f-port-tip" name="port" value="{{$d.P.Port}}" inputmode="numeric"></div>
+      <label>传输方式
+        <select name="transport">{{range $d.Options.Transports}}<option value="{{.}}"{{if eq (print .) $d.P.Transport}} selected{{end}}>{{.}}</option>{{end}}</select>
+      </label>
     </div>
     <div class="grid2">
-      <label>DNS 服务器<input name="dnsServer" value="{{$d.P.DNSServer}}" placeholder="IP[:端口]"></label>
+      <div class="field"><span class="label-line"><label for="f-server">代理服务器</label>{{tip "f-server-tip" "主机[:端口]"}}</span><input id="f-server" aria-describedby="f-server-tip" name="server" value="{{$d.P.Server}}"></div>
+      <div class="field"><span class="label-line"><label for="f-backup">备用服务器</label>{{tip "f-backup-tip" "主机[:端口]"}}</span><input id="f-backup" aria-describedby="f-backup-tip" name="backupServer" value="{{$d.P.BackupServer}}"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><span class="label-line"><label for="f-dns">DNS 服务器</label>{{tip "f-dns-tip" "IP[:端口]"}}</span><input id="f-dns" aria-describedby="f-dns-tip" name="dnsServer" value="{{$d.P.DNSServer}}"></div>
       <label>注册有效期<span class="input-suffix"><input type="number" name="expires" value="{{$d.P.Expires}}" min="60" max="86400" required><span>秒</span></span></label>
     </div>
     <div class="settings">

@@ -132,7 +132,7 @@ a.tile:hover { text-decoration: none; }
 .subnav a[aria-current="page"] { background: var(--surface); color: var(--text); font-weight: 550; box-shadow: var(--shadow-sm), 0 0 0 1px var(--border); }
 .subnav a[aria-current="page"] .icon { color: var(--accent); }
 .config-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; min-width: 0; }
-.config-body > *, .config-body form > fieldset > * { animation: settle var(--t) var(--ease) both; }
+.config-body > *, .config-body form > fieldset > * { animation: settle var(--t) var(--ease) backwards; }
 .config-body .card + .card { margin-top: 0; }
 .config-body fieldset.bare, .form-stack > fieldset.bare { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
 .config-body .card-head h2 + .hint { margin-top: 2px; }
@@ -206,3 +206,10 @@ a.tile:hover { text-decoration: none; }
 .op .inline-form input { flex: 1 1 140px; min-width: 0; }
 .op .actions-col .inline-form { flex-wrap: nowrap; justify-content: flex-end; }
 .op .actions-col input { flex: 0 0 120px; }
+
+/* ---- certificate card of the system page: one source at a time ---- */
+.cert-view > h3, .cert-upload > h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; }
+.cert-view > dl + h3 { margin-top: 20px; }
+#certificate > .card-body + .card-body { border-top: 1px solid var(--border); }
+.cert-upload > h3 { margin: 0; }
+#certificate .segmented button .dot { width: 6px; height: 6px; }

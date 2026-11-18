@@ -275,8 +275,8 @@
     <section class="card">
       <div class="card-head"><div><h2>配置密码</h2></div></div>
       <div class="card-body settings">
-        <label class="setting"><span class="setting-text"><span class="setting-name">配置密码</span></span>
-          <span class="setting-control"><input type="password" name="configPassword" autocomplete="new-password" minlength="8" placeholder="{{if $d.HasPassword}}已设置，留空保持不变{{else}}至少 8 个字符{{end}}"></span></label>
+        <div class="setting"><span class="setting-text"><span class="setting-name label-line"><label for="f-config-password">配置密码</label>{{tip "f-config-password-tip" (or (and $d.HasPassword "留空保持不变") "至少 8 个字符")}}</span></span>
+          <span class="setting-control"><input id="f-config-password" aria-describedby="f-config-password-tip" type="password" name="configPassword" autocomplete="new-password" minlength="8"{{if $d.HasPassword}} placeholder="已设置"{{end}}></span></div>
         {{if $d.HasPassword}}<label class="setting toggle"><span class="setting-text"><span class="setting-name">清除配置密码</span></span>
           <span class="switch"><input type="checkbox" role="switch" name="clearPassword" value="1"><span></span></span></label>{{end}}
       </div>

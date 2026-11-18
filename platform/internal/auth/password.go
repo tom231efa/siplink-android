@@ -90,15 +90,35 @@ func VerifyDummy(password string) {
 }
 
 // PasswordProblem returns a message in Chinese when a new administrator password is
-// not acceptable, or "".
-func PasswordProblem(password, username string) string {
+// not acceptable, or "". With strict (the switch "密码强度检测" on the system page) it
+// must have MinPasswordLength characters and differ from the user name; without, it
+// only has to be non-empty. It is never longer than 256 characters.
+func PasswordProblem(password, username string, strict bool) string {
+	n := utf8.RuneCountInString(password)
 	switch {
-	case utf8.RuneCountInString(password) < MinPasswordLength:
-		return fmt.Sprintf("密码至少为 %d 个字符", MinPasswordLength)
-	case utf8.RuneCountInString(password) > 256:
+	case n > 256:
 		return "密码不得超过 256 个字符"
-	case strings.EqualFold(password, username):
+	case !strict && n == 0:
+		return "请输入新密码"
+	case strict && n < MinPasswordLength:
+		return fmt.Sprintf("密码至少为 %d 个字符", MinPasswordLength)
+	case strict && strings.EqualFold(password, username):
 		return "密码不得与用户名相同"
+	}
+	return ""
+}
+
+// PassphraseProblem returns a message in Chinese when the passphrase of an encrypted
+// backup download is not acceptable, or "": the same lengths as PasswordProblem.
+func PassphraseProblem(passphrase string, strict bool) string {
+	n := utf8.RuneCountInString(passphrase)
+	switch {
+	case n > 256:
+		return "加密口令不得超过 256 个字符"
+	case n == 0:
+		return "请输入加密口令"
+	case strict && n < MinPasswordLength:
+		return fmt.Sprintf("加密口令至少为 %d 个字符", MinPasswordLength)
 	}
 	return ""
 }

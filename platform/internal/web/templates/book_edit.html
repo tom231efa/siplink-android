@@ -9,8 +9,7 @@
     <label>名称<input name="name" value="{{$d.Book.Name}}" required maxlength="64"></label>
     {{if not $d.New}}<label>类型<input value="内部" disabled></label>{{end}}
     {{if $d.New}}
-    <label>标识<input name="slug" value="{{$d.Book.Slug}}" required pattern="[a-z0-9-]{2,32}" maxlength="32" class="mono" placeholder="staff" title="2-32 个小写字母、数字或 -">
-      <span class="hint">创建后不可修改</span></label>
+    <div class="field"><span class="label-line"><label for="f-slug">标识</label>{{tip "f-slug-tip" "创建后不可修改"}}</span><input id="f-slug" aria-describedby="f-slug-tip" name="slug" value="{{$d.Book.Slug}}" required pattern="[a-z0-9-]{2,32}" maxlength="32" class="mono" placeholder="staff" title="2-32 个小写字母、数字或 -"></div>
     {{else}}
     <label>标识<input value="{{$d.Book.Slug}}" disabled class="mono"></label>
     {{end}}

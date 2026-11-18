@@ -139,6 +139,7 @@ pre {
 
 /* ---- motion: pages settle in, controls answer hover and press, overlays open softly.
    Nothing waits for an animation; prefers-reduced-motion switches all of it off. ---- */
+/* settle fills backwards only: once finished it leaves no transform, so no stacking context covers a popover */
 @keyframes settle { from { opacity: 0; transform: translateY(4px); } }
 @keyframes pop { from { opacity: 0; transform: translateY(4px) scale(.98); } }
 @keyframes fade { from { opacity: 0; } }

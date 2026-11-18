@@ -26,8 +26,8 @@
     <div class="card-head"><h2>{{icon "users"}}<span class="fade">账号「{{.P.Name}}」</span></h2><span class="mono muted small-text fade">{{.P.Domain}}{{if .P.Port}}:{{.P.Port}}{{end}} · {{.P.Transport}}</span></div>
     <div class="card-body form wide">
       <div class="grid2">
-        <label>用户名<input name="user_{{$id}}" value="{{.In.Username}}" autocomplete="off" placeholder="留空则不使用"></label>
-        <label>密码<input type="password" name="pass_{{$id}}" autocomplete="new-password"{{if .HasPassword}} placeholder="已保存，留空保持不变"{{end}}></label>
+        <div class="field"><span class="label-line"><label for="f-user-{{$id}}">用户名</label>{{tip (printf "f-user-%d-tip" $id) "留空则不使用"}}</span><input id="f-user-{{$id}}" aria-describedby="f-user-{{$id}}-tip" name="user_{{$id}}" value="{{.In.Username}}" autocomplete="off"></div>
+        {{if .HasPassword}}<div class="field"><span class="label-line"><label for="f-pass-{{$id}}">密码</label>{{tip (printf "f-pass-%d-tip" $id) "留空保持不变"}}</span><input id="f-pass-{{$id}}" aria-describedby="f-pass-{{$id}}-tip" type="password" name="pass_{{$id}}" autocomplete="new-password" placeholder="已保存"></div>{{else}}<label>密码<input type="password" name="pass_{{$id}}" autocomplete="new-password"></label>{{end}}
         <label>认证用户<input name="auth_{{$id}}" value="{{.In.AuthUser}}" autocomplete="off" placeholder="可选"></label>
         <label>显示名<input name="disp_{{$id}}" value="{{.In.DisplayName}}" placeholder="可选"></label>
         <label>账号名称<input name="acct_{{$id}}" value="{{with .In.AccountName}}{{.}}{{end}}" maxlength="30" placeholder="{{.P.Name}}"></label>
@@ -40,7 +40,7 @@
     <div class="card-head"><h2>{{icon "book-user"}}通讯录密码</h2></div>
     <div class="card-body form wide">
       {{range $d.Dirs}}
-      <label>{{.D.DisplayName}}<input type="password" name="dir_{{.D.ID}}" autocomplete="new-password"{{if .HasPassword}} placeholder="已保存，留空保持不变"{{end}}></label>
+      {{if .HasPassword}}<div class="field"><span class="label-line"><label for="f-dir-{{.D.ID}}">{{.D.DisplayName}}</label>{{tip (printf "f-dir-%d-tip" .D.ID) "留空保持不变"}}</span><input id="f-dir-{{.D.ID}}" aria-describedby="f-dir-{{.D.ID}}-tip" type="password" name="dir_{{.D.ID}}" autocomplete="new-password" placeholder="已保存"></div>{{else}}<label>{{.D.DisplayName}}<input type="password" name="dir_{{.D.ID}}" autocomplete="new-password"></label>{{end}}
       {{end}}
     </div>
   </section>

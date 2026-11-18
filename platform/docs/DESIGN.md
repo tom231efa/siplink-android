@@ -774,7 +774,7 @@ it.
 Left sidebar (collapses to a top bar on narrow screens), items shown by role:
 
 概览 · 客户端 · 客户端模板 · 配置模板 · 功能键模板 · 通讯录 · LDAP 账号 · 区域 (super) ·
-管理员 (super) · 审计日志 · 系统 (super) · 邮件 (super). Top right: region filter (for administrators with several
+管理员 (super) · 邮件 (super) · 审计日志 · 系统 (super). Top right: region filter (for administrators with several
 regions; "全部区域" for super), the administrator's name → 我的账号 / 退出.
 
 ### 5.2 Pages
@@ -785,7 +785,7 @@ regions; "全部区域" for super), the administrator's name → 我的账号 / 
 | 两步验证 `/login/step` | the administrator's methods (passkey, TOTP code, e-mail code, recovery code), §6.8 |
 | 概览 `/` | counts (clients active / pending / 离线 = bound and not seen for more than 3× the refresh interval, the same rule as the 离线 status and filter of the client list), clients with apply errors or failed registrations, for super administrators the expiry notice of an operator's certificate (§6.7), books near the limit, last 20 audit entries of visible regions |
 | 客户端 `/clients` | table: name, region, client template, status, app version, last seen, registration summary; filter by region/template/status, search by name or SIP user; bulk actions: change template, print QR, delete |
-| 新建客户端 `/clients/new` | region, client template, name, credentials for each account profile of the template, directory passwords where the template asks for them, optional forwarding overrides |
+| 新建客户端 `/clients/new` | region (first load: the region filter of the top bar, else the administrator's first region), client template (only those usable in the selected region; a template in the query that does not fit the region is dropped, so the template shown, the form below and its hidden fields always agree; the same for 编辑客户端), name, credentials for each account profile of the template, directory passwords where the template asks for them, optional forwarding overrides |
 | 客户端详情 `/clients/{id}` | QR + URL (copy) while pending; device report (§3.4), registration states, applied version vs. current, apply error; buttons: 编辑, 重新生成二维码 (unbind), 重置 LDAP 凭据, 删除; "预览下发内容" shows the document with passwords masked |
 | 批量导入客户端 `/clients/import` | CSV: `名称,区域,客户端模板,{profile}用户名,{profile}密码,…`; template download per client template; dry run → confirm |
 | 打印二维码 `/clients/print?ids=…` | print-only page: grid of cards (name, region, QR, short instruction), A4, no navigation |
@@ -800,11 +800,12 @@ regions; "全部区域" for super), the administrator's name → 我的账号 / 
 | 区域 `/regions` | list, create, rename, delete (empty only), counts |
 | 管理员 `/admins` | list, create (role, regions), disable, reset password (one-time password shown once) |
 | 审计日志 `/audit` | filter by admin, region, object, date; detail shows changed field names, never secret values |
-| 系统 `/system` | version, public URL and LDAP host as configured, last backups, "立即备份", database size; card "证书" (§6.7): the mode and the source of each listener, the operator's certificates (subject, issuer, names, expiry with days left, how phones trust it, which listeners use it), expiry notices, the built-in CA's subject, validity and SHA-256 fingerprint (written the way the app shows fingerprints in its CA list; the form is read from the app's `CertificateTools`, not guessed), the names and expiry of the built-in server certificate, "下载 CA 证书" (PEM, for the administrators' browsers and for desk phones), "重新签发服务器证书" unless issuing is paused, the upload of an own certificate, "停用自有证书" and "到期前提醒天数" (all POST with CSRF and an audit entry) |
+| 系统 `/system` | version, public URL and LDAP host as configured; card "安全" (the switches of §6.1 and §6.8); card "证书" (§6.7) with a switch 内置 CA · 自有证书 at its head (a GET form, `?cert=builtin\|own`; it opens on the source in use and marks each source in use with a dot, and the view shows "使用中"; looking at the other view changes nothing): the mode and the source of each listener in both views; 内置 CA: the CA's subject, validity and SHA-256 fingerprint (written the way the app shows fingerprints in its CA list; the form is read from the app's `CertificateTools`, not guessed), the names and expiry of the built-in server certificate, "下载 CA 证书" (PEM, for the administrators' browsers and for desk phones) and "重新签发服务器证书" unless issuing is paused; 自有证书: the operator's certificates (subject, issuer, names, expiry with days left, how phones trust it, which listeners use it), "到期前提醒天数", the upload (two file fields side by side, "上传" in the form's foot) and "改用内置 CA" while an uploaded certificate exists (all POST with CSRF and an audit entry); card "备份": the backups with "下载" each (§6.6), "立即备份", database size |
 | 我的账号 `/me` | own e-mail address (confirmed by code), own password, two-step sign-in (TOTP set-up `/me/totp`, passkeys, e-mail code, recovery codes shown once at `/me/recovery`), §6.8 |
 | 邮件 `/mail` | SMTP settings and "发送测试邮件" (super), §6.8 |
 
-The 系统 page also carries the switch "区域管理员必须启用两步验证"; an administrator's page (super)
+The 系统 page's card "安全" carries the switches "区域管理员必须启用两步验证" (§6.8) and "密码强度检测"
+(§6.1); an administrator's page (super)
 carries the e-mail address and "重置两步验证" for region administrators; the 管理员 list shows
 whether two-step sign-in is on.
 
@@ -822,6 +823,19 @@ whether two-step sign-in is on.
   dialogs, copy buttons, row reordering, password reveal, tab state), embedded with `embed.FS`.
   Works without JS except reordering. No external fonts or CDNs (LAN deployments without
   internet).
+- Choices between modes inside a form row are drop-downs (`<select>`); the segmented control is
+  kept for compact choices at the right of a settings row, in card heads and for the theme.
+- Hints of a field (format, limits, what an empty value means, "留空保持不变") are not
+  placeholders: a "?" button after the field's name (outside its `<label>`) shows them as a
+  tooltip on hover, focus and tap; the input refers to it with `aria-describedby`. Placeholders
+  stay for example values, search prompts and stored states ("已设置", "已保存", "未设置").
+- Spacing: a card body's padding is the only space at its edges (no first or last child adds a
+  margin); inside a form every row, group and stacked grid row is 16 px apart, and a switch row
+  among fields has 16 px on both sides of its line and ends at the body's padding.
+- Entry animations fill backwards only, so no finished animation leaves a stacking context that
+  would cover a popover. While a dialog or the narrow-screen drawer is open the page behind does
+  not scroll (`html:has(dialog[open])`, `overflow: hidden`, the root keeps its scroll bar gutter);
+  scrolling areas in overlays do not chain to the page and have thin scroll bars.
 
 ### 5.4 QR codes
 
@@ -849,6 +863,14 @@ encoder. Level M. The page never puts the token into a URL other than the QR tar
 | TOTP secrets, SMTP password (§6.8) | AES-256-GCM like SIP passwords | needed in clear to compute codes / to log in to the mail server |
 | E-mail codes, recovery codes (§6.8) | HMAC-SHA256 under the code key (below) of `{admin id}:{purpose}:{code}` | only verified; a database backup alone cannot test guesses |
 | Private keys of the built-in CA and of its server certificate (§6.7) | in the database, AES-256-GCM with the data-encryption key (the secret box above) | a database backup carries them but is useless without the key file; never written to the log |
+
+Password strength (owner's request of 2026-11-18): the switch "密码强度检测" on the 系统 page
+(super administrators, meta key `password_check`, absent = on, audit `password.policy`) decides
+what a new password of an administrator's own (我的账号) must be. On (default): 10 to 256
+characters and not the user name. Off: 1 to 256 characters. The rule is the pure function
+`auth.PasswordProblem(password, username, strict)`; the 我的账号 form shows "至少 10 个字符" only
+while the check is on. One-time passwords made by the platform are not affected. The same switch
+sets the minimum of the passphrase of an encrypted backup download (§6.6).
 
 Key file: `SIPLINK_KEY_FILE` (default `/run/secrets/siplink-key`, else `{data}/key`), 64 random
 bytes made at first start with mode 0600: 32 bytes data-encryption key, 32 bytes `ldapKey`. It is
@@ -910,6 +932,27 @@ Backups: daily at `SIPLINK_BACKUP_TIME` (default 03:30 local) `VACUUM INTO
 {data}/backups/siplink-{date}.db`, keep `SIPLINK_BACKUP_KEEP` (default 14); "立即备份" on the
 system page; CLI `siplink backup {path}`. Restore = stop, copy file, start. The key file
 must be backed up separately and kept elsewhere; the README says so in the first paragraph.
+
+Download (owner's request of 2026-11-18: "备份可以在web下载，下载的时候可以选择是不是需要加密"):
+- Super administrators only (region administrators get 404; a session waiting for the second
+  step reaches nothing, §6.8). Each listed backup has "下载", a link to `/system?backup={name}`
+  that opens the download form under the list for a name the server's own listing contains.
+- The form: 当前密码 (checked by the limited re-entry of §6.8, `recheckPassword`), the switch
+  加密 (on by default) and, shown only while it is on, 加密口令 typed twice. `POST
+  /system/backups/download` (CSRF as every form) with the name, which is looked up in the
+  listing of `{data}/backups` (`backup.Open`): no path from the client is ever opened; anything
+  not listed is 404.
+- Off: the backup file as it is on disk, `attachment; filename="{name}"`. With JavaScript the
+  form first asks "未加密的备份文件含全部配置、密码哈希与加密保存的密码，确认下载？".
+- On: the file encrypted while it is sent, in the age format (v1, scrypt passphrase recipient,
+  `filippo.io/age`, §7.2), `attachment; filename="{name}.age"`; `age -d` opens it. Passphrase:
+  both entries equal, 1 to 256 characters, at least 10 while "密码强度检测" (§6.1) is on
+  (`auth.PassphraseProblem`). It is never logged, audited or kept.
+- Nothing is written to disk for a download, encrypted or not; the response is streamed.
+- What is sent is the database backup only, unchanged: the key file never leaves the server
+  through the console (owner's decision); the card keeps its warning that it is needed and kept
+  separately.
+- Audit `backup.download` with the backup's name and `encrypted` true/false.
 
 ### 6.7 Built-in certificate authority (package `internal/pki`)
 
@@ -1053,9 +1096,11 @@ the built-in CA stops issuing.
 - 系统 page, card "证书" (§5.2, super administrators only): mode and source per listener, the
   operator's certificates, notices, the CA's subject, validity and SHA-256 fingerprint, the names
   and expiry of the built-in server certificate, "下载 CA 证书" (PEM, any administrator),
-  "重新签发服务器证书" unless issuing is paused, upload, "停用自有证书", "到期前提醒天数"
-  (POST with CSRF, audit entries `pki.reissue`, `pki.own_import`, `pki.own_remove`,
-  `pki.reminder`).
+  "重新签发服务器证书" unless issuing is paused, upload, "改用内置 CA" (the web form of
+  `siplink pki use-builtin`: the same `RemovalWarnings` first, confirmed with "确认改用内置 CA，
+  {n} 台设备需重新扫码"), "到期前提醒天数" (POST with CSRF, audit entries `pki.reissue`,
+  `pki.own_import`, `pki.own_remove`, `pki.reminder`). The card shows one source at a time
+  (内置 CA · 自有证书, §5.2); uploading switches to the own certificate, "改用内置 CA" back.
 - CLI: `siplink pki show` (mode, sources, whether issuing is paused, pin, the built-in CA and
   server certificate, the operator's certificates with names, issuer, expiry and trust, the
   reminder and its notices), `siplink pki export-ca {path}`, `siplink pki renew`,
@@ -1219,6 +1264,7 @@ proxy.golang.org)
 | `golang.org/x/text` (current) | GB18030 decoding of CSV (`encoding/simplifiedchinese`) | Official Go sub-repository. |
 | `github.com/skip2/go-qrcode` (v0.0.0-20200617195104-da1b6568686e) | QR matrix and PNG | Repo since 2015-03, ~3,000 stars, MIT, **zero dependencies** (its go.mod has no requires). Last code change 2020-06: the QR standard does not change, the library is feature-complete; risk accepted because it is tiny and dependency-free. Alternative if the owner prefers an active project: `github.com/yeqown/go-qrcode/v2` v2.3.0 (2026-08, active, but adds `yeqown/reedsolomon` and `x/text`). |
 | `github.com/go-webauthn/webauthn` v0.18.2 (added 2026-11-17, evidence fetched that day from the GitHub API and proxy.golang.org) | WebAuthn ceremonies for passkeys (§6.8) | Organization `go-webauthn`, repo since 2021-12-15, ~1,365 stars, BSD-3, not archived, last push 2026-11-17, release v0.18.2 on 2026-09-19 (v0.18.0 2026-08-27, v0.18.1 2026-09-10). It is the maintained successor of `duo-labs/webauthn`: that repository (since 2017-10, ~1,028 stars) is archived since 2022-12 and its README opens with "THIS LIBRARY IS DEPRECATED" and points to `github.com/go-webauthn/webauthn` and its migration guide. Pulls in (linked or in `go.sum`): `fxamacker/cbor/v2` (since 2019, ~1,100 stars, MIT), `go-viper/mapstructure/v2` (org, MIT), `go-webauthn/x` (same org), `golang-jwt/jwt/v5` (org, ~9,300 stars, MIT), `google/go-tpm` (Google org, Apache-2.0), `google/uuid` (already present), `tinylib/msgp` (org, ~1,960 stars, MIT) with `philhofer/fwd`, `x448/float16` (MIT); `testify` and `go.uber.org/mock` are its test dependencies only. TOTP and SMTP use the standard library (no dependency). No virtual-authenticator library: the Go tests build authenticator responses themselves (P-256 key, CBOR and COSE through the library's own `protocol/webauthncbor` and `protocol/webauthncose`). |
+| `filippo.io/age` v1.3.2 (added 2026-11-18, evidence fetched that day from proxy.golang.org, the vanity page and the GitHub API) | encryption of a backup download with a passphrase (§6.6) | The vanity path's `go-import` points to `github.com/FiloSottile/age`; proxy.golang.org `@latest` = v1.3.2 of 2026-08-29 with `Origin.URL` that repository (tags v1.3.0 2025-12-27, v1.3.1 2025-12-28, v1.3.2 2026-08-29); repository since 2019-05-18 by Filippo Valsorda (former Go security lead, the format's author), ~24,000 stars, BSD-3, not archived; pkg.go.dev lists 432 importers. Implements the age v1 format (C2SP spec), so `age -d` of the official CLI opens the files. Its go.mod requires `filippo.io/hpke`, `filippo.io/edwards25519`, `filippo.io/nistec` (same author), `golang.org/x/crypto`, `x/sys`, `x/term` (official); of these only `filippo.io/hpke` is new in our `go.mod` (indirect). |
 | Test only: `github.com/go-ldap/ldap/v3` v3.4.15 | LDAP client in Go integration tests | Organization `go-ldap`, repo since 2014-10, ~2,500 stars, release 2026-10-07. Not linked into the binary. |
 
 Not used, and why: `github.com/jimlambrt/gldap` (an LDAP server library; last release v0.1.14 on

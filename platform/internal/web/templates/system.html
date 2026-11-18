@@ -15,19 +15,25 @@
   </div>
 </section>
 
-<section class="card section-gap" id="two-step">
-  <div class="card-head"><h2>{{icon "shield-check"}}两步验证</h2></div>
-  <form method="post" action="/system/two-step" class="card-body settings">
+<section class="card section-gap" id="security">
+  <div class="card-head"><h2>{{icon "shield-check"}}安全</h2></div>
+  <div class="card-body settings">
     <label class="setting toggle"><span class="setting-text"><span class="setting-name">区域管理员必须启用两步验证</span></span>
-      <span class="switch"><input type="checkbox" role="switch" name="required" value="1" data-autosubmit{{if $d.TwoStepRequired}} checked{{end}}><span></span></span></label>
-    <noscript><div class="form-foot"><button type="submit" class="btn">保存</button></div></noscript>
-  </form>
+      <span class="switch"><input type="checkbox" role="switch" name="required" value="1" form="f-two-step" data-autosubmit{{if $d.TwoStepRequired}} checked{{end}}><span></span></span></label>
+    <label class="setting toggle"><span class="setting-text"><span class="setting-name">密码强度检测</span></span>
+      <span class="switch"><input type="checkbox" role="switch" name="check" value="1" form="f-password-check" data-autosubmit{{if $d.PasswordCheck}} checked{{end}}><span></span></span></label>
+  </div>
+  <form method="post" action="/system/two-step" id="f-two-step"><noscript><div class="card-foot form-actions"><button type="submit" class="btn">保存</button></div></noscript></form>
+  <form method="post" action="/system/password-check" id="f-password-check"><noscript><div class="card-foot form-actions"><button type="submit" class="btn">保存</button></div></noscript></form>
 </section>
 
 <section class="card section-gap" id="certificate" aria-labelledby="cert-title">
-  {{$c := $d.Cert}}
+  {{$c := $d.Cert}}{{$own := eq $c.View "own"}}
   <div class="card-head"><h2 id="cert-title">{{icon "shield-check"}}证书</h2>
-    <a class="btn small ghost" href="/system/ca.pem">{{icon "download"}}下载 CA 证书</a></div>
+    <form method="get" action="/system#certificate" class="segmented small" aria-label="证书来源">
+      <button type="submit" name="cert" value="builtin" aria-pressed="{{not $own}}">{{if $c.BuiltinUsed}}<span class="dot ok" role="img" aria-label="使用中"></span>{{end}}内置 CA</button>
+      <button type="submit" name="cert" value="own" aria-pressed="{{$own}}">{{if $c.OwnUsed}}<span class="dot ok" role="img" aria-label="使用中"></span>{{end}}自有证书</button>
+    </form></div>
   <div class="card-body">
     {{range $c.Notices}}<div class="flash {{.Level}}" role="alert">{{.Text}}</div>{{end}}
     {{with $c.Error}}<div class="flash error" role="alert">{{.}}</div>{{end}}
@@ -37,35 +43,25 @@
       {{if $c.Token}}
       <form method="post" action="/system/certificate/confirm" class="actions spaced">
         <input type="hidden" name="token" value="{{$c.Token}}">
-        <button type="submit" class="btn primary">{{icon "check"}}确认启用此证书</button><a class="btn ghost" href="/system">取消</a>
+        <button type="submit" class="btn primary">{{icon "check"}}确认启用此证书</button><a class="btn ghost" href="/system?cert=own#certificate">取消</a>
       </form>
       {{else if $c.RemoveAsk}}
       <form method="post" action="/system/certificate/remove" class="actions spaced">
         <input type="hidden" name="confirm" value="1">
-        <button type="submit" class="btn danger">{{icon "x"}}确认停用{{with $c.RemoveRescan}}，{{.}} 台设备需重新扫码{{end}}</button><a class="btn ghost" href="/system">取消</a>
+        <button type="submit" class="btn danger">{{icon "check"}}确认改用内置 CA{{with $c.RemoveRescan}}，{{.}} 台设备需重新扫码{{end}}</button><a class="btn ghost" href="/system?cert=own#certificate">取消</a>
       </form>
       {{end}}
     </div>
     {{end}}
-    <dl class="kv">
+    <dl class="kv compact">
       <dt>模式</dt><dd>{{$c.Mode}}</dd>
       <dt>HTTPS</dt><dd>{{$c.HTTPS}}</dd>
       <dt>LDAP</dt><dd>{{$c.LDAP}}</dd>
     </dl>
-    {{range $c.Own}}
-    <h3>{{.Title}}</h3>
-    <dl class="kv">
-      <dt>主题</dt><dd class="fade">{{.Subject}}</dd>
-      <dt>签发者</dt><dd class="fade">{{.Issuer}}</dd>
-      <dt>名称</dt><dd class="mono">{{join .Names ", "}}</dd>
-      <dt>到期</dt><dd>{{day .NotAfter}} <span class="status{{if le .DaysLeft $c.ReminderDays}} warn{{end}}">剩余 {{.DaysLeft}} 天</span></dd>
-      <dt>设备信任</dt><dd>{{.Trust}}</dd>
-      {{with .Uses}}<dt>用于</dt><dd>{{.}}</dd>{{end}}
-      <dt>指纹</dt><dd class="mono small-text muted">{{.Fingerprint}}</dd>
-      {{with .EmptyAKI}}<dt>注意</dt><dd><span class="status warn">{{.}}</span></dd>{{end}}
-    </dl>
-    {{end}}
-    <h3>内置 CA</h3>
+  </div>
+  {{if not $own}}
+  <div class="card-body cert-view">
+    <h3>内置 CA {{if $c.BuiltinUsed}}<span class="status ok">使用中</span>{{else}}<span class="status">未使用</span>{{end}}</h3>
     <dl class="kv">
       {{with $d.CA}}
       <dt>CA</dt><dd class="fade">{{.Subject}}</dd>
@@ -79,27 +75,49 @@
       <dt>自动签发</dt><dd>{{if $c.Paused}}<span class="status warn">已暂停</span>{{else}}<span class="status ok">运行中</span>{{end}}</dd>
     </dl>
   </div>
-  <form method="post" action="/system/certificate" enctype="multipart/form-data" class="card-body settings">
-    <h3>使用自有证书</h3>
-    <label class="setting"><span class="setting-text"><span class="setting-name">证书链（PEM）</span></span>
-      <span class="setting-control"><input type="file" name="chain" accept=".pem,.crt,.cer" required></span></label>
-    <label class="setting"><span class="setting-text"><span class="setting-name">私钥（PEM，未加密）</span></span>
-      <span class="setting-control"><input type="file" name="key" accept=".pem,.key" required></span></label>
-    <div class="form-foot"><button type="submit" class="btn">{{icon "upload"}}上传</button></div>
-  </form>
+  <div class="card-foot form-actions">
+    <a class="btn" href="/system/ca.pem">{{icon "download"}}下载 CA 证书</a>
+    {{if not $c.Paused}}<form method="post" action="/system/reissue" data-confirm="确认重新签发服务器证书？CA 不变，设备无需重新扫码。"><button type="submit" class="btn">{{icon "refresh-cw"}}重新签发服务器证书</button></form>{{end}}
+  </div>
+  {{else}}
+  {{with $c.Own}}
+  <div class="card-body cert-view">
+    {{range .}}
+    <h3>{{.Title}} {{if $c.OwnUsed}}<span class="status ok">使用中</span>{{end}}</h3>
+    <dl class="kv">
+      <dt>主题</dt><dd class="fade">{{.Subject}}</dd>
+      <dt>签发者</dt><dd class="fade">{{.Issuer}}</dd>
+      <dt>名称</dt><dd class="mono">{{join .Names ", "}}</dd>
+      <dt>到期</dt><dd>{{day .NotAfter}} <span class="status{{if le .DaysLeft $c.ReminderDays}} warn{{end}}">剩余 {{.DaysLeft}} 天</span></dd>
+      <dt>设备信任</dt><dd>{{.Trust}}</dd>
+      {{with .Uses}}<dt>用于</dt><dd>{{.}}</dd>{{end}}
+      <dt>指纹</dt><dd class="mono small-text muted">{{.Fingerprint}}</dd>
+      {{with .EmptyAKI}}<dt>注意</dt><dd><span class="status warn">{{.}}</span></dd>{{end}}
+    </dl>
+    {{end}}
+  </div>
+  {{end}}
   <form method="post" action="/system/certificate/reminder" class="card-body settings">
     <label class="setting"><span class="setting-text"><span class="setting-name">到期前提醒（天）</span></span>
       <span class="setting-control"><input type="number" name="days" min="1" max="{{$c.MaxDays}}" value="{{$c.ReminderDays}}" class="narrow-input" required><button type="submit" class="btn">保存</button></span></label>
   </form>
-  {{if or (not $c.Paused) $c.HasUploaded}}
-  <div class="card-foot">
-    {{if not $c.Paused}}<form method="post" action="/system/reissue" data-confirm="确认重新签发服务器证书？CA 不变，设备无需重新扫码。"><button type="submit" class="btn">{{icon "refresh-cw"}}重新签发服务器证书</button></form>{{end}}
-    {{if $c.HasUploaded}}<form method="post" action="/system/certificate/remove" data-confirm="确认停用自有证书并恢复使用内置 CA？"><button type="submit" class="btn danger">{{icon "x"}}停用自有证书</button></form>{{end}}
+  <form method="post" action="/system/certificate" enctype="multipart/form-data" class="card-body form cert-upload">
+    <h3>上传自有证书</h3>
+    <div class="grid2">
+      <label>证书链（PEM）<input type="file" name="chain" accept=".pem,.crt,.cer" required></label>
+      <label>私钥（PEM，未加密）<input type="file" name="key" accept=".pem,.key" required></label>
+    </div>
+    <div class="form-foot"><button type="submit" class="btn">{{icon "upload"}}上传</button></div>
+  </form>
+  {{if $c.HasUploaded}}
+  <div class="card-foot form-actions">
+    <form method="post" action="/system/certificate/remove" data-confirm="确认改用内置 CA？自有证书将停用，平台改用内置 CA 签发的证书。"><button type="submit" class="btn danger">{{icon "x"}}改用内置 CA</button></form>
   </div>
+  {{end}}
   {{end}}
 </section>
 
-<section class="card table-card">
+<section class="card table-card section-gap" id="backups">
   <div class="card-head"><h2>{{icon "download"}}备份</h2>
     <form method="post" action="/system/backup"><button type="submit" class="btn small primary">立即备份</button></form></div>
   <div class="card-body">
@@ -112,9 +130,29 @@
   </div>
   {{if $d.Backups}}
   <div class="table-wrap codec-table"><table class="table">
-    <thead><tr><th>文件</th><th>时间</th><th class="num">大小</th></tr></thead>
-    <tbody>{{range $d.Backups}}<tr><td class="mono">{{.Name}}</td><td class="muted">{{at .ModTime}}</td><td class="num">{{printf "%.1f" (mb .Size)}} MB</td></tr>{{end}}</tbody>
+    <thead><tr><th>文件</th><th>时间</th><th class="num">大小</th><th class="actions-col"><span class="sr-only">操作</span></th></tr></thead>
+    <tbody>{{range $d.Backups}}<tr><td class="mono">{{.Name}}</td><td class="muted">{{at .ModTime}}</td><td class="num">{{printf "%.1f" (mb .Size)}} MB</td>
+      <td class="actions-col"><a class="btn small ghost" href="/system?backup={{.Name}}#download">{{icon "download"}}下载</a></td></tr>{{end}}</tbody>
   </table></div>
+  {{with $d.Download}}
+  <form method="post" action="/system/backups/download" class="card-body form backup-download" id="download"
+    data-confirm="未加密的备份文件含全部配置、密码哈希与加密保存的密码，确认下载？" data-confirm-unless="encrypt">
+    <input type="hidden" name="name" value="{{.}}">
+    <h3>下载 <span class="mono">{{.}}</span></h3>
+    {{with $d.DownloadError}}<div class="flash error" role="alert">{{.}}</div>{{end}}
+    <div class="grid2">
+      <label>当前密码<input type="password" name="password" autocomplete="current-password" required></label>
+      <label class="setting toggle"><span class="setting-text"><span class="setting-name">加密</span></span>
+        <span class="switch"><input type="checkbox" role="switch" name="encrypt" value="1" checked><span></span></span></label>
+    </div>
+    <div class="grid2 passphrase">
+      {{if $d.PasswordCheck}}<div class="field"><span class="label-line"><label for="f-passphrase">加密口令</label>{{tip "f-passphrase-tip" "至少 10 个字符"}}</span><input id="f-passphrase" aria-describedby="f-passphrase-tip" type="password" name="passphrase" autocomplete="new-password" maxlength="256"></div>
+      {{else}}<label>加密口令<input type="password" name="passphrase" autocomplete="new-password" maxlength="256"></label>{{end}}
+      <label>再次输入加密口令<input type="password" name="passphrase2" autocomplete="new-password" maxlength="256"></label>
+    </div>
+    <div class="form-foot"><a class="btn" href="/system#backups">取消</a><button type="submit" class="btn primary">{{icon "download"}}下载</button></div>
+  </form>
+  {{end}}
   {{else}}<div class="empty-state compact">{{icon "inbox"}}<p>暂无备份</p></div>{{end}}
 </section>
 {{end}}

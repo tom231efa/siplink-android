@@ -132,17 +132,17 @@ input[type=checkbox]:focus, input[type=radio]:focus { box-shadow: none; }
 }
 .segmented label { position: relative; display: inline-flex; }
 .segmented input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; cursor: pointer; }
-.segmented span, .segmented button {
+.segmented input + span, .segmented button {
   display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border-radius: 7px;
   font: inherit; font-size: 13px; font-weight: 500; color: var(--muted); white-space: nowrap;
   background: transparent; border: 0; cursor: pointer;
 }
-.segmented label:hover span, .segmented button:hover { color: var(--text); }
+.segmented label:hover input + span, .segmented button:hover { color: var(--text); }
 .segmented input:checked + span, .segmented button[aria-pressed="true"] {
   color: var(--text); background: var(--surface); box-shadow: var(--shadow-sm), 0 0 0 1px var(--border);
 }
 .segmented input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 1px; }
-.segmented.small span, .segmented.small button { height: 26px; padding: 0 8px; font-size: 12.5px; }
+.segmented.small input + span, .segmented.small button { height: 26px; padding: 0 8px; font-size: 12.5px; }
 .segmented .icon { width: 14px; height: 14px; }
 fieldset:disabled .segmented { opacity: .6; }
 
@@ -182,6 +182,7 @@ fieldset:disabled .segmented { opacity: .6; }
   padding: 14px 0; border-top: 1px solid var(--border);
 }
 .setting:first-child { border-top: 0; padding-top: 4px; }
+.setting:last-child { padding-bottom: 4px; }
 .setting.toggle { grid-template-columns: minmax(0, 1fr) auto; cursor: pointer; }
 .setting-text { display: grid; gap: 2px; }
 .setting-name { font-weight: 500; color: var(--text); }
@@ -210,6 +211,9 @@ fieldset:disabled .segmented { opacity: .6; }
 .card-head h2 .icon { color: var(--muted); }
 .card-head .hint { margin: 0; }
 .card-body { padding: 20px; }
+/* the body's padding is the only space at its edges: no child adds its own margin there */
+.card-body > :first-child { margin-top: 0; }
+.card-body > :last-child { margin-bottom: 0; }
 .card-foot { padding: 12px 20px; border-top: 1px solid var(--border); display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
 .content > :is(.card, .panel, .two-col, .narrow-page) + :is(.card, .panel, .two-col),
 .narrow-page > .card + .card, .narrow-page > form + .card { margin-top: 20px; }
@@ -328,6 +332,8 @@ fieldset:disabled .segmented { opacity: .6; }
 }
 /* in a table a value keeps at least this much room, so short values are not cut when long ones share the row */
 .table .fade { min-width: 5em; }
+/* inside a tag the value hugs its text and fades only when the tag cannot fit it */
+.table .tag > .fade { min-width: 0; }
 .fade-line { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .fade-line > .fade { flex: 0 1 auto; }
 .fade-line > :not(.fade) { flex: none; margin: 0; }
@@ -370,7 +376,7 @@ fieldset:disabled .segmented { opacity: .6; }
 .flash {
   display: block; padding: 10px 14px; margin-bottom: 16px; border-radius: var(--radius-sm); font-size: 13.5px;
   color: var(--text-2); background: var(--surface-2); border: 1px solid var(--border);
-  animation: settle var(--t) var(--ease) both;
+  animation: settle var(--t) var(--ease) backwards;
 }
 .flash.ok { color: var(--ok-text); background: var(--ok-soft); border-color: color-mix(in oklch, var(--ok) 28%, transparent); }
 .flash.error { color: var(--danger-text); background: var(--danger-soft); border-color: color-mix(in oklch, var(--danger) 28%, transparent); }
@@ -409,6 +415,11 @@ fieldset:disabled .segmented { opacity: .6; }
   border: 0; border-radius: var(--radius-lg); background: var(--surface); color: var(--text);
   padding: 20px 24px; width: min(420px, calc(100vw - 32px)); box-shadow: var(--shadow-lg);
 }
+/* while a dialog is open the page behind it does not scroll; the root keeps its scroll bar's gutter
+   reserved, so nothing moves sideways when the bar goes */
+html { scrollbar-gutter: stable; }
+html:has(dialog[open]) { overflow: hidden; }
+.dialog, .palette-list, .nav { overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
 .dialog::backdrop { background: oklch(0.2 0.01 255 / .32); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
 .dialog[open] { animation: pop var(--t) var(--ease); }
 .dialog[open]::backdrop { animation: fade var(--t) var(--ease); }

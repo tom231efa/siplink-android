@@ -40,7 +40,17 @@ type certCard struct {
 	Token        string // confirms the pending upload
 	RemoveAsk    bool   // the removal waits for a confirmation
 	RemoveRescan int    // phones that would have to scan again after the removal
+	// The card shows one source at a time (View: certBuiltin or certOwn), opening on the
+	// one in use; looking at the other changes nothing. Both can be in use (mixed).
+	View                 string
+	BuiltinUsed, OwnUsed bool
 }
+
+// The two views of the certificate card.
+const (
+	certBuiltin = "builtin"
+	certOwn     = "own"
+)
 
 // ownInfo is a certificate of the operator's as the card shows it.
 type ownInfo struct {
@@ -63,6 +73,16 @@ func (s *Server) certCard(r *http.Request) *certCard {
 		LDAP: pki.SourceLabel(ldap, "未开启"), Paused: c.Paused(), ReminderDays: c.ReminderDays(r.Context()),
 		MaxDays: pki.MaxReminderDays}
 	card.Notices = c.Notices(card.ReminderDays)
+	card.BuiltinUsed = https == pki.SourceBuiltin || ldap == pki.SourceBuiltin
+	card.OwnUsed = https == pki.SourceOwn || https == pki.SourceFiles || ldap == pki.SourceOwn || ldap == pki.SourceFiles
+	switch v := r.URL.Query().Get("cert"); {
+	case v == certBuiltin || v == certOwn:
+		card.View = v
+	case card.OwnUsed:
+		card.View = certOwn
+	default:
+		card.View = certBuiltin
+	}
 	httpsFiles, ldapFiles := c.Files()
 	if httpsFiles != nil {
 		card.Own = append(card.Own, s.ownInfo("HTTPS 证书文件", httpsFiles, ""))
@@ -144,7 +164,7 @@ func (s *Server) certUpload(w http.ResponseWriter, r *http.Request) {
 		s.certImport(w, r, a)
 	default:
 		token := s.pending.put(s.Now(), current(r).ID, a.Own)
-		s.renderSystem(w, r, http.StatusOK, func(c *certCard) { c.Warnings, c.Token = a.Warnings, token })
+		s.renderSystem(w, r, http.StatusOK, func(d *systemData) { d.Cert.Warnings, d.Cert.Token, d.Cert.View = a.Warnings, token, certOwn })
 	}
 }
 
@@ -178,7 +198,7 @@ func formFile(r *http.Request, name string) ([]byte, error) {
 }
 
 func (s *Server) certRefused(w http.ResponseWriter, r *http.Request, reason string) {
-	s.renderSystem(w, r, http.StatusBadRequest, func(c *certCard) { c.Error = "证书未启用：" + reason })
+	s.renderSystem(w, r, http.StatusBadRequest, func(d *systemData) { d.Cert.Error, d.Cert.View = "证书未启用："+reason, certOwn })
 }
 
 // certConfirm uses an upload whose warnings the administrator has read. It is checked
@@ -215,7 +235,7 @@ func (s *Server) certRemove(w http.ResponseWriter, r *http.Request) {
 	c := s.Ext.Certs
 	o := c.Uploaded()
 	if o == nil {
-		s.redirect(w, r, "/system", "error", "尚未上传自有证书。")
+		s.redirect(w, r, "/system?cert=own#certificate", "error", "尚未上传自有证书。")
 		return
 	}
 	warnings, rescan, err := c.RemovalWarnings(r.Context())
@@ -224,8 +244,9 @@ func (s *Server) certRemove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(warnings) > 0 && r.FormValue("confirm") != "1" {
-		s.renderSystem(w, r, http.StatusOK, func(card *certCard) {
-			card.Warnings, card.RemoveAsk, card.RemoveRescan = warnings, true, rescan
+		s.renderSystem(w, r, http.StatusOK, func(d *systemData) {
+			card := d.Cert
+			card.Warnings, card.RemoveAsk, card.RemoveRescan, card.View = warnings, true, rescan, certOwn
 		})
 		return
 	}
@@ -250,8 +271,8 @@ func (s *Server) certReminder(w http.ResponseWriter, r *http.Request) {
 	old := c.ReminderDays(r.Context())
 	days, err := strconv.Atoi(strings.TrimSpace(r.FormValue("days")))
 	if err != nil || days < 1 || days > pki.MaxReminderDays {
-		s.renderSystem(w, r, http.StatusBadRequest, func(c *certCard) {
-			c.Error = fmt.Sprintf("到期前提醒天数须为 1 到 %d 的整数。", pki.MaxReminderDays)
+		s.renderSystem(w, r, http.StatusBadRequest, func(d *systemData) {
+			d.Cert.Error, d.Cert.View = fmt.Sprintf("到期前提醒天数须为 1 到 %d 的整数。", pki.MaxReminderDays), certOwn
 		})
 		return
 	}
@@ -262,7 +283,7 @@ func (s *Server) certReminder(w http.ResponseWriter, r *http.Request) {
 	if days != old {
 		s.audit(r, "pki.reminder", "system", 0, "到期前提醒天数", nil, changes(field{"reminder_days", old, days}))
 	}
-	s.redirect(w, r, "/system", "ok", fmt.Sprintf("已设置为到期前 %d 天提醒。", days))
+	s.redirect(w, r, "/system?cert=own#certificate", "ok", fmt.Sprintf("已设置为到期前 %d 天提醒。", days))
 }
 
 // certNotices are the reminders the dashboard shows super administrators.

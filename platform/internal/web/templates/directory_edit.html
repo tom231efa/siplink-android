@@ -54,12 +54,15 @@
           {{range $d.Accounts}}<option value="{{.ID}}"{{if eq .ID (deref $d.D.LDAPAccountID)}} selected{{end}}>{{.Name}}{{if not .RegionID}}（全局）{{end}}</option>{{end}}
         </select>
       </label>
-      <div class="field"><span class="field-label" id="l-hpm">密码</span>
-        <div class="segmented" role="radiogroup" aria-labelledby="l-hpm">
-          <label><input type="radio" name="passwordMode" value="template"{{if or (eq .PasswordMode "template") (not $d.Manual)}} checked{{end}}><span>模板统一设置</span></label>
-          <label><input type="radio" name="passwordMode" value="client"{{if and $d.Manual (eq .PasswordMode "client")}} checked{{end}}><span>按客户端设置</span></label>
-        </div></div>
-      <label>LDAP 账号密码<input type="password" name="password" autocomplete="new-password"{{if and $d.Manual $d.HasPass}} placeholder="已设置，留空保持不变"{{end}}></label>
+      <div class="grid2">
+        <label>密码
+          <select name="passwordMode">
+            <option value="template"{{if or (eq .PasswordMode "template") (not $d.Manual)}} selected{{end}}>模板统一设置</option>
+            <option value="client"{{if and $d.Manual (eq .PasswordMode "client")}} selected{{end}}>按客户端设置</option>
+          </select>
+        </label>
+        {{if and $d.Manual $d.HasPass}}<div class="field shared-password"><span class="label-line"><label for="f-pass">LDAP 账号密码</label>{{tip "f-pass-tip" "留空保持不变"}}</span><input id="f-pass" aria-describedby="f-pass-tip" type="password" name="password" autocomplete="new-password" placeholder="已设置"></div>{{else}}<label class="shared-password">LDAP 账号密码<input type="password" name="password" autocomplete="new-password"></label>{{end}}
+      </div>
       </fieldset>
     </div>
   </section>

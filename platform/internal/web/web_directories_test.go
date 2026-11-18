@@ -156,7 +156,7 @@ func TestExternalDirectoryPage(t *testing.T) {
 		t.Errorf("duplicate name: %d", r.code)
 	}
 	r := root.get("/directories/" + itoa(id))
-	if strings.Contains(r.body, secretValue) || !strings.Contains(r.body, "已设置，留空保持不变") {
+	if strings.Contains(r.body, secretValue) || !strings.Contains(r.body, `placeholder="已设置"`) || !strings.Contains(r.body, "留空保持不变") {
 		t.Error("password shown or not marked as set")
 	}
 	// Saving without a password keeps it; another mode drops it.

@@ -435,5 +435,5 @@ func (s *Server) policySave(w http.ResponseWriter, r *http.Request) {
 	if old != on {
 		s.audit(r, "two_step.policy", "system", 0, "两步验证", nil, map[string]any{"required": on})
 	}
-	s.redirect(w, r, "/system#two-step", "ok", "已保存。")
+	s.redirect(w, r, "/system#security", "ok", "已保存。")
 }

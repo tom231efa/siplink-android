@@ -25,29 +25,33 @@
   <section class="card">
     <div class="card-head"><h2>服务器</h2></div>
     <div class="card-body form">
-      <div class="grid2 domain-port">
+      <div class="grid2 domain-port trio">
         <label>服务器<input name="host" value="{{$e.Host}}" required placeholder="ldap.example.com"></label>
         <label>端口<input name="port" value="{{$e.Port}}" inputmode="numeric"></label>
+        <label>加密
+          <select name="security">
+            <option value="START_TLS"{{if ne $e.Security "NONE"}} selected{{end}}>StartTLS</option>
+            <option value="NONE"{{if eq $e.Security "NONE"}} selected{{end}}>不加密</option>
+          </select>
+        </label>
       </div>
-      <div class="field"><span class="field-label" id="l-sec">加密</span>
-        <div class="segmented" role="radiogroup" aria-labelledby="l-sec">
-          <label><input type="radio" name="security" value="START_TLS"{{if ne $e.Security "NONE"}} checked{{end}}><span>StartTLS</span></label>
-          <label><input type="radio" name="security" value="NONE"{{if eq $e.Security "NONE"}} checked{{end}}><span>不加密</span></label>
-        </div></div>
       <label>搜索基准（Base DN）<input name="baseDn" value="{{$e.BaseDN}}" required class="mono"></label>
     </div>
   </section>
   <section class="card">
     <div class="card-head"><h2>登录</h2></div>
     <div class="card-body form">
-      <label>登录名（Bind DN）<input name="bindDn" value="{{$e.BindDN}}" class="mono" placeholder="留空为匿名"></label>
-      <div class="field"><span class="field-label" id="l-epm">密码</span>
-        <div class="segmented" role="radiogroup" aria-labelledby="l-epm">
-          <label><input type="radio" name="passwordMode" value="none"{{if eq $e.PasswordMode "none"}} checked{{end}}><span>匿名</span></label>
-          <label><input type="radio" name="passwordMode" value="template"{{if eq $e.PasswordMode "template"}} checked{{end}}><span>统一设置</span></label>
-          <label><input type="radio" name="passwordMode" value="client"{{if eq $e.PasswordMode "client"}} checked{{end}}><span>按客户端设置</span></label>
-        </div></div>
-      <label class="shared-password">统一密码<input type="password" name="password" autocomplete="new-password"{{if $d.HasPass}} placeholder="已设置，留空保持不变"{{end}}></label>
+      <div class="field"><span class="label-line"><label for="f-bind">登录名（Bind DN）</label>{{tip "f-bind-tip" "留空为匿名"}}</span><input id="f-bind" aria-describedby="f-bind-tip" name="bindDn" value="{{$e.BindDN}}" class="mono"></div>
+      <div class="grid2">
+        <label>密码
+          <select name="passwordMode">
+            <option value="none"{{if eq $e.PasswordMode "none"}} selected{{end}}>匿名</option>
+            <option value="template"{{if eq $e.PasswordMode "template"}} selected{{end}}>统一设置</option>
+            <option value="client"{{if eq $e.PasswordMode "client"}} selected{{end}}>按客户端设置</option>
+          </select>
+        </label>
+        {{if $d.HasPass}}<div class="field shared-password"><span class="label-line"><label for="f-pass">统一密码</label>{{tip "f-pass-tip" "留空保持不变"}}</span><input id="f-pass" aria-describedby="f-pass-tip" type="password" name="password" autocomplete="new-password" placeholder="已设置"></div>{{else}}<label class="shared-password">统一密码<input type="password" name="password" autocomplete="new-password"></label>{{end}}
+      </div>
     </div>
   </section>
   <section class="card">
@@ -58,8 +62,8 @@
         <span></span>
         <label>姓名属性<input name="nameAttributes" value="{{$e.NameAttributes}}" class="mono"></label>
         <label>号码属性<input name="numberAttributes" value="{{$e.NumberAttributes}}" class="mono"></label>
-        <label>姓名过滤器<input name="nameFilter" value="{{$e.NameFilter}}" class="mono" placeholder="自动（需含 %）"></label>
-        <label>号码过滤器<input name="numberFilter" value="{{$e.NumberFilter}}" class="mono" placeholder="自动（需含 %）"></label>
+        <div class="field"><span class="label-line"><label for="f-name-filter">姓名过滤器</label>{{tip "f-name-filter-tip" "自动（需含 %）"}}</span><input id="f-name-filter" aria-describedby="f-name-filter-tip" name="nameFilter" value="{{$e.NameFilter}}" class="mono"></div>
+        <div class="field"><span class="label-line"><label for="f-number-filter">号码过滤器</label>{{tip "f-number-filter-tip" "自动（需含 %）"}}</span><input id="f-number-filter" aria-describedby="f-number-filter-tip" name="numberFilter" value="{{$e.NumberFilter}}" class="mono"></div>
       </div>
     </div>
   </section>

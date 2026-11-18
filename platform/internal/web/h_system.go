@@ -19,7 +19,9 @@ func (s *Server) routesSystem() {
 	s.page("GET /system", s.requireSuper(s.systemPage))
 	s.page("POST /system/backup", s.requireSuper(s.systemBackup))
 	s.page("POST /system/reissue", s.requireSuper(s.systemReissue))
+	s.page("POST /system/password-check", s.requireSuper(s.passwordCheckSave))
 	s.page("GET /system/ca.pem", s.caDownload)
+	s.page("POST /system/backups/download", s.requireSuper(s.backupDownload))
 	s.routesCertificate()
 }
 
@@ -63,22 +65,24 @@ type systemData struct {
 	KeyFile     string
 	// TwoStepRequired: region administrators must use two-step sign-in (§6.8).
 	TwoStepRequired bool
+	// PasswordCheck: new administrator passwords are checked for strength (§6.1).
+	PasswordCheck bool
+	// Download is the backup whose download form is open, DownloadError its refusal.
+	Download      string
+	DownloadError string
 }
 
 func (s *Server) systemPage(w http.ResponseWriter, r *http.Request) {
 	s.renderSystem(w, r, http.StatusOK, nil)
 }
 
-// renderSystem shows the system page; card may add to the certificate card (an
-// upload's refusal, warnings waiting for a confirmation).
-func (s *Server) renderSystem(w http.ResponseWriter, r *http.Request, status int, card func(*certCard)) {
+// renderSystem shows the system page; edit may add the outcome of a form (an upload's
+// refusal, warnings waiting for a confirmation, a refused backup download).
+func (s *Server) renderSystem(w http.ResponseWriter, r *http.Request, status int, edit func(*systemData)) {
 	c := s.Cfg
 	d := systemData{Version: Version, PublicURL: c.PublicURL, LDAPHost: c.LDAPPublicHost, LDAPPort: c.LDAPPublicPort,
 		LDAPSuffix: c.LDAPSuffix, RequireTLS: c.LDAPRequireTLS, Cert: s.certCard(r),
 		BackupTime: c.BackupTime, BackupKeep: c.BackupKeep, KeyFile: c.KeyFile}
-	if card != nil {
-		card(d.Cert)
-	}
 	switch sec, ok := rules.HostedSecurity(c.LDAPPublicHost, c.LDAPRequireTLS); {
 	case !ok:
 		d.HostedNote = rules.HostedNeedsName
@@ -93,10 +97,22 @@ func (s *Server) renderSystem(w http.ResponseWriter, r *http.Request, status int
 		}
 	}
 	d.Backups, _ = backup.List(backup.Dir(c.DataDir))
+	for _, b := range d.Backups {
+		if b.Name == r.URL.Query().Get("backup") {
+			d.Download = b.Name
+		}
+	}
 	var err error
 	if d.TwoStepRequired, err = s.St.TwoStepRequired(r.Context()); err != nil {
 		s.internal(w, r, err)
 		return
+	}
+	if d.PasswordCheck, err = s.St.PasswordCheck(r.Context()); err != nil {
+		s.internal(w, r, err)
+		return
+	}
+	if edit != nil {
+		edit(&d)
 	}
 	s.render(w, r, status, "system", &Page{Title: "系统", Nav: "system", Data: d})
 }
@@ -125,6 +141,23 @@ func (s *Server) systemReissue(w http.ResponseWriter, r *http.Request) {
 	}
 	s.audit(r, "pki.reissue", "system", 0, strings.Join(s.Cfg.CertNames(), ", "), nil, nil)
 	s.redirect(w, r, "/system", "ok", "已重新签发服务器证书，新连接将立即使用。")
+}
+
+// passwordCheckSave switches the strength check of new administrator passwords.
+func (s *Server) passwordCheckSave(w http.ResponseWriter, r *http.Request) {
+	on := r.FormValue("check") == "1"
+	old, err := s.St.PasswordCheck(r.Context())
+	if err == nil && old != on {
+		err = s.St.SetPasswordCheck(r.Context(), on)
+	}
+	if err != nil {
+		s.internal(w, r, err)
+		return
+	}
+	if old != on {
+		s.audit(r, "password.policy", "system", 0, "密码强度检测", nil, map[string]any{"check": on})
+	}
+	s.redirect(w, r, "/system#security", "ok", "已保存。")
 }
 
 // caDownload gives the built-in CA certificate (public) to any administrator, for

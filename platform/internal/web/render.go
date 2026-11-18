@@ -78,6 +78,7 @@ var funcs = template.FuncMap{
 	"when":         whenText,
 	"since":        sinceText,
 	"icon":         iconSVG,
+	"tip":          fieldTip,
 	"tabIcon":      func(id string) string { return configTabIcons[id] },
 	"initial":      initial,
 	"roleLabel":    roleLabel,

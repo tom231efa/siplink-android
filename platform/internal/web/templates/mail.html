@@ -6,18 +6,17 @@
   <div class="card-head"><h2>{{icon "server"}}SMTP</h2></div>
   <div class="card-body form">
     {{with $d.Error}}<div class="flash error" role="alert">{{.}}</div>{{end}}
-    <div class="grid2">
+    <div class="grid2 domain-port trio">
       <label>服务器<input name="host" value="{{$s.Host}}" maxlength="253" placeholder="smtp.example.com" autocomplete="off" spellcheck="false" required></label>
-      <label>端口<input name="port" type="number" min="1" max="65535" value="{{if $s.Port}}{{$s.Port}}{{end}}" class="narrow-input"></label>
+      <label>端口<input name="port" type="number" min="1" max="65535" value="{{if $s.Port}}{{$s.Port}}{{end}}"></label>
+      <label>加密方式
+        <select name="security">
+          <option value="starttls"{{if or (eq $s.Security "starttls") (not $s.Security)}} selected{{end}}>STARTTLS</option>
+          <option value="tls"{{if eq $s.Security "tls"}} selected{{end}}>TLS</option>
+          <option value="none"{{if eq $s.Security "none"}} selected{{end}}>不加密</option>
+        </select>
+      </label>
     </div>
-    <fieldset class="plain">
-      <legend class="field-label">加密方式</legend>
-      <div class="segmented" role="radiogroup" aria-label="加密方式">
-        <label><input type="radio" name="security" value="starttls"{{if or (eq $s.Security "starttls") (not $s.Security)}} checked{{end}}><span>STARTTLS</span></label>
-        <label><input type="radio" name="security" value="tls"{{if eq $s.Security "tls"}} checked{{end}}><span>TLS</span></label>
-        <label><input type="radio" name="security" value="none"{{if eq $s.Security "none"}} checked{{end}}><span>不加密</span></label>
-      </div>
-    </fieldset>
     <div class="grid2">
       <label>用户名<input name="username" value="{{$s.Username}}" maxlength="256" autocomplete="off" spellcheck="false"></label>
       <label>密码<input name="password" type="password" autocomplete="new-password" placeholder="{{if $d.PasswordSet}}已设置{{else}}未设置{{end}}"></label>

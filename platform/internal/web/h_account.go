@@ -31,6 +31,7 @@ type accountData struct {
 	Passkeys   []store.Passkey
 	PasskeysOK bool // WebAuthn works at this public URL
 	MailOK     bool // SMTP is configured
+	Strict     bool // new passwords are checked for strength
 }
 
 func (s *Server) meForm(w http.ResponseWriter, r *http.Request) {
@@ -55,6 +56,10 @@ func (s *Server) renderAccount(w http.ResponseWriter, r *http.Request, status in
 		return
 	}
 	d.MailOK = set.Configured()
+	if d.Strict, err = s.St.PasswordCheck(r.Context()); err != nil {
+		s.internal(w, r, err)
+		return
+	}
 	if d.SetUp, err = s.mustSetUp(r.Context(), a); err != nil {
 		s.internal(w, r, err)
 		return
@@ -74,7 +79,12 @@ func (s *Server) meSubmit(w http.ResponseWriter, r *http.Request) {
 	case msg == "" && pw == old:
 		msg = "新密码不得与当前密码相同。"
 	case msg == "":
-		msg = auth.PasswordProblem(pw, a.Username)
+		strict, err := s.St.PasswordCheck(r.Context())
+		if err != nil {
+			s.internal(w, r, err)
+			return
+		}
+		msg = auth.PasswordProblem(pw, a.Username, strict)
 	}
 	if msg != "" {
 		s.renderAccount(w, r, http.StatusBadRequest, msg)

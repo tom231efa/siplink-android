@@ -97,7 +97,7 @@ func TestCertificateUpload(t *testing.T) {
 	}
 	page := root.get("/system").body
 	if !strings.Contains(page, "已启用自有证书") || !strings.Contains(page, "使用自有证书（自动签发已暂停）") ||
-		strings.Contains(page, "/system/reissue") || !strings.Contains(page, "停用自有证书") || strings.Contains(page, "PRIVATE KEY") ||
+		strings.Contains(page, "/system/reissue") || !strings.Contains(page, "改用内置 CA") || strings.Contains(page, "PRIVATE KEY") ||
 		!strings.Contains(page, "私有根证书「CN=platform.example.com Root」") {
 		t.Fatalf("system page after upload:\n%s", page)
 	}
@@ -152,7 +152,7 @@ func TestCertificateUpload(t *testing.T) {
 
 	// Returning to the built-in CA locks the bound phone out: asked first.
 	r = root.post("/system/certificate/remove", nil)
-	if r.code != 200 || !strings.Contains(r.body, "确认停用，1 台设备需重新扫码") || h.srv.Ext.Certs.Uploaded() == nil {
+	if r.code != 200 || !strings.Contains(r.body, "确认改用内置 CA，1 台设备需重新扫码") || h.srv.Ext.Certs.Uploaded() == nil {
 		t.Fatalf("remove warning: %d", r.code)
 	}
 	if r := root.post("/system/certificate/remove", url.Values{"confirm": {"1"}}); r.code != http.StatusSeeOther {
@@ -187,7 +187,7 @@ func TestCertificateReminder(t *testing.T) {
 	if r := root.post("/system/certificate/reminder", url.Values{"days": {"45"}}); r.code != http.StatusSeeOther {
 		t.Fatalf("days: %d", r.code)
 	}
-	if !strings.Contains(root.get("/system").body, `value="45"`) || !strings.Contains(root.get("/audit").body, "修改证书到期提醒") {
+	if !strings.Contains(root.get("/system?cert=own").body, `value="45"`) || !strings.Contains(root.get("/audit").body, "修改证书到期提醒") {
 		t.Error("setting not shown or not audited")
 	}
 
