@@ -132,27 +132,28 @@
   <div class="table-wrap codec-table"><table class="table">
     <thead><tr><th>文件</th><th>时间</th><th class="num">大小</th><th class="actions-col"><span class="sr-only">操作</span></th></tr></thead>
     <tbody>{{range $d.Backups}}<tr><td class="mono">{{.Name}}</td><td class="muted">{{at .ModTime}}</td><td class="num">{{printf "%.1f" (mb .Size)}} MB</td>
-      <td class="actions-col"><a class="btn small ghost" href="/system?backup={{.Name}}#download">{{icon "download"}}下载</a></td></tr>{{end}}</tbody>
+      <td class="actions-col"><a class="btn small ghost" href="/system?backup={{.Name}}" data-download="{{.Name}}">{{icon "download"}}下载</a></td></tr>{{end}}</tbody>
   </table></div>
-  {{with $d.Download}}
-  <form method="post" action="/system/backups/download" class="card-body form backup-download" id="download"
-    data-confirm="未加密的备份文件含全部配置、密码哈希与加密保存的密码，确认下载？" data-confirm-unless="encrypt">
-    <input type="hidden" name="name" value="{{.}}">
-    <h3>下载 <span class="mono">{{.}}</span></h3>
-    {{with $d.DownloadError}}<div class="flash error" role="alert">{{.}}</div>{{end}}
-    <div class="grid2">
-      <label>当前密码<input type="password" name="password" autocomplete="current-password" required></label>
-      <label class="setting toggle"><span class="setting-text"><span class="setting-name">加密</span></span>
-        <span class="switch"><input type="checkbox" role="switch" name="encrypt" value="1" checked><span></span></span></label>
-    </div>
-    <div class="grid2 passphrase">
-      {{if $d.PasswordCheck}}<div class="field"><span class="label-line"><label for="f-passphrase">加密口令</label>{{tip "f-passphrase-tip" "至少 10 个字符"}}</span><input id="f-passphrase" aria-describedby="f-passphrase-tip" type="password" name="passphrase" autocomplete="new-password" maxlength="256"></div>
-      {{else}}<label>加密口令<input type="password" name="passphrase" autocomplete="new-password" maxlength="256"></label>{{end}}
-      <label>再次输入加密口令<input type="password" name="passphrase2" autocomplete="new-password" maxlength="256"></label>
-    </div>
-    <div class="form-foot"><a class="btn" href="/system#backups">取消</a><button type="submit" class="btn primary">{{icon "download"}}下载</button></div>
-  </form>
-  {{end}}
   {{else}}<div class="empty-state compact">{{icon "inbox"}}<p>暂无备份</p></div>{{end}}
 </section>
+{{if $d.Backups}}
+{{if $d.Download}}<a class="dialog-scrim" href="/system#backups" tabindex="-1" aria-hidden="true"></a>{{end}}
+  <dialog class="dialog download-dialog" id="download" aria-labelledby="download-title"{{if $d.Download}} open{{end}}>
+    <form method="post" action="/system/backups/download" class="form"
+      data-confirm="未加密的备份文件含全部配置、密码哈希与加密保存的密码，确认下载？" data-confirm-unless="encrypt">
+      <input type="hidden" name="name" value="{{$d.Download}}">
+      <h2 id="download-title">下载备份<span class="mono" data-download-name>{{$d.Download}}</span></h2>
+      {{with $d.DownloadError}}<div class="flash error" role="alert">{{.}}</div>{{end}}
+      <label>当前密码<input type="password" name="password" autocomplete="current-password" required></label>
+      <label class="setting toggle"><span class="setting-text"><span class="setting-name">加密</span></span>
+        <span class="switch"><input type="checkbox" role="switch" name="encrypt" value="1"{{if not $d.DownloadPlain}} checked{{end}}><span></span></span></label>
+      <div class="passphrase">
+        {{if $d.PasswordCheck}}<div class="field"><span class="label-line"><label for="f-passphrase">加密口令</label>{{tip "f-passphrase-tip" "至少 10 个字符"}}</span><input id="f-passphrase" aria-describedby="f-passphrase-tip" type="password" name="passphrase" autocomplete="new-password" maxlength="256"></div>
+        {{else}}<label>加密口令<input type="password" name="passphrase" autocomplete="new-password" maxlength="256"></label>{{end}}
+        <label>再次输入加密口令<input type="password" name="passphrase2" autocomplete="new-password" maxlength="256"></label>
+      </div>
+      <div class="actions"><a class="btn" href="/system#backups" data-dialog-close>取消</a><button type="submit" class="btn primary">{{icon "download"}}下载</button></div>
+    </form>
+  </dialog>
+{{end}}
 {{end}}

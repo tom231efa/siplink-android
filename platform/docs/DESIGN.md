@@ -800,7 +800,7 @@ regions; "全部区域" for super), the administrator's name → 我的账号 / 
 | 区域 `/regions` | list, create, rename, delete (empty only), counts |
 | 管理员 `/admins` | list, create (role, regions), disable, reset password (one-time password shown once) |
 | 审计日志 `/audit` | filter by admin, region, object, date; detail shows changed field names, never secret values |
-| 系统 `/system` | version, public URL and LDAP host as configured; card "安全" (the switches of §6.1 and §6.8); card "证书" (§6.7) with a switch 内置 CA · 自有证书 at its head (a GET form, `?cert=builtin\|own`; it opens on the source in use and marks each source in use with a dot, and the view shows "使用中"; looking at the other view changes nothing): the mode and the source of each listener in both views; 内置 CA: the CA's subject, validity and SHA-256 fingerprint (written the way the app shows fingerprints in its CA list; the form is read from the app's `CertificateTools`, not guessed), the names and expiry of the built-in server certificate, "下载 CA 证书" (PEM, for the administrators' browsers and for desk phones) and "重新签发服务器证书" unless issuing is paused; 自有证书: the operator's certificates (subject, issuer, names, expiry with days left, how phones trust it, which listeners use it), "到期前提醒天数", the upload (two file fields side by side, "上传" in the form's foot) and "改用内置 CA" while an uploaded certificate exists (all POST with CSRF and an audit entry); card "备份": the backups with "下载" each (§6.6), "立即备份", database size |
+| 系统 `/system` | version, public URL and LDAP host as configured; card "安全" (the switches of §6.1 and §6.8); card "证书" (§6.7) with a switch 内置 CA · 自有证书 at its head (a GET form, `?cert=builtin\|own`; it opens on the source in use and marks each source in use with a dot, and the view shows "使用中"; looking at the other view changes nothing): the mode and the source of each listener in both views; 内置 CA: the CA's subject, validity and SHA-256 fingerprint (written the way the app shows fingerprints in its CA list; the form is read from the app's `CertificateTools`, not guessed), the names and expiry of the built-in server certificate, "下载 CA 证书" (PEM, for the administrators' browsers and for desk phones) and "重新签发服务器证书" unless issuing is paused; 自有证书: the operator's certificates (subject, issuer, names, expiry with days left, how phones trust it, which listeners use it), "到期前提醒天数", the upload (two file fields side by side, "上传" in the form's foot) and "改用内置 CA" while an uploaded certificate exists (all POST with CSRF and an audit entry); card "备份": the backups with "下载" each, which opens the download dialog (§6.6), "立即备份", database size |
 | 我的账号 `/me` | own e-mail address (confirmed by code), own password, two-step sign-in (TOTP set-up `/me/totp`, passkeys, e-mail code, recovery codes shown once at `/me/recovery`), §6.8 |
 | 邮件 `/mail` | SMTP settings and "发送测试邮件" (super), §6.8 |
 
@@ -935,8 +935,15 @@ must be backed up separately and kept elsewhere; the README says so in the first
 
 Download (owner's request of 2026-11-18: "备份可以在web下载，下载的时候可以选择是不是需要加密"):
 - Super administrators only (region administrators get 404; a session waiting for the second
-  step reaches nothing, §6.8). Each listed backup has "下载", a link to `/system?backup={name}`
-  that opens the download form under the list for a name the server's own listing contains.
+  step reaches nothing, §6.8). Each listed backup has "下载", a link to `/system?backup={name}`.
+  The form is a modal dialog (the console's `.dialog`): with JavaScript the link opens it in
+  place (focus on 当前密码; 取消, Esc or a click on the backdrop close it, focus returns to the
+  link and the address is reset to `/system`); without JavaScript, and after a refused download,
+  the server renders the page with the dialog open (`<dialog open>` over a scrim link back to
+  `/system#backups`) for a name its own listing contains, with the refusal inside it and 加密 as
+  it was, secrets never kept. A download answers with a file and the page stays, so the dialog
+  closes once its form is sent (after the confirmation when unencrypted); a refusal answers with
+  a new page that has the dialog open again.
 - The form: 当前密码 (checked by the limited re-entry of §6.8, `recheckPassword`), the switch
   加密 (on by default) and, shown only while it is on, 加密口令 typed twice. `POST
   /system/backups/download` (CSRF as every form) with the name, which is looked up in the

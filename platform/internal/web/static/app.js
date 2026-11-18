@@ -28,9 +28,57 @@
         form.appendChild(hidden);
       }
       form.submit();
+      form.dispatchEvent(new Event("confirmed"));
     };
     dialog.showModal();
   });
+
+  // Backup download (系统): the links open the dialog in place. The server opens it itself
+  // (?backup=…, a refused download) as a plain dialog, made modal here. A download answers
+  // with a file and the page stays, so the dialog closes once its form is sent; a refusal
+  // answers with a new page that has the dialog open again with the message.
+  var dl = document.getElementById("download");
+  if (dl && dl.showModal) {
+    var dlForm = dl.querySelector("form"), opener = null, reopening = false;
+    var openFor = function (name, from) {
+      opener = from;
+      dlForm.elements.name.value = name;
+      dl.querySelector("[data-download-name]").textContent = name;
+      if (dl.open) { reopening = true; dl.close(); }
+      dl.showModal();
+      dlForm.elements.password.focus();
+    };
+    document.querySelectorAll("a[data-download]").forEach(function (a) {
+      a.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        var refusal = dl.querySelector(".flash.error");
+        if (refusal) refusal.remove();
+        dlForm.elements.encrypt.checked = true;
+        openFor(a.getAttribute("data-download"), a);
+      });
+    });
+    if (dl.open) {
+      var scrim = document.querySelector(".dialog-scrim");
+      if (scrim) scrim.remove();
+      var shown = dlForm.elements.name.value;
+      openFor(shown, document.querySelector('a[data-download="' + CSS.escape(shown) + '"]'));
+    }
+    dl.querySelector("[data-dialog-close]").addEventListener("click", function (ev) { ev.preventDefault(); dl.close(); });
+    dl.addEventListener("click", function (ev) {
+      var r = dl.getBoundingClientRect();
+      if (ev.target === dl && (ev.clientX < r.left || ev.clientX > r.right || ev.clientY < r.top || ev.clientY > r.bottom)) dl.close();
+    });
+    dl.addEventListener("close", function () {
+      if (reopening) { reopening = false; return; }
+      dlForm.querySelectorAll('input[type="password"]').forEach(function (i) { i.value = ""; });
+      if (location.pathname !== "/system" || location.search) history.replaceState(null, "", "/system");
+      if (opener) opener.focus();
+    });
+    dlForm.addEventListener("submit", function (ev) {
+      setTimeout(function () { if (!ev.defaultPrevented) dl.close(); }, 0);
+    });
+    dlForm.addEventListener("confirmed", function () { dl.close(); });
+  }
 
   // Selects marked data-autosubmit submit their form when changed; the form's
   // fallback button (data-js-hide) is hidden by the stylesheet.

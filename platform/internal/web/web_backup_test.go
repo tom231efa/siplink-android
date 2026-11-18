@@ -45,15 +45,17 @@ func TestBackupDownload(t *testing.T) {
 		return v
 	}
 
-	// the list offers it, the form opens for a listed name only
-	if r := root.get("/system"); !strings.Contains(r.body, `href="/system?backup=`+name+`#download"`) {
-		t.Error("no download link")
+	// the list offers it; the server opens the dialog for a listed name only
+	const opened = `id="download" aria-labelledby="download-title" open>`
+	if r := root.get("/system"); !strings.Contains(r.body, `href="/system?backup=`+name+`" data-download="`+name+`"`) ||
+		!strings.Contains(r.body, `<dialog class="dialog download-dialog" id="download"`) || strings.Contains(r.body, opened) {
+		t.Error("download link or closed dialog")
 	}
-	if r := root.get("/system?backup=" + name); !strings.Contains(r.body, `action="/system/backups/download"`) {
-		t.Error("download form not opened")
+	if r := root.get("/system?backup=" + name); !strings.Contains(r.body, opened) || !strings.Contains(r.body, `name="name" value="`+name+`"`) {
+		t.Error("dialog not opened for a listed backup")
 	}
-	if r := root.get("/system?backup=../siplink.db"); strings.Contains(r.body, `action="/system/backups/download"`) {
-		t.Error("download form opened for a crafted name")
+	if r := root.get("/system?backup=../siplink.db"); strings.Contains(r.body, opened) {
+		t.Error("dialog opened for a crafted name")
 	}
 
 	// permissions: region administrators and waiting sessions get nothing
@@ -101,6 +103,14 @@ func TestBackupDownload(t *testing.T) {
 	if _, err := open("another-passphrase"); err == nil {
 		t.Error("opened with another passphrase")
 	}
+
+	// a refusal comes back inside the open dialog, with 加密 as it was and no secret kept
+	r = root.post("/system/backups/download", form("password", "wrong-once"))
+	if r.code != http.StatusBadRequest || !strings.Contains(r.body, opened) || !strings.Contains(r.body, wrongPassword) ||
+		strings.Contains(r.body, `name="encrypt" value="1" checked`) || strings.Contains(r.body, "wrong-once") {
+		t.Errorf("refusal not shown in the open dialog: %d", r.code)
+	}
+	h.stepReset(t)
 
 	// passphrase rules, with the strength check on and off
 	for _, c := range []struct{ p, p2, want string }{

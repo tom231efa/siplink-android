@@ -67,9 +67,11 @@ type systemData struct {
 	TwoStepRequired bool
 	// PasswordCheck: new administrator passwords are checked for strength (§6.1).
 	PasswordCheck bool
-	// Download is the backup whose download form is open, DownloadError its refusal.
+	// Download is the backup whose download dialog the server opens (?backup=, or a
+	// refused download), DownloadError the refusal, DownloadPlain the switch 加密 left off.
 	Download      string
 	DownloadError string
+	DownloadPlain bool
 }
 
 func (s *Server) systemPage(w http.ResponseWriter, r *http.Request) {

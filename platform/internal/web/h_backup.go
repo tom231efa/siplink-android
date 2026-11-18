@@ -43,7 +43,7 @@ func (s *Server) backupDownload(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if msg != "" {
-		s.renderSystem(w, r, http.StatusBadRequest, func(d *systemData) { d.Download, d.DownloadError = name, msg })
+		s.renderSystem(w, r, http.StatusBadRequest, func(d *systemData) { d.Download, d.DownloadError, d.DownloadPlain = name, msg, !encrypt })
 		return
 	}
 	s.audit(r, "backup.download", "backup", 0, name, nil, map[string]any{"encrypted": encrypt})
