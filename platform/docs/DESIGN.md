@@ -2,8 +2,7 @@
 
 Status: accepted design, including addendum 2 (name, built-in certificate authority, TLS by
 default), 2026-11-16. Names of the app that appear in this document are quoted from the app
-repository at `/home/sky/Claude Projects/sip客户端` (branch `dev`, including uncommitted work seen
-on 2026-11-16). Names of the platform (tables, JSON fields, environment variables, URL paths)
+code in this repository (`app/`, branch `dev`, including uncommitted work seen on 2026-11-16). Names of the platform (tables, JSON fields, environment variables, URL paths)
 are defined here; they are new.
 
 Names (final, decided by the owner, see §11): Go module, repository and binary `siplink`,
