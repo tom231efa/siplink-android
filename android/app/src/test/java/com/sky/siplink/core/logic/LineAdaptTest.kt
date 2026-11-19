@@ -17,13 +17,14 @@ class LineAdaptTest {
 
     @Test
     fun `records survive being stored`() {
-        val record = Record(TCP, 300, setOf(TLS), 123, 2, listOf(5, 6), 99)
+        val record = Record(TCP, 300, setOf(TLS), 123, 2, listOf(5, 6), 99, MediaAdapt.Ice.ON, 456)
         assertEquals(record, LineAdapt.decode(LineAdapt.encode(record)))
         assertEquals(Record(), LineAdapt.decode(LineAdapt.encode(Record())))
         assertNull(LineAdapt.decode("TCP|300"))
         assertNull(LineAdapt.decode(null))
         assertTrue(Record().isPlain)
         assertFalse(Record(transport = TCP).isPlain)
+        assertFalse(Record(ice = MediaAdapt.Ice.REFUSED).isPlain)
     }
 
     @Test

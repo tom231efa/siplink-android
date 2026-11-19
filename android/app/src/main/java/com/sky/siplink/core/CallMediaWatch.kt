@@ -16,15 +16,26 @@ import org.linphone.core.StreamType
  * of each account went: the line checks show it. Main thread only, as the core's listeners are.
  *
  * @param idOf the id of an account
- * @param onFinished a call whose sound ran ended on an account, with the host of the other side's Contact
+ * @param onFinished a call whose sound ran ended on an account
  */
 internal class CallMediaWatch(
     private val core: Core,
     private val idOf: (Account) -> String,
-    private val onFinished: (Account, String?) -> Unit,
+    private val onFinished: (Account, Finished) -> Unit,
 ) {
+    /**
+     * A call whose sound ran, at its end.
+     *
+     * @param summary how its sound went; null: too short to tell
+     * @param contact the host of the other side's Contact
+     * @param outgoing the call went out
+     * @param setupMs from the start of a call out to its INVITE (the SIP core gathers its ICE
+     *   candidates in between); null for a call that came in
+     */
+    class Finished(val summary: CallMediaSummary?, val contact: String?, val outgoing: Boolean, val setupMs: Long?)
+
     /** The latest counters of a call whose sound runs, copied: the core reuses its objects. */
-    private class Running(val startedAt: Long, val contact: String?) {
+    private class Running(val startedAt: Long, val contact: String?, val outgoing: Boolean, val setupMs: Long?) {
         /** When the sound (re)started or the last packet came in. */
         var heardAt = startedAt
         var counted = false
@@ -36,7 +47,8 @@ internal class CallMediaWatch(
         var roundTripMs = 0f
         var ice = ""
 
-        fun take(stats: CallStats) {
+        /** [ended]: the call's streams are stopped, and with them its ICE session; its last state stays. */
+        fun take(stats: CallStats, ended: Boolean) {
             counted = true
             sent = stats.rtpPacketSent
             if (stats.rtpPacketRecv > received) heardAt = SystemClock.elapsedRealtime()
@@ -46,29 +58,42 @@ internal class CallMediaWatch(
             lossUp = stats.receiverLossRate
             jitterMs = stats.senderInterarrivalJitter * MS_PER_S
             roundTripMs = stats.roundTripDelay * MS_PER_S
-            ice = stats.iceState?.name.orEmpty()
+            if (!ended) ice = stats.iceState?.name.orEmpty()
         }
     }
 
     private val running = HashMap<Long, Running>()
+
+    /** When the calls out started, until they sent their INVITE; then how long that took. By native pointer. */
+    private val startedOut = HashMap<Long, Long>()
+    private val setups = HashMap<Long, Long>()
     private val last = HashMap<String, CallMediaSummary>()
 
     private val listener = object : CoreListenerStub() {
         override fun onCallStateChanged(core: Core, call: Call, state: Call.State?, message: String) {
             when (state) {
+                Call.State.OutgoingInit -> startedOut[call.nativePointer] = SystemClock.elapsedRealtime()
+                Call.State.OutgoingProgress -> startedOut.remove(call.nativePointer)?.let { setups[call.nativePointer] = SystemClock.elapsedRealtime() - it }
                 Call.State.StreamsRunning -> {
                     val now = SystemClock.elapsedRealtime()
+                    val pointer = call.nativePointer
                     // Back from a hold, or after a re-INVITE: the silence counts from now.
-                    running.getOrPut(call.nativePointer) { Running(now, call.remoteContactAddress?.domain) }.heardAt = now
+                    running.getOrPut(pointer) {
+                        Running(now, call.remoteContactAddress?.domain, call.dir == Call.Dir.Outgoing, setups[pointer])
+                    }.heardAt = now
                 }
                 Call.State.End, Call.State.Error -> finish(call)
-                Call.State.Released -> running.remove(call.nativePointer)
+                Call.State.Released -> {
+                    running.remove(call.nativePointer)
+                    startedOut.remove(call.nativePointer)
+                    setups.remove(call.nativePointer)
+                }
                 else -> Unit
             }
         }
 
         override fun onCallStatsUpdated(core: Core, call: Call, stats: CallStats) {
-            if (stats.type == StreamType.Audio) running[call.nativePointer]?.take(stats)
+            if (stats.type == StreamType.Audio) running[call.nativePointer]?.take(stats, ended(call))
         }
     }
 
@@ -95,12 +120,12 @@ internal class CallMediaWatch(
         val account = call.params.account ?: return
         val summary = summaryOf(call, entry)
         if (summary != null) last[idOf(account)] = summary
-        onFinished(account, entry.contact)
+        onFinished(account, Finished(summary, entry.contact, entry.outgoing, entry.setupMs))
     }
 
     private fun summaryOf(call: Call, entry: Running): CallMediaSummary? {
         // A call too short for a report of its own: what the core has at its end.
-        if (!entry.counted) call.audioStats?.let(entry::take)
+        if (!entry.counted) call.audioStats?.let { entry.take(it, ended = true) }
         if (!entry.counted) return null
         val elapsed = SystemClock.elapsedRealtime() - entry.startedAt
         val flow = LineVerdict.flow(entry.sent, entry.received, entry.lossUp, elapsed) ?: return null
@@ -121,6 +146,8 @@ internal class CallMediaWatch(
         /** What the SIP core ends a call with when no sound arrived for too long (MediaSession::terminateBecauseOfLostMedia). */
         private const val MEDIA_LOST_CODE = 503
         private const val MEDIA_LOST_PHRASE = "Media lost"
+
+        private fun ended(call: Call): Boolean = call.state.let { it == Call.State.End || it == Call.State.Error || it == Call.State.Released }
 
         /** Whether [call] ended because no sound arrived any more. */
         fun mediaLost(call: Call): Boolean {

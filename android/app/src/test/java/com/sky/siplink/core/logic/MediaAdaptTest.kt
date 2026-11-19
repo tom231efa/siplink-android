@@ -1,5 +1,8 @@
 package com.sky.siplink.core.logic
 
+import com.sky.siplink.core.logic.MediaAdapt.Ice
+import com.sky.siplink.core.model.MediaFlow
+import com.sky.siplink.core.model.NatKind
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -22,6 +25,46 @@ class MediaAdaptTest {
         assertTrue(MediaAdapt.isValidStunServer("stun.example.com:3478"))
         assertFalse(MediaAdapt.isValidStunServer(" stun.example.com"))
         assertFalse(MediaAdapt.isValidStunServer("stun.example.com:70000"))
+    }
+
+    @Test
+    fun `ice is tried where the sound went one way behind a nat stun sees through`() {
+        assertTrue(MediaAdapt.tryIce(MediaFlow.SEND_ONLY, NatKind.PRESENT, stunSet = true, ice = Ice.NONE))
+        assertTrue(MediaAdapt.tryIce(MediaFlow.RECEIVE_ONLY, NatKind.CARRIER, stunSet = true, ice = Ice.NONE))
+        // Sound both ways, none at all, or no verdict: nothing to mend.
+        assertFalse(MediaAdapt.tryIce(MediaFlow.BOTH, NatKind.PRESENT, stunSet = true, ice = Ice.NONE))
+        assertFalse(MediaAdapt.tryIce(MediaFlow.NONE, NatKind.PRESENT, stunSet = true, ice = Ice.NONE))
+        assertFalse(MediaAdapt.tryIce(null, NatKind.PRESENT, stunSet = true, ice = Ice.NONE))
+        // No NAT, one that maps each destination anew, or none seen: no.
+        assertFalse(MediaAdapt.tryIce(MediaFlow.SEND_ONLY, NatKind.NONE, stunSet = true, ice = Ice.NONE))
+        assertFalse(MediaAdapt.tryIce(MediaFlow.SEND_ONLY, NatKind.SYMMETRIC, stunSet = true, ice = Ice.NONE))
+        assertFalse(MediaAdapt.tryIce(MediaFlow.SEND_ONLY, NatKind.UNKNOWN, stunSet = true, ice = Ice.NONE))
+        assertFalse(MediaAdapt.tryIce(MediaFlow.SEND_ONLY, NatKind.PRESENT, stunSet = false, ice = Ice.NONE))
+        // Once tried here, not again.
+        assertFalse(MediaAdapt.tryIce(MediaFlow.SEND_ONLY, NatKind.PRESENT, stunSet = true, ice = Ice.REFUSED))
+        assertFalse(MediaAdapt.tryIce(MediaFlow.SEND_ONLY, NatKind.PRESENT, stunSet = true, ice = Ice.ON))
+    }
+
+    @Test
+    fun `ice on trial is kept after sound both ways in time and given up otherwise`() {
+        assertEquals(Ice.ON, MediaAdapt.iceAfter(Ice.TRIAL, MediaFlow.BOTH, tookPart = true, setupMs = 300))
+        assertEquals(Ice.ON, MediaAdapt.iceAfter(Ice.TRIAL, MediaFlow.BOTH, tookPart = true, setupMs = null))
+        assertEquals(Ice.REFUSED, MediaAdapt.iceAfter(Ice.TRIAL, MediaFlow.BOTH, tookPart = true, setupMs = MediaAdapt.SLOW_SETUP_MS + 1))
+        assertEquals(Ice.REFUSED, MediaAdapt.iceAfter(Ice.TRIAL, MediaFlow.SEND_ONLY, tookPart = true, setupMs = 300))
+        assertEquals(Ice.REFUSED, MediaAdapt.iceAfter(Ice.TRIAL, MediaFlow.RECEIVE_ONLY, tookPart = true, setupMs = 300))
+        // A call without a verdict, or one ICE took no part in, tells nothing.
+        assertEquals(Ice.TRIAL, MediaAdapt.iceAfter(Ice.TRIAL, null, tookPart = true, setupMs = 300))
+        assertEquals(Ice.TRIAL, MediaAdapt.iceAfter(Ice.TRIAL, MediaFlow.SEND_ONLY, tookPart = false, setupMs = null))
+        // One bad call does not undo what worked.
+        assertEquals(Ice.ON, MediaAdapt.iceAfter(Ice.ON, MediaFlow.SEND_ONLY, tookPart = true, setupMs = 300))
+    }
+
+    @Test
+    fun `ice takes part in calls out and in calls in that offered it`() {
+        assertTrue(MediaAdapt.iceTookPart(outgoing = true, iceState = "NotActivated"))
+        assertTrue(MediaAdapt.iceTookPart(outgoing = false, iceState = "ReflexiveConnection"))
+        assertFalse(MediaAdapt.iceTookPart(outgoing = false, iceState = "NotActivated"))
+        assertFalse(MediaAdapt.iceTookPart(outgoing = false, iceState = ""))
     }
 
     @Test

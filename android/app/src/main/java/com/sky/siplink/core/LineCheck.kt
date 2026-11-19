@@ -86,6 +86,7 @@ class LineCheck(private val context: Context, private val core: Core, private va
                 expires = expires,
                 adaptedTransport = adaptation?.transport,
                 adaptedExpires = adaptation?.expires,
+                adaptedIce = adaptation?.ice == true,
                 viaServer = adaptation?.viaServer == true,
                 lastCall = lastCall,
             )

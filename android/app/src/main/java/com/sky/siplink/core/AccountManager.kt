@@ -62,8 +62,12 @@ class AccountManager(private val core: Core, private val lock: ConfigLock) {
             doctor.enabled = value
         }
 
-    /** The STUN server the line checks ask, `host[:port]`; empty: none. */
-    var stunServer: String = ""
+    /** The STUN server the line checks and the lines' ICE ask, `host[:port]`; empty: none. */
+    var stunServer: String
+        get() = doctor.stunServer
+        set(value) {
+            doctor.stunServer = value
+        }
 
     /** The accounts whose line runs on another transport than their own just now, with that transport. */
     val adaptedTransports: StateFlow<Map<String, SipTransport>> get() = doctor.transports

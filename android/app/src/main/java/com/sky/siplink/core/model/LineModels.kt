@@ -95,6 +95,7 @@ data class CallMediaSummary(
  * @param transport the transport the line runs on now
  * @param adaptedTransport the transport the line adapted to; null: its own ([transport])
  * @param adaptedExpires the registration interval it adapted to; null: its own
+ * @param adaptedIce its calls offer ICE candidates
  * @param viaServer its calls go by way of the server, with symmetric RTP: its PBX announces an
  *   address of its own network
  */
@@ -118,6 +119,7 @@ data class LineReport(
     val expires: Int,
     val adaptedTransport: SipTransport?,
     val adaptedExpires: Int?,
+    val adaptedIce: Boolean,
     val viaServer: Boolean,
     val lastCall: CallMediaSummary?,
 )

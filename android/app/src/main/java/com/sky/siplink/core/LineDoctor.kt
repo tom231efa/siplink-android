@@ -3,9 +3,13 @@ package com.sky.siplink.core
 import android.os.Handler
 import android.os.SystemClock
 import android.util.Log
+import com.sky.siplink.core.logic.AccountRoute
 import com.sky.siplink.core.logic.LineAdapt
+import com.sky.siplink.core.logic.LineVerdict
 import com.sky.siplink.core.logic.MediaAdapt
 import com.sky.siplink.core.logic.NetworkKey
+import com.sky.siplink.core.model.MediaFlow
+import com.sky.siplink.core.model.NatKind
 import com.sky.siplink.core.model.NetworkFacts
 import com.sky.siplink.core.model.SipTransport
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,6 +20,7 @@ import org.linphone.core.AccountParams
 import org.linphone.core.Call
 import org.linphone.core.Core
 import org.linphone.core.CoreListenerStub
+import org.linphone.core.NatPolicy
 import org.linphone.core.RegistrationState
 import org.linphone.core.TransportType
 import java.util.concurrent.Executors
@@ -23,10 +28,11 @@ import java.util.concurrent.Executors
 /**
  * Adapts the lines (an account on one network) to what the network lets through, by the rules
  * of [LineAdapt]: another transport where UDP does not get through, a shorter registration
- * interval where the NAT forgets the line between registrations. After the calls it gives an
- * account whose PBX announces an address of its own network the way by the server and symmetric
- * RTP ([MediaAdapt]). It also has the SIP core look at the network again where it would not
- * notice a change by itself, and holds back while the network wants a login first.
+ * interval where the NAT forgets the line between registrations. After the calls it adapts their
+ * sound by the rules of [MediaAdapt]: ICE for a line whose sound went one way, the way by the
+ * server and symmetric RTP for an account whose PBX announces an address of its own network. It
+ * also has the SIP core look at the network again where it would not notice a change by itself,
+ * and holds back while the network wants a login first.
  *
  * What it changes it changes in the core only: the account's own settings are kept aside
  * ([own]) and shown and edited as they are. Main thread only.
@@ -74,6 +80,14 @@ internal class LineDoctor(
                 core.config.cleanSection(SECTION)
                 core.config.cleanSection(PBX)
             }
+        }
+
+    /** The STUN server the lines' ICE asks, `host[:port]`; empty: none, and no ICE. */
+    var stunServer = ""
+        set(value) {
+            if (field == value) return
+            field = value
+            applyAll()
         }
 
     private val adapted = MutableStateFlow<Map<String, SipTransport>>(emptyMap())
@@ -145,6 +159,7 @@ internal class LineDoctor(
             }
             params.expires = own.expires
             params.isOutboundProxyEnabled = own.outbound
+            params.natPolicy = null
             storeOwn(id, null)
         }
         if (forget) {
@@ -170,9 +185,10 @@ internal class LineDoctor(
      * What the line of an account runs on instead of its own settings, for the line checks.
      *
      * @param transport null: its own; [expires] likewise
+     * @param ice its calls offer ICE candidates
      * @param viaServer its calls go by way of the server with symmetric RTP: the PBX announces an address of its own network
      */
-    data class Adaptation(val transport: SipTransport?, val expires: Int?, val viaServer: Boolean)
+    data class Adaptation(val transport: SipTransport?, val expires: Int?, val ice: Boolean, val viaServer: Boolean)
 
     fun adaptation(id: String): Adaptation? {
         val params = find(id)?.params ?: return null
@@ -182,6 +198,7 @@ internal class LineDoctor(
         return Adaptation(
             transport = transportOf(params.serverAddress).takeIf { own != null && it != own.transport },
             expires = params.expires.takeIf { own != null && it != own.expires },
+            ice = params.natPolicy?.isIceEnabled == true,
             viaServer = viaServer,
         )
     }
@@ -217,9 +234,13 @@ internal class LineDoctor(
         }
         record = LineAdapt.bindingSteady(watchBinding(account, id, state, record, now), now)
         if (!record.isPlain && now - record.usedAt > USED_AT_STEP_MS) record = record.copy(usedAt = now)
+        // ICE in use is given up from time to time, between calls: the line tries it again when its sound goes one way again.
+        if (record.ice == MediaAdapt.Ice.ON && now >= record.iceRetestAt && core.callsNb == 0) {
+            record = record.copy(ice = MediaAdapt.Ice.NONE, iceRetestAt = 0)
+        }
         if (record != (stored ?: LineAdapt.Record())) store(id, record)
         // Not from inside this notification: the core is in the middle of the registration.
-        if (record.expires != stored?.expires) handler.post(::applyAll)
+        if (record.expires != stored?.expires || record.ice != (stored?.ice ?: MediaAdapt.Ice.NONE)) handler.post(::applyAll)
         val ownExpires = own(id)?.expires ?: account.params.expires
         val newLoss = record.lost.lastOrNull() != stored?.lost?.lastOrNull()
         if (newLoss && record.lost.isNotEmpty() && LineAdapt.bindingHopeless(record, ownExpires)) {
@@ -487,48 +508,95 @@ internal class LineDoctor(
         // Calls take the way of the registration, which the domain of the account may not lead
         // to, and the way of the server past a PBX that announces an address nothing reaches.
         val outbound = transport != own.transport || (enabled && pbxCount(id) != null) || own.outbound
-        if (transport != transportOf(server) || expires != params.expires || outbound != params.isOutboundProxyEnabled) {
+        val stun = stunServer.trim().takeIf { MediaAdapt.stunServer(it) != null }
+        val ice = stun?.takeIf { record?.ice == MediaAdapt.Ice.TRIAL || record?.ice == MediaAdapt.Ice.ON }
+        val iceNow = params.natPolicy?.takeIf { it.isIceEnabled }?.stunServer
+        if (transport != transportOf(server) || expires != params.expires || outbound != params.isOutboundProxyEnabled || ice != iceNow) {
             val next = params.clone()
             if (transport != transportOf(server)) next.serverAddress = server.clone().also { it.transport = typeOf(transport) }
             next.expires = expires
             next.isOutboundProxyEnabled = outbound
+            next.natPolicy = ice?.let(::icePolicy)
             account.params = next
             states[id]?.contact = null
             onChanged(account)
-            Log.i(TAG, "Line $id on $network: $transport, ${expires}s, outbound $outbound (own: ${own.transport}, ${own.expires}s, ${own.outbound})")
+            Log.i(TAG, "Line $id on $network: $transport, ${expires}s, outbound $outbound, ICE ${ice != null} (own: ${own.transport}, ${own.expires}s, ${own.outbound})")
         }
-        val adapted = transport != own.transport || expires != own.expires || outbound != own.outbound
+        val adapted = transport != own.transport || expires != own.expires || outbound != own.outbound || ice != null
         storeOwn(id, if (adapted) own else null)
     }
 
     // ---------------------------------------------------------------- the sound of the calls
 
-    /**
-     * A call whose sound ran ended on [account], with [contact] the host of the other side's
-     * Contact: an account whose PBX announces an address of its own network goes by way of the
-     * server from the next call on ([MediaAdapt]).
-     */
-    fun onCallFinished(account: Account, contact: String?) {
+    /** A call whose sound ran ended on [account]: what the line needs for its sound ([MediaAdapt]) is in place for the next call. */
+    fun onCallFinished(account: Account, call: CallMediaWatch.Finished) {
         if (!enabled) return
         val id = idOf(account)
-        val host = account.params.serverAddress?.let(::connectHostOf) ?: return
+        val net = network
+        val flow = call.summary?.flow
+        val record = record(id) ?: LineAdapt.Record()
+        val tookPart = MediaAdapt.iceTookPart(call.outgoing, call.summary?.ice.orEmpty())
+        val ice = MediaAdapt.iceAfter(record.ice, flow, tookPart, call.setupMs)
+        Log.i(TAG, "Line $id: a call ${if (call.outgoing) "out, set up in ${call.setupMs} ms" else "in"}, sound $flow, ICE ${call.summary?.ice}")
+        if (ice != record.ice) {
+            Log.i(TAG, "Line $id on $net: ICE $ice")
+            val retestAt = if (ice == MediaAdapt.Ice.ON) System.currentTimeMillis() + LineAdapt.retestDelay(0) else 0
+            store(id, record.copy(ice = ice, iceRetestAt = retestAt))
+            if (ice == MediaAdapt.Ice.REFUSED) applyAll()
+        }
+        val stun = MediaAdapt.stunServer(stunServer)
+        val askNat = stun != null && ice == MediaAdapt.Ice.NONE && (flow == MediaFlow.SEND_ONLY || flow == MediaFlow.RECEIVE_ONLY)
+        val params = account.params
+        val server = params.serverAddress ?: return
+        val host = connectHostOf(server)
+        val port = server.port.takeIf { it > 0 && transportOf(server) != SipTransport.TLS } ?: AccountRoute.defaultPort(SipTransport.UDP)
+        val target = hostPortOf(server)
+        val from = fromOf(params.identityAddress)
+        val userAgent = core.userAgent
         val local = facts?.addresses.orEmpty()
+        val contact = call.contact
         workers.execute {
-            val behind = MediaAdapt.pbxBehindNat(contact, LineNetwork.lookup(host) + host, local)
-            handler.post { learn(id, behind) }
+            val addresses = LineNetwork.lookup(host)
+            val nat = if (askNat) natOf(addresses.firstOrNull(), port, target, from, userAgent, stun, local) else NatKind.UNKNOWN
+            val behind = MediaAdapt.pbxBehindNat(contact, addresses + host, local)
+            handler.post { learn(id, net, flow, nat, behind) }
         }
     }
 
-    private fun learn(id: String, pbxBehindNat: Boolean) {
+    /** What lies between the phone and the server at [address], as the SIP server and the STUN server see one socket. Worker thread. */
+    private fun natOf(address: String?, port: Int, target: String, from: String, userAgent: String, stun: Pair<String, Int>?, local: List<String>): NatKind {
+        if (address == null || stun == null) return NatKind.UNKNOWN
+        val stunAddress = LineNetwork.socketAddress(stun.first, stun.second) ?: return NatKind.UNKNOWN
+        val probe = LineNetwork.probeUdp(address, port, target, from, userAgent, stun = stunAddress)
+        return LineVerdict.nat(local, probe.from?.let { LineVerdict.seen(probe.answer, it) }, probe.stun)
+    }
+
+    private fun learn(id: String, net: String?, flow: MediaFlow?, nat: NatKind, pbxBehindNat: Boolean) {
         if (!enabled) return
+        var changed = false
         val before = pbxCount(id)
         val after = MediaAdapt.pbxAfter(before, pbxBehindNat)
-        if (after == before) return
-        if (after == null) core.config.cleanEntry(PBX, id) else core.config.setString(PBX, id, after.toString())
-        if ((after == null) != (before == null)) {
-            Log.i(TAG, "Line $id: the PBX ${if (after != null) "announces an address of its own network" else "is reached again"}")
-            applyAll()
+        if (after != before) {
+            if (after == null) core.config.cleanEntry(PBX, id) else core.config.setString(PBX, id, after.toString())
+            if ((after == null) != (before == null)) {
+                Log.i(TAG, "Line $id: the PBX ${if (after != null) "announces an address of its own network" else "is reached again"}")
+                changed = true
+            }
         }
+        val record = record(id) ?: LineAdapt.Record()
+        if (net == network && MediaAdapt.tryIce(flow, nat, MediaAdapt.stunServer(stunServer) != null, record.ice)) {
+            Log.i(TAG, "Line $id on $net: ICE on trial ($flow, $nat)")
+            store(id, record.copy(ice = MediaAdapt.Ice.TRIAL, usedAt = System.currentTimeMillis()))
+            changed = true
+        }
+        if (changed) applyAll()
+    }
+
+    /** A NAT policy that gathers ICE candidates, with the address the STUN server at [server] sees among them. */
+    private fun icePolicy(server: String): NatPolicy = core.createNatPolicy().also {
+        it.stunServer = server
+        it.isStunEnabled = true
+        it.isIceEnabled = true
     }
 
     /** The calls in a row since the PBX of account [id] last announced an address of its own network; null: it needs no remedy. */

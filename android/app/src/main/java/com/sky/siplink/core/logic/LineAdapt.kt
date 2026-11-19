@@ -23,6 +23,8 @@ object LineAdapt {
      * @param reverts how often the line went back to its own transport and that did not hold
      * @param lost when the NAT was seen to forget the line (ms since the epoch), the last day's worth
      * @param usedAt when the phone was last on this network with this account
+     * @param ice where ICE stands for the sound of the line ([MediaAdapt])
+     * @param iceRetestAt when ICE in use is given up to see whether the line still needs it (ms since the epoch)
      */
     data class Record(
         val transport: SipTransport? = null,
@@ -32,9 +34,12 @@ object LineAdapt {
         val reverts: Int = 0,
         val lost: List<Long> = emptyList(),
         val usedAt: Long = 0,
+        val ice: MediaAdapt.Ice = MediaAdapt.Ice.NONE,
+        val iceRetestAt: Long = 0,
     ) {
         /** Nothing in effect and nothing to remember. */
-        val isPlain: Boolean get() = transport == null && expires == null && failed.isEmpty() && lost.isEmpty() && reverts == 0
+        val isPlain: Boolean
+            get() = transport == null && expires == null && failed.isEmpty() && lost.isEmpty() && reverts == 0 && ice == MediaAdapt.Ice.NONE
     }
 
     private const val SEPARATOR = '|'
@@ -47,11 +52,13 @@ object LineAdapt {
         record.reverts.toString(),
         record.lost.joinToString(","),
         record.usedAt.toString(),
+        record.ice.name,
+        record.iceRetestAt.toString(),
     ).joinToString(SEPARATOR.toString())
 
     fun decode(text: String?): Record? {
         val fields = text?.split(SEPARATOR) ?: return null
-        if (fields.size != 7) return null
+        if (fields.size != 9) return null
         return Record(
             transport = SipTransport.entries.firstOrNull { it.name == fields[0] },
             expires = fields[1].toIntOrNull(),
@@ -60,6 +67,8 @@ object LineAdapt {
             reverts = fields[4].toIntOrNull() ?: 0,
             lost = fields[5].split(',').mapNotNull(String::toLongOrNull),
             usedAt = fields[6].toLongOrNull() ?: 0,
+            ice = MediaAdapt.Ice.entries.firstOrNull { it.name == fields[7] } ?: MediaAdapt.Ice.NONE,
+            iceRetestAt = fields[8].toLongOrNull() ?: 0,
         )
     }
 

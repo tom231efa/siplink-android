@@ -81,7 +81,7 @@ fun LineDiagnosisScreen(accountId: String, onBack: () -> Unit) {
                 ServerCard(shown)
                 RegistrationCard(shown)
                 shown.lastCall?.let { LastCallCard(shown) }
-                if (shown.adaptedTransport != null || shown.adaptedExpires != null || shown.viaServer) {
+                if (shown.adaptedTransport != null || shown.adaptedExpires != null || shown.adaptedIce || shown.viaServer) {
                     AdaptationCard(shown, onReset = { confirmReset = true })
                 }
             }
@@ -216,6 +216,7 @@ private fun AdaptationCard(report: LineReport, onReset: () -> Unit) {
     SectionCard(title = "自动调整") {
         report.adaptedTransport?.let { ValueRow("传输协议", it.name) }
         report.adaptedExpires?.let { ValueRow("注册有效期", "$it 秒") }
+        if (report.adaptedIce) ValueRow("ICE", "开启")
         if (report.viaServer) {
             ValueRow("出站代理", "开启")
             ValueRow("对称 RTP", "开启")
