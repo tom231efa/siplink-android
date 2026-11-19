@@ -2,6 +2,7 @@ package com.sky.siplink.core
 
 import android.os.Handler
 import android.os.Looper
+import com.sky.siplink.core.logic.AccountRows
 import com.sky.siplink.core.logic.AccountRules
 import com.sky.siplink.core.model.AccountDraft
 import com.sky.siplink.core.model.CallMediaSummary
@@ -76,6 +77,9 @@ class AccountManager(private val core: Core, private val lock: ConfigLock) {
     private val changed = LinkedHashMap<Long, Account>()
     private val publisher = Runnable { publishChanged() }
 
+    /** The accounts of the core by id while a [batch] runs; null otherwise. */
+    private var batch: HashMap<String, Account>? = null
+
     init {
         refresh()
         router.refresh()
@@ -86,6 +90,34 @@ class AccountManager(private val core: Core, private val lock: ConfigLock) {
         changed.clear()
         val defaultId = core.defaultAccount?.let(::idOf)
         state.value = core.accountList.map { snapshot(it, defaultId) }
+    }
+
+    /**
+     * Runs [block], which changes many accounts one after the other ([put], [remove]), as one
+     * change of the list: each change publishes its own row only, the accounts are found by id in
+     * a map instead of through the core, and the list is made anew from the core once at the end.
+     * What the core is told, and when, stays as without.
+     */
+    fun <T> batch(block: () -> T): T {
+        if (batch != null) return block()
+        batch = core.accountList.associateByTo(HashMap(), ::idOf)
+        try {
+            return block()
+        } finally {
+            batch = null
+            refresh()
+        }
+    }
+
+    /**
+     * Has the list follow the account that was [id], which is [account] now, or went (null): made
+     * anew from the core, or in a [batch] only that row, the batch making it anew at its end.
+     */
+    private fun refreshAfter(id: String, account: Account?) {
+        val known = batch ?: return refresh()
+        known.remove(id)
+        val row = account?.let { snapshot(it, null).also { snap -> known[snap.id] = it } }
+        state.value = AccountRows.replace(state.value, id, row, core.defaultAccount?.let(::idOf))
     }
 
     /**
@@ -157,7 +189,10 @@ class AccountManager(private val core: Core, private val lock: ConfigLock) {
      */
     var onEdited: ((before: List<SipAccount>, after: List<SipAccount>) -> Unit)? = null
 
-    fun find(id: String): Account? = core.accountList.firstOrNull { idOf(it) == id }
+    fun find(id: String): Account? {
+        val known = batch ?: return core.accountList.firstOrNull { idOf(it) == id }
+        return known[id]?.takeIf { idOf(it) == id }
+    }
 
     /**
      * The password saved for the account [id], to show it in its form. Empty where there is none:
@@ -197,8 +232,8 @@ class AccountManager(private val core: Core, private val lock: ConfigLock) {
         val draft = AccountRules.normalize(input)
         val errors = AccountRules.validate(draft, existingKeys(), takenNames = state.value.map { it.name })
         if (errors.isNotEmpty()) return errors
-        if (!create(draft, id)) return listOf(AccountRules.Error.ADDRESS_REJECTED)
-        refresh()
+        val account = create(draft, id) ?: return listOf(AccountRules.Error.ADDRESS_REJECTED)
+        refreshAfter(id, account)
         return emptyList()
     }
 
@@ -208,7 +243,7 @@ class AccountManager(private val core: Core, private val lock: ConfigLock) {
         var created = 0
         for (input in drafts) {
             val draft = AccountRules.normalize(input)
-            if (AccountRules.validate(draft, existingKeys()).isEmpty() && create(draft, UUID.randomUUID().toString())) created++
+            if (AccountRules.validate(draft, existingKeys()).isEmpty() && create(draft, UUID.randomUUID().toString()) != null) created++
         }
         refresh()
         return created
@@ -271,7 +306,7 @@ class AccountManager(private val core: Core, private val lock: ConfigLock) {
             }
             addAuthInfo(draft.copy(password = password), identity)
         }
-        refresh()
+        refreshAfter(id, account)
         onEdited?.invoke(accountsBefore, state.value)
         return emptyList()
     }
@@ -300,7 +335,7 @@ class AccountManager(private val core: Core, private val lock: ConfigLock) {
             else -> core.removeAuthInfo(auth)
         }
         if (wasDefault) core.defaultAccount = core.accountList.firstOrNull { idOf(it) != id }
-        refresh()
+        refreshAfter(id, null)
         onEdited?.invoke(accountsBefore, state.value)
         return true
     }
@@ -380,16 +415,17 @@ class AccountManager(private val core: Core, private val lock: ConfigLock) {
         if (lock.refuses) return false
         val account = find(id) ?: return false
         core.defaultAccount = account
-        refresh()
+        refreshAfter(id, account)
         return true
     }
 
     private fun existingKeys(): List<String> =
         state.value.map { AccountRules.identityKey(it.username, it.domain) }
 
-    private fun create(draft: AccountDraft, id: String): Boolean {
-        val identity = buildIdentity(draft) ?: return false
-        val server = Factory.instance().createAddress(AccountRules.serverUri(draft)) ?: return false
+    /** @return the account, or null when the core did not take it */
+    private fun create(draft: AccountDraft, id: String): Account? {
+        val identity = buildIdentity(draft) ?: return null
+        val server = Factory.instance().createAddress(AccountRules.serverUri(draft)) ?: return null
 
         val params = core.createAccountParams()
         params.idkey = id
@@ -400,11 +436,12 @@ class AccountManager(private val core: Core, private val lock: ConfigLock) {
         val account = core.createAccount(params)
         if (core.addAccount(account) != 0) {
             router.forget(id)
-            return false
+            return null
         }
+        batch?.put(id, account)
         if (core.defaultAccount == null) core.defaultAccount = account
         router.begin(id)
-        return true
+        return account
     }
 
     private fun buildIdentity(draft: AccountDraft): Address? {

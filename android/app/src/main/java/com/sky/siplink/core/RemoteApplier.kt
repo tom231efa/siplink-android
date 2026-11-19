@@ -47,7 +47,7 @@ internal class RemoteApplier(private val engine: SipEngine) {
             val existing = accounts.accounts.value.mapTo(HashSet()) { it.id }
             val planned = RemotePlan.ids(document.accounts.map { it.key }, knownAccounts, existing, ::newId)
             val keep = planned.values.toSet()
-            existing.filter { it !in keep }.forEach(accounts::remove)
+            accounts.batch { existing.filter { it !in keep }.forEach(accounts::remove) }
             planned
         }
         accounts.whenUnregistered { onDone(engine.lock.fromRemote { applyRest(document, planned, knownDirectories) }) }
@@ -60,16 +60,19 @@ internal class RemoteApplier(private val engine: SipEngine) {
 
         val accounts = engine.accounts
         val accountIds = LinkedHashMap<String, String>()
-        for (account in document.accounts) {
-            val id = planned.getValue(account.key)
-            val refused = accounts.put(id, account.draft)
-            if (refused.isEmpty()) {
-                accountIds[account.key] = id
-            } else {
-                errors += refused.map { "账号“${account.draft.name.ifEmpty { account.draft.username }}”：${it.full}" }
+        // One after the other, as without; the list of the accounts is made anew once, at the end.
+        accounts.batch {
+            for (account in document.accounts) {
+                val id = planned.getValue(account.key)
+                val refused = accounts.put(id, account.draft)
+                if (refused.isEmpty()) {
+                    accountIds[account.key] = id
+                } else {
+                    errors += refused.map { "账号“${account.draft.name.ifEmpty { account.draft.username }}”：${it.full}" }
+                }
             }
+            accountIds[document.defaultAccount]?.let(accounts::setDefault)
         }
-        accountIds[document.defaultAccount]?.let(accounts::setDefault)
 
         val trustChanged = engine.tls.replaceAll(document.caCertificates)
 
@@ -105,7 +108,7 @@ internal class RemoteApplier(private val engine: SipEngine) {
      */
     fun wipe(onDone: () -> Unit) {
         val accounts = engine.accounts
-        engine.lock.fromRemote { accounts.accounts.value.map { it.id }.forEach(accounts::remove) }
+        engine.lock.fromRemote { accounts.batch { accounts.accounts.value.map { it.id }.forEach(accounts::remove) } }
         accounts.whenUnregistered {
             engine.lock.fromRemote {
                 engine.directory.replaceAll(emptyList(), emptyMap())
