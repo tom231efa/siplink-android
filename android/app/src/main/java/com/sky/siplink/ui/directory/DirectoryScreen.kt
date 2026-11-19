@@ -194,6 +194,9 @@ fun DirectoryScreen(onOpenSettings: () -> Unit) {
                 val trimmed = query.trim()
                 // What another directory found is not shown as this one's.
                 val contacts = if (state.directory == current.id) state.contacts else emptyList()
+                // Two entries of the directory may have the same name and number. Made once per
+                // answer, not each time the screen is composed again (as each letter is typed).
+                val keys = remember(contacts) { ListKeys.distinct(contacts.map { "${it.callTarget}|${it.name}" }) }
                 when {
                     contacts.isEmpty() && !state.searching && state.directory == current.id && state.query == trimmed -> EmptyState(
                         icon = Icons.Rounded.SearchOff,
@@ -214,8 +217,6 @@ fun DirectoryScreen(onOpenSettings: () -> Unit) {
                                 )
                             }
                         }
-                        // Two entries of the directory may have the same name and number.
-                        val keys = ListKeys.distinct(contacts.map { "${it.callTarget}|${it.name}" })
                         itemsIndexed(contacts, key = { index, _ -> keys[index] }, contentType = { _, _ -> "contact" }) { _, contact ->
                             ContactRow(
                                 contact = contact,
