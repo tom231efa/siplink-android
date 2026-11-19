@@ -1,59 +1,53 @@
-@file:OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
+@file:OptIn(ExperimentalMaterial3Api::class)
 
 package com.sky.siplink.ui.dialer
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.LocalIndication
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.Backspace
-import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.ArrowDropDown
-import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.Dialpad
 import androidx.compose.material.icons.rounded.DoNotDisturbOn
 import androidx.compose.material.icons.rounded.Keyboard
 import androidx.compose.material.icons.rounded.PersonAdd
 import androidx.compose.material.icons.rounded.PersonOff
 import androidx.compose.material.icons.rounded.SupportAgent
-import androidx.compose.material.icons.rounded.Videocam
 import androidx.compose.material.icons.rounded.Voicemail
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -73,39 +67,29 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sky.siplink.core.model.SipAccount
 import com.sky.siplink.engine
+import com.sky.siplink.ui.components.AccountPickerSheet
 import com.sky.siplink.ui.components.FadingText
 import com.sky.siplink.ui.components.FeatureSheet
 import com.sky.siplink.ui.components.FieldText
-import com.sky.siplink.ui.components.AccountPickerSheet
 import com.sky.siplink.ui.components.LocalConfigLocked
 import com.sky.siplink.ui.components.LocalMessenger
 import com.sky.siplink.ui.components.StatusDot
-import com.sky.siplink.ui.components.pressScale
 import com.sky.siplink.ui.components.rememberCallLauncher
 import com.sky.siplink.ui.theme.Brand
-
-private val dialKeys = listOf(
-    '1' to "", '2' to "ABC", '3' to "DEF",
-    '4' to "GHI", '5' to "JKL", '6' to "MNO",
-    '7' to "PQRS", '8' to "TUV", '9' to "WXYZ",
-    '*' to "", '0' to "+", '#' to "",
-)
 
 @Composable
 fun DialerScreen(onAddAccount: () -> Unit, onOpenShortcuts: (accountId: String?) -> Unit) {
@@ -135,120 +119,79 @@ fun DialerScreen(onAddAccount: () -> Unit, onOpenShortcuts: (accountId: String?)
         }
     }
 
-    Column(
-        modifier = Modifier
+    val parts = DialerParts(
+        chipsShown = settings.doNotDisturb || voicemail > 0,
+        keyboardMode = keyboardMode,
+        top = {
+            TopRow(
+                active = active,
+                keyboardMode = keyboardMode,
+                onFeatures = { if (active == null) onAddAccount() else featuresOpen = true },
+                onAccount = { if (active == null) onAddAccount() else pickerOpen = true },
+                onToggleInput = { keyboardMode = !keyboardMode },
+            )
+        },
+        chips = {
+            StatusChips(
+                doNotDisturb = settings.doNotDisturb,
+                voicemail = voicemail,
+                voicemailConfigured = settings.features.voicemail.isNotBlank(),
+                onDisableDnd = { launcher.doNotDisturb(false, selected?.id) },
+                onVoicemail = { launcher.voicemail(selected?.id) },
+            )
+        },
+        display = { NumberDisplay(number) },
+        input = { modifier, compact ->
+            InputArea(
+                keyboardMode = keyboardMode,
+                compact = compact,
+                number = number,
+                onNumber = { number = it },
+                onCall = { place() },
+                onDigit = {
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    number += it
+                },
+                onLongZero = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    number += '+'
+                },
+                modifier = modifier,
+            )
+        },
+        callRow = {
+            CallRow(
+                videoKey = settings.videoCalls && number.isNotBlank() && active != null,
+                canCall = number.isNotBlank() || active == null,
+                canDelete = number.isNotEmpty(),
+                onCall = { place() },
+                onVideoCall = { place(video = true) },
+                onShortcuts = { onOpenShortcuts(selected?.id) },
+                onDelete = { number = number.dropLast(1) },
+                onClear = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    number = ""
+                },
+            )
+        },
+    )
+
+    BoxWithConstraints(
+        Modifier
             .fillMaxSize()
-            .statusBarsPadding()
-            .padding(horizontal = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top)),
     ) {
-        Spacer(Modifier.height(12.dp))
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = { if (active == null) onAddAccount() else featuresOpen = true }) {
-                Icon(Icons.Rounded.SupportAgent, contentDescription = "话务功能")
-            }
-            Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                AccountChip(active, canAdd = !LocalConfigLocked.current, onClick = { if (active == null) onAddAccount() else pickerOpen = true })
-            }
-            IconButton(onClick = { keyboardMode = !keyboardMode }) {
-                AnimatedContent(keyboardMode, label = "inputMode") { keyboard ->
-                    Icon(
-                        if (keyboard) Icons.Rounded.Dialpad else Icons.Rounded.Keyboard,
-                        contentDescription = if (keyboard) "切换到拨号盘" else "切换到键盘输入",
-                    )
-                }
-            }
-        }
-
-        StatusChips(
-            doNotDisturb = settings.doNotDisturb,
-            voicemail = voicemail,
-            voicemailConfigured = settings.features.voicemail.isNotBlank(),
-            onDisableDnd = { launcher.doNotDisturb(false, selected?.id) },
-            onVoicemail = { launcher.voicemail(selected?.id) },
-        )
-
+        // Decided on the room without the soft keyboard, so that opening it never rearranges the
+        // screen (which would take the focus away from the field and close the keyboard again).
+        val twoPanes = maxWidth > maxHeight && maxWidth >= TwoPanesMinWidth && maxHeight < TwoPanesBelowHeight
         Box(
             Modifier
-                .weight(1f)
-                .fillMaxWidth(),
-            contentAlignment = Alignment.Center,
+                .fillMaxSize()
+                .imePadding(),
+            contentAlignment = Alignment.TopCenter,
         ) {
-            NumberDisplay(number)
+            if (twoPanes) TwoPanes(parts) else Stacked(parts)
         }
-
-        AnimatedContent(
-            targetState = keyboardMode,
-            modifier = Modifier
-                .weight(2.7f)
-                .heightIn(max = 380.dp)
-                .fillMaxWidth(),
-            transitionSpec = {
-                (fadeIn(tween(220)) + slideInVertically(tween(260)) { it / 6 }) togetherWith fadeOut(tween(140))
-            },
-            label = "dialInput",
-        ) { keyboard ->
-            if (keyboard) {
-                AddressInput(number, onChange = { number = it }, onCall = { place() })
-            } else {
-                DialPad(
-                    onDigit = {
-                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        number += it
-                    },
-                    onLongZero = {
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        number += '+'
-                    },
-                )
-            }
-        }
-
-        Spacer(Modifier.height(12.dp))
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            // Left: the shortcut keys, or a video call while a number is typed and video calls are
-            // on. Right: delete, there only while a number is being typed (both keep their place,
-            // so the call button stays in the middle).
-            val videoKey = settings.videoCalls && number.isNotBlank() && active != null
-            AnimatedContent(
-                targetState = videoKey,
-                transitionSpec = { fadeIn(tween(140)) togetherWith fadeOut(tween(100)) },
-                label = "leftKey",
-            ) { video ->
-                if (video) {
-                    SideAction(onClick = { place(video = true) }) {
-                        Icon(Icons.Rounded.Videocam, contentDescription = "视频呼叫")
-                    }
-                } else {
-                    SideAction(onClick = { onOpenShortcuts(selected?.id) }) {
-                        Icon(Icons.Rounded.Apps, contentDescription = "快捷键")
-                    }
-                }
-            }
-            CallButton(enabled = number.isNotBlank() || active == null, onClick = { place() })
-            Box(Modifier.size(SideActionSize)) {
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = number.isNotEmpty(),
-                    enter = fadeIn(tween(120)) + scaleIn(spring(dampingRatio = 0.6f, stiffness = 600f), initialScale = 0.7f),
-                    exit = fadeOut(tween(90)) + scaleOut(tween(120), targetScale = 0.7f),
-                ) {
-                    SideAction(
-                        onClick = { number = number.dropLast(1) },
-                        onLongClick = {
-                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                            number = ""
-                        },
-                    ) {
-                        Icon(Icons.AutoMirrored.Rounded.Backspace, contentDescription = "删除")
-                    }
-                }
-            }
-        }
-        Spacer(Modifier.height(16.dp))
     }
 
     if (featuresOpen) {
@@ -270,6 +213,181 @@ fun DialerScreen(onAddAccount: () -> Unit, onOpenShortcuts: (accountId: String?)
             },
             onDismiss = { pickerOpen = false },
         )
+    }
+}
+
+/**
+ * The pieces of the dial screen, which [Stacked] and [TwoPanes] arrange.
+ *
+ * @param input the dial pad or the address field, in the space the modifier gives it; compact
+ *   when it stands beside the other pieces
+ */
+private class DialerParts(
+    val chipsShown: Boolean,
+    val keyboardMode: Boolean,
+    val top: @Composable () -> Unit,
+    val chips: @Composable () -> Unit,
+    val display: @Composable () -> Unit,
+    val input: @Composable (modifier: Modifier, compact: Boolean) -> Unit,
+    val callRow: @Composable () -> Unit,
+)
+
+/** Wider than high and lower than this: the number on one side, the keys on the other. */
+private val TwoPanesBelowHeight = 560.dp
+
+/** Narrower than this, two panes would not leave either of them enough room. */
+private val TwoPanesMinWidth = 480.dp
+
+/** Wider rooms keep the stacked layout together in the middle instead of spreading the keys apart. */
+private val StackedMaxWidth = 440.dp
+
+/** Height of the top row: one icon button. */
+private val TopRowHeight = 48.dp
+
+/** Height of the reminders under the top row: the gap above them and a chip's touch target. */
+private val ChipsHeight = 58.dp
+
+/** Space above and below the number beside the keys, so that it never touches the call button. */
+private val NumberGap = 6.dp
+
+/** What the address field takes at the least (its top gap included), also with larger fonts. */
+private val InputMinHeight = 72.dp
+
+private const val NUMBER_WEIGHT = 1f
+private const val INPUT_WEIGHT = 2.7f
+
+/** Portrait: everything one above the other, the keys below the number. Too low a window scrolls. */
+@Composable
+private fun Stacked(parts: DialerParts) {
+    BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+        val fixed = 12.dp + TopRowHeight + 12.dp + CallRowHeight + 16.dp + if (parts.chipsShown) ChipsHeight else 0.dp
+        // The number and the input share what is left; below this the keys would get too small.
+        val needed = fixed + (if (parts.keyboardMode) InputMinHeight else PadMinHeight) * ((NUMBER_WEIGHT + INPUT_WEIGHT) / INPUT_WEIGHT)
+        Column(
+            Modifier
+                .widthIn(max = StackedMaxWidth)
+                .fillMaxWidth()
+                .then(if (maxHeight < needed) Modifier.verticalScroll(rememberScrollState()).height(needed) else Modifier.fillMaxHeight())
+                .padding(horizontal = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Spacer(Modifier.height(12.dp))
+            parts.top()
+            parts.chips()
+            Box(
+                Modifier
+                    .weight(NUMBER_WEIGHT)
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.Center,
+            ) {
+                parts.display()
+            }
+            parts.input(
+                Modifier
+                    .weight(INPUT_WEIGHT)
+                    .heightIn(max = 380.dp)
+                    .fillMaxWidth(),
+                false,
+            )
+            Spacer(Modifier.height(12.dp))
+            parts.callRow()
+            Spacer(Modifier.height(16.dp))
+        }
+    }
+}
+
+/**
+ * Landscape, or any window wide and low: account, number and call button on one side, the keys
+ * (or the address field) on the other. The keys take their size from the height.
+ */
+@Composable
+private fun TwoPanes(parts: DialerParts) {
+    Row(
+        Modifier
+            .fillMaxSize()
+            .padding(horizontal = 24.dp),
+        horizontalArrangement = Arrangement.spacedBy(24.dp),
+    ) {
+        Column(
+            Modifier
+                .weight(1f)
+                .fillMaxHeight(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            BoxWithConstraints(
+                Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+            ) {
+                // Where the room above the call button is short (a low window, the soft keyboard
+                // open), the reminders give way first, so that the number keeps a line, then the
+                // gap above the top row; should even the top row not fit, it scrolls. The call
+                // button stays in view.
+                val numberRoom = with(LocalDensity.current) { (SMALLEST_NUMBER_SIZE * 1.2f).sp.toDp() } + NumberGap * 2
+                val topGap = if (maxHeight >= 8.dp + TopRowHeight) 8.dp else 0.dp
+                val chipsFit = maxHeight >= topGap + TopRowHeight + ChipsHeight + numberRoom
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .then(
+                            if (maxHeight < TopRowHeight) {
+                                Modifier.verticalScroll(rememberScrollState()).height(TopRowHeight)
+                            } else {
+                                Modifier.fillMaxHeight()
+                            },
+                        ),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Spacer(Modifier.height(topGap))
+                    parts.top()
+                    if (chipsFit) parts.chips()
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .padding(vertical = NumberGap),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        parts.display()
+                    }
+                }
+            }
+            parts.callRow()
+            Spacer(Modifier.height(12.dp))
+        }
+        parts.input(
+            Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .padding(vertical = 12.dp),
+            true,
+        )
+    }
+}
+
+@Composable
+private fun TopRow(
+    active: SipAccount?,
+    keyboardMode: Boolean,
+    onFeatures: () -> Unit,
+    onAccount: () -> Unit,
+    onToggleInput: () -> Unit,
+) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        IconButton(onClick = onFeatures) {
+            Icon(Icons.Rounded.SupportAgent, contentDescription = "话务功能")
+        }
+        Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+            AccountChip(active, canAdd = !LocalConfigLocked.current, onClick = onAccount)
+        }
+        IconButton(onClick = onToggleInput) {
+            AnimatedContent(keyboardMode, label = "inputMode") { keyboard ->
+                Icon(
+                    if (keyboard) Icons.Rounded.Dialpad else Icons.Rounded.Keyboard,
+                    contentDescription = if (keyboard) "切换到拨号盘" else "切换到键盘输入",
+                )
+            }
+        }
     }
 }
 
@@ -322,7 +440,7 @@ private fun StatusChips(
             if (doNotDisturb) {
                 AssistChip(
                     onClick = onDisableDnd,
-                    label = { Text("免打扰已开启") },
+                    label = { Text("免打扰已开启", maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     leadingIcon = {
                         Icon(Icons.Rounded.DoNotDisturbOn, contentDescription = null, tint = Brand.HangUpRed, modifier = Modifier.size(18.dp))
                     },
@@ -332,7 +450,7 @@ private fun StatusChips(
                 AssistChip(
                     onClick = onVoicemail,
                     modifier = Modifier.alpha(if (voicemailConfigured) 1f else 0.38f),
-                    label = { Text("$voicemail 条新留言") },
+                    label = { Text("$voicemail 条新留言", maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     leadingIcon = { Icon(Icons.Rounded.Voicemail, contentDescription = null, modifier = Modifier.size(18.dp)) },
                 )
             }
@@ -340,6 +458,10 @@ private fun StatusChips(
     }
 }
 
+/** The number display does not go below this font size (sp); a room too low even for that shows nothing. */
+private const val SMALLEST_NUMBER_SIZE = 18f
+
+/** The number typed so far, in as many lines (two at most) as the room holds; none where not even one fits. */
 @Composable
 private fun NumberDisplay(number: String) {
     val fontSize by animateFloatAsState(
@@ -352,168 +474,88 @@ private fun NumberDisplay(number: String) {
         animationSpec = spring(stiffness = 300f),
         label = "numberSize",
     )
-    if (number.isEmpty()) {
-        Text(
-            "输入号码或 SIP 地址",
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-        )
-    } else {
-        FadingText(
-            text = number,
-            style = LocalTextStyle.current.copy(fontSize = fontSize.sp, lineHeight = (fontSize * 1.2f).sp),
-            fontWeight = FontWeight.Medium,
-            textAlign = TextAlign.Center,
-            maxLines = 2,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-    }
-}
-
-@Composable
-private fun DialPad(onDigit: (Char) -> Unit, onLongZero: () -> Unit) {
-    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        dialKeys.chunked(3).forEach { row ->
-            Row(
-                Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-            ) {
-                row.forEach { (digit, letters) ->
-                    Box(
-                        Modifier
-                            .weight(1f)
-                            .fillMaxHeight(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        DialKey(
-                            digit = digit,
-                            letters = letters,
-                            onClick = { onDigit(digit) },
-                            onLongClick = if (digit == '0') onLongZero else null,
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun DialKey(digit: Char, letters: String, onClick: () -> Unit, onLongClick: (() -> Unit)?) {
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (pressed) 0.86f else 1f,
-        animationSpec = spring(dampingRatio = 0.42f, stiffness = 700f),
-        label = "keyScale",
-    )
-    val container by animateColorAsState(
-        targetValue = if (pressed) {
-            MaterialTheme.colorScheme.primaryContainer
-        } else {
-            MaterialTheme.colorScheme.surfaceContainerHigh
-        },
-        label = "keyColor",
-    )
-    Box(
-        modifier = Modifier
-            .sizeIn(maxWidth = 84.dp, maxHeight = 84.dp)
-            .fillMaxHeight()
-            .aspectRatio(1f, matchHeightConstraintsFirst = true)
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
-            .clip(CircleShape)
-            .background(container)
-            .combinedClickable(
-                interactionSource = interaction,
-                indication = LocalIndication.current,
-                onClick = onClick,
-                onLongClick = onLongClick,
-            ),
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(digit.toString(), fontSize = 28.sp, fontWeight = FontWeight.Medium)
-            if (letters.isNotEmpty()) {
+    BoxWithConstraints(contentAlignment = Alignment.Center) {
+        val density = LocalDensity.current
+        if (number.isEmpty()) {
+            val style = MaterialTheme.typography.titleMedium
+            if (maxHeight >= with(density) { style.lineHeight.toDp() }) {
                 Text(
-                    letters,
-                    fontSize = 10.sp,
-                    lineHeight = 12.sp,
-                    letterSpacing = 1.5.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    "输入号码或 SIP 地址",
+                    style = style,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                )
+            }
+        } else {
+            // In a low room the figures get smaller rather than cut off, down to a size still easy
+            // to read (looked up step by step: large fonts do not scale in proportion).
+            fun line(size: Float) = with(density) { (size * 1.2f).sp.toDp() }
+            var size = fontSize
+            while (size - 1f >= SMALLEST_NUMBER_SIZE && line(size) > maxHeight) size -= 1f
+            val lines = (maxHeight / line(size)).toInt().coerceAtMost(2)
+            if (lines > 0) {
+                FadingText(
+                    text = number,
+                    style = LocalTextStyle.current.copy(fontSize = size.sp, lineHeight = (size * 1.2f).sp),
+                    fontWeight = FontWeight.Medium,
+                    textAlign = TextAlign.Center,
+                    maxLines = lines,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
             }
         }
     }
 }
 
+/**
+ * The dial pad, or the field for a number or SIP address typed on the soft keyboard.
+ *
+ * @param compact beside the other controls: the keys keep together and the field sits in the middle
+ */
+@Composable
+private fun InputArea(
+    keyboardMode: Boolean,
+    compact: Boolean,
+    number: String,
+    onNumber: (String) -> Unit,
+    onCall: () -> Unit,
+    onDigit: (Char) -> Unit,
+    onLongZero: () -> Unit,
+    modifier: Modifier,
+) {
+    AnimatedContent(
+        targetState = keyboardMode,
+        modifier = modifier,
+        transitionSpec = {
+            (fadeIn(tween(220)) + slideInVertically(tween(260)) { it / 6 }) togetherWith fadeOut(tween(140))
+        },
+        label = "dialInput",
+    ) { keyboard ->
+        if (keyboard) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .padding(top = if (compact) 0.dp else 8.dp),
+                contentAlignment = if (compact) Alignment.Center else Alignment.TopCenter,
+            ) {
+                AddressInput(number, onChange = onNumber, onCall = onCall)
+            }
+        } else {
+            DialPad(onDigit = onDigit, onLongZero = onLongZero, modifier = Modifier.fillMaxSize(), compact = compact)
+        }
+    }
+}
+
 @Composable
 private fun AddressInput(value: String, onChange: (String) -> Unit, onCall: () -> Unit) {
-    Column(
-        Modifier
-            .fillMaxSize()
-            .padding(top = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        OutlinedTextField(
-            value = value,
-            onValueChange = onChange,
-            modifier = Modifier.fillMaxWidth(),
-            label = { FieldText("号码或 SIP 地址") },
-            placeholder = { FieldText("例如 1001 或 alice@example.com") },
-            singleLine = true,
-            shape = MaterialTheme.shapes.medium,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Go),
-            keyboardActions = KeyboardActions(onGo = { onCall() }),
-        )
-    }
-}
-
-@Composable
-private fun CallButton(enabled: Boolean, onClick: () -> Unit) {
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (pressed) 0.9f else 1f,
-        animationSpec = spring(dampingRatio = 0.4f, stiffness = 500f),
-        label = "callScale",
+    OutlinedTextField(
+        value = value,
+        onValueChange = onChange,
+        modifier = Modifier.fillMaxWidth(),
+        label = { FieldText("号码或 SIP 地址") },
+        placeholder = { FieldText("例如 1001 或 alice@example.com") },
+        singleLine = true,
+        shape = MaterialTheme.shapes.medium,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Go),
+        keyboardActions = KeyboardActions(onGo = { onCall() }),
     )
-    val alpha by animateFloatAsState(if (enabled) 1f else 0.45f, label = "callAlpha")
-    Box(
-        modifier = Modifier
-            .size(76.dp)
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-                this.alpha = alpha
-            }
-            .shadow(if (enabled) 6.dp else 0.dp, CircleShape)
-            .clip(CircleShape)
-            .background(Brand.CallGreen)
-            .clickable(interactionSource = interaction, indication = LocalIndication.current, onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(Icons.Rounded.Call, contentDescription = "呼叫", tint = Color.White, modifier = Modifier.size(34.dp))
-    }
 }
-
-/** Round key next to the call button; what it does is said by its icon alone. */
-@Composable
-private fun SideAction(onClick: () -> Unit, onLongClick: (() -> Unit)? = null, icon: @Composable () -> Unit) {
-    Box(
-        Modifier
-            .size(SideActionSize)
-            .pressScale()
-            .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.secondaryContainer)
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        icon()
-    }
-}
-
-private val SideActionSize = 56.dp
