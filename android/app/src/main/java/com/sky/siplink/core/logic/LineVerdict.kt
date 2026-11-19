@@ -45,14 +45,15 @@ object LineVerdict {
     /**
      * Which way the sound of a call goes, from the packets sent and received [elapsedMs] after
      * it started, and the loss the other side reports of what this phone sends (percent; null
-     * while it sent no report).
+     * while it sent no report). Sound both ways shows at once; sound missing only after
+     * [SILENT_AFTER_MS], before that it is null.
      */
     fun flow(sent: Long, received: Long, remoteLoss: Float?, elapsedMs: Long): MediaFlow? {
-        if (elapsedMs < SILENT_AFTER_MS) return null
         val out = sent > 0 && (remoteLoss == null || remoteLoss < ALL_LOST)
         val into = received > 0
+        if (out && into) return MediaFlow.BOTH
+        if (elapsedMs < SILENT_AFTER_MS) return null
         return when {
-            out && into -> MediaFlow.BOTH
             out -> MediaFlow.SEND_ONLY
             into -> MediaFlow.RECEIVE_ONLY
             else -> MediaFlow.NONE

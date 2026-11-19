@@ -44,8 +44,9 @@ class LineVerdictTest {
     }
 
     @Test
-    fun `the direction of the sound is judged after a few seconds`() {
+    fun `missing sound is judged after a few seconds, sound both ways at once`() {
         assertNull(LineVerdict.flow(10, 0, null, 2_000))
+        assertEquals(MediaFlow.BOTH, LineVerdict.flow(10, 8, null, 1_000))
         assertEquals(MediaFlow.BOTH, LineVerdict.flow(300, 290, 0f, 6_000))
         assertEquals(MediaFlow.SEND_ONLY, LineVerdict.flow(300, 0, null, 6_000))
         assertEquals(MediaFlow.RECEIVE_ONLY, LineVerdict.flow(300, 280, 100f, 6_000))
