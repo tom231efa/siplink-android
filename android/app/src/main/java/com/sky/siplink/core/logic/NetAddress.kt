@@ -21,9 +21,6 @@ object NetAddress {
         INVALID,
     }
 
-    /** Whether an address of this kind is only reachable inside its own network. */
-    fun isPrivate(kind: Kind): Boolean = kind != Kind.PUBLIC && kind != Kind.INVALID
-
     fun kind(address: String): Kind {
         val bytes = parse(address) ?: return Kind.INVALID
         return if (bytes.size == 4) kindOf4(bytes) else kindOf6(bytes)
@@ -35,8 +32,6 @@ object NetAddress {
         if (text.isEmpty()) return null
         return if (':' in text) parse6(text) else parse4(text)
     }
-
-    fun isLiteral(address: String): Boolean = parse(address) != null
 
     /**
      * The network [address] belongs to, written as `network/prefix`: [prefix4] bits of an IPv4
@@ -51,12 +46,6 @@ object NetAddress {
             masked[i] = (masked[i].toInt() and (0xFF shl (8 - keep)) and 0xFF).toByte()
         }
         return "${format(masked)}/$prefix"
-    }
-
-    /** Whether [a] and [b] lie in the same network of [prefix4] (IPv4) or [prefix6] (IPv6) bits. */
-    fun sameSubnet(a: String, b: String, prefix4: Int = 24, prefix6: Int = 64): Boolean {
-        val first = subnet(a, prefix4, prefix6) ?: return false
-        return first == subnet(b, prefix4, prefix6)
     }
 
     /** The canonical text of an address: dotted IPv4, or IPv6 in groups with the longest run of zeros shortened. */

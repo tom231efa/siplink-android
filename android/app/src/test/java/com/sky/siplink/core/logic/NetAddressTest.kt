@@ -2,9 +2,7 @@ package com.sky.siplink.core.logic
 
 import com.sky.siplink.core.logic.NetAddress.Kind
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class NetAddressTest {
@@ -43,8 +41,6 @@ class NetAddressTest {
         assertNull(NetAddress.parse("1:2:3:4:5:6:7"))
         assertNull(NetAddress.parse("12345::1"))
         assertNull(NetAddress.parse(""))
-        assertFalse(NetAddress.isLiteral("example"))
-        assertTrue(NetAddress.isLiteral("::"))
     }
 
     @Test
@@ -52,9 +48,7 @@ class NetAddressTest {
         assertEquals("192.168.10.0/24", NetAddress.subnet("192.168.10.55"))
         assertEquals("10.0.0.0/8", NetAddress.subnet("10.9.8.7", prefix4 = 8))
         assertEquals("2001:db8:1:2::/64", NetAddress.subnet("2001:db8:1:2:aaaa:bbbb:cccc:dddd"))
-        assertTrue(NetAddress.sameSubnet("192.168.10.55", "192.168.10.1"))
-        assertFalse(NetAddress.sameSubnet("192.168.10.55", "192.168.20.19"))
-        assertFalse(NetAddress.sameSubnet("192.168.10.55", "pbx.example.com"))
+        assertNull(NetAddress.subnet("pbx.example.com"))
     }
 
     @Test
