@@ -115,3 +115,24 @@ givenName: Partner
 telephoneNumber: 3001
 mobile: 13900003001
 o: Partners
+
+# Two entries alike but for their organization, for the directory's list (TwinEntriesTest).
+dn: ou=desks,dc=siplink,dc=test
+objectClass: organizationalUnit
+ou: desks
+
+dn: uid=d1,ou=desks,dc=siplink,dc=test
+objectClass: inetOrgPerson
+uid: d1
+cn: Front Desk
+sn: Desk
+telephoneNumber: 3002
+o: East
+
+dn: uid=d2,ou=desks,dc=siplink,dc=test
+objectClass: inetOrgPerson
+uid: d2
+cn: Front Desk
+sn: Desk
+telephoneNumber: 3002
+o: West

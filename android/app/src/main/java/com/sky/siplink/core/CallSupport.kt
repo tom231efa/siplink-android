@@ -1,5 +1,6 @@
 package com.sky.siplink.core
 
+import com.sky.siplink.core.logic.IntercomHeaders
 import com.sky.siplink.core.model.AudioRoute
 import com.sky.siplink.core.model.CallPhase
 import com.sky.siplink.core.model.MemberState
@@ -47,6 +48,17 @@ internal object CallSupport {
         Call.State.PausedByRemote -> MemberState.HELD
         Call.State.End, Call.State.Error, Call.State.Released -> MemberState.LEFT
         else -> MemberState.CONNECTED
+    }
+
+    /** Whether the caller asks for [call] to be answered by itself: an intercom call. */
+    fun isIntercom(call: Call): Boolean {
+        if (call.askedToAutoanswer()) return true
+        val remote = call.remoteParams ?: return false
+        return IntercomHeaders.requestsAutoAnswer(
+            callInfo = remote.getCustomHeader(IntercomHeaders.CALL_INFO),
+            alertInfo = remote.getCustomHeader(IntercomHeaders.ALERT_INFO),
+            answerMode = remote.getCustomHeader(IntercomHeaders.ANSWER_MODE),
+        )
     }
 
     /**

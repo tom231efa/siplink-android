@@ -73,10 +73,10 @@ class ConferencePacingTest : RoomTestBase("pacing") {
         assertEquals(1, room()!!.present)
 
         // By hand: one is called again, and held back again; another is taken off the list.
-        tap("重拨 2801")
+        tapRow("重拨 2801")
         await("the call again") { callsTo("28", mark) == placed + 1 }
         awaitRoom("the member held back again") { heldBack(it, "线路已满").size == numbers.size }
-        tap("移除 2802")
+        tapRow("移除 2802")
         awaitRoom("the member off the list") { room -> room.members.none { it.name == "2802" } }
         onMain { engine.calls.hangUp() }
         awaitNoCall()

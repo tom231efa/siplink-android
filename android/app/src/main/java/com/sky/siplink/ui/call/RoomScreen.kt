@@ -1,11 +1,14 @@
 package com.sky.siplink.ui.call
 
 import android.os.SystemClock
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -52,6 +55,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -66,6 +70,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -192,8 +198,13 @@ private fun ColumnScope.RoomHead(info: CallInfo, room: RoomInfo, calls: CallMana
             }
             Text(callTimer(room.openedAt), style = MaterialTheme.typography.bodyLarge, color = Color.White.copy(alpha = 0.7f))
         }
-        AnimatedVisibility(room.warnings.isNotEmpty(), enter = fadeIn(), exit = fadeOut()) {
-            WarningChip(room.warnings, onClick = { readingsOpen = !readingsOpen })
+        // Each warning keeps its chip while that fades out, also when no warning stands any more.
+        AnimatedContent(
+            targetState = WARNING_ORDER.firstOrNull { it in room.warnings },
+            transitionSpec = { fadeIn() togetherWith fadeOut() },
+            label = "roomWarning",
+        ) { warning ->
+            if (warning != null) WarningChip(warning, onClick = { readingsOpen = !readingsOpen })
         }
     }
     AnimatedVisibility(
@@ -222,8 +233,8 @@ private fun ColumnScope.RoomHead(info: CallInfo, room: RoomInfo, calls: CallMana
 
 /** The most pressing warning; a tap opens the measured values. */
 @Composable
-private fun WarningChip(warnings: Set<RoomWarning>, onClick: () -> Unit) {
-    val text = WARNING_ORDER.first { it in warnings }.let(::warningText)
+private fun WarningChip(warning: RoomWarning, onClick: () -> Unit) {
+    val text = warningText(warning)
     Row(
         Modifier
             .padding(start = 12.dp)
@@ -311,27 +322,50 @@ private fun linkText(link: LinkReadings): String =
 private const val MAX_POOR_SHOWN = 5
 
 /**
- * The members, in the order they came in. A tap while the list moves, or right after it
- * stopped (the tap that stops a fling), acts on no one ([RoomRules.rowTapTaken]).
+ * The members, in the order they came in. A tap while the rows move, or right after they
+ * stopped, acts on no one ([RoomRules.rowTapTaken]): the tap that stops a fling, and one aimed at
+ * a row that moved away under the finger, as when a row above it goes or something opens above
+ * the list.
  */
 @Composable
 private fun MemberList(room: RoomInfo, calls: CallManager, onNotice: (String) -> Unit, modifier: Modifier) {
     val listState = rememberLazyListState()
-    // When the list last stopped moving; it starts still.
-    var stoppedAt by remember { mutableLongStateOf(Long.MIN_VALUE / 2) }
+    // When the rows last moved, or will have moved once they have slid into place; they start still.
+    var movedAt by remember { mutableLongStateOf(Long.MIN_VALUE / 2) }
+    fun moved(until: Long) {
+        movedAt = maxOf(movedAt, until)
+    }
     LaunchedEffect(listState) {
-        snapshotFlow { listState.isScrollInProgress }.drop(1).filter { !it }.collect { stoppedAt = SystemClock.uptimeMillis() }
+        snapshotFlow { listState.isScrollInProgress }.drop(1).filter { !it }.collect { moved(SystemClock.uptimeMillis()) }
     }
+    // A row that came, went or changed its height: those after it slide for ROW_MOVE_MS. (While
+    // the list scrolls, the end of the scroll counts.)
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.map { it.key to it.offset } }.drop(1)
+            .collect { if (!listState.isScrollInProgress) moved(SystemClock.uptimeMillis() + RoomRules.ROW_MOVE_MS) }
+    }
+    val top = remember { mutableFloatStateOf(Float.NaN) }
     val guarded = { action: () -> Unit ->
-        if (RoomRules.rowTapTaken(listState.isScrollInProgress, SystemClock.uptimeMillis() - stoppedAt)) action()
+        if (RoomRules.rowTapTaken(listState.isScrollInProgress, SystemClock.uptimeMillis() - movedAt)) action()
     }
-    LazyColumn(modifier.fillMaxWidth(), state = listState, contentPadding = PaddingValues(vertical = 8.dp)) {
+    LazyColumn(
+        modifier
+            .fillMaxWidth()
+            // Pushed by what opens or closes above it.
+            .onGloballyPositioned { coordinates ->
+                val y = coordinates.positionInRoot().y
+                if (!top.floatValue.isNaN() && y != top.floatValue) moved(SystemClock.uptimeMillis())
+                top.floatValue = y
+            },
+        state = listState,
+        contentPadding = PaddingValues(vertical = 8.dp),
+    ) {
         items(room.members, key = { it.id }, contentType = { "member" }) { member ->
             MemberRow(
                 member = member,
                 onHangUp = { guarded { calls.hangUpMember(member.id) } },
                 onRetry = { guarded { calls.retryMember(member.id)?.let(onNotice) } },
-                modifier = Modifier.animateItem(),
+                modifier = Modifier.animateItem(placementSpec = tween(RoomRules.ROW_MOVE_MS.toInt())),
             )
         }
     }

@@ -22,7 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sky.siplink.core.CallManager
 import com.sky.siplink.core.logic.Formatters
+import com.sky.siplink.core.logic.ListKeys
 import com.sky.siplink.core.logic.RoomRules
 import com.sky.siplink.core.model.RoomInfo
 import com.sky.siplink.core.model.ShortcutAction
@@ -192,9 +193,11 @@ internal fun RoomAddSheet(room: RoomInfo, calls: CallManager, onDismiss: () -> U
             )
         }
     }
+    // Two entries of a directory, or two speed dial keys, may be alike.
+    val keys = ListKeys.distinct(candidates.map { "${it.target}|${it.name}" })
     val list: @Composable (Modifier) -> Unit = { modifier ->
         LazyColumn(modifier, contentPadding = PaddingValues(vertical = 4.dp)) {
-            items(candidates, key = { "${it.target}|${it.name}" }, contentType = { "candidate" }) { candidate ->
+            itemsIndexed(candidates, key = { index, _ -> keys[index] }, contentType = { _, _ -> "candidate" }) { _, candidate ->
                 CandidateRow(
                     candidate = candidate,
                     inRoom = candidate.number in inRoom,

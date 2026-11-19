@@ -27,12 +27,14 @@ object AutoAnswerRules {
      * left to the user.
      *
      * @param intercom the caller asked for the call to be answered by itself (an intercom call)
-     * @param cameDuringCall the call arrived while another one was up (call waiting): a regular
-     *   one such is never answered by itself
+     * @param cameDuringCall the call arrived while another one or the room was up and waited next
+     *   to it: such a call is never answered by itself, an intercom call neither, not even once
+     *   it is the only one left (CallRules, rule 2)
      */
     fun delayMs(settings: Settings, intercom: Boolean, cameDuringCall: Boolean): Long? = when {
+        cameDuringCall -> null
         intercom -> MIN_DELAY_MS.takeIf { settings.intercomAutoAnswer }
-        !settings.autoAnswer || cameDuringCall -> null
+        !settings.autoAnswer -> null
         else -> maxOf(seconds(settings.autoAnswerSeconds) * 1000L, MIN_DELAY_MS)
     }
 }

@@ -47,6 +47,8 @@ class FeatureDialTest {
     fun `the extension is taken from a full sip address`() {
         assertEquals("*931002", FeatureDial.compose(Action.BARGE, " sip:1002@pbx.example.com;transport=tls ", codes))
         assertEquals("1002", FeatureDial.extensionOf("1002@pbx.example.com"))
+        assertEquals("*931002", FeatureDial.extensionOf("sip:%2A931002@pbx.example.com"))
+        assertEquals(Action.BARGE to "1002", FeatureDial.parse(FeatureDial.extensionOf("sip:%2A931002@pbx"), codes))
     }
 
     @Test

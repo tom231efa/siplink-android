@@ -10,6 +10,7 @@ import android.os.SystemClock
 import android.system.Os
 import android.system.OsConstants
 import android.util.Log
+import com.sky.siplink.BuildConfig
 import com.sky.siplink.core.logic.RoomHealth
 import com.sky.siplink.core.model.DeviceReadings
 import com.sky.siplink.core.model.LinkReadings
@@ -26,7 +27,7 @@ import java.util.concurrent.TimeUnit
  * memory from [ActivityManager]; the connections from the SDK's statistics of each call.
  *
  * The SDK is asked on the main thread, which owns it; /proc is read on a thread of its own.
- * What was measured is written to the log (tag [TAG], debug level).
+ * A debug build writes what was measured to the log (tag [TAG], debug level).
  */
 class RoomMonitor(context: Context) {
     /** What one look found: the device (null on the first look), and the connections by member. */
@@ -82,7 +83,8 @@ class RoomMonitor(context: Context) {
             handler.post {
                 if (token != round) return@post
                 health = RoomHealth.next(health, device, links)
-                log(calls.size, device, links, codec)
+                // Every two seconds for as long as a room is open: in the log of a debug build only.
+                if (BuildConfig.DEBUG) log(calls.size, device, links, codec)
                 onSample(Sample(device, links, health))
             }
         }

@@ -17,7 +17,8 @@ import kotlin.math.abs
 /**
  * What the call screen opens over a call, with the phone on its side: the keypad over a voice and
  * over a video call, the transfer and shortcut sheets, the room and its sheet. Nothing is cut off,
- * the keys are big enough to hit, and nothing lies over anything else.
+ * the keys are big enough to hit, and nothing lies over anything else; the keypad of a call does
+ * not stay over the room the call became.
  */
 class LandscapeScreensTest : RoomTestBase("landscape") {
     @After
@@ -156,6 +157,21 @@ class LandscapeScreensTest : RoomTestBase("landscape") {
         see("暂无快捷键")
         settle()
         picture("shortcuts")
+    }
+
+    @Test
+    fun theKeypadClosesWhenTheRoomOpens() {
+        callFirstMember()
+        turn()
+        tap("键盘")
+        see("收起键盘")
+        // The room button stays in sight beside the keypad; the room takes the place of the call and its keypad.
+        tap("会议室")
+        awaitRoom("the room") { it.present == 1 }
+        await("the keypad to close") { shown("收起键盘").isEmpty() }
+        settle()
+        picture("room-after-keypad")
+        assertTrue("The room's controls are covered", takesInput("结束会议") && takesInput("添加成员"))
     }
 
     @Test

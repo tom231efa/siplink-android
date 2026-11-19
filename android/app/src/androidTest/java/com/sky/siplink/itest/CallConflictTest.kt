@@ -16,8 +16,9 @@ import org.junit.Test
 /**
  * The conference room and the other call features when something else acts on the calls: the
  * PBX ending every leg at once, a member whose sound stops, the network going away and coming
- * back, another app taking the sound, an intercom call next to a held call. Each ends in a state
- * from which the next call works. (A supervised call and the room: SupervisionTest.)
+ * back, another app taking the sound, an intercom call next to a held call or the room, which is
+ * not answered by itself even once it is alone. Each ends in a state from which the next call
+ * works. (A supervised call and the room: SupervisionTest.)
  */
 class CallConflictTest : RoomTestBase("conflicts") {
     /** Nothing is left of the calls: no call, no room, no call notification, the sound out of its call mode. */
@@ -118,9 +119,27 @@ class CallConflictTest : RoomTestBase("conflicts") {
         awaitCall("the intercom call to wait") { it.waitingCall != null }
         never("the intercom call answered by itself", QUIET_WINDOW_MS) { call()?.waitingCall == null }
         assertEquals("The held call was replaced", CallPhase.HELD, call()!!.phase)
-        onMain { engine.calls.decline() }
-        await("the intercom call to be turned away") { call()?.waitingCall == null && !phoneHasCall(AGENT) }
+        // The held call ends: the intercom call, which waited next to it, rings on and is left to the user.
         onMain { engine.calls.hangUp() }
+        awaitCall("the intercom call to ring on its own") { it.phase == CallPhase.INCOMING && it.intercom }
+        never("the intercom call answered by itself once alone", QUIET_WINDOW_MS) { call()?.phase == CallPhase.CONNECTED }
+        onMain { engine.calls.decline() }
+        await("the intercom call to be turned away") { !phoneHasCall(AGENT) }
+        assertAllClear()
+    }
+
+    @Test
+    fun anIntercomCallThatWaitedNextToTheRoomIsNotAnsweredWhenTheRoomEnds() {
+        settings { it.copy(autoAnswer = true, autoAnswerSeconds = 0, intercomAutoAnswer = true) }
+        openRoom("2501")
+        phoneCalls(AGENT, "*80$APP")
+        awaitCall("the intercom call to wait") { it.waitingCall != null && it.room != null }
+        // The room ends: the intercom call takes the screen, ringing, and is left to the user.
+        onMain { engine.calls.hangUp() }
+        awaitCall("the intercom call to ring on its own") { it.room == null && it.phase == CallPhase.INCOMING && it.intercom }
+        never("the intercom call answered by itself once the room was gone", QUIET_WINDOW_MS) { call()?.phase == CallPhase.CONNECTED }
+        onMain { engine.calls.decline() }
+        await("the intercom call to be turned away") { !phoneHasCall(AGENT) }
         assertAllClear()
     }
 

@@ -34,6 +34,31 @@ object Formatters {
     /** User part of a SIP URI, or the whole value when it is not a URI. */
     fun userPart(uri: String): String = shortAddress(uri).substringBefore('@')
 
+    /**
+     * [text] with its escapes (`%` and two hex digits, of UTF-8 bytes, as in the user part of a
+     * SIP URI) read: `%2A91` -> `*91`. A `%` that starts no escape stays as it is.
+     */
+    fun unescaped(text: String): String {
+        if ('%' !in text) return text
+        val result = StringBuilder()
+        val bytes = java.io.ByteArrayOutputStream()
+        var i = 0
+        while (i < text.length) {
+            val high = if (text[i] == '%') text.getOrNull(i + 1)?.digitToIntOrNull(16) else null
+            val low = if (high != null) text.getOrNull(i + 2)?.digitToIntOrNull(16) else null
+            if (high != null && low != null) {
+                bytes.write(high * 16 + low)
+                i += 3
+            } else {
+                result.append(String(bytes.toByteArray(), Charsets.UTF_8))
+                bytes.reset()
+                result.append(text[i])
+                i++
+            }
+        }
+        return result.append(String(bytes.toByteArray(), Charsets.UTF_8)).toString()
+    }
+
     /** Characters that can be sent as DTMF. */
     fun isDtmf(char: Char): Boolean = char.isDigit() || char == '*' || char == '#'
 }

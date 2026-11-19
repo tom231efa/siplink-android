@@ -17,11 +17,15 @@ object RoomRules {
     fun limitOf(setting: Int): Int = setting.coerceIn(MIN_LIMIT, LIMIT)
 
     /**
-     * How many calls the SIP core takes at once: the room, one call waiting next to it, and two
-     * more for the short overlaps while the PBX rearranges calls (REFER, replaces) or a call that
-     * ended is still being released. A call beyond this the core refuses as busy by itself.
+     * How many calls the SIP core takes at once while a room is open: the room, one call waiting
+     * next to it, and two more for the short overlaps while the PBX rearranges calls (REFER,
+     * replaces) or a call that ended is still being released. A call beyond this the core refuses
+     * as busy by itself.
      */
     const val MAX_CALLS = LIMIT + 3
+
+    /** The same without a room: the call that is up, one held or waiting next to it, and the same two overlaps. */
+    const val MAX_CALLS_WITHOUT_ROOM = 4
 
     /**
      * The inputs of the SDK's audio mixer (MIXER_MAX_CHANNELS in mediastreamer2's audiomixer.c,
@@ -35,14 +39,18 @@ object RoomRules {
     const val LEFT_LINGER_MS = 2_500L
 
     /**
-     * How long after the member list stopped moving a tap on the hang up button of a row is
-     * taken. A finger that stops a fling stops the list on touching it and lifts about 100 ms
-     * later: that lift is no tap meant for the row it happens to be on.
+     * How long after the rows of the member list stopped moving a tap on the hang up button of a
+     * row is taken. A finger that stops a fling stops the list on touching it and lifts about
+     * 100 ms later: that lift is no tap meant for the row it happens to be on. Nor is a tap aimed
+     * at a row that a row above it, going, moved away under the finger.
      */
     const val ROW_TAP_GUARD_MS = 400L
 
-    /** Whether a tap on the hang up button of a row counts, [sinceStoppedMs] after the list last moved. */
-    fun rowTapTaken(scrolling: Boolean, sinceStoppedMs: Long): Boolean = !scrolling && sinceStoppedMs >= ROW_TAP_GUARD_MS
+    /** How long the rows after one that comes or goes take to slide into their places. */
+    const val ROW_MOVE_MS = 250L
+
+    /** Whether a tap on the hang up button of a row counts, [sinceMovedMs] after the rows last moved (negative while they still slide). */
+    fun rowTapTaken(scrolling: Boolean, sinceMovedMs: Long): Boolean = !scrolling && sinceMovedMs >= ROW_TAP_GUARD_MS
 
     /** How many more members fit into a room that has [present]. */
     fun free(present: Int, limit: Int = LIMIT): Int = (limit - present).coerceAtLeast(0)

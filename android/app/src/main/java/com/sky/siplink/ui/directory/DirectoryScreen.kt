@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -59,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sky.siplink.core.logic.ListKeys
 import com.sky.siplink.core.model.DirectoryContact
 import com.sky.siplink.engine
 import com.sky.siplink.ui.components.Avatar
@@ -212,7 +214,9 @@ fun DirectoryScreen(onOpenSettings: () -> Unit) {
                                 )
                             }
                         }
-                        items(contacts, key = { "${it.callTarget}|${it.name}" }, contentType = { "contact" }) { contact ->
+                        // Two entries of the directory may have the same name and number.
+                        val keys = ListKeys.distinct(contacts.map { "${it.callTarget}|${it.name}" })
+                        itemsIndexed(contacts, key = { index, _ -> keys[index] }, contentType = { _, _ -> "contact" }) { _, contact ->
                             ContactRow(
                                 contact = contact,
                                 onCall = { launcher.call(contact.callTarget, callLine) },

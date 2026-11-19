@@ -180,11 +180,11 @@ A conference room brings several calls together on the phone: the phone mixes th
 
 ### Failed calls
 
-When the PBX refuses a call, the member's row shows the reason. On 503, or after 3 failures in a row (with no answer in between), the remaining members are not called and show the same reason. Nothing is retried automatically: each row has **Call again** and **Remove**. When the PBX gives `Retry-After`, calling again before that time shows "Try again later".
+When the PBX refuses a call, the member's row shows the reason. On 503, or after 3 failures in a row (with no answer in between), the remaining members are not called and show the same reason. Nothing is retried automatically: each row has **Call again** and **Remove**. When the PBX gives `Retry-After`, calling again before that time shows "Try again later"; the wait counts as one hour at most.
 
 | Message | Cause |
 | --- | --- |
-| Line full | 503; with members already in the room, a run of busy or refused calls, or a member hung up by the other side within 8 seconds of answering (FreePBX does this when the extension's concurrent call limit is reached), see [FAQ](faq.md#conference-room-members-show-line-full) |
+| Line full | 503; with members already in the room, a run of busy or refused calls, or two members in a row within 20 seconds hung up by the other side within 8 seconds of answering (FreePBX does this when the extension's concurrent call limit is reached; a single one only pauses the calling for 5 seconds), see [FAQ](faq.md#conference-room-members-show-line-full) |
 | Refused by PBX | 403 |
 | Busy | 486, 600 |
 | Unavailable | 480 |

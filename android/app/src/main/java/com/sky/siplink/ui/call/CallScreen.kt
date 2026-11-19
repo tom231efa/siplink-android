@@ -44,11 +44,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Call
-import androidx.compose.material.icons.rounded.CallEnd
 import androidx.compose.material.icons.rounded.Campaign
 import androidx.compose.material.icons.rounded.Groups
-import androidx.compose.material.icons.rounded.SwapCalls
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -86,7 +83,6 @@ import com.sky.siplink.core.logic.CallRules
 import com.sky.siplink.core.logic.Formatters
 import com.sky.siplink.core.model.CallInfo
 import com.sky.siplink.core.model.CallPhase
-import com.sky.siplink.core.model.SideCall
 import com.sky.siplink.core.model.TransferStatus
 import com.sky.siplink.engine
 import com.sky.siplink.ui.components.FadingText
@@ -100,6 +96,8 @@ internal enum class Controls { INCOMING, ACTIVE, ENDED }
  *
  * @param glass the window is see through and what is behind it is blurred, so the background
  *   may let it shine through; without the blur it covers it whole
+ * @param activityNotice a notice of the activity (why answering from the notification did not
+ *   work), shown like the screen's own; [onActivityNoticeShown] once it is
  */
 @Composable
 fun CallScreen(
@@ -108,6 +106,8 @@ fun CallScreen(
     glass: Boolean = false,
     endRoomAsked: Boolean = false,
     onEndRoomAsked: () -> Unit = {},
+    activityNotice: String? = null,
+    onActivityNoticeShown: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val calls = context.engine.calls
@@ -158,6 +158,17 @@ fun CallScreen(
             notice = null
         }
     }
+    LaunchedEffect(activityNotice) {
+        if (activityNotice == null) return@LaunchedEffect
+        notice = activityNotice
+        onActivityNoticeShown()
+    }
+    // What reaches beyond the call waits until the phone is unlocked; locked again, it closes.
+    val unlocked = rememberUnlocked {
+        transferOpen = false
+        shortcutsOpen = false
+        addMembersOpen = false
+    }
 
     val info = shown
     val video = info?.video?.takeIf { info.phase == CallPhase.CONNECTED }
@@ -166,6 +177,13 @@ fun CallScreen(
     val recordable = established && info.recordable
     val record: @Composable () -> Unit = { RecordControl(info?.recordingSince, onToggle = calls::toggleRecording) }
     val room = info?.room?.takeIf { info.phase != CallPhase.ENDED }
+    // The room takes the place of the call, or the call that of the room: what was open over the other closes.
+    LaunchedEffect(room != null) {
+        keypadOpen = false
+        transferOpen = false
+        shortcutsOpen = false
+        addMembersOpen = false
+    }
     // What the user chose for a video (whole or filled, swapped) ends with it.
     LaunchedEffect(video == null) { if (video == null) stage.reset() }
     // The hang up key of the notification asks here before a room ends for everyone.
@@ -203,7 +221,7 @@ fun CallScreen(
                     if (room != null) {
                         RoomContent(
                             info, room, calls, notice,
-                            onAddMembers = { addMembersOpen = true },
+                            onAddMembers = { unlocked { addMembersOpen = true } },
                             onNotice = { notice = it },
                             confirmEnd = confirmRoomEnd,
                             onConfirmEnd = { confirmRoomEnd = it },
@@ -243,8 +261,8 @@ fun CallScreen(
                             },
                             onAcceptVideo = { withCamera { calls.answerVideoRequest(true) } },
                             onOpenKeypad = { keypadOpen = true },
-                            onOpenTransfer = { transferOpen = true },
-                            onOpenShortcuts = { shortcutsOpen = true },
+                            onOpenTransfer = { unlocked { transferOpen = true } },
+                            onOpenShortcuts = { unlocked { shortcutsOpen = true } },
                             onOpenRoom = openRoom,
                             onNotice = { notice = it },
                         )
@@ -255,7 +273,7 @@ fun CallScreen(
             // the phone on its side: the name, the notices, the top bar and the pictures stay in sight.
             val sideways = LocalWindowInfo.current.containerSize.let { it.width > it.height }
             AnimatedVisibility(
-                visible = keypadOpen && mode == Controls.ACTIVE,
+                visible = keypadOpen && mode == Controls.ACTIVE && room == null,
                 modifier = Modifier.align(if (sideways) Alignment.CenterStart else Alignment.BottomCenter),
                 enter = if (sideways) {
                     slideInHorizontally(spring(dampingRatio = 0.85f, stiffness = 300f)) { -it } + fadeIn()
@@ -266,7 +284,7 @@ fun CallScreen(
             ) {
                 DtmfPanel(onDigit = calls::sendDtmf, onClose = { keypadOpen = false }, sideways = sideways)
             }
-            if (transferOpen && mode == Controls.ACTIVE) {
+            if (transferOpen && mode == Controls.ACTIVE && room == null) {
                 TransferSheet(
                     canConsult = info.heldCall == null && info.waitingCall == null,
                     onDismiss = { transferOpen = false },
@@ -280,7 +298,7 @@ fun CallScreen(
                     },
                 )
             }
-            if (shortcutsOpen && mode == Controls.ACTIVE) {
+            if (shortcutsOpen && mode == Controls.ACTIVE && room == null) {
                 ShortcutsSheet(onDismiss = { shortcutsOpen = false }, onNotice = { notice = it })
             }
             if (addMembersOpen && room != null) {
@@ -639,76 +657,6 @@ private fun Chip(text: String, modifier: Modifier = Modifier, icon: ImageVector?
             Spacer(Modifier.width(4.dp))
         }
         FadingText(text, style = MaterialTheme.typography.labelMedium, color = Color.White, modifier = Modifier.weight(1f, fill = false))
-    }
-}
-
-/** Second call ringing on top of the current one. */
-@Composable
-private fun WaitingCallBanner(waiting: SideCall?, onAnswer: () -> Unit, onDecline: () -> Unit) {
-    Row(
-        Modifier
-            .padding(top = 12.dp)
-            .fillMaxWidth()
-            .clip(MaterialTheme.shapes.large)
-            .background(Color.White.copy(alpha = 0.16f))
-            .padding(start = 16.dp, end = 10.dp, top = 10.dp, bottom = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text("新来电", style = MaterialTheme.typography.labelMedium, color = Brand.Amber)
-            FadingText(
-                waiting?.name.orEmpty(),
-                style = MaterialTheme.typography.titleMedium,
-                color = Color.White,
-            )
-        }
-        SmallRound(Brand.HangUpRed, Icons.Rounded.CallEnd, "拒绝新来电", onDecline)
-        Spacer(Modifier.width(10.dp))
-        SmallRound(Brand.CallGreen, Icons.Rounded.Call, "保留当前通话并接听", onAnswer)
-    }
-}
-
-/** The other call, parked on hold; tapping swaps the two calls. */
-@Composable
-private fun HeldCallBanner(info: CallInfo, onSwap: () -> Unit) {
-    val held = info.heldCall
-    Row(
-        Modifier
-            .padding(top = 12.dp)
-            .fillMaxWidth()
-            .clip(MaterialTheme.shapes.large)
-            .background(Color.White.copy(alpha = 0.12f))
-            .clickable(onClick = onSwap)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text(
-                if (info.consulting) "等待转接（保留中）" else "保留中",
-                style = MaterialTheme.typography.labelMedium,
-                color = Color.White.copy(alpha = 0.7f),
-            )
-            FadingText(
-                held?.name.orEmpty(),
-                style = MaterialTheme.typography.titleMedium,
-                color = Color.White,
-            )
-        }
-        Icon(Icons.Rounded.SwapCalls, contentDescription = "切换通话", tint = Color.White)
-    }
-}
-
-@Composable
-private fun SmallRound(color: Color, icon: ImageVector, label: String, onClick: () -> Unit) {
-    Box(
-        Modifier
-            .size(44.dp)
-            .clip(CircleShape)
-            .background(color)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(icon, contentDescription = label, tint = Color.White, modifier = Modifier.size(22.dp))
     }
 }
 

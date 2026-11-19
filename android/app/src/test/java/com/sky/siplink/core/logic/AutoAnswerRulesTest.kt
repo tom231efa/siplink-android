@@ -64,9 +64,14 @@ class AutoAnswerRulesTest {
         assertNull(AutoAnswerRules.delayMs(regularOnly, intercom = true, cameDuringCall = false))
         val intercomOnly = Settings(autoAnswer = false, intercomAutoAnswer = true)
         assertNull(AutoAnswerRules.delayMs(intercomOnly, intercom = false, cameDuringCall = false))
-        // An intercom call is answered at once, whatever the time of regular calls, and also after another call, as before.
+        // An intercom call is answered at once, whatever the time of regular calls.
         val both = Settings(autoAnswer = true, autoAnswerSeconds = 20, intercomAutoAnswer = true)
         assertEquals(AutoAnswerRules.MIN_DELAY_MS, AutoAnswerRules.delayMs(both, intercom = true, cameDuringCall = false))
-        assertEquals(AutoAnswerRules.MIN_DELAY_MS, AutoAnswerRules.delayMs(both, intercom = true, cameDuringCall = true))
+    }
+
+    @Test
+    fun `an intercom call that waited next to another call or the room is left to the user`() {
+        val both = Settings(autoAnswer = true, autoAnswerSeconds = 0, intercomAutoAnswer = true)
+        assertNull(AutoAnswerRules.delayMs(both, intercom = true, cameDuringCall = true))
     }
 }

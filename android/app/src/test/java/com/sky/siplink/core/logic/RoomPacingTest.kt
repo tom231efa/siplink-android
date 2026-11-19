@@ -74,6 +74,29 @@ class RoomPacingTest {
     }
 
     @Test
+    fun `a retry after of more than an hour is taken for an hour`() {
+        assertEquals(5_000L + 3_600_000L, RoomPacing.retryAt(now = 5_000, seconds = RoomPacing.MAX_RETRY_AFTER_S))
+        assertEquals(5_000L + 3_600_000L, RoomPacing.retryAt(now = 5_000, seconds = Int.MAX_VALUE))
+    }
+
+    @Test
+    fun `one short call proves nothing, the second in a row says the line is full`() {
+        assertEquals(1, RoomPacing.shortRun(run = 0, sincePreviousMs = 0, keptBetween = false))
+        assertFalse(RoomPacing.lineFullAfter(1))
+        assertEquals(2, RoomPacing.shortRun(run = 1, sincePreviousMs = 3_000, keptBetween = false))
+        assertTrue(RoomPacing.lineFullAfter(2))
+        assertEquals(3, RoomPacing.shortRun(run = 2, sincePreviousMs = 1_000, keptBetween = false))
+    }
+
+    @Test
+    fun `short calls far apart or with a call the line took between them are no run`() {
+        assertEquals(1, RoomPacing.shortRun(run = 1, sincePreviousMs = RoomPacing.SHORT_RUN_MS, keptBetween = false))
+        assertEquals(1, RoomPacing.shortRun(run = 1, sincePreviousMs = 3_000, keptBetween = true))
+        // The pause after the first, a set-up and an announcement fit into a run.
+        assertTrue(RoomPacing.SHORT_CALL_PAUSE_MS + RoomPacing.SETUP_TIMEOUT_MS < RoomPacing.SHORT_RUN_MS)
+    }
+
+    @Test
     fun `a member that hangs up right after answering while others talk was the PBX saying the line is full`() {
         assertTrue(RoomPacing.endedLikeALimit(connectedForMs = 4_000, endedByUser = false, othersTalk = true))
         assertFalse("Talked for a while", RoomPacing.endedLikeALimit(connectedForMs = RoomPacing.SHORT_CALL_MS, endedByUser = false, othersTalk = true))

@@ -34,6 +34,18 @@ class FormattersTest {
     }
 
     @Test
+    fun `escapes of a user part are read`() {
+        assertEquals("*911005", Formatters.unescaped("%2A911005"))
+        assertEquals("*911005", Formatters.unescaped("%2a%39%311005"))
+        assertEquals("张伟", Formatters.unescaped("%E5%BC%A0%E4%BC%9F"))
+        assertEquals("1005", Formatters.unescaped("1005"))
+        // A % that starts no escape stays.
+        assertEquals("50%", Formatters.unescaped("50%"))
+        assertEquals("%zz1", Formatters.unescaped("%zz1"))
+        assertEquals("a%2", Formatters.unescaped("a%2"))
+    }
+
+    @Test
     fun `dtmf characters`() {
         "0123456789*#".forEach { assertTrue(Formatters.isDtmf(it)) }
         assertFalse(Formatters.isDtmf('A'))

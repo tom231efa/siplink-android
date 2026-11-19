@@ -237,10 +237,10 @@ class SipEngine(context: Context) {
         core.autoIterateBackgroundSchedule = BACKGROUND_ITERATE_MS
         core.isKeepAliveEnabled = true
 
-        // The calls of a conference room and one waiting next to it, with room for the short
-        // overlaps while the PBX rearranges calls (RoomRules.MAX_CALLS). Video follows the
-        // settings, see CallVideoSupport.configure.
-        core.maxCalls = RoomRules.MAX_CALLS
+        // The call that is up and one next to it, with room for the short overlaps while the PBX
+        // rearranges calls; the conference room raises it while it is open (ConferenceRoom,
+        // RoomRules.MAX_CALLS). Video follows the settings, see CallVideoSupport.configure.
+        core.maxCalls = RoomRules.MAX_CALLS_WITHOUT_ROOM
 
         // CallManager ends transferred calls itself: a parked call has to stay up until the PBX
         // has announced the parking slot, which the core's automatic hang-up would cut off.

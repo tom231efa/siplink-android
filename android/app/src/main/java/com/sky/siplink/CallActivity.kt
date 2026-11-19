@@ -46,6 +46,9 @@ class CallActivity : ComponentActivity() {
 
     /** The hang up key of a room's notification was pressed: the call screen asks before the room ends. */
     private var endRoomAsked by mutableStateOf(false)
+
+    /** Why answering did not work (a call next to a full room), for the call screen to show. */
+    private var answerNotice by mutableStateOf<String?>(null)
     private val onBlurChanged = Consumer<Boolean> { blurred = it }
 
     /** Answering with video waits for the permissions; [answerWithVideo] remembers which way it was. */
@@ -55,7 +58,7 @@ class CallActivity : ComponentActivity() {
     // without the camera the video only comes in.
     private val answerPermissions =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
-            engine.calls.answer(answerWithVideo)
+            answerNotice = engine.calls.answer(answerWithVideo)
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -83,6 +86,8 @@ class CallActivity : ComponentActivity() {
                     glass = blurred,
                     endRoomAsked = endRoomAsked,
                     onEndRoomAsked = { endRoomAsked = false },
+                    activityNotice = answerNotice,
+                    onActivityNoticeShown = { answerNotice = null },
                 )
             }
         }
@@ -151,7 +156,7 @@ class CallActivity : ComponentActivity() {
             if (video) add(Manifest.permission.CAMERA)
         }.filter { ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED }
         if (missing.isEmpty()) {
-            engine.calls.answer(video)
+            answerNotice = engine.calls.answer(video)
         } else {
             answerWithVideo = video
             answerPermissions.launch(missing.toTypedArray())

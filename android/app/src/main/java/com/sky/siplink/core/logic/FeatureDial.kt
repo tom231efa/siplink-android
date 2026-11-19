@@ -14,8 +14,11 @@ object FeatureDial {
         PICKUP("代接"),
     }
 
-    /** Extension part of whatever the user picked: `sip:1002@pbx;x=y` -> `1002`. */
-    fun extensionOf(target: String): String = Formatters.userPart(target.trim()).filterNot { it.isWhitespace() }
+    /**
+     * Extension part of whatever the user picked: `sip:1002@pbx;x=y` -> `1002`. Its escapes are
+     * read as the PBX reads them: `sip:%2A911002@pbx` dials `*911002`.
+     */
+    fun extensionOf(target: String): String = Formatters.unescaped(Formatters.userPart(target.trim())).filterNot { it.isWhitespace() }
 
     /** @return the string to dial, or null when the code is not configured or the target is empty */
     fun compose(action: Action, target: String, codes: FeatureCodes): String? {

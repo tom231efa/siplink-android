@@ -31,6 +31,7 @@ import org.linphone.core.Core
  *
  * @param party who the other side of a call is, as the call screen names it
  * @param limit how many members the room holds at most besides the user (a setting)
+ * @param lineOn whether calls may go out on a line: it is switched on
  * @param onChanged what the call screen shows of the room changed
  */
 internal class ConferenceRoom(
@@ -38,14 +39,21 @@ internal class ConferenceRoom(
     private val monitor: RoomMonitor,
     private val party: (Call) -> SideCall,
     private val limit: () -> Int,
+    private val lineOn: (Account) -> Boolean,
     private val onChanged: () -> Unit,
 ) {
     private class Member(val id: Long, var call: Call?, var side: SideCall) {
         /** Why the call ended; set from its End or Error. */
         var endReason: String? = null
 
-        /** The member's call that a REFER of the PBX replaces with this one; it ends once this one is up. */
+        /** The member's call that this one takes the place of ([replace]); it ends once this one is up. */
         var replaces: Call? = null
+
+        /** Its call ended as another one took its place: that says nothing about the PBX, and its row goes at once. */
+        var replaced = false
+
+        /** Its call was answered and ended at once by the other side (RoomPacing.shortRun): its row stays while the run is open. */
+        var endedShort = false
 
         /** What is dialled for a member that is yet to be called ([queued]) or was held back ([heldBack]). */
         var target: String? = null
@@ -89,6 +97,12 @@ internal class ConferenceRoom(
     private var failureRun = 0
     private val pacer = Runnable { pump() }
 
+    /** Short calls in a row ([RoomPacing.shortRun]), when the last one ended, and until when nobody new is called after one. */
+    private var shortRun = 0
+    private var lastShortAt = 0L
+    private var pausedUntil = 0L
+    private val shortRunOver = Runnable { closeShortRun() }
+
     /** True while [place] has the SDK place a call: its OutgoingInit arrives from inside it. */
     val inviting: Boolean get() = placing != null
 
@@ -124,6 +138,16 @@ internal class ConferenceRoom(
     /** The line the room calls out on. */
     val account: Account? get() = conference?.account
 
+    /** The line the room's calls go out on: that of its calls, else the default one, as for a call of the dial pad. */
+    private fun line(): Account? = conference?.account ?: core.defaultAccount
+
+    /** Null when calls may go out on [line]; else why not, as CallManager says it. */
+    private fun lineRefusal(line: Account?): String? = when {
+        line == null -> "请先添加 SIP 账号"
+        !lineOn(line) -> "线路已停用"
+        else -> null
+    }
+
     /**
      * Opens the room with [calls], which are up (connected or on hold). Their video ends.
      *
@@ -131,6 +155,8 @@ internal class ConferenceRoom(
      */
     fun open(calls: List<Call>, muted: Boolean): String? {
         if (conference != null) return null
+        // Asked first, so that nothing has to be undone: the SDK takes a call that is up in these states only.
+        if (calls.any { it.state !in JOINABLE }) return "请稍后再试"
         val params = core.createConferenceParams(null)
         params.isVideoEnabled = false
         // A room is a room: it stays with a single member, to whom the user can add more.
@@ -139,16 +165,32 @@ internal class ConferenceRoom(
         val created = core.createConferenceWithParams(params) ?: return FAILED
         // One by one: addParticipants answers 1 for success and 0 for failure (liblinphone 5.5,
         // c-conference.cpp), unlike addParticipant, which answers 0 and -1.
-        if (calls.any { created.addParticipant(it) != 0 }) {
-            created.terminate()
-            return FAILED
+        val added = ArrayList<Call>()
+        for (call in calls) {
+            if (created.addParticipant(call) != 0) {
+                undo(created, added)
+                return FAILED
+            }
+            added += call
         }
         conference = created
+        core.maxCalls = RoomRules.MAX_CALLS
         created.microphoneMuted = muted
         openedAt = SystemClock.elapsedRealtime()
         calls.forEach(::add)
         monitor.start(members = ::memberCalls) { sample = it; onChanged() }
         return null
+    }
+
+    /**
+     * Takes the calls out of a room that could not be opened without ending them. Taken out, a
+     * call the SDK took into it as it was stays up, on hold, and the conference ends by itself
+     * once it is empty (ServerConference::removeParticipant, liblinphone 5.5); terminate() would
+     * hang them up.
+     */
+    @Suppress("DEPRECATION") // The call itself, not a participant found by its address: two calls to one number stay apart.
+    private fun undo(created: Conference, added: List<Call>) {
+        if (added.isEmpty()) created.terminate() else added.forEach { created.removeParticipant(it) }
     }
 
     /**
@@ -165,11 +207,16 @@ internal class ConferenceRoom(
         val wanted = RoomRules.newTargets(targets, taken)
         if (wanted.isEmpty()) return if (targets.any { it.isNotBlank() }) "已在会议室中" else "请输入号码"
         RoomRules.refusal(present, wanted.size, limit())?.let { return it }
-        val account = conference?.account ?: core.defaultAccount ?: return "请先添加 SIP 账号"
-        if (wanted.any { account.normalizeSipUri(DialTarget.of(it)) == null }) return "号码或地址无效"
+        val account = line()
+        lineRefusal(account)?.let { return it }
+        if (wanted.any { account?.normalizeSipUri(DialTarget.of(it)) == null }) return "号码或地址无效"
+        // One that was held back is called again in its own row, once its Retry-After has passed.
+        val rows = wanted.associateWith { target ->
+            members.firstOrNull { it.heldBack != null && it.call == null && it.target?.let(Formatters::userPart) == Formatters.userPart(target) }
+        }
+        if (rows.values.any { it != null && SystemClock.elapsedRealtime() < it.retryAt }) return RETRY_LATER
         for (target in wanted) {
-            // One that was held back is called again in its own row.
-            val again = members.firstOrNull { it.heldBack != null && it.call == null && it.target?.let(Formatters::userPart) == Formatters.userPart(target) }
+            val again = rows[target]
             if (again != null) {
                 again.heldBack = null
                 again.queued = true
@@ -194,7 +241,7 @@ internal class ConferenceRoom(
      */
     fun retry(id: Long): String? {
         val member = members.firstOrNull { it.id == id && it.heldBack != null && it.call == null } ?: return null
-        if (SystemClock.elapsedRealtime() < member.retryAt) return "请稍后重试"
+        if (SystemClock.elapsedRealtime() < member.retryAt) return RETRY_LATER
         RoomRules.refusal(present, 1, limit())?.let { return it }
         member.heldBack = null
         member.queued = true
@@ -204,29 +251,35 @@ internal class ConferenceRoom(
         return null
     }
 
-    /** Starts the set-ups whose turn has come, and looks again once the oldest one may have waited long enough. */
+    /**
+     * Starts the set-ups whose turn has come (none for a moment after a short call), and looks
+     * again once the oldest one may have waited long enough.
+     */
     private fun pump() {
         handler.removeCallbacks(pacer)
         val conference = conference ?: return
         val now = SystemClock.elapsedRealtime()
-        val inSetup = members.filter { member ->
-            !member.answered && member.call?.let(::isEnded) == false && RoomPacing.holdsBack(member.placedAt, now)
-        }
-        repeat(RoomPacing.free(inSetup.size)) {
-            val next = members.firstOrNull { it.queued } ?: return@repeat
-            place(conference, next)
+        if (now >= pausedUntil) {
+            val inSetup = members.filter { member ->
+                !member.answered && member.call?.let(::isEnded) == false && RoomPacing.holdsBack(member.placedAt, now)
+            }
+            repeat(RoomPacing.free(inSetup.size)) {
+                val next = members.firstOrNull { it.queued } ?: return@repeat
+                place(conference, next)
+            }
         }
         if (members.any { it.queued }) handler.postDelayed(pacer, PACE_CHECK_MS)
     }
 
     private fun place(conference: Conference, member: Member) {
         member.queued = false
-        val account = conference.account ?: core.defaultAccount
+        val account = line()
         val address = account?.normalizeSipUri(DialTarget.of(member.target.orEmpty()))
         val params = core.createCallParams(null)
         // The SDK has no answer for a call the core refuses while it invites: it must not come to that.
-        if (address == null || params == null || core.callsNb + 1 >= core.maxCalls) {
-            member.heldBack = if (address == null) "号码或地址无效" else RoomPacing.Failure.LINE_FULL.label
+        val full = params == null || core.callsNb + 1 >= core.maxCalls
+        if (account == null || !lineOn(account) || address == null || params == null || full) {
+            member.heldBack = lineRefusal(account) ?: if (address == null) "号码或地址无效" else RoomPacing.Failure.LINE_FULL.label
             return
         }
         params.account = account
@@ -234,13 +287,14 @@ internal class ConferenceRoom(
         member.placedAt = SystemClock.elapsedRealtime()
         member.answered = false
         placing = member
-        val result = try {
+        try {
             // One at a time through the same call as for many: the user stays in the room meanwhile.
             conference.inviteParticipants(arrayOf(address), params)
         } finally {
             placing = null
         }
-        if (result != 0 && member.call == null) member.heldBack = "呼叫失败"
+        // No call came of it, whatever the SDK answered: the row stays, to be called again or taken off.
+        if (member.call == null) member.heldBack = "呼叫失败"
     }
 
     /**
@@ -251,7 +305,14 @@ internal class ConferenceRoom(
     fun onStateChanged(call: Call, state: Call.State?) {
         val all = find(call) ?: return
         if (state == Call.State.Connected && all.connectedAt == 0L) all.connectedAt = SystemClock.elapsedRealtime()
-        if (state == Call.State.End && onShortCall(all)) return
+        if (state == Call.State.End || state == Call.State.Error) {
+            // Another call took its place ([replace]): its end says nothing about the PBX.
+            if (all.replaced || replacedByAnother(all)) {
+                all.replaced = true
+                return
+            }
+            if (state == Call.State.End && onShortCall(all)) return
+        }
         val member = all.takeIf { !it.answered } ?: return
         when (state) {
             Call.State.OutgoingRinging, Call.State.OutgoingEarlyMedia, Call.State.Connected, Call.State.StreamsRunning -> {
@@ -280,19 +341,45 @@ internal class ConferenceRoom(
 
     /**
      * A member the room called hung up right after answering, while others talk: the PBX's
-     * announcement that the line has no more calls, most likely (FreePBX answers and plays one
-     * instead of refusing the call). The member keeps its row to be called again, and nobody else
-     * is called.
+     * announcement that the line has no more calls (FreePBX answers and plays one instead of
+     * refusing the call), or a person who hung up at once. One such call only pauses the calling
+     * a moment and keeps its row while the run lasts; the second in a row ([RoomPacing.shortRun])
+     * is taken for a full line: the members of the run keep their rows to be called again, and
+     * nobody else is called.
      *
-     * @return true when it was taken for that
+     * @return true when it was such a call
      */
     private fun onShortCall(member: Member): Boolean {
         if (member.target == null || member.connectedAt == 0L) return false
+        val now = SystemClock.elapsedRealtime()
         val othersTalk = members.any { it !== member && it.call?.state == Call.State.StreamsRunning }
-        if (!RoomPacing.endedLikeALimit(SystemClock.elapsedRealtime() - member.connectedAt, member.endedByUser, othersTalk)) return false
-        member.heldBack = RoomPacing.Failure.LINE_FULL.label
-        holdBack(RoomPacing.Failure.LINE_FULL.label, retryAt = 0L)
+        if (!RoomPacing.endedLikeALimit(now - member.connectedAt, member.endedByUser, othersTalk)) return false
+        // A call answered since the last short one and up for a while since: the line took it.
+        val kept = members.any {
+            it !== member && it.connectedAt > lastShortAt && it.call?.let(::isEnded) == false &&
+                now - it.connectedAt >= RoomPacing.SHORT_CALL_MS
+        }
+        shortRun = RoomPacing.shortRun(shortRun, now - lastShortAt, kept)
+        lastShortAt = now
+        member.endedShort = true
+        if (RoomPacing.lineFullAfter(shortRun)) {
+            val label = RoomPacing.Failure.LINE_FULL.label
+            members.filter { it.endedShort && it.heldBack == null }.forEach { it.heldBack = label }
+            holdBack(label, retryAt = 0L)
+        } else {
+            pausedUntil = now + RoomPacing.SHORT_CALL_PAUSE_MS
+        }
+        handler.removeCallbacks(shortRunOver)
+        handler.postDelayed(shortRunOver, RoomPacing.SHORT_RUN_MS)
         return true
+    }
+
+    /** No short call for [RoomPacing.SHORT_RUN_MS]: the run is over, and the rows of its calls that were not taken for a full line go. */
+    private fun closeShortRun() {
+        shortRun = 0
+        val gone = members.filter { it.endedShort && it.heldBack == null && it.call == null }
+        members.forEach { it.endedShort = false }
+        if (members.removeAll(gone.toSet())) onChanged()
     }
 
     /** Nobody else is called: those still waiting keep [label] until the user calls them again. */
@@ -338,13 +425,27 @@ internal class ConferenceRoom(
     }
 
     /**
-     * The PBX asked a member's call [referrer] to call someone else (REFER): the new [call] takes
-     * its place in the room, and the old one ends once the new one is up.
+     * [call] takes the place of the member's call [old]: the SDK placed it on a REFER received on
+     * [old], which ends once [call] is up ([onStreaming]), or it came in with Replaces aimed at
+     * [old], and the SDK answers it and ends [old] by itself. In the place of a call that is gone,
+     * or that another one takes already, it is a member more and needs room for one.
+     *
+     * @return false when the room has no place for it; the caller ends it then
      */
-    fun adopt(call: Call, referrer: Call) {
-        conference?.addParticipant(call)
+    fun replace(call: Call, old: Call): Boolean {
+        val conference = conference ?: return false
+        val takesItsPlace = find(old)?.let { it.call?.let(::isEnded) == false && !replacedByAnother(it) } == true
+        if (!takesItsPlace && RoomRules.refusal(present, 1, limit()) != null) return false
+        if (conference.addParticipant(call) != 0) return false
         add(call)
-        find(call)?.replaces = referrer
+        find(call)?.replaces = old
+        return true
+    }
+
+    /** Whether another member's call that is not over takes the place of [member]'s ([replace]). */
+    private fun replacedByAnother(member: Member): Boolean {
+        val call = member.call ?: return false
+        return members.any { it !== member && it.replaces?.nativePointer == call.nativePointer && it.call?.let(::isEnded) == false }
     }
 
     /**
@@ -356,6 +457,7 @@ internal class ConferenceRoom(
         if (member.queued || member.heldBack != null) {
             member.queued = false
             member.heldBack = null
+            member.endedShort = false
             // A call that is still being released takes the row with it ([onReleased]).
             if (member.call == null) members.remove(member)
             onChanged()
@@ -385,11 +487,13 @@ internal class ConferenceRoom(
         return true
     }
 
-    /** The streams of a member's [call] run: the call it replaces is not needed any more. */
+    /** The streams of a member's [call] run: the call it takes the place of is not needed any more. */
     fun onStreaming(call: Call) {
         val member = find(call) ?: return
-        member.replaces?.takeIf { !isEnded(it) }?.terminate()
+        val old = member.replaces ?: return
         member.replaces = null
+        find(old)?.replaced = true
+        if (!isEnded(old)) old.terminate()
     }
 
     /** A member's [call] ended for [reason]. */
@@ -411,8 +515,9 @@ internal class ConferenceRoom(
     }
 
     /**
-     * A member's [call] is gone: its row stays a moment with the reason, or until the user calls
-     * the member again when it was held back. When it was the last call, the room closes, and
+     * A member's [call] is gone: its row stays a moment with the reason, until the user calls the
+     * member again when it was held back, and while its run lasts after a short call; it goes at
+     * once when another call took its place. When it was the last call, the room closes, and
      * those that were still to be called are not.
      *
      * @return true when the room closed
@@ -420,8 +525,10 @@ internal class ConferenceRoom(
     fun onReleased(call: Call): Boolean {
         val member = find(call) ?: return false
         member.call = null
-        if (member.heldBack == null) {
-            handler.postDelayed({
+        when {
+            member.replaced -> members.remove(member)
+            member.heldBack != null || member.endedShort -> Unit
+            else -> handler.postDelayed({
                 if (members.remove(member)) onChanged()
             }, RoomRules.LEFT_LINGER_MS)
         }
@@ -479,11 +586,23 @@ internal class ConferenceRoom(
         // The SDK ends a conference by itself once its last participant is gone.
         conference = null
         members.clear()
+        shortRun = 0
+        lastShortAt = 0L
+        pausedUntil = 0L
         handler.removeCallbacksAndMessages(null)
+        core.maxCalls = RoomRules.MAX_CALLS_WITHOUT_ROOM
     }
 
     private companion object {
         const val FAILED = "无法创建会议室"
+        const val RETRY_LATER = "请稍后重试"
+
+        /**
+         * The states of a call that is up in which the SDK takes it into a conference
+         * (ServerConference::addParticipant, liblinphone 5.5): not while its media are being
+         * agreed on anew, nor while the other side holds it.
+         */
+        val JOINABLE = setOf(Call.State.StreamsRunning, Call.State.Paused, Call.State.Pausing, Call.State.Resuming)
 
         /** How often the calling looks again whether a set-up has waited long enough for the next one to start. */
         const val PACE_CHECK_MS = 1_000L

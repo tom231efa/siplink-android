@@ -27,6 +27,9 @@ class RoomRulesTest {
     @Test
     fun `the core takes the room, a waiting call and the overlaps`() {
         assertTrue(RoomRules.MAX_CALLS >= RoomRules.LIMIT + 1)
+        // Without a room: the call that is up, one next to it, and the overlaps of a transfer.
+        assertEquals(4, RoomRules.MAX_CALLS_WITHOUT_ROOM)
+        assertTrue(RoomRules.MAX_CALLS_WITHOUT_ROOM < RoomRules.MAX_CALLS)
     }
 
     @Test
@@ -90,10 +93,11 @@ class RoomRulesTest {
 
     @Test
     fun `a tap on a row's hang up button counts only once the list has been still a moment`() {
-        assertFalse("While the list moves", RoomRules.rowTapTaken(scrolling = true, sinceStoppedMs = 10_000))
-        assertFalse("The lift of the finger that stopped a fling", RoomRules.rowTapTaken(scrolling = false, sinceStoppedMs = 120))
-        assertTrue(RoomRules.rowTapTaken(scrolling = false, sinceStoppedMs = RoomRules.ROW_TAP_GUARD_MS))
-        assertTrue("A list that never moved", RoomRules.rowTapTaken(scrolling = false, sinceStoppedMs = Long.MAX_VALUE / 2))
+        assertFalse("While the list moves", RoomRules.rowTapTaken(scrolling = true, sinceMovedMs = 10_000))
+        assertFalse("The lift of the finger that stopped a fling", RoomRules.rowTapTaken(scrolling = false, sinceMovedMs = 120))
+        assertFalse("While the rows slide after one went", RoomRules.rowTapTaken(scrolling = false, sinceMovedMs = -RoomRules.ROW_MOVE_MS))
+        assertTrue(RoomRules.rowTapTaken(scrolling = false, sinceMovedMs = RoomRules.ROW_TAP_GUARD_MS))
+        assertTrue("A list that never moved", RoomRules.rowTapTaken(scrolling = false, sinceMovedMs = Long.MAX_VALUE / 2))
     }
 
     @Test

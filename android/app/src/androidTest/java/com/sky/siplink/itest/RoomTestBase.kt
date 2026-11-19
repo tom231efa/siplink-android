@@ -1,6 +1,8 @@
 package com.sky.siplink.itest
 
+import android.graphics.Rect
 import androidx.test.platform.app.InstrumentationRegistry
+import com.sky.siplink.core.logic.RoomRules
 import com.sky.siplink.core.model.MemberState
 import com.sky.siplink.core.model.RoomInfo
 import com.sky.siplink.openCallScreen
@@ -44,11 +46,40 @@ abstract class RoomTestBase(pictures: String) : ScreenTestBase(pictures) {
         callScreen()
     }
 
+    /**
+     * Taps [text], a button in the rows of the members, once the rows stood still long enough for
+     * the tap to be taken ([RoomRules.rowTapTaken]): a row that comes, goes or changes its height
+     * moves those after it.
+     */
+    protected fun tapRow(text: String) {
+        val bounds = Rect()
+        var before = ""
+        var since = System.currentTimeMillis()
+        await("the rows to stand still") {
+            val now = nodes().filter { node -> ROW_ACTIONS.any { node.contentDescription?.startsWith(it) == true } }
+                .joinToString("|") { node -> node.getBoundsInScreen(bounds); "${node.contentDescription}/${bounds.toShortString()}" }
+            if (now != before) {
+                before = now
+                since = System.currentTimeMillis()
+            }
+            now.contains(text) && System.currentTimeMillis() - since > STILL_MS
+        }
+        tap(text)
+    }
+
     /** A room with [first] and [others] in it, on screen. */
     protected fun openRoom(first: String, vararg others: String, connectedAtLeast: Int = 1 + others.size) {
         callFirstMember(first)
         ok(onMain { engine.calls.openRoom() })
         if (others.isNotEmpty()) ok(onMain { engine.calls.inviteToRoom(others.toList()) })
         awaitRoom("$connectedAtLeast members connected") { connected(it) >= connectedAtLeast }
+    }
+
+    private companion object {
+        /** What the buttons of a row say before the name of the member. */
+        val ROW_ACTIONS = listOf("挂断 ", "移除 ", "重拨 ")
+
+        /** How long the rows stand still before a tap: they slide, and then a tap is still kept back a moment. */
+        const val STILL_MS = RoomRules.ROW_MOVE_MS + RoomRules.ROW_TAP_GUARD_MS + 100
     }
 }

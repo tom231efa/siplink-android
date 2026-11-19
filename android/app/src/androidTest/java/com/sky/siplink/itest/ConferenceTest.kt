@@ -1,20 +1,38 @@
 package com.sky.siplink.itest
 
 import android.Manifest
+import android.app.Notification
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Intent
 import android.content.pm.ActivityInfo
+import android.util.Log
+import android.view.accessibility.AccessibilityNodeInfo
 import androidx.test.platform.app.InstrumentationRegistry
+import com.sky.siplink.CallActivity
+import com.sky.siplink.core.CallSupport
+import com.sky.siplink.core.ConferenceRoom
+import com.sky.siplink.core.RoomMonitor
 import com.sky.siplink.core.logic.RoomRules
 import com.sky.siplink.core.model.CallPhase
 import com.sky.siplink.core.model.MemberState
+import com.sky.siplink.core.model.RoomWarning
 import com.sky.siplink.openCallScreen
+import com.sky.siplink.service.CallNotifier
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.linphone.core.Call
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.concurrent.thread
 
 /**
  * The conference room: opened from a call, members added by calling them and by taking a call
- * that comes in, one member hung up while the others stay, no video, the limit, and the end.
+ * that comes in, one member hung up while the others stay, no video, the limit, and the end;
+ * a warning that comes and goes, the notification of the room, a row that moves under a tap, a
+ * call that does not fit, and a room that cannot be opened.
  *
  * The members are numbers of the test PBX that answer and beep now and then (25XX, 26XX ring
  * first; testenv/asterisk/config/extensions.conf) and report what they hear; that a member hears
@@ -87,9 +105,7 @@ class ConferenceTest : RoomTestBase("conference") {
         val stay = appLegsUp() - gone
 
         val name = room()!!.members.first { it.address.startsWith("2502@") }.name
-        // Looked for without scrolling: a tap right after the list moved is not taken (RoomRules.rowTapTaken).
-        await("the row of the member") { shown("挂断 $name").isNotEmpty() }
-        tap("挂断 $name")
+        tapRow("挂断 $name")
         await("the member's leg to go") { pbxChannel(gone) == null }
         val left = awaitRoom("the member to leave the list") { room -> room.members.none { it.address.startsWith("2502@") } }
         assertEquals(2, connected(left))
@@ -215,6 +231,116 @@ class ConferenceTest : RoomTestBase("conference") {
         assertEquals("已在会议室中", onMain { engine.calls.inviteToRoom(listOf("2501")) })
     }
 
+    @Test
+    fun aWarningThatGoesLeavesTheRoomStanding() {
+        openRoom("2501", "2502")
+        // A thread of the app's process that keeps a core busy: the room warns of the load.
+        val busy = AtomicBoolean(true)
+        val burner = thread(name = "itest-load") {
+            var spins = 0L
+            while (busy.get()) spins++
+        }
+        try {
+            awaitRoom("the warning of the load") { RoomWarning.LOAD in it.warnings }
+            see("设备负载过高")
+            picture("warning-load")
+        } finally {
+            busy.set(false)
+            burner.join()
+        }
+        // It goes again while the room stays; its chip fades out.
+        awaitRoom("the warning to go") { it.warnings.isEmpty() }
+        await("the chip to be gone") { shown("设备负载过高").isEmpty() }
+        assertEquals(2, connected(room()!!))
+        see("结束会议")
+    }
+
+    @Test
+    fun theNotificationShowsTheRoomAndItsHangUpAsksFirst() {
+        callFirstMember()
+        await("the notification of the call") { ongoingTitle() != null }
+        ok(onMain { engine.calls.openRoom() })
+        await("the notification to show the room") { ongoingTitle() == "会议室" && ongoingHangUp()?.isBroadcast == true }
+        ok(onMain { engine.calls.inviteToRoom(listOf("2502")) })
+        awaitRoom("two members") { connected(it) == 2 }
+        // With more than one member its hang up key opens the call screen, which asks first (CallRules, rule 6).
+        await("the hang up key of the notification to ask first") { ongoingHangUp()?.isActivity == true }
+        ongoingHangUp()!!.send()
+        see("结束会议？")
+        tap("取消")
+        never("the room ended without a yes", QUIET_WINDOW_MS) { room() == null }
+        onMain { engine.calls.hangUp() }
+        awaitNoCall()
+    }
+
+    @Test
+    fun aTapOnARowThatMovedUnderTheFingerIsNotTaken() {
+        openRoom("2501", "2502", "2503")
+        val (leaving, staying) = listOf("2502", "2503").map { number -> room()!!.members.first { it.address.startsWith("$number@") }.name }
+        val stayingLeg = legOf("2503")!!
+        await("the rows") { shown("挂断 $staying").isNotEmpty() }
+        // The PBX ends the call of the member above; its row stays a moment, then goes, and the row below moves up.
+        pbx.command("channel request hangup ${legOf("2502")}")
+        awaitRoom("the member to leave") { room -> room.members.any { it.address.startsWith("2502@") && it.state == MemberState.LEFT } }
+        var button: AccessibilityNodeInfo? = null
+        val deadline = System.currentTimeMillis() + TIMEOUT_MS
+        while (button == null && System.currentTimeMillis() < deadline) {
+            val now = nodes()
+            if (now.none { says(it, leaving) }) button = now.firstOrNull { says(it, "挂断 $staying") }
+        }
+        // A tap right then, aimed at the row while it was still lower down, is not taken.
+        assertTrue(chain(button!!).first { it.isClickable }.performAction(AccessibilityNodeInfo.ACTION_CLICK))
+        never("the member hung up by a tap on a row that moved under the finger", QUIET_WINDOW_MS) { pbxChannel(stayingLeg) == null }
+        // Once the rows are still, it is.
+        tapRow("挂断 $staying")
+        await("the member's leg to go") { pbxChannel(stayingLeg) == null }
+    }
+
+    @Test
+    fun aCallThatDoesNotFitIntoTheRoomKeepsRingingAndSaysWhy() {
+        settings { it.copy(roomLimit = 2) }
+        openRoom("2501", "2502")
+        phoneCalls(CUSTOMER, "$APP", "tone")
+        awaitCall("the call to wait") { it.waitingCall != null }
+        // Answered from its notification: through the call screen, which says why that cannot be.
+        context.startActivity(Intent(context, CallActivity::class.java).setAction(CallActivity.ACTION_ANSWER).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        see(RoomRules.refusal(present = 2, adding = 1, limit = 2)!!)
+        never("the waiting call answered or gone", QUIET_WINDOW_MS) { call()?.waitingCall == null }
+        assertEquals(2, room()!!.present)
+        tap("拒接")
+        await("the caller to be turned away") { call()?.waitingCall == null && !phoneHasCall(CUSTOMER) }
+    }
+
+    @Test
+    fun aRoomThatCannotOpenGivesItsCallBackUnended() {
+        callFirstMember()
+        val first = onMain { engine.core.currentCall!! }
+        // A room past the call manager, asked to take the same call twice: the SDK takes it once only.
+        val other = onMain { ConferenceRoom(engine.core, RoomMonitor(context), CallSupport::party, { RoomRules.LIMIT }, { true }) {} }
+        assertEquals("无法创建会议室", onMain { other.open(listOf(first, first), muted = true) })
+        assertEquals(RoomRules.MAX_CALLS_WITHOUT_ROOM, onMain { engine.core.maxCalls })
+        // Taken out of the conference again, the call goes on, on hold; no conference is left.
+        await("the call to be out of the conference") { onMain { first.conference == null } }
+        never("the call ended", QUIET_WINDOW_MS) { onMain { CallSupport.isEnded(first) } }
+        Log.i(TAG, "after the undo: state=${onMain { first.state }}")
+        // With no call left in it, the user is in no conference either (only the core itself can tell).
+        @Suppress("DEPRECATION")
+        assertFalse(onMain { engine.core.isInConference })
+        // The user takes it off hold and talks on.
+        if (onMain { first.state } == Call.State.Paused) onMain { engine.calls.toggleHold() }
+        await("the call to run again") { onMain { first.state } == Call.State.StreamsRunning }
+        onMain { engine.calls.hangUp() }
+        awaitNoCall()
+    }
+
+    /** What the notification of the call that is up says, and where its hang up key leads. */
+    private fun ongoing(): Notification? = context.getSystemService(NotificationManager::class.java).activeNotifications
+        .firstOrNull { it.id == CallNotifier.ID_SERVICE }?.notification
+
+    private fun ongoingTitle(): String? = ongoing()?.extras?.getCharSequence(Notification.EXTRA_TITLE)?.toString()
+
+    private fun ongoingHangUp(): PendingIntent? = ongoing()?.extras?.getParcelable(Notification.EXTRA_HANG_UP_INTENT, PendingIntent::class.java)
+
     /**
      * Whether a call of the app carries video, as the app and the PBX last agreed on it. (The PBX's
      * own view of the channel, its NativeFormats, keeps the video codec after the stream was closed.)
@@ -227,5 +353,6 @@ class ConferenceTest : RoomTestBase("conference") {
 
         /** Longer than the animation that turns the screen. */
         const val TURN_MS = 1_000L
+        const val TAG = "SipLinkConferenceTest"
     }
 }

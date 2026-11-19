@@ -35,6 +35,9 @@ class CallRulesTest {
         assertNull("Intercom into the room is fine", CallRules.memberRefusal("${codes.intercom}1005", codes))
         assertNull(CallRules.memberRefusal("sip:1005@pbx.example", codes))
         assertEquals("监听通话不能加入会议室", CallRules.memberRefusal("sip:${codes.barge}1005@pbx.example", codes))
+        // Escaped as a URI may carry it, the PBX still gets the code.
+        assertEquals("监听通话不能加入会议室", CallRules.memberRefusal("sip:%2A911005@pbx.example", codes))
+        assertEquals("监听通话不能加入会议室", CallRules.memberRefusal("sip:%2a%39%311005@pbx.example", codes))
     }
 
     @Test
@@ -43,6 +46,16 @@ class CallRulesTest {
         assertFalse("Not a supervised call", CallRules.supervisionKeysGo(supervised = false, streaming = true, roomOpen = false))
         assertFalse("On hold", CallRules.supervisionKeysGo(supervised = true, streaming = false, roomOpen = false))
         assertFalse("In the room", CallRules.supervisionKeysGo(supervised = true, streaming = true, roomOpen = true))
+    }
+
+    @Test
+    fun `the mode shown changes with a key only where the key goes out as a mode key`() {
+        val listen = SupervisionMode.LISTEN
+        assertEquals(SupervisionMode.BARGE, CallRules.modeAfterKey(listen, '6', streaming = true, roomOpen = false))
+        assertEquals("Not a mode key", listen, CallRules.modeAfterKey(listen, '1', streaming = true, roomOpen = false))
+        assertEquals("On hold or still being set up", listen, CallRules.modeAfterKey(listen, '6', streaming = false, roomOpen = false))
+        assertEquals("Next to the room", listen, CallRules.modeAfterKey(listen, '6', streaming = true, roomOpen = true))
+        assertNull("Not a supervised call", CallRules.modeAfterKey(null, '6', streaming = true, roomOpen = false))
     }
 
     @Test
