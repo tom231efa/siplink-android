@@ -1,19 +1,26 @@
 package com.sky.siplink.core
 
+import com.sky.siplink.core.logic.AccountRoute
 import com.sky.siplink.core.logic.DnsMessage
+import com.sky.siplink.core.logic.LineAdapt
 import com.sky.siplink.core.logic.SipPing
+import com.sky.siplink.core.logic.StunMessage
+import com.sky.siplink.core.model.Mapped
+import com.sky.siplink.core.model.OptionsAnswer
 import com.sky.siplink.core.model.SipTransport
 import java.io.IOException
 import java.net.DatagramPacket
 import java.net.DatagramSocket
+import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 import kotlin.random.Random
 
 /**
- * The questions the routing of an account asks the network itself, with plain sockets. They
- * wait for their answer: never call them on the main thread.
+ * The questions the routing of an account, and the line checks, ask the network itself, with
+ * plain sockets. They wait for their answer: never call them on the main thread.
  */
 internal object LineNetwork {
     private const val TIMEOUT_MS = 2000
@@ -91,4 +98,121 @@ internal object LineNetwork {
         }
         false
     }
+
+    // ---------------------------------------------------------------- the line checks
+
+    /**
+     * What one UDP socket found out.
+     *
+     * @param from the address and port it was sent from; null when it could not be opened
+     * @param answer the SIP server's answer to an OPTIONS request; null without one
+     * @param stun where the STUN server saw the same socket; null without one, or when none was asked
+     */
+    class UdpProbe(val from: Mapped?, val answer: OptionsAnswer?, val stun: Mapped?)
+
+    /**
+     * Sends an OPTIONS request to the SIP server at [host]:[port] and, with [stun], a STUN Binding
+     * request from the same socket: where both see it says what kind of NAT is in the way.
+     *
+     * @param size the request is padded to this many bytes, to see whether large packets get through
+     */
+    fun probeUdp(
+        host: String,
+        port: Int,
+        server: String,
+        from: String,
+        userAgent: String,
+        size: Int = 0,
+        stun: InetSocketAddress? = null,
+    ): UdpProbe = try {
+        DatagramSocket().use { socket ->
+            val target = InetSocketAddress(host, port)
+            // Connected for a moment, the socket learns the address it sends from towards the server.
+            socket.connect(target)
+            val sentFrom = Mapped(socket.localAddress.hostAddress.orEmpty().substringBefore('%'), socket.localPort)
+            socket.disconnect()
+            val local = hostPort(sentFrom)
+            val token = Random.nextLong().toULong().toString(16)
+            val request = SipPing.options(server, from, local, token, userAgent, size).toByteArray(Charsets.US_ASCII)
+            val stunId = Random.nextBytes(STUN_ID)
+            val stunRequest = stun?.let { StunMessage.request(stunId) }
+            var answer: OptionsAnswer? = null
+            var mapped: Mapped? = null
+            for (attempt in 1..ATTEMPTS) {
+                val sentAt = System.nanoTime()
+                if (answer == null) socket.send(DatagramPacket(request, request.size, target))
+                if (stunRequest != null && mapped == null) socket.send(DatagramPacket(stunRequest, stunRequest.size, stun))
+                val deadline = sentAt + TIMEOUT_MS * NANOS_PER_MS
+                while (answer == null || (stun != null && mapped == null)) {
+                    val left = (deadline - System.nanoTime()) / NANOS_PER_MS
+                    if (left <= 0) break
+                    socket.soTimeout = left.toInt()
+                    val packet = DatagramPacket(ByteArray(MAX_PACKET), MAX_PACKET)
+                    try {
+                        socket.receive(packet)
+                    } catch (_: SocketTimeoutException) {
+                        break
+                    }
+                    if (packet.socketAddress == target) {
+                        val rtt = (System.nanoTime() - sentAt) / NANOS_PER_MS
+                        answer = answer ?: SipPing.answer(String(packet.data, 0, packet.length, Charsets.ISO_8859_1), token, local, rtt)
+                    } else if (stun != null && packet.socketAddress == stun) {
+                        mapped = mapped ?: StunMessage.mapped(packet.data, packet.length, stunId)
+                    }
+                }
+                if (answer != null && (stun == null || mapped != null)) break
+            }
+            UdpProbe(sentFrom, answer, mapped)
+        }
+    } catch (_: IOException) {
+        UdpProbe(null, null, null)
+    } catch (_: IllegalArgumentException) {
+        UdpProbe(null, null, null)
+    } catch (_: SecurityException) {
+        UdpProbe(null, null, null)
+    }
+
+    /** How long a TCP connection to [host]:[port] took to be taken; null when it was not. */
+    fun connectMs(host: String, port: Int): Long? = try {
+        val start = System.nanoTime()
+        Socket().use { it.connect(InetSocketAddress(host, port), TIMEOUT_MS) }
+        (System.nanoTime() - start) / NANOS_PER_MS
+    } catch (_: IOException) {
+        null
+    } catch (_: IllegalArgumentException) {
+        null
+    } catch (_: SecurityException) {
+        null
+    }
+
+    /** The addresses the system finds for [host] (an address stays itself); none when it finds none. */
+    fun lookup(host: String): List<String> = try {
+        InetAddress.getAllByName(host.removePrefix("[").removeSuffix("]")).mapNotNull { it.hostAddress?.substringBefore('%') }
+    } catch (_: UnknownHostException) {
+        emptyList()
+    } catch (_: SecurityException) {
+        emptyList()
+    }
+
+    /** `address:port`, an IPv6 address in brackets. */
+    fun hostPort(mapped: Mapped): String = if (':' in mapped.address) "[${mapped.address}]:${mapped.port}" else "${mapped.address}:${mapped.port}"
+
+    /**
+     * Which transports get through to a SIP server, for the adaptation of a line.
+     *
+     * @param host the server's name or address, [port] its port when the account names one
+     * @param server and [from] as for [answers]
+     */
+    fun transports(host: String, port: Int?, server: String, from: String, userAgent: String): LineAdapt.Probe {
+        val address = lookup(host).firstOrNull() ?: return LineAdapt.Probe(udp = false, udpLarge = null, tcp = false, tls = null)
+        val sipPort = port ?: AccountRoute.defaultPort(SipTransport.UDP)
+        val udp = probeUdp(address, sipPort, server, from, userAgent).answer != null
+        val large = if (udp) probeUdp(address, sipPort, server, from, userAgent, size = LineAdapt.LARGE_PACKET).answer != null else null
+        // An account that names its port has TLS somewhere else, if at all: only its own port is tried.
+        val tls = if (port == null) connectMs(address, AccountRoute.defaultPort(SipTransport.TLS)) != null else null
+        return LineAdapt.Probe(udp = udp, udpLarge = large, tcp = connectMs(address, sipPort) != null, tls = tls)
+    }
+
+    private const val STUN_ID = 12
+    private const val NANOS_PER_MS = 1_000_000L
 }
