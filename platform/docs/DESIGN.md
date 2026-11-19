@@ -436,8 +436,8 @@ phone's values for them.
 | `autoAnswer` | bool, default `false` | `autoAnswer` (to be added) | 接听与保活 → 常规呼叫 → 自动接听 |
 | `autoAnswerSeconds` | int, default `3`; one of 0, 3, 5, 10, 20, 30 (0 = at once) | `autoAnswerSeconds` (to be added) | 接听与保活 → 常规呼叫 → 自动接听时间 |
 | `roomLimit` | int 2–30 (`RoomRules.MIN_LIMIT`..`LIMIT`), default `30`; **absent at the default** | `roomLimit` | 高级设置 → 会议室 → 会议室人数上限 |
-| `autoNetwork` | bool, default `true`; **absent at the default** | `autoNetwork` (to be added) | 高级设置 → 客户端与媒体 → 自动适应网络 |
-| `stunServer` | string `host[:port]`, `""` = none; **absent when empty** | `stunServer` (to be added) | 高级设置 → 客户端与媒体 → STUN 服务器 |
+| `autoNetwork` | bool, default `true`; **absent at the default** | `autoNetwork` | 高级设置 → 客户端与媒体 → 自动适应网络 |
+| `stunServer` | string `host[:port]`, `""` = none; **absent when empty** | `stunServer` | 高级设置 → 客户端与媒体 → STUN 服务器 |
 
 The last four fields (added 2026-11-16) are options of the SIP library that the app's former
 "呼叫处理" page shows under "高级设置"; the platform's template tab of the same name carries them.
@@ -460,7 +460,8 @@ defaults (`false`, `3`), and every document carries both.
 
 `roomLimit`, `autoNetwork` and `stunServer` (added 2026-11-20) are the size of the app's
 conference room (members besides the user), whether the lines adapt to the network by themselves,
-and the STUN server the app's line checks ask. Unlike every field before them, each is **left out
+and the STUN server the app's line checks ask and its lines' ICE uses (a line whose sound went one
+way tries ICE, only with a STUN server set). Unlike every field before them, each is **left out
 of the document while it keeps the app's default** (`provision.Settings` holds the first two as
 pointers and all three with `omitempty`; `SetRoomLimit`/`SetAutoNetwork` drop a default, and
 `catalog.ParseSettings` drops a stored one): the document of a template that does not set them is
@@ -473,11 +474,13 @@ reads an absent field as its default. Only a template that sets a value carries 
   outside 2–30 in the template editor and in `provision.SettingsProblems` ("会议室人数上限应为
   2–30"), so it never provisions one; the port of the clamp (`rules.RoomLimitOf`) only reads a
   stored value the way the app would.
-- `stunServer`: the app has no rule of its own for the value yet (its line checks split it with
-  `AccountRoute.split` and ask port 3478 when none is given). The platform takes the rule of an
-  account's server address, `rules.IsValidHostPort` (`AccountRules.isValidHostPort`): a host
-  name or IPv4 address, an IPv6 address in brackets, an optional port 1–65535, no whitespace; the
-  value is trimmed first (`rules.IsValidStunServer`). To be aligned once the app's rule exists.
+- `stunServer`: the app and the platform take the same rule, that of an account's server address
+  (`MediaAdapt.isValidStunServer` in the app, `rules.IsValidStunServer` here, both on
+  `AccountRules.isValidHostPort` / `rules.IsValidHostPort`): empty for none, else a host name or
+  IPv4 address, an IPv6 address in brackets, an optional port 1–65535 (3478 when none is given),
+  no whitespace. The platform trims the value on input; the app trims it before use, and
+  `RemoteDocument` **refuses** a document whose value breaks the rule
+  ("settings.stunServer 格式不正确"), as it does other invalid fields.
 - The three are on the template's 高级设置 tab like the app's own screen: 会议室人数上限 in a card
   会议室 after 呼叫转移 (the app's 会议室 section), 自动适应网络 and STUN 服务器 in 客户端与媒体
   (the app's 媒体与网络). The audit entry names them with their defaults when they go back to one.
