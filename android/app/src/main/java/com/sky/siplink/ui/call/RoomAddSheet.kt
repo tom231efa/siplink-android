@@ -193,8 +193,10 @@ internal fun RoomAddSheet(room: RoomInfo, calls: CallManager, onDismiss: () -> U
             )
         }
     }
-    // Two entries of a directory, or two speed dial keys, may be alike.
-    val keys = ListKeys.distinct(candidates.map { "${it.target}|${it.name}" })
+    // Two entries of a directory, or two speed dial keys, may be alike. Made again only when the
+    // candidates are other ones, not each time the sheet is composed again (the room changed, a
+    // letter was typed that the directory has not answered yet).
+    val keys = remember(candidates) { ListKeys.distinct(candidates.map { "${it.target}|${it.name}" }) }
     val list: @Composable (Modifier) -> Unit = { modifier ->
         LazyColumn(modifier, contentPadding = PaddingValues(vertical = 4.dp)) {
             itemsIndexed(candidates, key = { index, _ -> keys[index] }, contentType = { _, _ -> "candidate" }) { _, candidate ->
