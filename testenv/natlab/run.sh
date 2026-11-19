@@ -5,7 +5,7 @@
 #   ANDROID_SERIAL=emulator-5554 ./run.sh                        all lab test classes
 #   ANDROID_SERIAL=emulator-5554 ./run.sh NatTransportTest       one class
 #   ANDROID_SERIAL=emulator-5554 ./run.sh 'NatTransportTest#largeUdpPacketsMoveTheLineToTcp'
-#   NATLAB_LONG=1 ...                                            also the tests of about 20 minutes
+#   NATLAB_LONG=1 ...                                            also the test of about half an hour
 #   SKIP_INSTALL=1 ...                                           reuse the APKs already installed
 #
 # ANDROID_SERIAL is required: the lab is reached through this host's routes, which only an

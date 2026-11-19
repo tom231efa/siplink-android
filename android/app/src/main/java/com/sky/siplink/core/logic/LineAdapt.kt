@@ -94,12 +94,13 @@ object LineAdapt {
      * The transport to try next on a line now on [current] whose own transport is [own], or null
      * when there is nothing to try. Only away from UDP, and only to what the probe found open.
      *
-     * @param largeLost large UDP packets are lost while small ones get through: the reason for a
-     *   failed call even though the registration works
+     * @param udpUnfit UDP gets through but is no good here: large packets are lost while small
+     *   ones get through (the reason for a failed call even though the registration works), or
+     *   the NAT keeps forgetting the line ([bindingHopeless])
      */
-    fun nextTransport(own: SipTransport, current: SipTransport, failed: Set<SipTransport>, probe: Probe, largeLost: Boolean = false): SipTransport? {
+    fun nextTransport(own: SipTransport, current: SipTransport, failed: Set<SipTransport>, probe: Probe, udpUnfit: Boolean = false): SipTransport? {
         if (own != SipTransport.UDP) return null
-        if (current == SipTransport.UDP && probe.udp && !largeLost) return null
+        if (current == SipTransport.UDP && probe.udp && !udpUnfit) return null
         val order = listOf(SipTransport.TCP, SipTransport.TLS)
         val after = order.dropWhile { current != SipTransport.UDP && it != current }.drop(if (current == SipTransport.UDP) 0 else 1)
         return after.firstOrNull { candidate ->
@@ -136,6 +137,17 @@ object LineAdapt {
         val lost = (record.lost + now).filter { now - it < DAY_MS }.takeLast(LOSSES_TO_ACT * 2)
         val shorten = lost.size >= LOSSES_TO_ACT && ownExpires > SHORT_EXPIRES
         return record.copy(lost = lost, expires = if (shorten) SHORT_EXPIRES else record.expires, retestAt = if (shorten) now + DAY_MS else record.retestAt)
+    }
+
+    /**
+     * Whether the NAT keeps forgetting the line although it registers as often as the app asks
+     * it to: [LOSSES_TO_ACT] more losses after its interval was shortened, or [LOSSES_TO_ACT]
+     * for an account that registers this often by itself. UDP is no good on this network then;
+     * over TCP the connection keeps the line.
+     */
+    fun bindingHopeless(record: Record, ownExpires: Int): Boolean {
+        if ((record.expires ?: ownExpires) > SHORT_EXPIRES) return false
+        return record.lost.size >= if (ownExpires > SHORT_EXPIRES) LOSSES_TO_ACT * 2 else LOSSES_TO_ACT
     }
 
     /** The record after a day without a loss: the account's own interval again. */

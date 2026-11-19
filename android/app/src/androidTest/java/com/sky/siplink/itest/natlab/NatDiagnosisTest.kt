@@ -5,6 +5,7 @@ import com.sky.siplink.core.model.CallPhase
 import com.sky.siplink.core.model.MediaFlow
 import com.sky.siplink.core.model.NatKind
 import com.sky.siplink.core.model.RegState
+import com.sky.siplink.core.model.SipTransport
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -76,20 +77,33 @@ class NatDiagnosisTest : NatLabTestBase() {
         assertEquals(MediaFlow.SEND_ONLY, last?.flow)
     }
 
+    /**
+     * A NAT that forgets a UDP mapping after 20 seconds, which the keep-alive every 30 seconds
+     * cannot hold: every registration finds the line at another port. Twice, and the line
+     * registers every 300 seconds; twice more, and it moves to TCP.
+     */
     @Test
-    fun aNatThatForgetsTheLineShortensItsInterval() {
-        assumeTrue("Takes about 20 minutes: run.sh with NATLAB_LONG=1", lab.long)
+    fun aNatThatForgetsTheLineShortensItsIntervalThenLeavesUdp() {
+        assumeTrue("Takes about half an hour: run.sh with NATLAB_LONG=1", lab.long)
         box("mode symmetric")
         box("timeout $SHORT_TIMEOUT_S")
         addAccount(NAT_ACCOUNT, expires = LONG_EXPIRES)
         awaitRegistered(NAT_ACCOUNT)
         val id = account(NAT_ACCOUNT)!!.id
-        await("a shorter registration interval", BINDING_TIMEOUT_MS) { check(NAT_ACCOUNT).adaptedExpires != null }
+        // Without probing the network on every look: only what the doctor holds.
+        await("a shorter registration interval", BINDING_TIMEOUT_MS) { onMain { engine.accounts.adaptation(id) }?.expires != null }
         val report = check(NAT_ACCOUNT)
         println("natlab evidence: forgetting NAT $report")
         assertEquals(300, report.adaptedExpires)
         assertEquals(LONG_EXPIRES, account(NAT_ACCOUNT)?.expires)
         assertTrue(onMain { engine.accounts.adaptedTransports.value[id] } == null)
+
+        await("the line on TCP", SHORT_BINDING_TIMEOUT_MS) { adapted(NAT_ACCOUNT) == SipTransport.TCP && account(NAT_ACCOUNT)?.state == RegState.OK }
+        val onTcp = check(NAT_ACCOUNT)
+        println("natlab evidence: forgetting NAT, later $onTcp")
+        assertEquals(null, onTcp.adaptedExpires)
+        pbxCallsApp(NAT_ACCOUNT)
+        await("the incoming call over TCP") { call()?.phase == CallPhase.INCOMING }
     }
 
     private companion object {
@@ -99,5 +113,8 @@ class NatDiagnosisTest : NatLabTestBase() {
         const val SHORT_TIMEOUT_S = 20
         const val LONG_EXPIRES = 600
         const val BINDING_TIMEOUT_MS = 25 * 60_000L
+
+        /** Two registrations at 300 seconds, and a margin. */
+        const val SHORT_BINDING_TIMEOUT_MS = 15 * 60_000L
     }
 }

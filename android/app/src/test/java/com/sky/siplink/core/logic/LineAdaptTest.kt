@@ -55,7 +55,7 @@ class LineAdaptTest {
     fun `a line whose udp answers is left alone unless large packets are lost`() {
         val open = Probe(udp = true, udpLarge = true, tcp = true, tls = null)
         assertNull(LineAdapt.nextTransport(UDP, UDP, emptySet(), open))
-        assertEquals(TCP, LineAdapt.nextTransport(UDP, UDP, emptySet(), open.copy(udpLarge = false), largeLost = true))
+        assertEquals(TCP, LineAdapt.nextTransport(UDP, UDP, emptySet(), open.copy(udpLarge = false), udpUnfit = true))
     }
 
     @Test
@@ -91,6 +91,22 @@ class LineAdaptTest {
         assertNull(apart.expires)
         // An account that registers often anyway keeps its own interval.
         assertNull(LineAdapt.bindingLost(once, 120, 2_000).expires)
+    }
+
+    @Test
+    fun `a nat that forgets the line at the short interval as well leaves udp hopeless`() {
+        var record = Record()
+        for (at in listOf(1_000L, 2_000L)) record = LineAdapt.bindingLost(record, 3600, at)
+        assertFalse(LineAdapt.bindingHopeless(record, 3600))
+        record = LineAdapt.bindingLost(record, 3600, 3_000)
+        assertFalse(LineAdapt.bindingHopeless(record, 3600))
+        record = LineAdapt.bindingLost(record, 3600, 4_000)
+        assertTrue(LineAdapt.bindingHopeless(record, 3600))
+        val open = Probe(udp = true, udpLarge = true, tcp = true, tls = null)
+        assertEquals(TCP, LineAdapt.nextTransport(UDP, UDP, emptySet(), open, udpUnfit = true))
+        // An account that registers this often by itself: two losses are enough.
+        val often = LineAdapt.bindingLost(LineAdapt.bindingLost(Record(), 120, 1_000), 120, 2_000)
+        assertTrue(LineAdapt.bindingHopeless(often, 120))
     }
 
     @Test

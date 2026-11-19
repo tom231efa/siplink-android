@@ -211,7 +211,42 @@ internal class LineDoctor(
         if (record != (stored ?: LineAdapt.Record())) store(id, record)
         // Not from inside this notification: the core is in the middle of the registration.
         if (record.expires != stored?.expires) handler.post { reapply(id) }
-        retestIfDue(account, id, state, record, now)
+        val ownExpires = own(id)?.expires ?: account.params.expires
+        val newLoss = record.lost.lastOrNull() != stored?.lost?.lastOrNull()
+        if (newLoss && record.lost.isNotEmpty() && LineAdapt.bindingHopeless(record, ownExpires)) {
+            leaveForgetfulUdp(account, id, state)
+        } else {
+            retestIfDue(account, id, state, record, now)
+        }
+    }
+
+    /** The NAT forgets the line however often it registers: over TCP the connection keeps it. */
+    private fun leaveForgetfulUdp(account: Account, id: String, state: State) =
+        // Over TCP the line is not watched for losses: the interval of its own is enough there.
+        leaveUdp(account, id, state, { true }) { it.copy(expires = null, lost = emptyList()) }
+
+    /**
+     * Moves a line on UDP that works, but not well enough, to another transport the probe finds
+     * open, when [why] holds for what the probe found; [change] adds to the record what else changes.
+     */
+    private fun leaveUdp(
+        account: Account,
+        id: String,
+        state: State,
+        why: (LineAdapt.Probe) -> Boolean,
+        change: (LineAdapt.Record) -> LineAdapt.Record = { it },
+    ) {
+        val own = own(id)?.transport ?: transportOf(account.params.serverAddress)
+        if (own != SipTransport.UDP || transportOf(account.params.serverAddress) != SipTransport.UDP) return
+        probe(account, id, state) { probe ->
+            if (!why(probe)) return@probe
+            val record = record(id) ?: LineAdapt.Record()
+            val next = LineAdapt.nextTransport(own, SipTransport.UDP, record.failed, probe, udpUnfit = true) ?: return@probe
+            val now = System.currentTimeMillis()
+            state.trial = next
+            store(id, change(record).copy(transport = next, retestAt = now + LineAdapt.retestDelay(record.reverts), usedAt = now))
+            reapply(id)
+        }
     }
 
     /**
@@ -297,7 +332,7 @@ internal class LineDoctor(
             }
             if (!probe.udp && !probe.tcp && probe.tls != true) return@probe
             val failed = if (trial != null && stillOpen) record.failed + trial else record.failed
-            val next = LineAdapt.nextTransport(own, transportOf(current), failed, probe, largeLost = probe.udp && probe.udpLarge == false)
+            val next = LineAdapt.nextTransport(own, transportOf(current), failed, probe, udpUnfit = probe.udp && probe.udpLarge == false)
             state.trial = next
             when {
                 next != null -> store(id, record.copy(transport = next, failed = failed, retestAt = now + LineAdapt.retestDelay(record.reverts), usedAt = now))
@@ -316,18 +351,7 @@ internal class LineDoctor(
     private fun callTimedOut(account: Account) {
         if (!enabled || holds()) return
         val id = idOf(account)
-        val state = states.getOrPut(id, ::State)
-        val own = own(id)?.transport ?: transportOf(account.params.serverAddress)
-        if (own != SipTransport.UDP || transportOf(account.params.serverAddress) != SipTransport.UDP) return
-        probe(account, id, state) { probe ->
-            if (!probe.udp || probe.udpLarge != false) return@probe
-            val record = record(id) ?: LineAdapt.Record()
-            val next = LineAdapt.nextTransport(own, SipTransport.UDP, record.failed, probe, largeLost = true) ?: return@probe
-            val now = System.currentTimeMillis()
-            state.trial = next
-            store(id, record.copy(transport = next, retestAt = now + LineAdapt.retestDelay(record.reverts), usedAt = now))
-            reapply(id)
-        }
+        leaveUdp(account, id, states.getOrPut(id, ::State), { it.udp && it.udpLarge == false })
     }
 
     /** A line on another transport looks again, when it is time, whether its own one gets through now. */
