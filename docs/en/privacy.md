@@ -52,7 +52,7 @@ All data is kept in the app's private directory. The manifest sets `android:allo
 | --- | --- |
 | Settings, SIP accounts (with passwords as entered), LDAP directory configuration (with passwords), remote configuration lock state and configuration password hash | The SIP stack's configuration file `linphonerc` |
 | Call history | The SIP stack's call history store |
-| Imported CA certificates | `tls/user-ca.pem`, `tls/trust-bundle.pem` |
+| Imported CA certificates | `tls/user-ca.pem`, `tls/trust-bundle.pem`, and the SHA-256 of the latter in `tls/trust-bundle.sha256` |
 | Shortcut keys | `shortcuts.csv`; the user's own shortcut keys under remote configuration in `shortcuts-own.csv` |
 | LDAP local cache | SQLite database `directory-cache.db`, limited to 100 MB |
 | Remote configuration state (device key, sync address, platform CA, sync records) | Separate SharedPreferences `remote_config` |

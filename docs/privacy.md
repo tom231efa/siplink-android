@@ -52,7 +52,7 @@ SIP SDK 合并进来的 `FOREGROUND_SERVICE_CAMERA` 和 `FOREGROUND_SERVICE_DATA
 | --- | --- |
 | 设置、SIP 账号（含按输入保存的密码）、LDAP 通讯录配置（含密码）、远程配置的锁定状态与配置密码哈希 | SIP 协议栈配置文件 `linphonerc` |
 | 通话记录 | SIP 协议栈的通话记录存储 |
-| 导入的 CA 证书 | `tls/user-ca.pem`、`tls/trust-bundle.pem` |
+| 导入的 CA 证书 | `tls/user-ca.pem`、`tls/trust-bundle.pem`，以及该文件的 SHA-256 `tls/trust-bundle.sha256` |
 | 快捷键 | `shortcuts.csv`；远程配置下的自建快捷键在 `shortcuts-own.csv` |
 | LDAP 本地缓存 | SQLite 数据库 `directory-cache.db`，上限 100 MB |
 | 远程配置状态（设备密钥、同步地址、平台 CA、同步记录） | 独立的 SharedPreferences `remote_config` |

@@ -78,4 +78,15 @@ object CertificateTools {
         }
         userCertificates.forEach { append(toPem(it)) }
     }
+
+    /** SHA-256 of a trust [bundle], in hex: kept next to the bundle, it says what the bundle was made of. */
+    fun digest(bundle: String): String =
+        MessageDigest.getInstance("SHA-256").digest(bundle.toByteArray()).joinToString("") { "%02x".format(it) }
+
+    /**
+     * Whether the trust bundle has to be written anew: there is none, or it was written ([written],
+     * its [digest] as stored then) from other CAs than it would be now ([wanted]). By content, not by
+     * the age of the files: the SIP core copies its stock roots anew at every start.
+     */
+    fun bundleStale(exists: Boolean, written: String?, wanted: String): Boolean = !exists || written != wanted
 }

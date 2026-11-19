@@ -115,6 +115,24 @@ class CertificateToolsTest {
     }
 
     @Test
+    fun `the bundle is written anew only when what it is made of changed`() {
+        val ca = CertificateTools.parse(caPem.toByteArray())
+        val leaf = CertificateTools.parse(leafPem.toByteArray())
+        val stock = "$leafPem\n"
+        val written = CertificateTools.digest(CertificateTools.bundle(stock, ca))
+        // The same stock roots copied anew (a newer file, the same text) and the same user CAs: nothing to write.
+        assertFalse(CertificateTools.bundleStale(true, written, CertificateTools.digest(CertificateTools.bundle(stock, ca))))
+        // Other stock roots, other or more user CAs, no stock roots any more: written anew.
+        assertTrue(CertificateTools.bundleStale(true, written, CertificateTools.digest(CertificateTools.bundle("$caPem\n", ca))))
+        assertTrue(CertificateTools.bundleStale(true, written, CertificateTools.digest(CertificateTools.bundle(stock, ca + leaf))))
+        assertTrue(CertificateTools.bundleStale(true, written, CertificateTools.digest(CertificateTools.bundle(null, ca))))
+        // No bundle, or none written with a digest (by an earlier version): written anew.
+        assertTrue(CertificateTools.bundleStale(false, written, written))
+        assertTrue(CertificateTools.bundleStale(true, null, written))
+        assertEquals(64, written.length)
+    }
+
+    @Test
     fun `common name extraction`() {
         assertEquals("Example Root", CertificateTools.commonName("CN=Example Root,O=Example,C=CN"))
         assertEquals("Doe, John", CertificateTools.commonName("O=Example,CN=Doe\\, John"))

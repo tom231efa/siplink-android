@@ -36,6 +36,9 @@ class TlsManager(context: Context, private val core: Core, private val lock: Con
     private val directory = File(context.filesDir, "tls")
     private val userCaFile = File(directory, "user-ca.pem")
     private val bundleFile = File(directory, "trust-bundle.pem")
+
+    /** What the bundle was made of when it was written ([CertificateTools.digest]). */
+    private val bundleDigestFile = File(directory, "trust-bundle.sha256")
     private val sdkRootCa = File(context.filesDir, "share/linphone/rootca.pem")
 
     /** Root CA path the SIP core used before any user CA was installed. */
@@ -129,12 +132,17 @@ class TlsManager(context: Context, private val core: Core, private val lock: Con
         if (userCertificates.isEmpty()) {
             userCaFile.delete()
             bundleFile.delete()
+            bundleDigestFile.delete()
             defaultRootCa?.let { core.rootCa = it }
         } else {
             if (rewrite) {
                 directory.mkdirs()
+                val bundle = CertificateTools.bundle(readDefaultRoots(), userCertificates)
+                // Gone while the files are written: a write that does not finish is not taken for a bundle that is up to date.
+                bundleDigestFile.delete()
                 userCaFile.writeText(userCertificates.joinToString("") { CertificateTools.toPem(it) })
-                bundleFile.writeText(CertificateTools.bundle(readDefaultRoots(), userCertificates))
+                bundleFile.writeText(bundle)
+                bundleDigestFile.writeText(CertificateTools.digest(bundle))
             }
             core.rootCa = bundleFile.absolutePath
         }
@@ -143,12 +151,12 @@ class TlsManager(context: Context, private val core: Core, private val lock: Con
         if (reconnect) reconnect()
     }
 
-    /** At start up: whether the bundle is missing or older than the user CAs or the stock roots it contains. */
+    /** At start up: whether the bundle is missing or was made of other CAs than the user CAs and the stock roots now. */
     private fun bundleIsStale(): Boolean {
-        if (!bundleFile.isFile) return true
-        val built = bundleFile.lastModified()
-        val roots = defaultRootCa?.let(::File)
-        return userCaFile.lastModified() > built || (roots != null && roots.lastModified() > built)
+        if (userCertificates.isEmpty()) return false
+        val written = runCatching { bundleDigestFile.readText() }.getOrNull()
+        val wanted = CertificateTools.digest(CertificateTools.bundle(readDefaultRoots(), userCertificates))
+        return CertificateTools.bundleStale(bundleFile.isFile, written, wanted)
     }
 
     private fun loadUserCertificates(): List<X509Certificate> {
