@@ -1,3 +1,5 @@
+<p align="right"><sub>中文 | <a href="en/README.md">English</a></sub></p>
+
 # SipLink 文档
 
 | 文档 | 读者 | 内容 |

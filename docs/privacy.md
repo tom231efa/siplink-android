@@ -1,3 +1,5 @@
+<p align="right"><sub>中文 | <a href="en/privacy.md">English</a></sub></p>
+
 # 隐私与权限
 
 ## 权限

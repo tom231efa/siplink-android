@@ -1,3 +1,5 @@
+<p align="right"><sub>中文 | <a href="README.en.md">English</a></sub></p>
+
 <p align="center"><img src="docs/images/hero.svg" width="100%" alt="SipLink：手机、IP PBX、桌面话机与远程配置"></p>
 
 <h1 align="center">SipLink</h1>

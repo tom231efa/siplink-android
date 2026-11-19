@@ -1,3 +1,5 @@
+<p align="right"><sub>中文 | <a href="en/user-guide.md">English</a></sub></p>
+
 # 使用指南
 
 ## 目录

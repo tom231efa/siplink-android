@@ -1,3 +1,5 @@
+<p align="right"><sub>中文 | <a href="en/platform.md">English</a></sub></p>
+
 # 管理平台
 
 [返回首页](../README.md) · [功能特性](features.md) · [远程配置](remote-configuration.md)

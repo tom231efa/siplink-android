@@ -1,3 +1,5 @@
+<p align="right"><sub>中文 | <a href="en/build.md">English</a></sub></p>
+
 # 构建
 
 ## 环境

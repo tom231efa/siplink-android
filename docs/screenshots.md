@@ -1,3 +1,5 @@
+<p align="right"><sub>中文 | <a href="en/screenshots.md">English</a></sub></p>
+
 # 应用截图
 
 [返回首页](../README.md) · [功能特性](features.md) · [使用指南](user-guide.md)

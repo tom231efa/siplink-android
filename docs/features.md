@@ -1,3 +1,5 @@
+<p align="right"><sub>中文 | <a href="en/features.md">English</a></sub></p>
+
 # 功能特性
 
 [返回首页](../README.md) · [应用截图](screenshots.md) · [使用指南](user-guide.md) · [管理平台](platform.md)

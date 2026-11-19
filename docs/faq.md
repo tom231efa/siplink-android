@@ -1,3 +1,5 @@
+<p align="right"><sub>中文 | <a href="en/faq.md">English</a></sub></p>
+
 # 常见问题
 
 ## 应用在后台时收不到来电

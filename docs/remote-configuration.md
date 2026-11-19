@@ -1,3 +1,5 @@
+<p align="right"><sub>中文 | <a href="en/remote-configuration.md">English</a></sub></p>
+
 # 远程配置
 
 管理平台可以向 SipLink 下发账号、通讯录、证书、编码、设置和快捷键。管理平台的源码在本仓库的 `platform/` 目录，部署与使用见[管理平台](platform.md)；本文后半部分给出应用接受的接口与文档格式，也可据此实现兼容的配置服务。
