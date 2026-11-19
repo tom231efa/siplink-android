@@ -86,3 +86,33 @@ The following test classes are not part of the default run and must be run on th
 | --- | --- |
 | `PbxReferTest` | A REFER started by the PBX leaves channels behind in Asterisk, which affects other tests; run it alone on an emulator inside the test network, then restart the PBX with `docker compose restart asterisk` in `testenv/` |
 | `RealAudioTest` | Checks that the real microphone sends sound; needs a physical device and an environment that is not completely silent |
+
+## Baseline profile and startup measurement
+
+The `android/baselineprofile` module generates the app's baseline profile on a physical device (`BaselineProfileGenerator`: cold start, the dial pad and the four tabs) and measures the cold start time (`StartupBenchmark`). The generated files are kept in `android/app/src/release/generated/baselineProfiles/` and committed with the code; a normal build only uses the files that are there and needs no device.
+
+> **Warning**: both tasks install release-type builds (`nonMinifiedRelease`, `benchmarkRelease`, with the same package name `com.sky.siplink`) on the device, replacing the installed debug build. When `android/keystore.properties` exists these builds are signed with the release key, otherwise with the debug key. If the signature differs from the installed app's, the installation fails; run `adb uninstall com.sky.siplink` first, which deletes the app's data.
+
+### Requirements
+
+- A physical device with Android 13 or later (or a rooted one with Android 9 or later), the only device adb is connected to; the measurement cannot run on an emulator
+- The device's ABI is among the ABIs built (arm64-v8a by default; others with `-Psiplink.abi`)
+- `ANDROID_HOME` and `JAVA_HOME` are set
+
+### Generating
+
+```bash
+android/gradlew -p android :app:generateBaselineProfile
+```
+
+The result is written to `baseline-prof.txt` and `startup-prof.txt` in `android/app/src/release/generated/baselineProfiles/`. Before committing, check that `baseline-prof.txt` exists and contains rules for `com/sky/siplink/`: with some AGP versions the task reports success without collecting any rules (issuetracker b/543799367). In that case the `*-prof.txt` files generated on the device can be taken from `android/baselineprofile/build/outputs/connected_android_test_additional_output/`.
+
+### Measuring
+
+```bash
+android/gradlew -p android :baselineprofile:connectedBenchmarkReleaseAndroidTest
+```
+
+Each test starts the app cold 10 times: `startupWithoutProfile` compiles nothing ahead of time, `startupWithBaselineProfile` compiles only the code the profile in the APK covers. The results (minimum, median and maximum of `timeToInitialDisplayMs`) are written as JSON to `android/baselineprofile/build/outputs/connected_android_test_additional_output/`. Before a profile has been generated, the APK holds only the rules that come with the libraries; measure before and after generating and compare the `startupWithBaselineProfile` results.
+
+Afterwards `testenv/run-tests.sh` reinstalls the debug build; if the signatures differ, uninstall first.

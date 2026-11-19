@@ -26,3 +26,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "SipLink"
 include(":app")
+// Generates the baseline profile of the app and measures its start (needs a phone; see docs/testing.md).
+include(":baselineprofile")

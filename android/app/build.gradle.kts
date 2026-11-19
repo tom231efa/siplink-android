@@ -3,6 +3,7 @@ import java.util.Properties
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.androidx.baselineprofile)
 }
 
 // Optional release signing: create keystore.properties (git-ignored) next to settings.gradle.kts
@@ -104,6 +105,12 @@ android {
     }
 }
 
+// The baseline profile is made on a phone by :baselineprofile (docs/testing.md) and kept in
+// src/release/generated/baselineProfiles; a build only takes what is there and needs no phone.
+baselineProfile {
+    automaticGenerationDuringBuild = false
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
@@ -123,6 +130,8 @@ dependencies {
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
     implementation(libs.zxing.core)
+    implementation(libs.androidx.profileinstaller)
+    baselineProfile(project(":baselineprofile"))
 
     testImplementation(libs.junit)
 

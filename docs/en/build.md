@@ -67,7 +67,7 @@ GitHub release tags are written `v{versionName}`, such as `v0.1.2`. The update c
 
 ## Project structure
 
-In the repository root, `android/` is the Android project (the app is in `android/app/`), `testenv/` the integration test environment, `platform/` the management platform (Go; for building it, see [platform/README.md](../../platform/README.md)), and `docs/` the documentation. The app part:
+In the repository root, `android/` is the Android project (the app is in `android/app/`, the baseline profile and startup measurement in `android/baselineprofile/`, see [Testing](testing.md#baseline-profile-and-startup-measurement)), `testenv/` the integration test environment, `platform/` the management platform (Go; for building it, see [platform/README.md](../../platform/README.md)), and `docs/` the documentation. The app part:
 
 ```text
 android/app/src/main/java/com/sky/siplink/

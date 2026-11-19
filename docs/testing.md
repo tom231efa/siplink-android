@@ -86,3 +86,33 @@ SKIP_INSTALL=1 testenv/run-tests.sh com.sky.siplink.itest.CodecTest    # 不重�
 | --- | --- |
 | `PbxReferTest` | PBX 发起的 REFER 会使 Asterisk 残留通道，影响其它测试；须在测试网络内的模拟器上单独运行，之后在 `testenv/` 中执行 `docker compose restart asterisk` 重启 PBX |
 | `RealAudioTest` | 检查真实麦克风是否送出声音，需要真机且环境不能完全安静 |
+
+## 基线配置文件与启动测量
+
+`android/baselineprofile` 模块在真机上生成应用的基线配置文件（`BaselineProfileGenerator`：冷启动、拨号盘和四个标签页），并测量冷启动耗时（`StartupBenchmark`）。生成的文件保存在 `android/app/src/release/generated/baselineProfiles/` 并随代码提交；普通构建只使用已有的文件，不需要设备。
+
+> **警告**：两项任务都会把 release 类构建（`nonMinifiedRelease`、`benchmarkRelease`，包名同为 `com.sky.siplink`）安装到设备上，替换已安装的调试版。存在 `android/keystore.properties` 时这些构建用发布密钥签名，否则用调试密钥。签名与已安装的应用不同时安装失败，须先执行 `adb uninstall com.sky.siplink`，这会删除应用数据。
+
+### 要求
+
+- 一台 Android 13 及以上的真机（或已 root 的 Android 9 及以上真机），adb 只连接这一台；测量不能在模拟器上进行
+- 设备的 ABI 在构建的 ABI 之中（默认 arm64-v8a，其它 ABI 用 `-Psiplink.abi` 指定）
+- 已设置 `ANDROID_HOME` 和 `JAVA_HOME`
+
+### 生成
+
+```bash
+android/gradlew -p android :app:generateBaselineProfile
+```
+
+结果写入 `android/app/src/release/generated/baselineProfiles/` 的 `baseline-prof.txt` 和 `startup-prof.txt`。提交前确认 `baseline-prof.txt` 存在且含有 `com/sky/siplink/` 的规则：部分 AGP 版本的任务报告成功却没有收集到规则（issuetracker b/543799367）。此时可从 `android/baselineprofile/build/outputs/connected_android_test_additional_output/` 下取设备上生成的 `*-prof.txt`。
+
+### 测量
+
+```bash
+android/gradlew -p android :baselineprofile:connectedBenchmarkReleaseAndroidTest
+```
+
+每个测试冷启动应用 10 次：`startupWithoutProfile` 不做预编译，`startupWithBaselineProfile` 只预编译 APK 中配置文件覆盖的代码。结果（`timeToInitialDisplayMs` 的最小值、中位数、最大值）以 JSON 写入 `android/baselineprofile/build/outputs/connected_android_test_additional_output/`。尚未生成配置文件时，APK 中只有依赖库自带的规则；在生成前后各测一次，比较 `startupWithBaselineProfile` 的结果。
+
+完成后运行 `testenv/run-tests.sh` 会重新安装调试版；签名不同时先卸载。
