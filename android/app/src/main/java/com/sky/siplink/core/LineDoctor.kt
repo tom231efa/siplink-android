@@ -4,6 +4,7 @@ import android.os.Handler
 import android.os.SystemClock
 import android.util.Log
 import com.sky.siplink.core.logic.LineAdapt
+import com.sky.siplink.core.logic.MediaAdapt
 import com.sky.siplink.core.logic.NetworkKey
 import com.sky.siplink.core.model.NetworkFacts
 import com.sky.siplink.core.model.SipTransport
@@ -22,9 +23,10 @@ import java.util.concurrent.Executors
 /**
  * Adapts the lines (an account on one network) to what the network lets through, by the rules
  * of [LineAdapt]: another transport where UDP does not get through, a shorter registration
- * interval where the NAT forgets the line between registrations. It also has the SIP core look
- * at the network again where it would not notice a change by itself, and holds back while the
- * network wants a login first.
+ * interval where the NAT forgets the line between registrations. After the calls it gives an
+ * account whose PBX announces an address of its own network the way by the server and symmetric
+ * RTP ([MediaAdapt]). It also has the SIP core look at the network again where it would not
+ * notice a change by itself, and holds back while the network wants a login first.
  *
  * What it changes it changes in the core only: the account's own settings are kept aside
  * ([own]) and shown and edited as they are. Main thread only.
@@ -67,11 +69,11 @@ internal class LineDoctor(
             if (field == value) return
             field = value
             dropStates()
+            applyAll()
             if (!value) {
-                core.accountList.forEach(::apply)
                 core.config.cleanSection(SECTION)
+                core.config.cleanSection(PBX)
             }
-            publish()
         }
 
     private val adapted = MutableStateFlow<Map<String, SipTransport>>(emptyMap())
@@ -145,36 +147,43 @@ internal class LineDoctor(
             params.isOutboundProxyEnabled = own.outbound
             storeOwn(id, null)
         }
-        if (forget) forgetRecords(id)
+        if (forget) {
+            forgetRecords(id)
+            core.config.cleanEntry(PBX, id)
+        }
         states.remove(id)?.let(::cancelConfirm)
     }
 
-    fun reapply(id: String) {
-        find(id)?.let(::apply)
-        publish()
-    }
+    /** Puts the lines on what is remembered for them once the user's change is in the core. */
+    fun reapply() = applyAll()
 
     /** Account [id] is gone, or the user wants it on its own settings everywhere ("restore defaults"). */
     fun forget(id: String) {
         forgetRecords(id)
+        core.config.cleanEntry(PBX, id)
         states.remove(id)?.let(::cancelConfirm)
-        find(id)?.let(::apply)
+        applyAll()
         storeOwn(id, null)
-        publish()
     }
 
     /**
      * What the line of an account runs on instead of its own settings, for the line checks.
      *
      * @param transport null: its own; [expires] likewise
+     * @param viaServer its calls go by way of the server with symmetric RTP: the PBX announces an address of its own network
      */
-    data class Adaptation(val transport: SipTransport?, val expires: Int?)
+    data class Adaptation(val transport: SipTransport?, val expires: Int?, val viaServer: Boolean)
 
     fun adaptation(id: String): Adaptation? {
         val params = find(id)?.params ?: return null
-        val own = own(id) ?: return null
-        val transport = transportOf(params.serverAddress)
-        return Adaptation(transport.takeIf { it != own.transport }, params.expires.takeIf { it != own.expires })
+        val own = own(id)
+        val viaServer = enabled && pbxCount(id) != null
+        if (own == null && !viaServer) return null
+        return Adaptation(
+            transport = transportOf(params.serverAddress).takeIf { own != null && it != own.transport },
+            expires = params.expires.takeIf { own != null && it != own.expires },
+            viaServer = viaServer,
+        )
     }
 
     /** The core looks at the network anew (its connections may be new ones): where the server sees the lines starts over. */
@@ -210,7 +219,7 @@ internal class LineDoctor(
         if (!record.isPlain && now - record.usedAt > USED_AT_STEP_MS) record = record.copy(usedAt = now)
         if (record != (stored ?: LineAdapt.Record())) store(id, record)
         // Not from inside this notification: the core is in the middle of the registration.
-        if (record.expires != stored?.expires) handler.post { reapply(id) }
+        if (record.expires != stored?.expires) handler.post(::applyAll)
         val ownExpires = own(id)?.expires ?: account.params.expires
         val newLoss = record.lost.lastOrNull() != stored?.lost?.lastOrNull()
         if (newLoss && record.lost.isNotEmpty() && LineAdapt.bindingHopeless(record, ownExpires)) {
@@ -245,7 +254,7 @@ internal class LineDoctor(
             val now = System.currentTimeMillis()
             state.trial = next
             store(id, change(record).copy(transport = next, retestAt = now + LineAdapt.retestDelay(record.reverts), usedAt = now))
-            reapply(id)
+            applyAll()
         }
     }
 
@@ -312,7 +321,7 @@ internal class LineDoctor(
             val record = record(id) ?: LineAdapt.Record()
             val reverts = record.reverts + 1
             store(id, record.copy(transport = revertTo, reverts = reverts, retestAt = now + LineAdapt.retestDelay(reverts), usedAt = now))
-            reapply(id)
+            applyAll()
             return
         }
         val own = own(id)?.transport ?: transportOf(account.params.serverAddress)
@@ -340,7 +349,7 @@ internal class LineDoctor(
                 trial != null -> store(id, record.copy(transport = null, failed = failed, usedAt = now))
                 else -> return@probe
             }
-            reapply(id)
+            applyAll()
         }
     }
 
@@ -364,7 +373,7 @@ internal class LineDoctor(
             if (LineAdapt.udpBack(probe) && core.callsNb == 0) {
                 state.revertTo = adapted
                 store(id, current.copy(transport = null))
-                reapply(id)
+                applyAll()
             } else {
                 store(id, current.copy(retestAt = now + LineAdapt.retestDelay(current.reverts)))
             }
@@ -418,8 +427,7 @@ internal class LineDoctor(
         if (!enabled) return
         if (moved) {
             prune()
-            core.accountList.forEach(::apply)
-            publish()
+            applyAll()
         }
         // Logged in at last: the registrations need not wait for their next try.
         if (before?.captive == true && !next.captive) core.refreshRegisters()
@@ -454,7 +462,20 @@ internal class LineDoctor(
         LineAdapt.stale(records, System.currentTimeMillis()).forEach { core.config.cleanEntry(SECTION, it) }
     }
 
-    /** Puts the line of [account] on what is remembered for it on this network, or back on its own settings. */
+    /**
+     * Puts every line on what is remembered for it on this network, or back on its own settings,
+     * and the SIP core's symmetric RTP on what the lines need.
+     */
+    private fun applyAll() {
+        // Before the network is known nothing is known of what it needs: the lines stay as they are.
+        if (enabled && network == null) return
+        val accounts = core.accountList
+        accounts.forEach(::apply)
+        applySymmetricRtp(accounts)
+        publish()
+    }
+
+    /** Puts the line of [account] on what is remembered for it, or back on its own settings. */
     private fun apply(account: Account) {
         val id = idOf(account)
         val params = account.params
@@ -463,8 +484,9 @@ internal class LineDoctor(
         val record = if (enabled) record(id) else null
         val transport = record?.transport?.takeIf { own.transport == SipTransport.UDP } ?: own.transport
         val expires = record?.expires?.takeIf { it < own.expires } ?: own.expires
-        // Calls take the way of the registration, which the domain of the account may not lead to.
-        val outbound = if (transport != own.transport) true else own.outbound
+        // Calls take the way of the registration, which the domain of the account may not lead
+        // to, and the way of the server past a PBX that announces an address nothing reaches.
+        val outbound = transport != own.transport || (enabled && pbxCount(id) != null) || own.outbound
         if (transport != transportOf(server) || expires != params.expires || outbound != params.isOutboundProxyEnabled) {
             val next = params.clone()
             if (transport != transportOf(server)) next.serverAddress = server.clone().also { it.transport = typeOf(transport) }
@@ -473,9 +495,56 @@ internal class LineDoctor(
             account.params = next
             states[id]?.contact = null
             onChanged(account)
-            Log.i(TAG, "Line $id on $network: $transport, ${expires}s (own: ${own.transport}, ${own.expires}s)")
+            Log.i(TAG, "Line $id on $network: $transport, ${expires}s, outbound $outbound (own: ${own.transport}, ${own.expires}s, ${own.outbound})")
         }
-        storeOwn(id, if (transport == own.transport && expires == own.expires) null else own)
+        val adapted = transport != own.transport || expires != own.expires || outbound != own.outbound
+        storeOwn(id, if (adapted) own else null)
+    }
+
+    // ---------------------------------------------------------------- the sound of the calls
+
+    /**
+     * A call whose sound ran ended on [account], with [contact] the host of the other side's
+     * Contact: an account whose PBX announces an address of its own network goes by way of the
+     * server from the next call on ([MediaAdapt]).
+     */
+    fun onCallFinished(account: Account, contact: String?) {
+        if (!enabled) return
+        val id = idOf(account)
+        val host = account.params.serverAddress?.let(::connectHostOf) ?: return
+        val local = facts?.addresses.orEmpty()
+        workers.execute {
+            val behind = MediaAdapt.pbxBehindNat(contact, LineNetwork.lookup(host) + host, local)
+            handler.post { learn(id, behind) }
+        }
+    }
+
+    private fun learn(id: String, pbxBehindNat: Boolean) {
+        if (!enabled) return
+        val before = pbxCount(id)
+        val after = MediaAdapt.pbxAfter(before, pbxBehindNat)
+        if (after == before) return
+        if (after == null) core.config.cleanEntry(PBX, id) else core.config.setString(PBX, id, after.toString())
+        if ((after == null) != (before == null)) {
+            Log.i(TAG, "Line $id: the PBX ${if (after != null) "announces an address of its own network" else "is reached again"}")
+            applyAll()
+        }
+    }
+
+    /** The calls in a row since the PBX of account [id] last announced an address of its own network; null: it needs no remedy. */
+    private fun pbxCount(id: String): Int? = core.config.getString(PBX, id, null)?.toIntOrNull()
+
+    /**
+     * Symmetric RTP (the sound goes back to where the other side's comes from, not to the
+     * address it announced) while an account's PBX announces an address of its own network.
+     * The SIP core reads it when a call's streams are set up, for every call: an incoming call
+     * is set up before the app knows its account.
+     */
+    private fun applySymmetricRtp(accounts: Array<Account>) {
+        val wanted = enabled && accounts.any { pbxCount(idOf(it)) != null }
+        if (wanted == (core.config.getInt(RTP, SYMMETRIC, 0) != 0)) return
+        if (wanted) core.config.setInt(RTP, SYMMETRIC, 1) else core.config.cleanEntry(RTP, SYMMETRIC)
+        Log.i(TAG, "Symmetric RTP ${if (wanted) "on" else "off"}")
     }
 
     private fun publish() {
@@ -493,6 +562,13 @@ internal class LineDoctor(
 
         /** Section holding the [Own] settings of the accounts the doctor changed, keyed by account id. */
         const val APPLIED = "siplink_line_applied"
+
+        /** Section holding, by account id, the calls in a row since its PBX last announced an address of its own network ([MediaAdapt.pbxAfter]). */
+        const val PBX = "siplink_line_pbx"
+
+        /** The SIP core's key for symmetric RTP (linphone_core_symmetric_rtp_enabled, misc.c). */
+        const val RTP = "rtp"
+        const val SYMMETRIC = "symmetric"
         const val SEPARATOR = "|"
 
         /**

@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.sky.siplink.core.CallSupport
 import com.sky.siplink.core.LineCheck
 import com.sky.siplink.core.LineNetwork
 import com.sky.siplink.core.logic.LineAdapt
@@ -80,7 +81,7 @@ fun LineDiagnosisScreen(accountId: String, onBack: () -> Unit) {
                 ServerCard(shown)
                 RegistrationCard(shown)
                 shown.lastCall?.let { LastCallCard(shown) }
-                if (shown.adaptedTransport != null || shown.adaptedExpires != null) {
+                if (shown.adaptedTransport != null || shown.adaptedExpires != null || shown.viaServer) {
                     AdaptationCard(shown, onReset = { confirmReset = true })
                 }
             }
@@ -206,7 +207,7 @@ private fun LastCallCard(report: LineReport) {
         ValueRow("抖动", "${call.jitterMs.toInt()} ms")
         ValueRow("往返", "${call.roundTripMs.toInt()} ms")
         if (call.ice.isNotEmpty()) ValueRow("ICE", call.ice)
-        if (call.mediaLost) ValueRow("结束", "媒体中断", error = true)
+        if (call.mediaLost) ValueRow("结束", CallSupport.NO_SOUND, error = true)
     }
 }
 
@@ -215,6 +216,10 @@ private fun AdaptationCard(report: LineReport, onReset: () -> Unit) {
     SectionCard(title = "自动调整") {
         report.adaptedTransport?.let { ValueRow("传输协议", it.name) }
         report.adaptedExpires?.let { ValueRow("注册有效期", "$it 秒") }
+        if (report.viaServer) {
+            ValueRow("出站代理", "开启")
+            ValueRow("对称 RTP", "开启")
+        }
         OutlinedButton(
             onClick = onReset,
             modifier = Modifier

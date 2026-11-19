@@ -7,12 +7,12 @@ import android.os.PowerManager
 import com.sky.siplink.core.logic.AccountRoute
 import com.sky.siplink.core.logic.LineAdapt
 import com.sky.siplink.core.logic.LineVerdict
+import com.sky.siplink.core.logic.MediaAdapt
 import com.sky.siplink.core.logic.NetworkKey
 import com.sky.siplink.core.model.LineReport
 import com.sky.siplink.core.model.NatKind
 import com.sky.siplink.core.model.SipTransport
 import org.linphone.core.Core
-import java.net.InetSocketAddress
 import java.util.concurrent.Executors
 
 /**
@@ -54,11 +54,7 @@ class LineCheck(private val context: Context, private val core: Core, private va
             // The port of the account counts for the transport it names; the others are tried on theirs.
             val sipPort = port?.takeIf { transport != SipTransport.TLS } ?: AccountRoute.defaultPort(SipTransport.UDP)
             val tlsPort = port?.takeIf { transport == SipTransport.TLS } ?: AccountRoute.defaultPort(SipTransport.TLS)
-            val stunAddress = stun.takeIf { it.isNotEmpty() }?.let { value ->
-                val (stunHost, stunPort) = AccountRoute.split(value)
-                runCatching { InetSocketAddress(stunHost.removeSurrounding("[", "]"), stunPort ?: STUN_PORT) }.getOrNull()
-                    ?.takeUnless { it.isUnresolved }
-            }
+            val stunAddress = MediaAdapt.stunServer(stun)?.let { (stunHost, stunPort) -> LineNetwork.socketAddress(stunHost, stunPort) }
             val udp = address?.let { LineNetwork.probeUdp(it, sipPort, target, from, userAgent, stun = stunAddress) }
             val answer = udp?.answer
             val large = if (address != null && answer != null) {
@@ -90,6 +86,7 @@ class LineCheck(private val context: Context, private val core: Core, private va
                 expires = expires,
                 adaptedTransport = adaptation?.transport,
                 adaptedExpires = adaptation?.expires,
+                viaServer = adaptation?.viaServer == true,
                 lastCall = lastCall,
             )
             handler.post { onDone(report) }
@@ -99,9 +96,4 @@ class LineCheck(private val context: Context, private val core: Core, private va
 
     /** Stops the probe thread once nothing more is to be checked. */
     fun close() = worker.shutdown()
-
-    private companion object {
-        /** RFC 5389 §9. */
-        const val STUN_PORT = 3478
-    }
 }

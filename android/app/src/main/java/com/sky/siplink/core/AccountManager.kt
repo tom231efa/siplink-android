@@ -49,8 +49,8 @@ class AccountManager(private val core: Core, private val lock: ConfigLock) {
     /** How the lines adapt to the network they are on. */
     private val doctor = LineDoctor(core, handler, ::find, ::idOf, ::noteChanged)
 
-    /** How the sound of the last call of each account went, for the line checks. */
-    private val media = CallMediaWatch(core, ::idOf)
+    /** How the sound of the calls goes: for the line checks, the call screen, and what the lines learn from it. */
+    internal val media = CallMediaWatch(core, ::idOf, doctor::onCallFinished)
 
     /** Backup servers and DNS servers of the accounts. */
     private val router = AccountRouter(core, handler, ::find, ::idOf, ::noteChanged, doctor::holds)
@@ -245,7 +245,7 @@ class AccountManager(private val core: Core, private val lock: ConfigLock) {
         applyParams(id, params, draft, identity, server)
         account.params = params
         if (rerouted) router.begin(id)
-        doctor.reapply(id)
+        doctor.reapply()
         storeName(id, draft.name)
 
         if (credentialsChanged || password != savedPassword) {

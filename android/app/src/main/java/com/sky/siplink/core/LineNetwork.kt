@@ -194,6 +194,15 @@ internal object LineNetwork {
         emptyList()
     }
 
+    /** [host] (a name or an address) looked up, with [port]; null when the system finds no address for it. */
+    fun socketAddress(host: String, port: Int): InetSocketAddress? = try {
+        InetSocketAddress(host, port).takeUnless { it.isUnresolved }
+    } catch (_: IllegalArgumentException) {
+        null
+    } catch (_: SecurityException) {
+        null
+    }
+
     /** `address:port`, an IPv6 address in brackets. */
     fun hostPort(mapped: Mapped): String = if (':' in mapped.address) "[${mapped.address}]:${mapped.port}" else "${mapped.address}:${mapped.port}"
 
