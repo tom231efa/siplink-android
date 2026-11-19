@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"siplink/internal/config"
+	"siplink/internal/i18n"
 	"siplink/internal/secret"
 	"siplink/internal/store"
 )
@@ -32,7 +33,7 @@ const (
 const nameOwn = "own"
 
 // ErrPaused is returned by Issue while no listener uses the built-in certificate.
-var ErrPaused = errors.New("自动签发已暂停：无服务使用内置 CA 签发的证书")
+var ErrPaused = i18n.E("pki.paused")
 
 // Options are the parts of the configuration that decide which certificate a listener uses.
 type Options struct {
@@ -189,7 +190,7 @@ func (c *Certs) Sources() (https, ldap Source) {
 
 // Mode is the certificate mode of the system page, in words: one source for every
 // listener that speaks TLS, or a mix.
-func (c *Certs) Mode() string {
+func (c *Certs) Mode() i18n.Msg {
 	https, ldap := c.Sources()
 	used := map[Source]bool{}
 	for _, s := range []Source{https, ldap} {
@@ -199,28 +200,28 @@ func (c *Certs) Mode() string {
 	}
 	switch {
 	case len(used) == 0:
-		return "不提供 TLS（HTTPS 由反向代理提供，LDAP 未开启）"
+		return i18n.M("pki.mode.none")
 	case len(used) == 2 && c.Paused():
-		return "自有证书与环境变量指定的证书文件并用（自动签发已暂停）"
+		return i18n.M("pki.mode.own_and_files")
 	case len(used) == 2:
-		return "混合：部分服务使用内置 CA 签发的证书（自动签发继续）"
+		return i18n.M("pki.mode.mixed")
 	case used[SourceOwn]:
-		return "使用自有证书（自动签发已暂停）"
+		return i18n.M("pki.mode.own")
 	case used[SourceFiles]:
-		return "使用环境变量指定的证书文件（自动签发已暂停）"
+		return i18n.M("pki.mode.files")
 	}
-	return "内置 CA 自动签发"
+	return i18n.M("pki.mode.builtin")
 }
 
 // SourceLabel names a listener's source in words; off depends on the listener.
-func SourceLabel(s Source, offText string) string {
+func SourceLabel(s Source, offText i18n.Msg) i18n.Msg {
 	switch s {
 	case SourceFiles:
-		return "环境变量指定的证书文件"
+		return i18n.M("pki.source.files")
 	case SourceOwn:
-		return "自有证书"
+		return i18n.M("pki.source.own")
 	case SourceBuiltin:
-		return "内置 CA 签发"
+		return i18n.M("pki.source.builtin")
 	}
 	return offText
 }
@@ -395,7 +396,7 @@ func (c *Certs) ReminderDays(ctx context.Context) int {
 // SetReminderDays stores the setting (1–365).
 func (c *Certs) SetReminderDays(ctx context.Context, days int) error {
 	if days < 1 || days > MaxReminderDays {
-		return refuse("提醒天数须为 1 到 %d", MaxReminderDays)
+		return refuse("pki.refuse.reminder_days", "max", MaxReminderDays)
 	}
 	return c.ca.st.SetMeta(ctx, metaReminderDays, strconv.Itoa(days))
 }

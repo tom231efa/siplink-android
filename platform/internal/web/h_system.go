@@ -3,6 +3,7 @@ package web
 import (
 	"crypto/x509"
 	"errors"
+	"html/template"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"siplink/internal/backup"
+	"siplink/internal/i18n"
 	"siplink/internal/pki"
 	"siplink/internal/rules"
 	"siplink/internal/store"
@@ -62,7 +64,7 @@ type systemData struct {
 	Backups     []backup.File
 	BackupTime  string
 	BackupKeep  int
-	KeyFile     string
+	KeyNote     template.HTML // the backup card's warning, naming the key file
 	// TwoStepRequired: region administrators must use two-step sign-in (§6.8).
 	TwoStepRequired bool
 	// PasswordCheck: new administrator passwords are checked for strength (§6.1).
@@ -84,10 +86,10 @@ func (s *Server) renderSystem(w http.ResponseWriter, r *http.Request, status int
 	c := s.Cfg
 	d := systemData{Version: Version, PublicURL: c.PublicURL, LDAPHost: c.LDAPPublicHost, LDAPPort: c.LDAPPublicPort,
 		LDAPSuffix: c.LDAPSuffix, RequireTLS: c.LDAPRequireTLS, Cert: s.certCard(r),
-		BackupTime: c.BackupTime, BackupKeep: c.BackupKeep, KeyFile: c.KeyFile}
+		BackupTime: c.BackupTime, BackupKeep: c.BackupKeep, KeyNote: monoText(tr(r), "system.backup.key_note", "file", c.KeyFile)}
 	switch sec, ok := rules.HostedSecurity(c.LDAPPublicHost, c.LDAPRequireTLS); {
 	case !ok:
-		d.HostedNote = rules.HostedNeedsName
+		d.HostedNote = tr(r).Msg(rules.HostedNeedsName)
 	case sec == rules.LdapSecurityNone:
 		d.HostedPlain = true
 	}
@@ -116,33 +118,42 @@ func (s *Server) renderSystem(w http.ResponseWriter, r *http.Request, status int
 	if edit != nil {
 		edit(&d)
 	}
-	s.render(w, r, status, "system", &Page{Title: "系统", Nav: "system", Data: d})
+	s.render(w, r, status, "system", &Page{Title: tr(r).T("nav.system"), Nav: "system", Data: d})
+}
+
+// monoText is the text of key with its argument name set as <span class="mono">value</span>
+// (a path, a server's answer), the rest escaped.
+func monoText(t *i18n.Tr, key, name, value string) template.HTML {
+	const mark = "\x01"
+	before, after, _ := strings.Cut(t.T(key, name, mark), mark)
+	return template.HTML(template.HTMLEscapeString(before) + `<span class="mono">` + template.HTMLEscapeString(value) +
+		`</span>` + template.HTMLEscapeString(after))
 }
 
 func (s *Server) systemBackup(w http.ResponseWriter, r *http.Request) {
 	name, err := backup.Now(r.Context(), s.St.DB, backup.Dir(s.Cfg.DataDir), s.Now().Local())
 	if err != nil {
 		s.Log.Error("backup failed", "err", err)
-		s.redirect(w, r, "/system", "error", "备份失败，请查看日志。")
+		s.redirect(w, r, "/system", "error", tr(r).T("system.backup.failed"))
 		return
 	}
 	backup.Prune(backup.Dir(s.Cfg.DataDir), s.Cfg.BackupKeep)
 	s.audit(r, "backup.create", "backup", 0, name, nil, nil)
-	s.redirect(w, r, "/system", "ok", "已备份至 "+name+"。")
+	s.redirect(w, r, "/system", "ok", tr(r).T("system.backup.done", "name", name))
 }
 
 // systemReissue issues a new server certificate of the built-in CA (the CA stays);
 // not while issuing is paused.
 func (s *Server) systemReissue(w http.ResponseWriter, r *http.Request) {
 	if err := s.Ext.Certs.Issue(r.Context()); errors.Is(err, pki.ErrPaused) {
-		s.redirect(w, r, "/system", "error", err.Error())
+		s.redirect(w, r, "/system", "error", errText(r, err))
 		return
 	} else if err != nil {
 		s.internal(w, r, err)
 		return
 	}
 	s.audit(r, "pki.reissue", "system", 0, strings.Join(s.Cfg.CertNames(), ", "), nil, nil)
-	s.redirect(w, r, "/system", "ok", "已重新签发服务器证书，新连接将立即使用。")
+	s.redirect(w, r, "/system", "ok", tr(r).T("system.cert.reissued"))
 }
 
 // passwordCheckSave switches the strength check of new administrator passwords.
@@ -157,9 +168,9 @@ func (s *Server) passwordCheckSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if old != on {
-		s.audit(r, "password.policy", "system", 0, "密码强度检测", nil, map[string]any{"check": on})
+		s.audit(r, "password.policy", "system", 0, "password_check", nil, map[string]any{"check": on})
 	}
-	s.redirect(w, r, "/system#security", "ok", "已保存。")
+	s.redirect(w, r, "/system#security", "ok", tr(r).T("common.saved"))
 }
 
 // caDownload gives the built-in CA certificate (public) to any administrator, for

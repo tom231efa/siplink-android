@@ -1,89 +1,89 @@
 {{define "content"}}
 {{$d := .Data}}{{$e := $d.E}}
 <div class="narrow-page">
-<header class="page-head"><div><h1 class="fade">{{.Title}}</h1>{{if not $d.New}}<p class="page-sub fade">外部<span class="dot-sep"></span>{{if $e.RegionID}}{{$d.Region}}{{else}}全局{{end}}<span class="dot-sep"></span><span class="mono">{{$e.Host}}:{{$e.Port}}</span></p>{{end}}</div></header>
+<header class="page-head"><div><h1 class="fade">{{.Title}}</h1>{{if not $d.New}}<p class="page-sub fade">{{t "books.kind.external"}}<span class="dot-sep"></span>{{if $e.RegionID}}{{$d.Region}}{{else}}{{t "common.global"}}{{end}}<span class="dot-sep"></span><span class="mono">{{$e.Host}}:{{$e.Port}}</span></p>{{end}}</div></header>
 {{if $d.New}}{{template "kind_choice" $d.Kind}}{{end}}
 {{with $d.Errors}}<div class="flash error" role="alert"><ul class="errors">{{range .}}<li>{{.}}</li>{{end}}</ul></div>{{end}}
 <form method="post" action="{{if $d.New}}/directories{{else}}/directories/{{$e.ID}}{{end}}" class="form-stack"
-  {{if gt $d.Clients 0}}data-confirm="此通讯录已被 {{$d.Clients}} 个客户端使用，保存后将于下次同步时生效。确认保存？"{{end}}>
+  {{if gt $d.Clients 0}}data-confirm="{{t "dirs.external.save_confirm" "n" $d.Clients}}"{{end}}>
   <fieldset class="plain bare"{{if not $d.CanEdit}} disabled{{end}}>
   <section class="card">
     <div class="card-body form">
-      <label>名称<input name="name" value="{{$e.Name}}" required maxlength="40"></label>
-      {{if not $d.New}}<label>类型<input value="外部" disabled></label>{{end}}
+      <label>{{t "common.name"}}<input name="name" value="{{$e.Name}}" required maxlength="40"></label>
+      {{if not $d.New}}<label>{{t "common.type"}}<input value="{{t "books.kind.external"}}" disabled></label>{{end}}
       {{if or $d.New .Super}}
-      <label>区域
+      <label>{{t "common.region"}}
         <select name="region">
-          {{if $d.Global}}<option value="0"{{if not $e.RegionID}} selected{{end}}>全局</option>{{end}}
+          {{if $d.Global}}<option value="0"{{if not $e.RegionID}} selected{{end}}>{{t "common.global"}}</option>{{end}}
           {{range $d.Regions}}<option value="{{.ID}}"{{if eq .ID (deref $e.RegionID)}} selected{{end}}>{{.Name}}</option>{{end}}
         </select>
       </label>
       {{end}}
-      <label>备注<input name="note" value="{{$e.Note}}" maxlength="200"></label>
+      <label>{{t "common.note"}}<input name="note" value="{{$e.Note}}" maxlength="200"></label>
     </div>
   </section>
   <section class="card">
-    <div class="card-head"><h2>服务器</h2></div>
+    <div class="card-head"><h2>{{t "dirs.server"}}</h2></div>
     <div class="card-body form">
       <div class="grid2 domain-port trio">
-        <label>服务器<input name="host" value="{{$e.Host}}" required placeholder="ldap.example.com"></label>
-        <label>端口<input name="port" value="{{$e.Port}}" inputmode="numeric"></label>
-        <label>加密
+        <label>{{t "dirs.server"}}<input name="host" value="{{$e.Host}}" required placeholder="ldap.example.com" dir="ltr"></label>
+        <label>{{t "dirs.external.port"}}<input name="port" value="{{$e.Port}}" inputmode="numeric" dir="ltr"></label>
+        <label>{{t "dirs.external.security"}}
           <select name="security">
             <option value="START_TLS"{{if ne $e.Security "NONE"}} selected{{end}}>StartTLS</option>
-            <option value="NONE"{{if eq $e.Security "NONE"}} selected{{end}}>不加密</option>
+            <option value="NONE"{{if eq $e.Security "NONE"}} selected{{end}}>{{t "dirs.external.no_encryption"}}</option>
           </select>
         </label>
       </div>
-      <label>搜索基准（Base DN）<input name="baseDn" value="{{$e.BaseDN}}" required class="mono"></label>
+      <label>{{t "dirs.external.base_dn"}}<input name="baseDn" value="{{$e.BaseDN}}" required class="mono" dir="ltr"></label>
     </div>
   </section>
   <section class="card">
-    <div class="card-head"><h2>登录</h2></div>
+    <div class="card-head"><h2>{{t "dirs.external.login"}}</h2></div>
     <div class="card-body form">
-      <div class="field"><span class="label-line"><label for="f-bind">登录名（Bind DN）</label>{{tip "f-bind-tip" "留空为匿名"}}</span><input id="f-bind" aria-describedby="f-bind-tip" name="bindDn" value="{{$e.BindDN}}" class="mono"></div>
+      <div class="field"><span class="label-line"><label for="f-bind">{{t "dirs.external.bind_dn"}}</label>{{tip "f-bind-tip" (t "dirs.external.bind_dn_tip")}}</span><input id="f-bind" aria-describedby="f-bind-tip" name="bindDn" value="{{$e.BindDN}}" class="mono" dir="ltr"></div>
       <div class="grid2">
-        <label>密码
+        <label>{{t "common.password"}}
           <select name="passwordMode">
-            <option value="none"{{if eq $e.PasswordMode "none"}} selected{{end}}>匿名</option>
-            <option value="template"{{if eq $e.PasswordMode "template"}} selected{{end}}>统一设置</option>
-            <option value="client"{{if eq $e.PasswordMode "client"}} selected{{end}}>按客户端设置</option>
+            <option value="none"{{if eq $e.PasswordMode "none"}} selected{{end}}>{{t "dirs.external.password_none"}}</option>
+            <option value="template"{{if eq $e.PasswordMode "template"}} selected{{end}}>{{t "dirs.external.password_template"}}</option>
+            <option value="client"{{if eq $e.PasswordMode "client"}} selected{{end}}>{{t "dirs.external.password_client"}}</option>
           </select>
         </label>
-        {{if $d.HasPass}}<div class="field shared-password"><span class="label-line"><label for="f-pass">统一密码</label>{{tip "f-pass-tip" "留空保持不变"}}</span><input id="f-pass" aria-describedby="f-pass-tip" type="password" name="password" autocomplete="new-password" placeholder="已设置"></div>{{else}}<label class="shared-password">统一密码<input type="password" name="password" autocomplete="new-password"></label>{{end}}
+        {{if $d.HasPass}}<div class="field shared-password"><span class="label-line"><label for="f-pass">{{t "dirs.external.shared_password"}}</label>{{tip "f-pass-tip" (t "dirs.external.password_keep_tip")}}</span><input id="f-pass" aria-describedby="f-pass-tip" type="password" name="password" autocomplete="new-password" placeholder="{{t "common.set"}}"></div>{{else}}<label class="shared-password">{{t "dirs.external.shared_password"}}<input type="password" name="password" autocomplete="new-password"></label>{{end}}
       </div>
     </div>
   </section>
   <section class="card">
-    <div class="card-head"><h2>查询</h2></div>
+    <div class="card-head"><h2>{{t "dirs.external.query"}}</h2></div>
     <div class="card-body form">
       <div class="grid2">
-        <label>最大结果数<input type="number" name="maxResults" value="{{$e.MaxResults}}" min="1" max="1000" required></label>
+        <label>{{t "dirs.external.max_results"}}<input type="number" name="maxResults" value="{{$e.MaxResults}}" min="1" max="1000" required dir="ltr"></label>
         <span></span>
-        <label>姓名属性<input name="nameAttributes" value="{{$e.NameAttributes}}" class="mono"></label>
-        <label>号码属性<input name="numberAttributes" value="{{$e.NumberAttributes}}" class="mono"></label>
-        <div class="field"><span class="label-line"><label for="f-name-filter">姓名过滤器</label>{{tip "f-name-filter-tip" "自动（需含 %）"}}</span><input id="f-name-filter" aria-describedby="f-name-filter-tip" name="nameFilter" value="{{$e.NameFilter}}" class="mono"></div>
-        <div class="field"><span class="label-line"><label for="f-number-filter">号码过滤器</label>{{tip "f-number-filter-tip" "自动（需含 %）"}}</span><input id="f-number-filter" aria-describedby="f-number-filter-tip" name="numberFilter" value="{{$e.NumberFilter}}" class="mono"></div>
+        <label>{{t "dirs.external.name_attributes"}}<input name="nameAttributes" value="{{$e.NameAttributes}}" class="mono" dir="ltr"></label>
+        <label>{{t "dirs.external.number_attributes"}}<input name="numberAttributes" value="{{$e.NumberAttributes}}" class="mono" dir="ltr"></label>
+        <div class="field"><span class="label-line"><label for="f-name-filter">{{t "dirs.external.name_filter"}}</label>{{tip "f-name-filter-tip" (t "dirs.external.filter_tip")}}</span><input id="f-name-filter" aria-describedby="f-name-filter-tip" name="nameFilter" value="{{$e.NameFilter}}" class="mono" dir="ltr"></div>
+        <div class="field"><span class="label-line"><label for="f-number-filter">{{t "dirs.external.number_filter"}}</label>{{tip "f-number-filter-tip" (t "dirs.external.filter_tip")}}</span><input id="f-number-filter" aria-describedby="f-number-filter-tip" name="numberFilter" value="{{$e.NumberFilter}}" class="mono" dir="ltr"></div>
       </div>
     </div>
   </section>
   </fieldset>
-  {{if $d.CanEdit}}<div class="savebar"><a class="btn" href="{{if $d.New}}/books{{else}}/directories/{{$e.ID}}{{end}}">取消</a><button type="submit" class="btn primary">{{icon "check"}}保存</button></div>{{end}}
+  {{if $d.CanEdit}}<div class="savebar"><a class="btn" href="{{if $d.New}}/books{{else}}/directories/{{$e.ID}}{{end}}">{{t "common.cancel"}}</a><button type="submit" class="btn primary">{{icon "check"}}{{t "common.save"}}</button></div>{{end}}
 </form>
 {{if not $d.New}}
 <section class="card">
-  <div class="card-head"><h2>{{icon "layers"}}使用情况</h2></div>
-  <div class="card-body">{{if $d.Users}}<p class="fade">配置模板：{{join $d.Users "、"}}</p>{{else}}<p class="muted">暂无配置模板使用</p>{{end}}</div>
+  <div class="card-head"><h2>{{icon "layers"}}{{t "dirs.external.usage"}}</h2></div>
+  <div class="card-body">{{if $d.Users}}<p class="fade">{{t "dirs.external.used_by" "templates" $d.Users}}</p>{{else}}<p class="muted">{{t "dirs.external.unused"}}</p>{{end}}</div>
 </section>
 {{if $d.CanEdit}}
 <section class="card danger-card">
   {{if $d.Users}}
-  <div class="card-body op"><div><strong>删除通讯录</strong><p class="hint">使用中：配置模板 {{join $d.Users "、"}}</p></div>
-    <button type="button" class="btn danger" disabled>{{icon "trash"}}删除通讯录</button></div>
+  <div class="card-body op"><div><strong>{{t "dirs.delete"}}</strong><p class="hint">{{t "dirs.external.in_use_hint" "templates" $d.Users}}</p></div>
+    <button type="button" class="btn danger" disabled>{{icon "trash"}}{{t "dirs.delete"}}</button></div>
   {{else}}
-  <form method="post" action="/directories/{{$e.ID}}/delete" class="card-body op" data-confirm="确认删除通讯录「{{$e.Name}}」？此操作不可撤销。">
-    <div><strong>删除通讯录</strong></div>
-    <button type="submit" class="btn danger">{{icon "trash"}}删除通讯录</button>
+  <form method="post" action="/directories/{{$e.ID}}/delete" class="card-body op" data-confirm="{{t "dirs.external.delete_confirm" "name" $e.Name}}">
+    <div><strong>{{t "dirs.delete"}}</strong></div>
+    <button type="submit" class="btn danger">{{icon "trash"}}{{t "dirs.delete"}}</button>
   </form>
   {{end}}
 </section>

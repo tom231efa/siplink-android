@@ -62,7 +62,7 @@ func (s *Server) requireLogin(next http.HandlerFunc) http.HandlerFunc {
 		if err != nil {
 			if !errors.Is(err, auth.ErrNoSession) {
 				s.Log.Error("session check failed", "err", err)
-				s.fail(w, r, http.StatusInternalServerError, "内部错误，请稍后重试。")
+				s.fail(w, r, http.StatusInternalServerError, tr(r).T("error.internal_retry"))
 				return
 			}
 			s.clearSessionCookie(w, r)
@@ -96,7 +96,7 @@ func (s *Server) requireLogin(next http.HandlerFunc) http.HandlerFunc {
 				return
 			}
 		}
-		next(w, r.WithContext(context.WithValue(r.Context(), adminKey{}, admin)))
+		next(w, withAdmin(r, admin))
 	}
 }
 

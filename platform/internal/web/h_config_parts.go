@@ -27,9 +27,9 @@ type profileForm struct {
 func (s *Server) profileFormPage(w http.ResponseWriter, r *http.Request, status int, f profileForm) {
 	f.Options = options()
 	f.Clients, _ = s.St.ClientCountOfConfigTemplate(r.Context(), f.T.ID)
-	title := "编辑账号"
+	title := tr(r).T("config.profile.edit_title")
 	if f.New {
-		title = "新建账号"
+		title = tr(r).T("config.profile.new_title")
 	}
 	s.render(w, r, status, "profile_edit", &Page{Title: title, Nav: "config", Data: f})
 }
@@ -91,23 +91,23 @@ func (s *Server) profileSave(w http.ResponseWriter, r *http.Request) {
 		err := s.St.SaveProfile(r.Context(), p, rules.MaxAccounts)
 		switch {
 		case errors.Is(err, store.ErrLimit):
-			problems = append(problems, rules.AccountLimitReached.Full())
+			problems = append(problems, rules.AccountLimitReached.Msg())
 		case errors.Is(err, store.ErrConflict):
-			problems = append(problems, rules.AccountNameTaken.Full())
+			problems = append(problems, rules.AccountNameTaken.Msg())
 		case err != nil:
 			s.internal(w, r, err)
 			return
 		}
 	}
 	if len(problems) > 0 {
-		s.profileFormPage(w, r, http.StatusBadRequest, profileForm{T: t, P: p, New: isNew, Errors: problems})
+		s.profileFormPage(w, r, http.StatusBadRequest, profileForm{T: t, P: p, New: isNew, Errors: tr(r).Msgs(problems)})
 		return
 	}
 	if !isNew && !strings.EqualFold(old.Name, p.Name) {
 		s.renameLines(r, t.ID, old.Name, p.Name)
 	}
 	s.audit(r, "config_template.update", "config_template", t.ID, t.Name, t.RegionID, map[string]any{"profile": p.Name})
-	s.redirect(w, r, "/config-templates/"+itoa(t.ID)+"?tab=accounts", "ok", "账号「"+p.Name+"」已保存。")
+	s.redirect(w, r, "/config-templates/"+itoa(t.ID)+"?tab=accounts", "ok", tr(r).T("config.profile.saved", "name", p.Name))
 }
 
 // renameLines follows a profile rename in the keys of the key templates used together
@@ -154,18 +154,19 @@ func (s *Server) profileOp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.audit(r, "config_template.update", "config_template", t.ID, t.Name, t.RegionID, map[string]any{"profile": p.Name, "op": r.PathValue("op")})
-	s.redirect(w, r, "/config-templates/"+itoa(t.ID)+"?tab=accounts", "ok", "已保存。")
+	s.redirect(w, r, "/config-templates/"+itoa(t.ID)+"?tab=accounts", "ok", tr(r).T("common.saved"))
 }
 
 // ---- directories ----
 
 // accountPasswordProblem says why a typed password is not the service account's
-// (only its SHA-256 is stored, §4.3); "" when it matches or nothing was typed.
-func (s *Server) accountPasswordProblem(a *store.LDAPAccount, password string) string {
+// (only its SHA-256 is stored, §4.3), in the request's language; "" when it matches or
+// nothing was typed.
+func (s *Server) accountPasswordProblem(r *http.Request, a *store.LDAPAccount, password string) string {
 	if a == nil || password == "" || secret.HashHex(password) == a.PasswordHash {
 		return ""
 	}
-	return "密码与 LDAP 账号「" + a.Name + "」不符"
+	return tr(r).T("config.directory.password_mismatch", "name", a.Name)
 }
 
 type directoryForm struct {
@@ -206,14 +207,14 @@ func (s *Server) directoryFormPage(w http.ResponseWriter, r *http.Request, statu
 		f.HasPass, f.Manual = f.D.PasswordEnc != "", f.D.LDAPAccountID != nil
 		f.Accounts = s.usableAccounts(r, f.T.RegionID)
 		if sec, ok := s.hosted().Security(); !ok {
-			f.HostedNote = rules.HostedNeedsName
+			f.HostedNote = tr(r).Msg(rules.HostedNeedsName)
 		} else {
 			f.Plain = sec == rules.LdapSecurityNone
 		}
 	}
-	title := "编辑通讯录"
+	title := tr(r).T("config.directory.edit_title")
 	if f.New {
-		title = "添加通讯录"
+		title = tr(r).T("config.directory.new_title")
 	}
 	s.render(w, r, status, "directory_edit", &Page{Title: title, Nav: "config", Data: f})
 }
@@ -348,13 +349,13 @@ func (s *Server) readHostedUse(r *http.Request, t *store.ConfigTemplate, d *stor
 	if err != nil {
 		account = nil
 	}
-	if p := s.accountPasswordProblem(account, password); p != "" && d.PasswordMode == catalog.PasswordTemplate {
+	if p := s.accountPasswordProblem(r, account, password); p != "" && d.PasswordMode == catalog.PasswordTemplate {
 		problems = append(problems, p)
 	}
-	if p := catalog.HostedAccountProblem(d, book, account, t.RegionID); p != "" {
+	if p := errText(r, catalog.HostedAccountProblem(d, book, account, t.RegionID)); p != "" {
 		problems = append(problems, p)
 	} else if d.PasswordMode == catalog.PasswordTemplate && password == "" && (d.PasswordEnc == "" || derefOr(oldAccount) != id) {
-		problems = append(problems, "请填写 LDAP 账号「"+account.Name+"」的密码")
+		problems = append(problems, tr(r).T("config.directory.password_needed", "name", account.Name))
 	}
 	return problems
 }
@@ -369,7 +370,7 @@ func (s *Server) directorySave(w http.ResponseWriter, r *http.Request) {
 	isNew := r.PathValue("did") == ""
 	if isNew {
 		if d = s.newDirectory(r, t, r.FormValue("source")); d == nil {
-			s.directoryFormPage(w, r, http.StatusBadRequest, directoryForm{T: t, New: true, Errors: []string{"请选择通讯录"}})
+			s.directoryFormPage(w, r, http.StatusBadRequest, directoryForm{T: t, New: true, Errors: []string{tr(r).T("config.directory.choose_error")}})
 			return
 		}
 	} else if d = s.loadDirectory(w, r, t); d == nil {
@@ -397,7 +398,7 @@ func (s *Server) directorySave(w http.ResponseWriter, r *http.Request) {
 		s.internal(w, r, err)
 		return
 	}
-	problems = append(catalog.DirectoryProblems(d, others, book, s.hosted(), isNew), problems...)
+	problems = append(tr(r).Msgs(catalog.DirectoryProblems(d, others, book, s.hosted(), isNew)), problems...)
 	var seal func(id int64) (string, error)
 	if d.PasswordMode == catalog.PasswordTemplate && password != "" {
 		seal = func(id int64) (string, error) {
@@ -408,7 +409,7 @@ func (s *Server) directorySave(w http.ResponseWriter, r *http.Request) {
 		err := s.St.SaveDirectory(ctx, d, rules.MaxDirectories, seal)
 		switch {
 		case errors.Is(err, store.ErrLimit):
-			problems = append(problems, rules.LdapLimitReached.Full())
+			problems = append(problems, tr(r).Msg(rules.LdapLimitReached.Msg()))
 		case err != nil:
 			s.internal(w, r, err)
 			return
@@ -424,10 +425,10 @@ func (s *Server) directorySave(w http.ResponseWriter, r *http.Request) {
 		detail["credentials"] = map[bool]string{true: "manual", false: "auto"}[d.LDAPAccountID != nil]
 	}
 	if seal != nil {
-		detail["password"] = "已修改"
+		detail["password"] = auditChanged
 	}
 	s.audit(r, "config_template.update", "config_template", t.ID, t.Name, t.RegionID, detail)
-	s.redirect(w, r, "/config-templates/"+itoa(t.ID)+"?tab=directories", "ok", "通讯录已保存。")
+	s.redirect(w, r, "/config-templates/"+itoa(t.ID)+"?tab=directories", "ok", tr(r).T("config.directory.saved"))
 }
 
 func (s *Server) directoryDelete(w http.ResponseWriter, r *http.Request) {
@@ -444,7 +445,7 @@ func (s *Server) directoryDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.audit(r, "config_template.update", "config_template", t.ID, t.Name, t.RegionID, map[string]any{"directory": d.DisplayName(), "op": "delete"})
-	s.redirect(w, r, "/config-templates/"+itoa(t.ID)+"?tab=directories", "ok", "已删除。")
+	s.redirect(w, r, "/config-templates/"+itoa(t.ID)+"?tab=directories", "ok", tr(r).T("config.directory.removed"))
 }
 
 // ---- order of profiles, directories and keys ----
@@ -455,7 +456,7 @@ func (s *Server) directoryDelete(w http.ResponseWriter, r *http.Request) {
 func (s *Server) reorder(w http.ResponseWriter, r *http.Request, table string, parentID int64) bool {
 	err := s.St.Reorder(r.Context(), table, parentID, formIDs(r, "id"))
 	if errors.Is(err, store.ErrOrder) {
-		s.fail(w, r, http.StatusConflict, "列表已发生变化，请刷新页面后重试。")
+		s.fail(w, r, http.StatusConflict, tr(r).T("config.order.changed"))
 		return false
 	}
 	if err != nil {

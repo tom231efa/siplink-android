@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"siplink/internal/books"
+	"siplink/internal/i18n"
 	"siplink/internal/rules"
 	"siplink/internal/store"
 )
@@ -65,20 +66,20 @@ func AccountBindDN(name, suffix string) string { return "cn=" + name + ",ou=acco
 // HostedAccountProblem checks a hosted book bound by hand with a service account: the
 // account must exist for the template's region (global or the same), be enabled and
 // be granted the book; the password comes from the template or from each client.
-func HostedAccountProblem(d *store.Directory, book *store.Book, a *store.LDAPAccount, templateRegion *int64) string {
+func HostedAccountProblem(d *store.Directory, book *store.Book, a *store.LDAPAccount, templateRegion *int64) error {
 	switch {
 	case a == nil:
-		return "请选择 LDAP 账号"
+		return i18n.E("catalog.hosted.pick_account")
 	case a.RegionID != nil && (templateRegion == nil || *templateRegion != *a.RegionID):
-		return "LDAP 账号「" + a.Name + "」属于其他区域，仅可使用全局或本区域的账号"
+		return i18n.E("catalog.hosted.account_other_region", "account", a.Name)
 	case a.Disabled:
-		return "LDAP 账号「" + a.Name + "」已停用"
+		return i18n.E("catalog.hosted.account_disabled", "account", a.Name)
 	case book != nil && !slices.Contains(a.BookIDs, book.ID):
-		return "LDAP 账号「" + a.Name + "」无权读取通讯录「" + book.Name + "」，请先在「LDAP 账号」中授权"
+		return i18n.E("catalog.hosted.account_no_grant", "account", a.Name, "book", book.Name)
 	case d.PasswordMode != PasswordTemplate && d.PasswordMode != PasswordClient:
-		return "手动指定凭据时须选择密码方式：模板统一设置或按客户端设置"
+		return i18n.E("catalog.hosted.password_mode")
 	}
-	return ""
+	return nil
 }
 
 // NormalizeExternal applies LdapRules.normalize to an external directory.
@@ -91,22 +92,22 @@ func NormalizeExternal(e *store.ExternalDirectory) {
 
 // ExternalProblems checks a normalized external directory with LdapRules.validate; its
 // name is required here (it names the directory in lists and is the phone's default).
-func ExternalProblems(e *store.ExternalDirectory) []string {
-	var out []string
+func ExternalProblems(e *store.ExternalDirectory) []i18n.Msg {
+	var out []i18n.Msg
 	if e.Name == "" {
-		out = append(out, "名称必填")
+		out = append(out, i18n.M("catalog.name_required_short"))
 	}
 	switch e.PasswordMode {
 	case PasswordNone, PasswordTemplate, PasswordClient:
 	default:
-		out = append(out, "密码方式无效")
+		out = append(out, i18n.M("catalog.password_mode_invalid"))
 	}
 	probe := ExternalLdap(e, "")
 	if e.PasswordMode != PasswordNone {
 		probe.Password = "x" // a password without a bind DN is refused (PASSWORD_WITHOUT_USER)
 	}
 	for _, err := range rules.ValidateLdap(probe, nil, false) {
-		out = append(out, err.Full())
+		out = append(out, err.Msg())
 	}
 	return out
 }
@@ -114,37 +115,37 @@ func ExternalProblems(e *store.ExternalDirectory) []string {
 // DirectoryProblems checks a directory use with a trimmed name. others are the other
 // uses of the template (for unique names on the phone); book is the hosted book (nil for
 // external).
-func DirectoryProblems(d *store.Directory, others []*store.Directory, book *store.Book, h Hosted, isNew bool) []string {
+func DirectoryProblems(d *store.Directory, others []*store.Directory, book *store.Book, h Hosted, isNew bool) []i18n.Msg {
 	var taken []string
 	for _, o := range others {
 		if o.ID != d.ID {
 			taken = append(taken, o.DisplayName())
 		}
 	}
-	var out []string
+	var out []i18n.Msg
 	switch d.Kind {
 	case store.KindHosted:
 		if d.MaxResults < 1 || d.MaxResults > rules.MaxResults {
-			out = append(out, rules.LdapMaxResultsOutOfRange.Full())
+			out = append(out, rules.LdapMaxResultsOutOfRange.Msg())
 		}
 		if book == nil {
-			return append(out, "请选择通讯录")
+			return append(out, i18n.M("catalog.pick_directory"))
 		}
 		if _, ok := h.Security(); !ok {
 			return append(out, rules.HostedNeedsName)
 		}
 		for _, e := range rules.ValidateLdap(h.HostedLdap(d, book, "uid=x", "x"), taken, isNew) {
-			out = append(out, e.Full())
+			out = append(out, e.Msg())
 		}
 	case store.KindExternal:
 		if d.External == nil {
-			return append(out, "请选择通讯录")
+			return append(out, i18n.M("catalog.pick_directory"))
 		}
 		for _, e := range rules.ValidateLdap(LdapOf(d, ""), taken, isNew) {
-			out = append(out, e.Full())
+			out = append(out, e.Msg())
 		}
 	default:
-		out = append(out, "类型无效")
+		out = append(out, i18n.M("catalog.kind_invalid"))
 	}
 	return out
 }
@@ -166,22 +167,22 @@ func StoredKey(s rules.Shortcut) *store.TemplateKey {
 
 // KeyProblems normalizes a key with ShortcutRules.normalize and checks it with validate;
 // lines must name one of profileNames when that list is given.
-func KeyProblems(k *store.TemplateKey, profileNames []string) (*store.TemplateKey, []string) {
+func KeyProblems(k *store.TemplateKey, profileNames []string) (*store.TemplateKey, []i18n.Msg) {
 	action, ok := rules.ParseAction(k.Action)
 	if !ok {
-		return k, []string{"未知的类型"}
+		return k, []i18n.Msg{i18n.M("catalog.key.unknown_type")}
 	}
 	icon, ok := rules.ParseIcon(k.Icon)
 	if !ok && k.Icon != "" {
-		return k, []string{"未知的图标"}
+		return k, []i18n.Msg{i18n.M("catalog.key.unknown_icon")}
 	}
 	s := rules.NormalizeShortcut(rules.Shortcut{Label: k.Label, Number: k.Number, Action: action, Category: k.Category, Line: k.Line, Icon: icon})
-	var out []string
+	var out []i18n.Msg
 	for _, e := range rules.ValidateShortcut(s) {
-		out = append(out, e.Full())
+		out = append(out, e.Msg())
 	}
-	if p := LineProblem(s.Line, profileNames); p != "" {
-		out = append(out, p)
+	if err := LineProblem(s.Line, profileNames); err != nil {
+		out = append(out, i18n.MsgOf(err))
 	}
 	nk := StoredKey(s)
 	nk.ID, nk.Position = k.ID, k.Position
@@ -190,14 +191,14 @@ func KeyProblems(k *store.TemplateKey, profileNames []string) (*store.TemplateKe
 
 // LineProblem checks that a key's line names an account profile (§3.5.7). An empty
 // list of names skips the check (the key template is not used yet).
-func LineProblem(line string, profileNames []string) string {
+func LineProblem(line string, profileNames []string) error {
 	if line == "" || len(profileNames) == 0 {
-		return ""
+		return nil
 	}
 	for _, n := range profileNames {
 		if strings.EqualFold(n, line) {
-			return ""
+			return nil
 		}
 	}
-	return "线路「" + line + "」不是所用配置模板中的账号（可用：" + strings.Join(profileNames, "、") + "）"
+	return i18n.E("catalog.key.line_unknown", "line", line, "names", profileNames)
 }

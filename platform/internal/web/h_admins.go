@@ -41,7 +41,7 @@ func (s *Server) adminList(w http.ResponseWriter, r *http.Request) {
 	} else {
 		d.Admins = []*store.Admin{a} // region administrators see only their own profile
 	}
-	s.ok(w, r, "admins", &Page{Title: "管理员", Nav: "admins", Data: d})
+	s.ok(w, r, "admins", &Page{Title: tr(r).T("nav.admins"), Nav: "admins", Data: d})
 }
 
 type adminForm struct {
@@ -68,9 +68,9 @@ func (s *Server) adminFormPage(w http.ResponseWriter, r *http.Request, status in
 			return
 		}
 	}
-	title := "编辑管理员"
+	title := tr(r).T("admins.edit_title")
 	if f.New {
-		title = "新建管理员"
+		title = tr(r).T("admins.new")
 	}
 	s.render(w, r, status, "admin_edit", &Page{Title: title, Nav: "admins", Data: f})
 }
@@ -80,28 +80,28 @@ func (s *Server) adminNew(w http.ResponseWriter, r *http.Request) {
 }
 
 // readAdminForm reads role, display name, e-mail address and regions; it checks that
-// every region exists.
+// every region exists. The problem it returns is in the request's language.
 func (s *Server) readAdminForm(r *http.Request, a *store.Admin) string {
 	a.DisplayName = truncate(trimmed(r, "display_name"), 64)
 	a.Email = trimmed(r, "email")
 	if a.Email != "" && mail.ValidAddress(a.Email) != nil {
-		return "邮箱地址无效。"
+		return tr(r).T("admins.error.email_invalid")
 	}
 	a.Role = r.FormValue("role")
 	a.RegionIDs = formIDs(r, "regions")
 	if a.Role != store.RoleSuper && a.Role != store.RoleRegion {
-		return "请选择角色。"
+		return tr(r).T("admins.error.role_missing")
 	}
 	if a.Role == store.RoleSuper {
 		a.RegionIDs = nil
 		return ""
 	}
 	if len(a.RegionIDs) == 0 {
-		return "区域管理员须至少指定一个区域。"
+		return tr(r).T("admins.error.regions_missing")
 	}
 	for _, id := range a.RegionIDs {
 		if _, err := s.St.RegionByID(r.Context(), id); err != nil {
-			return "所选区域不存在。"
+			return tr(r).T("admins.error.region_unknown")
 		}
 	}
 	return ""
@@ -111,7 +111,7 @@ func (s *Server) adminCreate(w http.ResponseWriter, r *http.Request) {
 	a := &store.Admin{Username: trimmed(r, "username"), MustChangePassword: true}
 	msg := s.readAdminForm(r, a)
 	if !auth.ValidUsername(a.Username) {
-		msg = "用户名须为 2-32 个字母、数字或 . _ -。"
+		msg = tr(r).T("admins.error.username_invalid")
 	}
 	if msg != "" {
 		s.adminFormPage(w, r, http.StatusBadRequest, adminForm{New: true, Admin: a, Error: msg})
@@ -125,7 +125,7 @@ func (s *Server) adminCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	a.PasswordHash = hash
 	if err := s.St.CreateAdmin(r.Context(), a); errors.Is(err, store.ErrConflict) {
-		s.adminFormPage(w, r, http.StatusBadRequest, adminForm{New: true, Admin: a, Error: "用户名已存在。"})
+		s.adminFormPage(w, r, http.StatusBadRequest, adminForm{New: true, Admin: a, Error: tr(r).T("admins.error.username_taken")})
 		return
 	} else if err != nil {
 		s.internal(w, r, err)
@@ -136,7 +136,7 @@ func (s *Server) adminCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.audit(r, "admin.create", "admin", a.ID, a.Username, nil, map[string]any{"role": a.Role, "regions": a.RegionIDs})
-	s.ok(w, r, "admin_password", &Page{Title: "管理员已创建", Nav: "admins", Data: adminForm{Admin: a, Password: password}})
+	s.ok(w, r, "admin_password", &Page{Title: tr(r).T("admins.created_title"), Nav: "admins", Data: adminForm{Admin: a, Password: password}})
 }
 
 func (s *Server) loadAdmin(w http.ResponseWriter, r *http.Request) *store.Admin {
@@ -184,11 +184,11 @@ func (s *Server) adminUpdate(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case msg != "": // the form's own problem first
 	case self && (a.Role != old.Role || a.Disabled):
-		msg = "不可修改本人角色或停用本人账号。"
+		msg = tr(r).T("admins.error.self_change")
 	case emailChanged && old.Role == store.RoleSuper:
-		msg = "超级管理员的邮箱只能由本人在「我的账号」中修改。"
+		msg = tr(r).T("admins.error.super_email")
 	case old.Role == store.RoleSuper && a.Role != old.Role && ts.Methods() > 0:
-		msg = "已启用两步验证的超级管理员不可修改角色。"
+		msg = tr(r).T("admins.error.super_two_step_role")
 	}
 	if msg != "" {
 		s.adminFormPage(w, r, http.StatusBadRequest, adminForm{Admin: &a, Self: self, Error: msg, EmailWas: trimmed(r, "email_was")})
@@ -197,7 +197,7 @@ func (s *Server) adminUpdate(w http.ResponseWriter, r *http.Request) {
 	err = s.St.UpdateAdmin(r.Context(), &a)
 	if errors.Is(err, store.ErrLastSuper) {
 		s.adminFormPage(w, r, http.StatusBadRequest, adminForm{Admin: &a, Self: self, EmailWas: trimmed(r, "email_was"),
-			Error: "此为最后一个启用的超级管理员，无法停用或降级。"})
+			Error: tr(r).T("admins.error.last_super")})
 		return
 	}
 	if err == nil && emailChanged {
@@ -217,7 +217,7 @@ func (s *Server) adminUpdate(w http.ResponseWriter, r *http.Request) {
 	s.audit(r, action, "admin", a.ID, a.Username, nil, changes(
 		field{"display_name", old.DisplayName, a.DisplayName}, field{"role", old.Role, a.Role},
 		field{"disabled", old.Disabled, a.Disabled}, field{"regions", oldRegions, newRegions}, field{"email", old.Email, a.Email}))
-	s.redirect(w, r, "/admins", "ok", "管理员「"+a.Username+"」已保存。")
+	s.redirect(w, r, "/admins", "ok", tr(r).T("admins.saved", "name", a.Username))
 }
 
 func (s *Server) adminResetPassword(w http.ResponseWriter, r *http.Request) {
@@ -235,11 +235,11 @@ func (s *Server) adminResetPassword(w http.ResponseWriter, r *http.Request) {
 		s.internal(w, r, err)
 		return
 	}
-	s.audit(r, "admin.password_reset", "admin", a.ID, a.Username, nil, map[string]any{"password": "已修改"})
+	s.audit(r, "admin.password_reset", "admin", a.ID, a.Username, nil, map[string]any{"password": auditChanged})
 	if a.ID == current(r).ID {
 		s.clearSessionCookie(w, r) // one's own sessions ended with the reset
 	}
-	s.ok(w, r, "admin_password", &Page{Title: "密码已重置", Nav: "admins", Data: adminForm{Admin: a, Password: password}})
+	s.ok(w, r, "admin_password", &Page{Title: tr(r).T("admins.password_reset_title"), Nav: "admins", Data: adminForm{Admin: a, Password: password}})
 }
 
 // ---- audit log page ----
@@ -273,7 +273,7 @@ func (s *Server) auditList(w http.ResponseWriter, r *http.Request) {
 	d.Q.Region, _ = parseInt64(q.Get("region"))
 	page, _ := parseInt64(q.Get("page"))
 	d.Q.Page = int(max(page, 1))
-	if _, ok := objectLabels[d.Q.Object]; !ok {
+	if !slices.Contains(objectTypes, d.Q.Object) {
 		d.Q.Object = ""
 	}
 	f := visibleAudit(a)
@@ -316,7 +316,7 @@ func (s *Server) auditList(w http.ResponseWriter, r *http.Request) {
 		d.Regions, _ = s.St.ListRegions(r.Context(), a.RegionIDs, false)
 		d.Admins = []*store.Admin{a}
 	}
-	s.ok(w, r, "audit", &Page{Title: "审计日志", Nav: "audit", Data: d})
+	s.ok(w, r, "audit", &Page{Title: tr(r).T("nav.audit"), Nav: "audit", Data: d})
 }
 
 func parseInt64(v string) (int64, bool) {

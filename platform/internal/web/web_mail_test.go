@@ -112,7 +112,7 @@ func TestMailPage(t *testing.T) {
 			t.Error("password in the audit trail")
 		}
 	}
-	if entries[len(entries)-1].Detail["password"] != "已修改" {
+	if entries[len(entries)-1].Detail["password"] != auditChanged {
 		t.Errorf("first save: %v", entries[len(entries)-1].Detail)
 	}
 	if strings.Contains(h.logs.String(), srv.Password) {

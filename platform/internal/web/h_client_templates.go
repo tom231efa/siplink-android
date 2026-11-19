@@ -26,22 +26,24 @@ func (s *Server) clientTplList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	names, _ := s.allRegionNames(r)
+	tl := tr(r)
 	var rows []templateRow
 	for _, t := range list {
 		n, _ := s.St.ClientCountOfTemplate(r.Context(), t.ID)
-		extra := ""
+		config, extra := "", ""
 		if c, err := s.St.ConfigTemplateByID(r.Context(), t.ConfigTemplateID); err == nil {
-			extra = "配置：" + c.Name
+			config, extra = c.Name, tl.T("clienttpl.list.content", "config", c.Name)
 		}
 		if t.KeyTemplateID != nil {
 			if k, err := s.St.KeyTemplateByID(r.Context(), *t.KeyTemplateID); err == nil {
-				extra += "，功能键：" + k.Name
+				extra = tl.T("clienttpl.list.content_keys", "config", config, "keys", k.Name)
 			}
 		}
 		rows = append(rows, templateRow{ID: t.ID, Name: t.Name, Note: t.Note, Region: regionLabel(names, t.RegionID),
 			Global: t.RegionID == nil, Clients: n, Extra: extra})
 	}
-	s.ok(w, r, "templates", &Page{Title: "客户端模板", Nav: "clienttpl", Data: templatesData{Rows: rows, Base: "/client-templates", Kind: "客户端模板"}})
+	s.ok(w, r, "templates", &Page{Title: tl.T("nav.client_templates"), Nav: "clienttpl", Data: templatesData{Rows: rows,
+		Base: "/client-templates", New: tl.T("templates.new.clienttpl"), Empty: tl.T("templates.empty.clienttpl")}})
 }
 
 type clientTplForm struct {
@@ -78,9 +80,9 @@ func (s *Server) clientTplFormPage(w http.ResponseWriter, r *http.Request, statu
 	if !f.New {
 		f.Clients, _ = s.St.ClientCountOfTemplate(ctx, f.T.ID)
 	}
-	title := "客户端模板：" + f.T.Name
+	title := tr(r).T("clienttpl.form.title", "name", f.T.Name)
 	if f.New {
-		title = "新建客户端模板"
+		title = tr(r).T("templates.new.clienttpl")
 	}
 	s.render(w, r, status, "client_template", &Page{Title: title, Nav: "clienttpl", Data: f})
 }
@@ -119,20 +121,20 @@ func (s *Server) clientTplProblem(r *http.Request, t *store.ClientTemplate) stri
 	act := actor(r)
 	c, err := s.St.ConfigTemplateByID(ctx, t.ConfigTemplateID)
 	if err != nil || !act.Can(auth.TemplateUse, c.RegionID) {
-		return "请选择配置模板。"
+		return tr(r).T("clienttpl.error.choose_config")
 	}
 	if !compatible(t.RegionID, c.RegionID) {
-		return "配置模板必须是全局的或属于同一区域。"
+		return tr(r).T("clienttpl.error.config_region")
 	}
 	if t.KeyTemplateID == nil {
 		return ""
 	}
 	k, err := s.St.KeyTemplateByID(ctx, *t.KeyTemplateID)
 	if err != nil || !act.Can(auth.TemplateUse, k.RegionID) {
-		return "所选功能键模板不存在或不可用。"
+		return tr(r).T("clienttpl.error.keys_unavailable")
 	}
 	if !compatible(t.RegionID, k.RegionID) {
-		return "功能键模板必须是全局的或属于同一区域。"
+		return tr(r).T("clienttpl.error.keys_region")
 	}
 	profiles, _ := s.St.Profiles(ctx, c.ID)
 	var names []string
@@ -144,8 +146,8 @@ func (s *Server) clientTplProblem(r *http.Request, t *store.ClientTemplate) stri
 	}
 	keys, _ := s.St.Keys(ctx, k.ID)
 	for _, key := range keys {
-		if p := catalog.LineProblem(key.Line, names); p != "" {
-			return "功能键「" + key.Label + "」的" + p
+		if err := catalog.LineProblem(key.Line, names); err != nil {
+			return tr(r).T("clienttpl.error.key_line", "key", key.Label, "problem", err)
 		}
 	}
 	return ""
@@ -176,7 +178,7 @@ func (s *Server) clientTplSave(w http.ResponseWriter, r *http.Request) {
 	}
 	if msg == "" && !isNew && !sameRegion(old.RegionID, t.RegionID) {
 		if n, _ := s.St.ClientCountOfTemplate(r.Context(), t.ID); n > 0 && t.RegionID != nil {
-			msg = "此模板已被客户端使用，无法移至区域，仅可设为全局。"
+			msg = tr(r).T("clienttpl.error.move_in_use")
 		}
 	}
 	var err error
@@ -187,7 +189,7 @@ func (s *Server) clientTplSave(w http.ResponseWriter, r *http.Request) {
 			err = s.St.UpdateClientTemplate(r.Context(), t)
 		}
 		if errors.Is(err, store.ErrConflict) {
-			msg = "同一区域已有同名模板。"
+			msg = tr(r).T("templates.error.name_taken")
 		} else if err != nil {
 			s.internal(w, r, err)
 			return
@@ -205,7 +207,7 @@ func (s *Server) clientTplSave(w http.ResponseWriter, r *http.Request) {
 		field{"name", old.Name, t.Name}, field{"config_template_id", old.ConfigTemplateID, t.ConfigTemplateID},
 		field{"key_template_id", derefOr(old.KeyTemplateID), derefOr(t.KeyTemplateID)},
 		field{"region_id", derefOr(old.RegionID), derefOr(t.RegionID)}))
-	s.redirect(w, r, "/client-templates/"+strconv.FormatInt(t.ID, 10), "ok", "客户端模板已保存。")
+	s.redirect(w, r, "/client-templates/"+strconv.FormatInt(t.ID, 10), "ok", tr(r).T("clienttpl.saved"))
 }
 
 func (s *Server) clientTplDelete(w http.ResponseWriter, r *http.Request) {
@@ -214,12 +216,12 @@ func (s *Server) clientTplDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := s.St.DeleteClientTemplate(r.Context(), t.ID); errors.Is(err, store.ErrInUse) {
-		s.redirect(w, r, "/client-templates/"+itoa(t.ID), "error", "此模板仍被客户端使用，无法删除。")
+		s.redirect(w, r, "/client-templates/"+itoa(t.ID), "error", tr(r).T("clienttpl.error.delete_in_use"))
 		return
 	} else if err != nil {
 		s.internal(w, r, err)
 		return
 	}
 	s.audit(r, "client_template.delete", "client_template", t.ID, t.Name, t.RegionID, nil)
-	s.redirect(w, r, "/client-templates", "ok", "客户端模板「"+t.Name+"」已删除。")
+	s.redirect(w, r, "/client-templates", "ok", tr(r).T("clienttpl.deleted", "name", t.Name))
 }

@@ -1,16 +1,16 @@
 {{define "content"}}
 {{$d := .Data}}
 <div class="narrow-page">
-<header class="page-head"><div><h1>身份验证器</h1></div></header>
+<header class="page-head"><div><h1>{{t "twostep.totp"}}</h1></div></header>
 <form method="post" action="/me/totp/confirm" class="card form-card">
   <div class="card-body form">
     {{with $d.Error}}<div class="flash error" role="alert">{{.}}</div>{{end}}
     <div class="qr-frame"><div class="qr">{{$d.QR}}</div></div>
-    <span class="card-label">密钥</span>
-    <div class="secret-row"><span class="secret-once mono" id="totp-secret">{{$d.Secret}}</span><button type="button" class="btn" data-copy="#totp-secret" hidden>{{icon "copy"}}<span>复制</span></button></div>
-    <label>验证码<input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" required autofocus></label>
+    <span class="card-label">{{t "me.totp.secret"}}</span>
+    <div class="secret-row"><span class="secret-once mono" id="totp-secret">{{$d.Secret}}</span><button type="button" class="btn" data-copy="#totp-secret" hidden>{{icon "copy"}}<span>{{t "common.copy"}}</span></button></div>
+    <label>{{t "twostep.code"}}<input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" dir="ltr" required autofocus></label>
   </div>
-  <div class="card-foot form-actions"><button type="submit" class="btn" formaction="/me/totp/cancel" formnovalidate>取消</button><button type="submit" class="btn primary">启用</button></div>
+  <div class="card-foot form-actions"><button type="submit" class="btn" formaction="/me/totp/cancel" formnovalidate>{{t "common.cancel"}}</button><button type="submit" class="btn primary">{{t "twostep.enable"}}</button></div>
 </form>
 </div>
 {{end}}

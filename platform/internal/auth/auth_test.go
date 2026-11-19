@@ -39,15 +39,15 @@ func TestPasswordDefaultParams(t *testing.T) {
 }
 
 func TestPasswordRules(t *testing.T) {
-	if PasswordProblem("short", "a", true) == "" || PasswordProblem("adminadmin", "adminadmin", true) == "" {
+	if PasswordProblem("short", "a", true) == nil || PasswordProblem("adminadmin", "adminadmin", true) == nil {
 		t.Error("weak password accepted")
 	}
-	if PasswordProblem("一二三四五六七八九十", "admin", true) != "" {
+	if PasswordProblem("一二三四五六七八九十", "admin", true) != nil {
 		t.Error("10 Chinese characters refused")
 	}
 	// without the strength check: non-empty and at most 256 characters
-	if PasswordProblem("a", "a", false) != "" || PasswordProblem("", "a", false) == "" ||
-		PasswordProblem(strings.Repeat("x", 257), "a", false) == "" || PasswordProblem(strings.Repeat("x", 257), "a", true) == "" {
+	if PasswordProblem("a", "a", false) != nil || PasswordProblem("", "a", false) == nil ||
+		PasswordProblem(strings.Repeat("x", 257), "a", false) == nil || PasswordProblem(strings.Repeat("x", 257), "a", true) == nil {
 		t.Error("password rules without the strength check")
 	}
 	for name, want := range map[string]bool{"admin": true, "a.b_c-d": true, "a": false, "管理员": false, "a b": false,

@@ -10,7 +10,14 @@ import (
 	"testing"
 	"time"
 
+	"siplink/internal/i18n"
 	"siplink/internal/store"
+)
+
+// The refusals of a password typed again, in Simplified Chinese as the tests read them.
+var (
+	wrongPassword = i18n.For(i18n.Source).T("twostep.wrong_password")
+	tooManySteps  = i18n.For(i18n.Source).T("login.too_many")
 )
 
 // Parallel requests against the limits and the removal rules of §6.8: every request
@@ -56,6 +63,7 @@ func (c *client) burst(n int, path string, form func(i int) url.Values) []rawRes
 	c.parallel(n, func(i int) {
 		req, _ := http.NewRequest("POST", c.h.ts.URL+path, strings.NewReader(form(i).Encode()))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.Header.Set("Accept-Language", "zh-CN") // as client.do
 		r, err := c.c.Do(req)
 		if err != nil {
 			return

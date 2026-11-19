@@ -25,7 +25,8 @@ type Admin struct {
 	LastLoginAt        string
 	Email              string // "" = none (§6.8)
 	EmailConfirmed     bool
-	TwoStepEmail       bool // the e-mail code method is on
+	TwoStepEmail       bool   // the e-mail code method is on
+	Language           string // the console's language (i18n code), "" = none chosen (§5.5)
 	CreatedAt          string
 	UpdatedAt          string
 	RegionIDs          []int64
@@ -35,12 +36,12 @@ type Admin struct {
 var ErrLastSuper = errors.New("store: the last super administrator cannot be disabled or demoted")
 
 const adminCols = `id, username, display_name, password_hash, role, disabled, must_change_password,
-	COALESCE(last_login_at, ''), created_at, updated_at, email, email_confirmed, two_step_email`
+	COALESCE(last_login_at, ''), created_at, updated_at, email, email_confirmed, two_step_email, language`
 
 func scanAdmin(row interface{ Scan(...any) error }) (*Admin, error) {
 	a := &Admin{}
 	err := row.Scan(&a.ID, &a.Username, &a.DisplayName, &a.PasswordHash, &a.Role, &a.Disabled,
-		&a.MustChangePassword, &a.LastLoginAt, &a.CreatedAt, &a.UpdatedAt, &a.Email, &a.EmailConfirmed, &a.TwoStepEmail)
+		&a.MustChangePassword, &a.LastLoginAt, &a.CreatedAt, &a.UpdatedAt, &a.Email, &a.EmailConfirmed, &a.TwoStepEmail, &a.Language)
 	return a, mapErr(err)
 }
 
@@ -240,6 +241,13 @@ func (s *Store) SetAdminPassword(ctx context.Context, id int64, hash string, mus
 // TouchLogin records a successful login.
 func (s *Store) TouchLogin(ctx context.Context, id int64) error {
 	_, err := s.DB.ExecContext(ctx, `UPDATE admins SET last_login_at = ? WHERE id = ?`, s.NowText(), id)
+	return err
+}
+
+// SetAdminLanguage stores the console language an administrator chose (§5.5). It is a
+// display setting: it does not touch updated_at.
+func (s *Store) SetAdminLanguage(ctx context.Context, id int64, code string) error {
+	_, err := s.DB.ExecContext(ctx, `UPDATE admins SET language = ? WHERE id = ?`, code, id)
 	return err
 }
 

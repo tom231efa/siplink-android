@@ -2,16 +2,16 @@
 {{$d := .Data}}{{$id := .Data.T.ID}}{{$ro := not .Data.CanEdit}}
 <header class="page-head">
   <div>
-    <div class="title-row fade-line"><h1 class="fade">{{$d.T.Name}}</h1>{{if $ro}}<span class="badge">只读</span>{{end}}</div>
-    <p class="page-sub fade">{{if $d.T.RegionID}}{{$d.Region}}{{else}}全局{{end}}<span class="dot-sep"></span>已被 {{$d.Clients}} 个客户端使用{{if $d.Users}}（{{join $d.Users "、"}}）{{end}}</p>
+    <div class="title-row fade-line"><h1 class="fade">{{$d.T.Name}}</h1>{{if $ro}}<span class="badge">{{t "config.read_only"}}</span>{{end}}</div>
+    <p class="page-sub fade">{{if $d.T.RegionID}}{{$d.Region}}{{else}}{{t "common.global"}}{{end}}<span class="dot-sep"></span>{{if $d.Users}}{{t "config.used_by_names" "n" $d.Clients "names" $d.Users}}{{else}}{{t "config.used_by" "n" $d.Clients}}{{end}}</p>
   </div>
 </header>
-{{$confirm := ""}}{{if gt $d.Clients 0}}{{$confirm = printf "此模板已被 %d 个客户端使用，保存后将于下次同步时生效。确认保存？" $d.Clients}}{{end}}
-{{$label := ""}}{{range $d.Tabs}}{{if eq .ID $d.Tab}}{{$label = .Label}}{{end}}{{end}}
+{{$confirm := ""}}{{if gt $d.Clients 0}}{{$confirm = t "config.save_confirm" "n" $d.Clients}}{{end}}
+{{$label := ""}}{{range $d.Tabs}}{{if eq .ID $d.Tab}}{{$label = t .Label}}{{end}}{{end}}
 
 <div class="config-layout">
-  <nav class="subnav" aria-label="模板设置">
-    {{range $d.Tabs}}<a href="/config-templates/{{$id}}?tab={{.ID}}"{{if eq .ID $d.Tab}} aria-current="page"{{end}}>{{icon (tabIcon .ID)}}<span>{{.Label}}</span></a>{{end}}
+  <nav class="subnav" aria-label="{{t "config.tabs_aria"}}">
+    {{range $d.Tabs}}<a href="/config-templates/{{$id}}?tab={{.ID}}"{{if eq .ID $d.Tab}} aria-current="page"{{end}}>{{icon (tabIcon .ID)}}<span>{{t .Label}}</span></a>{{end}}
   </nav>
   <div class="config-body">
   {{with $d.Error}}<div class="flash error" role="alert">{{.}}</div>{{end}}
@@ -19,21 +19,21 @@
   {{if eq $d.Tab "accounts"}}
   <section class="card table-card">
     <div class="card-head"><h2>{{$label}} <span class="badge">{{len $d.Profiles}} / 100</span></h2>
-      {{if not $ro}}<a class="btn small primary" href="/config-templates/{{$id}}/profiles/new">{{icon "plus"}}添加账号</a>{{end}}</div>
+      {{if not $ro}}<a class="btn small primary" href="/config-templates/{{$id}}/profiles/new">{{icon "plus"}}{{t "config.accounts.add"}}</a>{{end}}</div>
     {{if $d.Profiles}}
     <div class="table-wrap"><table class="table">
-      <thead><tr>{{if not $ro}}<th class="grip-col"><span class="sr-only">顺序</span></th>{{end}}<th>名称</th><th>域名</th><th>传输</th><th>代理</th><th>有效期</th><th>默认</th><th class="actions-col"><span class="sr-only">操作</span></th></tr></thead>
+      <thead><tr>{{if not $ro}}<th class="grip-col"><span class="sr-only">{{t "config.col.order"}}</span></th>{{end}}<th>{{t "common.name"}}</th><th>{{t "config.accounts.col.domain"}}</th><th>{{t "config.accounts.col.transport"}}</th><th>{{t "config.accounts.col.proxy"}}</th><th>{{t "config.accounts.col.expires"}}</th><th>{{t "config.accounts.col.default"}}</th><th class="actions-col"><span class="sr-only">{{t "common.actions"}}</span></th></tr></thead>
       <tbody{{if not $ro}} data-sortable data-sort-url="/config-templates/{{$id}}/profiles/order"{{end}}>{{range $d.Profiles}}<tr data-sort-id="{{.ID}}">
-        {{if not $ro}}<td class="grip-col">{{template "grip" .Name}}</td>{{end}}<td class="strong"><span class="fade-line"><span class="fade">{{.Name}}</span>{{if not .Enabled}}<span class="tag">停用</span>{{end}}</span></td>
+        {{if not $ro}}<td class="grip-col">{{template "grip" .Name}}</td>{{end}}<td class="strong"><span class="fade-line"><span class="fade">{{.Name}}</span>{{if not .Enabled}}<span class="tag">{{t "config.tag.disabled"}}</span>{{end}}</span></td>
         <td class="mono"><span class="fade">{{.Domain}}{{if .Port}}:{{.Port}}{{end}}</span></td><td class="nowrap">{{.Transport}}</td><td class="mono muted"><span class="fade">{{.Server}}</span></td><td class="num">{{.Expires}}</td>
-        <td>{{if .IsDefault}}<span class="status blue">默认</span>{{end}}</td>
+        <td>{{if .IsDefault}}<span class="status blue">{{t "config.accounts.is_default"}}</span>{{end}}</td>
         <td class="actions-col">{{if not $ro}}<div class="row-actions">
-          <a class="btn" href="/config-templates/{{$id}}/profiles/{{.ID}}">编辑</a>
-          {{if not .IsDefault}}<form method="post" action="/config-templates/{{$id}}/profiles/{{.ID}}/default" class="inline"><button class="btn">设为默认</button></form>{{end}}
-          <form method="post" action="/config-templates/{{$id}}/profiles/{{.ID}}/delete" class="inline" data-confirm="确认删除账号「{{.Name}}」？各客户端中该账号的凭据将一并删除。"><button class="btn danger" title="删除" aria-label="删除">{{icon "trash"}}</button></form>
+          <a class="btn" href="/config-templates/{{$id}}/profiles/{{.ID}}">{{t "common.edit"}}</a>
+          {{if not .IsDefault}}<form method="post" action="/config-templates/{{$id}}/profiles/{{.ID}}/default" class="inline"><button class="btn">{{t "config.accounts.make_default"}}</button></form>{{end}}
+          <form method="post" action="/config-templates/{{$id}}/profiles/{{.ID}}/delete" class="inline" data-confirm="{{t "config.accounts.delete_confirm" "name" .Name}}"><button class="btn danger" title="{{t "common.delete"}}" aria-label="{{t "common.delete"}}">{{icon "trash"}}</button></form>
         </div>{{end}}</td></tr>{{end}}</tbody>
     </table></div>
-    {{else}}<div class="empty-state">{{icon "users"}}<p>暂无账号</p>{{if not $ro}}<div class="actions"><a class="btn small primary" href="/config-templates/{{$id}}/profiles/new">{{icon "plus"}}添加账号</a></div>{{end}}</div>{{end}}
+    {{else}}<div class="empty-state">{{icon "users"}}<p>{{t "config.accounts.empty"}}</p>{{if not $ro}}<div class="actions"><a class="btn small primary" href="/config-templates/{{$id}}/profiles/new">{{icon "plus"}}{{t "config.accounts.add"}}</a></div>{{end}}</div>{{end}}
   </section>
   {{end}}
 
@@ -42,41 +42,41 @@
     <input type="hidden" name="tab" value="calls">
     <fieldset class="plain bare"{{if $ro}} disabled{{end}}>
     <section class="card">
-      <div class="card-head"><h2>呼叫</h2></div>
+      <div class="card-head"><h2>{{t "config.calls.title"}}</h2></div>
       <div class="card-body settings">
-        <div class="setting"><span class="setting-text"><span class="setting-name" id="l-dnd">免打扰方式</span></span>
-          <div class="setting-control"><div class="segmented" role="radiogroup" aria-labelledby="l-dnd">{{range $d.Options.DndModes}}<label><input type="radio" name="dndMode" value="{{.}}"{{if eq . $d.Settings.DndMode}} checked{{end}}><span>{{if eq (print .) "SOFTWARE"}}本机拒接{{else}}服务器功能码{{end}}</span></label>{{end}}</div></div></div>
-        <label class="setting toggle"><span class="setting-text"><span class="setting-name">呼叫等待</span></span>
+        <div class="setting"><span class="setting-text"><span class="setting-name" id="l-dnd">{{t "config.calls.dnd_mode"}}</span></span>
+          <div class="setting-control"><div class="segmented" role="radiogroup" aria-labelledby="l-dnd">{{range $d.Options.DndModes}}<label><input type="radio" name="dndMode" value="{{.}}"{{if eq . $d.Settings.DndMode}} checked{{end}}><span>{{if eq (print .) "SOFTWARE"}}{{t "config.calls.dnd.software"}}{{else}}{{t "config.calls.dnd.server"}}{{end}}</span></label>{{end}}</div></div></div>
+        <label class="setting toggle"><span class="setting-text"><span class="setting-name">{{t "config.calls.call_waiting"}}</span></span>
           <span class="switch"><input type="checkbox" role="switch" name="callWaiting" value="1"{{if $d.Settings.CallWaiting}} checked{{end}}><span></span></span></label>
-        <label class="setting toggle"><span class="setting-text"><span class="setting-name">拒接匿名来电</span></span>
+        <label class="setting toggle"><span class="setting-text"><span class="setting-name">{{t "config.calls.reject_anonymous"}}</span></span>
           <span class="switch"><input type="checkbox" role="switch" name="rejectAnonymous" value="1"{{if $d.Settings.RejectAnonymous}} checked{{end}}><span></span></span></label>
-        <label class="setting"><span class="setting-text"><span class="setting-name">DTMF 方式</span></span>
+        <label class="setting"><span class="setting-text"><span class="setting-name">{{t "config.calls.dtmf_mode"}}</span></span>
           <span class="setting-control"><select name="dtmfMode">{{range $d.Options.DtmfModes}}<option value="{{.}}"{{if eq . $d.Settings.DtmfMode}} selected{{end}}>{{.}}</option>{{end}}</select></span></label>
       </div>
     </section>
     <section class="card">
-      <div class="card-head"><h2>呼叫转移</h2></div>
+      <div class="card-head"><h2>{{t "config.forward.title"}}</h2></div>
       <div class="card-body settings">
-        <label class="setting"><span class="setting-text"><span class="setting-name">无条件转移</span></span>
-          <span class="setting-control"><input name="forwardAlways" value="{{$d.Settings.ForwardAlways}}" placeholder="不转移"></span></label>
-        <label class="setting"><span class="setting-text"><span class="setting-name">遇忙转移</span></span>
-          <span class="setting-control"><input name="forwardBusy" value="{{$d.Settings.ForwardBusy}}" placeholder="不转移"></span></label>
-        <label class="setting"><span class="setting-text"><span class="setting-name">无应答转移</span></span>
-          <span class="setting-control"><input name="forwardNoAnswer" value="{{$d.Settings.ForwardNoAnswer}}" placeholder="不转移"></span></label>
-        <label class="setting"><span class="setting-text"><span class="setting-name">无应答等待</span></span>
-          <span class="setting-control"><span class="input-suffix short"><input type="number" name="forwardNoAnswerSeconds" value="{{$d.Settings.ForwardNoAnswerSeconds}}" min="5" max="120" required><span>秒</span></span></span></label>
+        <label class="setting"><span class="setting-text"><span class="setting-name">{{t "config.forward.always"}}</span></span>
+          <span class="setting-control"><input name="forwardAlways" value="{{$d.Settings.ForwardAlways}}" dir="ltr" placeholder="{{t "config.forward.none"}}"></span></label>
+        <label class="setting"><span class="setting-text"><span class="setting-name">{{t "config.forward.busy"}}</span></span>
+          <span class="setting-control"><input name="forwardBusy" value="{{$d.Settings.ForwardBusy}}" dir="ltr" placeholder="{{t "config.forward.none"}}"></span></label>
+        <label class="setting"><span class="setting-text"><span class="setting-name">{{t "config.forward.no_answer"}}</span></span>
+          <span class="setting-control"><input name="forwardNoAnswer" value="{{$d.Settings.ForwardNoAnswer}}" dir="ltr" placeholder="{{t "config.forward.none"}}"></span></label>
+        <label class="setting"><span class="setting-text"><span class="setting-name">{{t "config.forward.no_answer_wait"}}</span></span>
+          <span class="setting-control"><span class="input-suffix short"><input type="number" name="forwardNoAnswerSeconds" value="{{$d.Settings.ForwardNoAnswerSeconds}}" min="5" max="120" required dir="ltr"><span>{{t "config.unit.seconds"}}</span></span></span></label>
       </div>
     </section>
     <section class="card">
-      <div class="card-head"><h2>客户端与媒体</h2></div>
+      <div class="card-head"><h2>{{t "config.client_media.title"}}</h2></div>
       <div class="card-body settings">
-        <label class="setting"><span class="setting-text"><span class="setting-name">客户端名称（User-Agent）</span></span>
-          <span class="setting-control"><input name="userAgent" value="{{$d.Settings.UserAgent}}" maxlength="120" class="mono" autocomplete="off" placeholder="应用默认名称"></span></label>
-        <label class="setting toggle"><span class="setting-text"><span class="setting-name">自适应速率控制</span></span>
+        <label class="setting"><span class="setting-text"><span class="setting-name">{{t "config.client_media.user_agent"}}</span></span>
+          <span class="setting-control"><input name="userAgent" value="{{$d.Settings.UserAgent}}" maxlength="120" class="mono" autocomplete="off" placeholder="{{t "config.client_media.user_agent_default"}}"></span></label>
+        <label class="setting toggle"><span class="setting-text"><span class="setting-name">{{t "config.client_media.adaptive_rate"}}</span></span>
           <span class="switch"><input type="checkbox" role="switch" name="adaptiveRateControl" value="1"{{if $d.Settings.AdaptiveRateControl}} checked{{end}}><span></span></span></label>
-        <label class="setting toggle"><span class="setting-text"><span class="setting-name">回声消除</span></span>
+        <label class="setting toggle"><span class="setting-text"><span class="setting-name">{{t "config.client_media.echo_cancellation"}}</span></span>
           <span class="switch"><input type="checkbox" role="switch" name="echoCancellation" value="1"{{if $d.Settings.EchoCancellation}} checked{{end}}><span></span></span></label>
-        <label class="setting toggle"><span class="setting-text"><span class="setting-name">允许 IPv6</span></span>
+        <label class="setting toggle"><span class="setting-text"><span class="setting-name">{{t "config.client_media.ipv6"}}</span></span>
           <span class="switch"><input type="checkbox" role="switch" name="ipv6" value="1"{{if $d.Settings.IPv6}} checked{{end}}><span></span></span></label>
       </div>
     </section>
@@ -92,14 +92,14 @@
     <section class="card">
       <div class="card-head"><h2>{{$label}}</h2></div>
       <div class="card-body form wide">
-      {{with $d.Settings.Features}}
+      {{with $d.Settings.Features}}{{$none := t "config.features.unused"}}
       <div class="grid2 codes">
-        <label>停泊<input name="park" value="{{.Park}}" class="mono" placeholder="不使用"></label><label>监听<input name="listen" value="{{.Listen}}" class="mono" placeholder="不使用"></label>
-        <label>密语<input name="whisper" value="{{.Whisper}}" class="mono" placeholder="不使用"></label><label>强插<input name="barge" value="{{.Barge}}" class="mono" placeholder="不使用"></label>
-        <label>强拆<input name="forceHangUp" value="{{.ForceHangUp}}" class="mono" placeholder="不使用"></label><label>代答<input name="pickup" value="{{.Pickup}}" class="mono" placeholder="不使用"></label>
-        <label>组代答<input name="groupPickup" value="{{.GroupPickup}}" class="mono" placeholder="不使用"></label><label>语音信箱<input name="voicemail" value="{{.Voicemail}}" class="mono" placeholder="不使用"></label>
-        <label>对讲<input name="intercom" value="{{.Intercom}}" class="mono" placeholder="不使用"></label><label>开启免打扰<input name="dndOn" value="{{.DndOn}}" class="mono" placeholder="不使用"></label>
-        <label>关闭免打扰<input name="dndOff" value="{{.DndOff}}" class="mono" placeholder="不使用"></label>
+        <label>{{t "config.features.park"}}<input name="park" value="{{.Park}}" class="mono" placeholder="{{$none}}"></label><label>{{t "config.features.listen"}}<input name="listen" value="{{.Listen}}" class="mono" placeholder="{{$none}}"></label>
+        <label>{{t "config.features.whisper"}}<input name="whisper" value="{{.Whisper}}" class="mono" placeholder="{{$none}}"></label><label>{{t "config.features.barge"}}<input name="barge" value="{{.Barge}}" class="mono" placeholder="{{$none}}"></label>
+        <label>{{t "config.features.force_hang_up"}}<input name="forceHangUp" value="{{.ForceHangUp}}" class="mono" placeholder="{{$none}}"></label><label>{{t "config.features.pickup"}}<input name="pickup" value="{{.Pickup}}" class="mono" placeholder="{{$none}}"></label>
+        <label>{{t "config.features.group_pickup"}}<input name="groupPickup" value="{{.GroupPickup}}" class="mono" placeholder="{{$none}}"></label><label>{{t "config.features.voicemail"}}<input name="voicemail" value="{{.Voicemail}}" class="mono" placeholder="{{$none}}"></label>
+        <label>{{t "config.features.intercom"}}<input name="intercom" value="{{.Intercom}}" class="mono" placeholder="{{$none}}"></label><label>{{t "config.features.dnd_on"}}<input name="dndOn" value="{{.DndOn}}" class="mono" placeholder="{{$none}}"></label>
+        <label>{{t "config.features.dnd_off"}}<input name="dndOff" value="{{.DndOff}}" class="mono" placeholder="{{$none}}"></label>
       </div>
       {{end}}
       </div>
@@ -114,27 +114,27 @@
     <input type="hidden" name="tab" value="general">
     <fieldset class="plain bare"{{if $ro}} disabled{{end}}>
     <section class="card">
-      <div class="card-head"><h2>常规呼叫</h2></div>
+      <div class="card-head"><h2>{{t "config.general.calls_title"}}</h2></div>
       <div class="card-body settings">
-        <label class="setting toggle"><span class="setting-text"><span class="setting-name">自动接听</span></span>
+        <label class="setting toggle"><span class="setting-text"><span class="setting-name">{{t "config.general.auto_answer"}}</span></span>
           <span class="switch"><input type="checkbox" role="switch" name="autoAnswer" value="1"{{if $d.Settings.AutoAnswer}} checked{{end}}><span></span></span></label>
-        <label class="setting"><span class="setting-text"><span class="setting-name">自动接听时间</span></span>
-          <span class="setting-control"><select name="autoAnswerSeconds" class="compact" data-requires="autoAnswer"{{if not $d.Settings.AutoAnswer}} disabled{{end}}>{{range $d.Options.AutoAnswer}}<option value="{{.}}"{{if eq . $d.Settings.AutoAnswerSeconds}} selected{{end}}>{{if eq . 0}}立即{{else}}{{.}} 秒{{end}}</option>{{end}}</select></span></label>
+        <label class="setting"><span class="setting-text"><span class="setting-name">{{t "config.general.auto_answer_delay"}}</span></span>
+          <span class="setting-control"><select name="autoAnswerSeconds" class="compact" data-requires="autoAnswer"{{if not $d.Settings.AutoAnswer}} disabled{{end}}>{{range $d.Options.AutoAnswer}}<option value="{{.}}"{{if eq . $d.Settings.AutoAnswerSeconds}} selected{{end}}>{{if eq . 0}}{{t "config.general.immediately"}}{{else}}{{t "config.general.after_seconds" "n" .}}{{end}}</option>{{end}}</select></span></label>
       </div>
     </section>
     <section class="card">
-      <div class="card-head"><h2>对讲</h2></div>
+      <div class="card-head"><h2>{{t "config.general.intercom_title"}}</h2></div>
       <div class="card-body settings">
-        <label class="setting toggle"><span class="setting-text"><span class="setting-name">对讲自动应答</span></span>
+        <label class="setting toggle"><span class="setting-text"><span class="setting-name">{{t "config.general.intercom_auto_answer"}}</span></span>
           <span class="switch"><input type="checkbox" role="switch" name="intercomAutoAnswer" value="1"{{if $d.Settings.IntercomAutoAnswer}} checked{{end}}><span></span></span></label>
-        <label class="setting toggle"><span class="setting-text"><span class="setting-name">对讲使用免提</span></span>
+        <label class="setting toggle"><span class="setting-text"><span class="setting-name">{{t "config.general.intercom_speaker"}}</span></span>
           <span class="switch"><input type="checkbox" role="switch" name="intercomSpeaker" value="1"{{if $d.Settings.IntercomSpeaker}} checked{{end}}><span></span></span></label>
       </div>
     </section>
     <section class="card">
-      <div class="card-head"><h2>保活</h2></div>
+      <div class="card-head"><h2>{{t "config.general.keep_alive_title"}}</h2></div>
       <div class="card-body settings">
-        <label class="setting toggle"><span class="setting-text"><span class="setting-name">后台保活</span></span>
+        <label class="setting toggle"><span class="setting-text"><span class="setting-name">{{t "config.general.keep_alive"}}</span></span>
           <span class="switch"><input type="checkbox" role="switch" name="keepAlive" value="1"{{if $d.Settings.KeepAlive}} checked{{end}}><span></span></span></label>
       </div>
     </section>
@@ -148,47 +148,47 @@
     <input type="hidden" name="tab" value="media">
     <fieldset class="plain bare"{{if $ro}} disabled{{end}}>
     <section class="card">
-      <div class="card-head"><h2>视频</h2></div>
+      <div class="card-head"><h2>{{t "config.media.video_title"}}</h2></div>
       <div class="card-body settings">
-        <label class="setting toggle"><span class="setting-text"><span class="setting-name">视频通话</span></span>
+        <label class="setting toggle"><span class="setting-text"><span class="setting-name">{{t "config.media.video_calls"}}</span></span>
           <span class="switch"><input type="checkbox" role="switch" name="videoCalls" value="1"{{if $d.Settings.VideoCalls}} checked{{end}}><span></span></span></label>
-        <label class="setting"><span class="setting-text"><span class="setting-name">视频分辨率</span></span>
+        <label class="setting"><span class="setting-text"><span class="setting-name">{{t "config.media.video_size"}}</span></span>
           <span class="setting-control"><select name="videoSize">{{range $d.Options.VideoSizes}}<option value="{{.}}"{{if eq . $d.Settings.VideoSize}} selected{{end}}>{{.Height}}p</option>{{end}}</select></span></label>
-        <label class="setting"><span class="setting-text"><span class="setting-name">帧率</span></span>
-          <span class="setting-control"><select name="videoFrameRate">{{range $d.Options.FrameRates}}<option value="{{.}}"{{if eq . $d.Settings.VideoFrameRate}} selected{{end}}>{{if eq . 0}}自动{{else}}{{.}} fps{{end}}</option>{{end}}</select></span></label>
+        <label class="setting"><span class="setting-text"><span class="setting-name">{{t "config.media.frame_rate"}}</span></span>
+          <span class="setting-control"><select name="videoFrameRate">{{range $d.Options.FrameRates}}<option value="{{.}}"{{if eq . $d.Settings.VideoFrameRate}} selected{{end}}>{{if eq . 0}}{{t "config.media.frame_rate_auto"}}{{else}}{{.}} fps{{end}}</option>{{end}}</select></span></label>
       </div>
     </section>
     <section class="card">
-      <div class="card-head"><h2>录音</h2></div>
+      <div class="card-head"><h2>{{t "config.media.recording_title"}}</h2></div>
       <div class="card-body settings">
-        <label class="setting toggle"><span class="setting-text"><span class="setting-name">通话录音</span></span>
+        <label class="setting toggle"><span class="setting-text"><span class="setting-name">{{t "config.media.call_recording"}}</span></span>
           <span class="switch"><input type="checkbox" role="switch" name="callRecording" value="1"{{if $d.Settings.CallRecording}} checked{{end}}><span></span></span></label>
-        <label class="setting toggle"><span class="setting-text"><span class="setting-name">默认录音</span></span>
+        <label class="setting toggle"><span class="setting-text"><span class="setting-name">{{t "config.media.record_by_default"}}</span></span>
           <span class="switch"><input type="checkbox" role="switch" name="recordByDefault" value="1" data-requires="callRecording"{{if and $d.Settings.CallRecording $d.Settings.RecordByDefault}} checked{{end}}{{if not $d.Settings.CallRecording}} disabled{{end}}><span></span></span></label>
       </div>
     </section>
     <section class="card table-card">
-      <div class="card-head"><h2>编解码器</h2></div>
+      <div class="card-head"><h2>{{t "config.media.codecs"}}</h2></div>
       <div class="card-body">
-        <div class="option-cards" role="radiogroup" aria-label="编解码器">
-          <label class="option-card"><input type="radio" name="codecMode" value="default"{{if not $d.Codecs}} checked{{end}}><span><strong>默认</strong></span></label>
-          <label class="option-card"><input type="radio" name="codecMode" value="custom"{{if $d.Codecs}} checked{{end}}><span><strong>自定义</strong></span></label>
+        <div class="option-cards" role="radiogroup" aria-label="{{t "config.media.codecs"}}">
+          <label class="option-card"><input type="radio" name="codecMode" value="default"{{if not $d.Codecs}} checked{{end}}><span><strong>{{t "config.media.codecs_default"}}</strong></span></label>
+          <label class="option-card"><input type="radio" name="codecMode" value="custom"{{if $d.Codecs}} checked{{end}}><span><strong>{{t "config.media.codecs_custom"}}</strong></span></label>
         </div>
       </div>
       {{if $d.CodecGroups}}
       <div class="table-wrap codec-table"><table class="table">
-        <thead><tr>{{if not $ro}}<th class="grip-col"><span class="sr-only">顺序</span></th>{{end}}<th>编解码器</th><th>启用</th></tr></thead>
-        {{range $d.CodecGroups}}<tbody class="group-head"><tr><th colspan="3">{{.Label}}</th></tr></tbody>
+        <thead><tr>{{if not $ro}}<th class="grip-col"><span class="sr-only">{{t "config.col.order"}}</span></th>{{end}}<th>{{t "config.media.col.codec"}}</th><th>{{t "config.media.col.enabled"}}</th></tr></thead>
+        {{range $d.CodecGroups}}<tbody class="group-head"><tr><th colspan="3">{{t .Label}}</th></tr></tbody>
         <tbody{{if not $ro}} data-sortable{{end}}>{{range .Rows}}<tr data-sort-id="{{.Kind}}|{{.Key}}">
           {{if not $ro}}<td class="grip-col">{{template "grip" .Key}}</td>{{end}}
           <td class="mono strong"><span class="fade">{{.Key}}</span><input type="hidden" name="codecKind" value="{{.Kind}}"><input type="hidden" name="codecKey" value="{{.Key}}"><input type="hidden" name="codecOrder" value="{{.Order}}" data-sort-pos></td>
-          <td><select name="codecOn" class="compact" aria-label="{{.Key}} 启用"><option value="1"{{if .Enabled}} selected{{end}}>开</option><option value="0"{{if not .Enabled}} selected{{end}}>关</option></select></td>
+          <td><select name="codecOn" class="compact" aria-label="{{t "config.media.codec_on_aria" "codec" .Key}}"><option value="1"{{if .Enabled}} selected{{end}}>{{t "config.media.codec_on"}}</option><option value="0"{{if not .Enabled}} selected{{end}}>{{t "config.media.codec_off"}}</option></select></td>
         </tr>{{end}}</tbody>{{end}}
       </table></div>
-      {{else}}<div class="card-body"><p class="empty">暂无设备上报的编解码器</p></div>{{end}}
+      {{else}}<div class="card-body"><p class="empty">{{t "config.media.codecs_none"}}</p></div>{{end}}
       <div class="card-foot add-codec">
-        <label>添加编解码器<input name="newCodec" placeholder="opus/48000/2" class="mono"></label>
-        <label>类型<select name="newCodecKind" class="compact"><option value="audio">音频</option><option value="video">视频</option></select></label>
+        <label>{{t "config.media.add_codec"}}<input name="newCodec" placeholder="opus/48000/2" class="mono"></label>
+        <label>{{t "common.type"}}<select name="newCodecKind" class="compact"><option value="audio">{{t "config.codec.audio"}}</option><option value="video">{{t "config.codec.video"}}</option></select></label>
       </div>
     </section>
     {{template "savebar" $ro}}
@@ -203,32 +203,32 @@
     <section class="card">
       <div class="card-head"><h2>{{$label}}</h2></div>
       <div class="card-body settings">
-        <label class="setting toggle"><span class="setting-text"><span class="setting-name">校验 TLS 证书</span></span>
+        <label class="setting toggle"><span class="setting-text"><span class="setting-name">{{t "config.security.verify_certificate"}}</span></span>
           <span class="switch"><input type="checkbox" role="switch" name="verifyTlsCertificate" value="1"{{if $d.Settings.VerifyTLSCertificate}} checked{{end}}><span></span></span></label>
-        <label class="setting toggle"><span class="setting-text"><span class="setting-name">校验证书主机名</span></span>
+        <label class="setting toggle"><span class="setting-text"><span class="setting-name">{{t "config.security.verify_hostname"}}</span></span>
           <span class="switch"><input type="checkbox" role="switch" name="verifyTlsHostname" value="1"{{if $d.Settings.VerifyTLSHostname}} checked{{end}}><span></span></span></label>
-        <div class="setting"><span class="setting-text"><span class="setting-name" id="l-srtp">媒体加密</span></span>
-          <div class="setting-control"><div class="segmented" role="radiogroup" aria-labelledby="l-srtp">{{range $d.Options.MediaSecurity}}<label><input type="radio" name="mediaSecurity" value="{{.}}"{{if eq . $d.Settings.MediaSecurity}} checked{{end}}><span>{{if eq (print .) "NONE"}}不加密{{else if eq (print .) "SRTP_OPTIONAL"}}SRTP（可选）{{else}}SRTP（强制）{{end}}</span></label>{{end}}</div></div></div>
+        <div class="setting"><span class="setting-text"><span class="setting-name" id="l-srtp">{{t "config.security.media"}}</span></span>
+          <div class="setting-control"><div class="segmented" role="radiogroup" aria-labelledby="l-srtp">{{range $d.Options.MediaSecurity}}<label><input type="radio" name="mediaSecurity" value="{{.}}"{{if eq . $d.Settings.MediaSecurity}} checked{{end}}><span>{{if eq (print .) "NONE"}}{{t "config.security.media_none"}}{{else if eq (print .) "SRTP_OPTIONAL"}}{{t "config.security.media_optional"}}{{else}}{{t "config.security.media_required"}}{{end}}</span></label>{{end}}</div></div></div>
       </div>
     </section>
     {{template "savebar" $ro}}
     </fieldset>
   </form>
   <section class="card table-card">
-    <div class="card-head"><h2>CA 证书</h2></div>
+    <div class="card-head"><h2>{{t "config.ca.title"}}</h2></div>
     <div class="table-wrap"><table class="table">
-      <thead><tr><th>主题</th><th>到期</th><th>SHA-256 指纹</th><th class="actions-col"><span class="sr-only">操作</span></th></tr></thead>
+      <thead><tr><th>{{t "config.ca.col.subject"}}</th><th>{{t "config.ca.col.expires"}}</th><th>{{t "config.ca.col.fingerprint"}}</th><th class="actions-col"><span class="sr-only">{{t "common.actions"}}</span></th></tr></thead>
       <tbody>
-      {{range $d.PlatformCAs}}<tr><td class="strong">平台 CA（自动下发）<span class="sub fade">{{.Subject}}</span></td><td class="nowrap">{{day .NotAfter}}</td><td class="mono small-text muted"><span class="fade">{{.Fingerprint}}</span></td><td></td></tr>{{end}}
+      {{range $d.PlatformCAs}}<tr><td class="strong">{{t "config.ca.platform"}}<span class="sub fade">{{.Subject}}</span></td><td class="nowrap">{{day .NotAfter}}</td><td class="mono small-text muted"><span class="fade">{{.Fingerprint}}</span></td><td></td></tr>{{end}}
       {{range $d.CAs}}<tr><td class="strong"><span class="fade">{{.Subject}}</span></td><td class="nowrap">{{day .NotAfter}}</td><td class="mono small-text muted"><span class="fade">{{.Fingerprint}}</span></td>
-        <td class="actions-col">{{if not $ro}}<form method="post" action="/config-templates/{{$id}}/cas/remove" data-confirm="确认移除此 CA 证书？" class="row-actions"><input type="hidden" name="fingerprint" value="{{.Fingerprint}}"><button class="btn danger">移除</button></form>{{end}}</td></tr>{{end}}
+        <td class="actions-col">{{if not $ro}}<form method="post" action="/config-templates/{{$id}}/cas/remove" data-confirm="{{t "config.ca.remove_confirm"}}" class="row-actions"><input type="hidden" name="fingerprint" value="{{.Fingerprint}}"><button class="btn danger">{{t "common.remove"}}</button></form>{{end}}</td></tr>{{end}}
       </tbody>
     </table></div>
     {{if not $ro}}
     <form method="post" action="/config-templates/{{$id}}/cas" enctype="multipart/form-data" class="card-foot ca-upload form wide">
-      <label>上传 PEM 文件<input type="file" name="file" accept=".pem,.crt,.cer"></label>
-      <label>或粘贴 PEM<textarea name="pem" class="mono"></textarea></label>
-      <div class="form-foot"><button type="submit" class="btn">{{icon "plus"}}添加证书</button></div>
+      <label>{{t "config.ca.upload"}}<input type="file" name="file" accept=".pem,.crt,.cer"></label>
+      <label>{{t "config.ca.paste"}}<textarea name="pem" class="mono"></textarea></label>
+      <div class="form-foot"><button type="submit" class="btn">{{icon "plus"}}{{t "config.ca.add"}}</button></div>
     </form>
     {{end}}
   </section>
@@ -236,26 +236,26 @@
 
   {{if eq $d.Tab "directories"}}
   {{if $d.HostedNote}}<div class="flash warn">{{$d.HostedNote}}</div>{{end}}
-  {{if $d.HostedPlain}}<div class="flash warn">平台 LDAP 地址为 IP 且未要求 TLS，内部通讯录将不加密下发。</div>{{end}}
+  {{if $d.HostedPlain}}<div class="flash warn">{{t "config.directories.plain_warn"}}</div>{{end}}
   <section class="card table-card">
     <div class="card-head"><h2>{{$label}}</h2>
-      {{if not $ro}}<div class="actions"><a class="btn small primary" href="/config-templates/{{$id}}/directories/new">{{icon "plus"}}添加通讯录</a></div>{{end}}</div>
+      {{if not $ro}}<div class="actions"><a class="btn small primary" href="/config-templates/{{$id}}/directories/new">{{icon "plus"}}{{t "config.directories.add"}}</a></div>{{end}}</div>
     {{if $d.Directories}}
     <div class="table-wrap"><table class="table fit-sm">
-      <thead><tr>{{if not $ro}}<th class="grip-col"><span class="sr-only">顺序</span></th>{{end}}<th>名称</th><th>类型</th><th class="hide-sm">通讯录</th><th class="hide-sm">加密</th><th class="hide-sm">密码</th><th class="hide-sm">线路</th><th class="actions-col"><span class="sr-only">操作</span></th></tr></thead>
+      <thead><tr>{{if not $ro}}<th class="grip-col"><span class="sr-only">{{t "config.col.order"}}</span></th>{{end}}<th>{{t "common.name"}}</th><th>{{t "common.type"}}</th><th class="hide-sm">{{t "config.directories.col.directory"}}</th><th class="hide-sm">{{t "config.directories.col.encryption"}}</th><th class="hide-sm">{{t "common.password"}}</th><th class="hide-sm">{{t "config.directories.col.line"}}</th><th class="actions-col"><span class="sr-only">{{t "common.actions"}}</span></th></tr></thead>
       <tbody{{if not $ro}} data-sortable data-sort-url="/config-templates/{{$id}}/directories/order"{{end}}>{{range $d.Directories}}<tr data-sort-id="{{.ID}}">
-        {{if not $ro}}<td class="grip-col">{{template "grip" .DisplayName}}</td>{{end}}<td class="strong"><span class="fade-line"><span class="fade">{{.DisplayName}}</span>{{if not .Enabled}}<span class="tag">停用</span>{{end}}</span>{{if or .Name .External}}<span class="sub show-sm fade">{{if .Name}}{{.Source}} {{end}}{{with .External}}{{.Host}}:{{.Port}}{{end}}</span>{{end}}</td>
-        <td class="nowrap">{{if eq .Kind "hosted"}}内部{{else}}外部{{end}}</td>
+        {{if not $ro}}<td class="grip-col">{{template "grip" .DisplayName}}</td>{{end}}<td class="strong"><span class="fade-line"><span class="fade">{{.DisplayName}}</span>{{if not .Enabled}}<span class="tag">{{t "config.tag.disabled"}}</span>{{end}}</span>{{if or .Name .External}}<span class="sub show-sm fade">{{if .Name}}{{.Source}} {{end}}{{with .External}}{{.Host}}:{{.Port}}{{end}}</span>{{end}}</td>
+        <td class="nowrap">{{if eq .Kind "hosted"}}{{t "books.kind.hosted"}}{{else}}{{t "books.kind.external"}}{{end}}</td>
         <td class="hide-sm"><a class="fade" href="{{if eq .Kind "hosted"}}/books/{{.BookID | deref}}{{else}}/directories/{{.ExternalID | deref}}{{end}}">{{.Source}}</a>{{with .External}}<span class="sub mono fade">{{.Host}}:{{.Port}}</span>{{end}}</td>
-        <td class="nowrap hide-sm">{{if eq .Kind "hosted"}}{{if $d.HostedPlain}}<span class="status warn">不加密</span>{{else}}StartTLS{{end}}{{else}}{{if eq .External.Security "START_TLS"}}StartTLS{{else}}<span class="status warn">不加密</span>{{end}}{{end}}</td>
-        <td class="nowrap hide-sm">{{if and (eq .Kind "hosted") (not .LDAPAccountID)}}自动{{else}}{{if .LDAPAccountID}}手动：{{end}}{{if eq .Mode "template"}}统一设置{{else if eq .Mode "client"}}每个客户端{{else}}匿名{{end}}{{end}}</td>
+        <td class="nowrap hide-sm">{{if eq .Kind "hosted"}}{{if $d.HostedPlain}}<span class="status warn">{{t "config.directories.unencrypted"}}</span>{{else}}StartTLS{{end}}{{else}}{{if eq .External.Security "START_TLS"}}StartTLS{{else}}<span class="status warn">{{t "config.directories.unencrypted"}}</span>{{end}}{{end}}</td>
+        <td class="nowrap hide-sm">{{if and (eq .Kind "hosted") (not .LDAPAccountID)}}{{t "config.directories.password_auto"}}{{else}}{{$mode := t "config.directories.password_anonymous"}}{{if eq .Mode "template"}}{{$mode = t "config.directories.password_template"}}{{else if eq .Mode "client"}}{{$mode = t "config.directories.password_client"}}{{end}}{{if .LDAPAccountID}}{{t "config.directories.password_manual" "mode" $mode}}{{else}}{{$mode}}{{end}}{{end}}</td>
         <td class="hide-sm"><span class="fade">{{.Line}}</span></td>
         <td class="actions-col">{{if not $ro}}<div class="row-actions">
-          <a class="btn" href="/config-templates/{{$id}}/directories/{{.ID}}">编辑</a>
-          <form method="post" action="/config-templates/{{$id}}/directories/{{.ID}}/delete" class="inline" data-confirm="确认从此模板移除通讯录「{{.DisplayName}}」？"><button class="btn danger" title="移除" aria-label="移除">{{icon "trash"}}</button></form>
+          <a class="btn" href="/config-templates/{{$id}}/directories/{{.ID}}">{{t "common.edit"}}</a>
+          <form method="post" action="/config-templates/{{$id}}/directories/{{.ID}}/delete" class="inline" data-confirm="{{t "config.directories.remove_confirm" "name" .DisplayName}}"><button class="btn danger" title="{{t "common.remove"}}" aria-label="{{t "common.remove"}}">{{icon "trash"}}</button></form>
         </div>{{end}}</td></tr>{{end}}</tbody>
     </table></div>
-    {{else}}<div class="empty-state">{{icon "book-user"}}<p>暂无通讯录</p></div>{{end}}
+    {{else}}<div class="empty-state">{{icon "book-user"}}<p>{{t "config.directories.empty"}}</p></div>{{end}}
   </section>
   {{end}}
 
@@ -264,20 +264,20 @@
     <input type="hidden" name="tab" value="advanced">
     <fieldset class="plain bare"{{if $ro}} disabled{{end}}>
     <section class="card">
-      <div class="card-head"><h2>同步</h2></div>
+      <div class="card-head"><h2>{{t "config.advanced.sync_title"}}</h2></div>
       <div class="card-body settings">
-        <label class="setting"><span class="setting-text"><span class="setting-name">刷新间隔</span></span>
-          <span class="setting-control"><span class="input-suffix short"><input type="number" name="refreshMinutes" value="{{$d.T.RefreshMinutes}}" min="5" max="1440" required><span>分钟</span></span></span></label>
-        <label class="setting toggle"><span class="setting-text"><span class="setting-name">自动检查更新</span></span>
+        <label class="setting"><span class="setting-text"><span class="setting-name">{{t "config.advanced.refresh"}}</span></span>
+          <span class="setting-control"><span class="input-suffix short"><input type="number" name="refreshMinutes" value="{{$d.T.RefreshMinutes}}" min="5" max="1440" required dir="ltr"><span>{{t "config.unit.minutes"}}</span></span></span></label>
+        <label class="setting toggle"><span class="setting-text"><span class="setting-name">{{t "config.advanced.update_check"}}</span></span>
           <span class="switch"><input type="checkbox" role="switch" name="autoUpdateCheck" value="1"{{if $d.Settings.AutoUpdateCheck}} checked{{end}}><span></span></span></label>
       </div>
     </section>
     <section class="card">
-      <div class="card-head"><div><h2>配置密码</h2></div></div>
+      <div class="card-head"><div><h2>{{t "config.advanced.password_title"}}</h2></div></div>
       <div class="card-body settings">
-        <div class="setting"><span class="setting-text"><span class="setting-name label-line"><label for="f-config-password">配置密码</label>{{tip "f-config-password-tip" (or (and $d.HasPassword "留空保持不变") "至少 8 个字符")}}</span></span>
-          <span class="setting-control"><input id="f-config-password" aria-describedby="f-config-password-tip" type="password" name="configPassword" autocomplete="new-password" minlength="8"{{if $d.HasPassword}} placeholder="已设置"{{end}}></span></div>
-        {{if $d.HasPassword}}<label class="setting toggle"><span class="setting-text"><span class="setting-name">清除配置密码</span></span>
+        <div class="setting"><span class="setting-text"><span class="setting-name label-line"><label for="f-config-password">{{t "config.advanced.password"}}</label>{{tip "f-config-password-tip" (or (and $d.HasPassword (t "config.keep_empty")) (t "config.advanced.password_min"))}}</span></span>
+          <span class="setting-control"><input id="f-config-password" aria-describedby="f-config-password-tip" type="password" name="configPassword" autocomplete="new-password" minlength="8"{{if $d.HasPassword}} placeholder="{{t "common.set"}}"{{end}}></span></div>
+        {{if $d.HasPassword}}<label class="setting toggle"><span class="setting-text"><span class="setting-name">{{t "config.advanced.password_clear"}}</span></span>
           <span class="switch"><input type="checkbox" role="switch" name="clearPassword" value="1"><span></span></span></label>{{end}}
       </div>
     </section>
@@ -286,23 +286,23 @@
   </form>
   {{if not $ro}}
   <section class="card">
-    <div class="card-head"><h2>名称与区域</h2></div>
+    <div class="card-head"><h2>{{t "config.advanced.meta_title"}}</h2></div>
     <form method="post" action="/config-templates/{{$id}}/meta" class="card-body form">
-      <label>名称<input name="name" value="{{$d.T.Name}}" required maxlength="64"></label>
-      {{if $.Super}}<label>区域
+      <label>{{t "common.name"}}<input name="name" value="{{$d.T.Name}}" required maxlength="64"></label>
+      {{if $.Super}}<label>{{t "common.region"}}
         <select name="region">
-          <option value="0"{{if not $d.T.RegionID}} selected{{end}}>全局</option>
+          <option value="0"{{if not $d.T.RegionID}} selected{{end}}>{{t "common.global"}}</option>
           {{range $d.RegionList}}<option value="{{.ID}}"{{if eq .ID (deref $d.T.RegionID)}} selected{{end}}>{{.Name}}</option>{{end}}
         </select>
       </label>{{end}}
-      <label>备注<input name="note" value="{{$d.T.Note}}" maxlength="200"></label>
-      <div class="actions"><button type="submit" class="btn">保存</button></div>
+      <label>{{t "common.note"}}<input name="note" value="{{$d.T.Note}}" maxlength="200"></label>
+      <div class="actions"><button type="submit" class="btn">{{t "common.save"}}</button></div>
     </form>
   </section>
   <section class="card danger-card">
     <div class="card-body op">
-      <div><strong>删除模板</strong></div>
-      <form method="post" action="/config-templates/{{$id}}/delete" data-confirm="确认删除配置模板「{{$d.T.Name}}」？"><button type="submit" class="btn danger">{{icon "trash"}}删除模板</button></form>
+      <div><strong>{{t "config.advanced.delete_title"}}</strong></div>
+      <form method="post" action="/config-templates/{{$id}}/delete" data-confirm="{{t "config.advanced.delete_confirm" "name" $d.T.Name}}"><button type="submit" class="btn danger">{{icon "trash"}}{{t "config.advanced.delete"}}</button></form>
     </div>
   </section>
   {{end}}
@@ -311,4 +311,4 @@
 </div>
 {{end}}
 
-{{define "savebar"}}{{if not .}}<div class="savebar"><button type="submit" class="btn primary">{{icon "check"}}保存</button></div>{{end}}{{end}}
+{{define "savebar"}}{{if not .}}<div class="savebar"><button type="submit" class="btn primary">{{icon "check"}}{{t "common.save"}}</button></div>{{end}}{{end}}

@@ -12,6 +12,7 @@ import (
 
 	"siplink/internal/books"
 	"siplink/internal/catalog"
+	"siplink/internal/i18n"
 	"siplink/internal/rules"
 	"siplink/internal/secret"
 	"siplink/internal/store"
@@ -83,7 +84,7 @@ func secretValue(plain, env string) string {
 // the web UI and prints the client's enrollment URL.
 func seedCommand(args []string, out io.Writer) error {
 	if len(args) != 1 {
-		return errors.New("用法: siplink seed <规格文件.json>")
+		return i18n.E("cli.seed.usage")
 	}
 	raw, err := os.ReadFile(args[0])
 	if err != nil {
@@ -93,7 +94,7 @@ func seedCommand(args []string, out io.Writer) error {
 	dec := json.NewDecoder(strings.NewReader(string(raw)))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&spec); err != nil {
-		return fmt.Errorf("规格文件: %w", err)
+		return i18n.Wrap(err, "cli.seed.spec")
 	}
 	ctx := context.Background()
 	e, err := open(ctx)
@@ -120,11 +121,12 @@ func (sd *seeder) audit(action, objType string, id int64, name string, region *i
 		ObjectName: name, RegionID: region, Detail: map[string]any{"seed": true}})
 }
 
-func problems(list []string) error {
+func problems(list []i18n.Msg) error {
 	if len(list) == 0 {
 		return nil
 	}
-	return errors.New(strings.Join(list, "；"))
+	t := cli()
+	return errors.New(strings.Join(t.Msgs(list), t.T("format.problem_sep")))
 }
 
 func (sd *seeder) run(spec *seedSpec) (string, error) {
@@ -136,19 +138,19 @@ func (sd *seeder) run(spec *seedSpec) (string, error) {
 	rid := &region.ID
 	cfg, err := sd.config(spec, rid)
 	if err != nil {
-		return "", fmt.Errorf("配置模板: %w", err)
+		return "", i18n.Wrap(err, "cli.seed.config_template")
 	}
 	var keyID *int64
 	if spec.KeyTemplate != nil {
 		k, err := sd.keys(spec.KeyTemplate.Name, spec.KeyTemplate.CSVFile, rid)
 		if err != nil {
-			return "", fmt.Errorf("功能键模板: %w", err)
+			return "", i18n.Wrap(err, "cli.seed.key_template")
 		}
 		keyID = &k.ID
 	}
 	tpl, err := sd.clientTemplate(spec.ClientTemplate.Name, rid, cfg.ID, keyID)
 	if err != nil {
-		return "", fmt.Errorf("客户端模板: %w", err)
+		return "", i18n.Wrap(err, "cli.seed.client_template")
 	}
 	profiles, err := st.Profiles(ctx, cfg.ID)
 	if err != nil {
@@ -165,10 +167,10 @@ func (sd *seeder) run(spec *seedSpec) (string, error) {
 		DisplayName: spec.Client.DisplayName}
 	catalog.NormalizeCredential(prof, &in)
 	if err := problems(catalog.CredentialProblems(prof, in, nil)); err != nil {
-		return "", fmt.Errorf("客户端: %w", err)
+		return "", i18n.Wrap(err, "cli.seed.client")
 	}
-	if p := catalog.ClientNameProblem(spec.Client.Name); p != "" {
-		return "", fmt.Errorf("客户端: %s", p)
+	if p := catalog.ClientNameProblem(spec.Client.Name); p != nil {
+		return "", i18n.Wrap(p, "cli.seed.client")
 	}
 	list, _, err := st.ListClients(ctx, store.ClientFilter{All: true, Region: region.ID, Query: spec.Client.Name})
 	if err != nil {
@@ -186,7 +188,7 @@ func (sd *seeder) run(spec *seedSpec) (string, error) {
 	isNew := c.ID == 0
 	token := secret.Token(32)
 	if err := st.SaveClient(ctx, c, []store.CredentialInput{in}, nil, sd.e.box, token); err != nil {
-		return "", fmt.Errorf("客户端: %w", err)
+		return "", i18n.Wrap(err, "cli.seed.client")
 	}
 	if !isNew { // an existing client gets a fresh QR code (its phone, if any, is unbound)
 		if err := st.Unbind(ctx, c, token, expires, sd.e.box); err != nil {
@@ -229,7 +231,7 @@ func (sd *seeder) region(name string) (*store.Region, error) {
 		}
 	}
 	if strings.TrimSpace(name) == "" {
-		return nil, errors.New("缺少区域名称")
+		return nil, i18n.E("cli.seed.region_missing")
 	}
 	r := &store.Region{Name: name}
 	if err := sd.e.st.CreateRegion(sd.ctx, r); err != nil {
@@ -241,8 +243,8 @@ func (sd *seeder) region(name string) (*store.Region, error) {
 
 func (sd *seeder) config(spec *seedSpec, rid *int64) (*store.ConfigTemplate, error) {
 	st, ctx, cs := sd.e.st, sd.ctx, &spec.ConfigTemplate
-	if p := catalog.NameProblem(cs.Name); p != "" {
-		return nil, errors.New(p)
+	if p := catalog.NameProblem(cs.Name); p != nil {
+		return nil, p
 	}
 	all, err := st.ListConfigTemplates(ctx, store.BookScope{All: true, Region: *rid})
 	if err != nil {
@@ -262,8 +264,8 @@ func (sd *seeder) config(spec *seedSpec, rid *int64) (*store.ConfigTemplate, err
 		sd.audit("config_template.create", "config_template", t.ID, t.Name, rid)
 	}
 	if cs.RefreshMinutes != 0 {
-		if p := catalog.RefreshProblem(cs.RefreshMinutes); p != "" {
-			return nil, errors.New(p)
+		if p := catalog.RefreshProblem(cs.RefreshMinutes); p != nil {
+			return nil, p
 		}
 		t.RefreshMinutes = cs.RefreshMinutes
 	}
@@ -273,7 +275,7 @@ func (sd *seeder) config(spec *seedSpec, rid *int64) (*store.ConfigTemplate, err
 			return nil, err
 		}
 		if list, err := catalog.SplitCAs(string(pemText)); err != nil || len(list) == 0 {
-			return nil, fmt.Errorf("CA 文件 %s 中未找到证书", cs.CAPEMFile)
+			return nil, i18n.E("cli.seed.no_ca", "file", cs.CAPEMFile)
 		}
 		t.CAPEMs = strings.Join(catalog.MergeCAs(t.CAPEMs, string(pemText)), "")
 	}
@@ -302,12 +304,12 @@ func (sd *seeder) config(spec *seedSpec, rid *int64) (*store.ConfigTemplate, err
 	}
 	if cs.HostedBook != nil {
 		if err := sd.hostedBook(t, cs.HostedBook, rid); err != nil {
-			return nil, fmt.Errorf("托管通讯录: %w", err)
+			return nil, i18n.Wrap(err, "cli.seed.hosted_book")
 		}
 	}
 	if cs.ExternalDirectory != nil {
 		if err := sd.external(t, cs.ExternalDirectory, rid); err != nil {
-			return nil, fmt.Errorf("外部通讯录: %w", err)
+			return nil, i18n.Wrap(err, "cli.seed.external")
 		}
 	}
 	return t, nil
@@ -336,8 +338,8 @@ func (sd *seeder) hostedBook(t *store.ConfigTemplate, sb *seedBook, rid *int64) 
 	st, ctx := sd.e.st, sd.ctx
 	b, err := st.BookBySlug(ctx, sb.Slug)
 	if errors.Is(err, store.ErrNotFound) {
-		if p := books.SlugProblem(sb.Slug); p != "" {
-			return errors.New(p)
+		if p := books.SlugProblem(sb.Slug); p != nil {
+			return p
 		}
 		b = &store.Book{Slug: sb.Slug, Name: sb.Name, RegionID: rid}
 		if err = st.CreateBook(ctx, b, sd.e.cfg.MaxBooks); err != nil {
@@ -357,7 +359,7 @@ func (sd *seeder) hostedBook(t *store.ConfigTemplate, sb *seedBook, rid *int64) 
 			return err
 		}
 		if len(parsed.Errors) > 0 {
-			return fmt.Errorf("CSV 第 %d 行: %s", parsed.Errors[0].Line, parsed.Errors[0].Message)
+			return i18n.E("cli.seed.csv_line", "line", parsed.Errors[0].Line, "problem", problems(parsed.Errors[0].Problems))
 		}
 		if err := st.AddEntries(ctx, b.ID, parsed.Entries, true, sd.e.cfg.MaxBookEntries); err != nil {
 			return err
@@ -428,8 +430,8 @@ func (sd *seeder) external(t *store.ConfigTemplate, sx *seedDir, rid *int64) err
 
 func (sd *seeder) keys(name, csvFile string, rid *int64) (*store.KeyTemplate, error) {
 	st, ctx := sd.e.st, sd.ctx
-	if p := catalog.NameProblem(name); p != "" {
-		return nil, errors.New(p)
+	if p := catalog.NameProblem(name); p != nil {
+		return nil, p
 	}
 	all, err := st.ListKeyTemplates(ctx, store.BookScope{All: true, Region: *rid})
 	if err != nil {
@@ -461,7 +463,7 @@ func (sd *seeder) keys(name, csvFile string, rid *int64) (*store.KeyTemplate, er
 	}
 	parsed := rules.DecodeShortcuts(text, rules.MaxShortcuts, 1)
 	if len(parsed.Errors) > 0 {
-		return nil, fmt.Errorf("CSV 第 %d 行: %s", parsed.Errors[0].Line, parsed.Errors[0].Reason)
+		return nil, i18n.E("cli.seed.csv_line", "line", parsed.Errors[0].Line, "problem", parsed.Errors[0].Reason)
 	}
 	var keys []*store.TemplateKey
 	for _, s := range parsed.Shortcuts {
@@ -472,8 +474,8 @@ func (sd *seeder) keys(name, csvFile string, rid *int64) (*store.KeyTemplate, er
 
 func (sd *seeder) clientTemplate(name string, rid *int64, configID int64, keyID *int64) (*store.ClientTemplate, error) {
 	st, ctx := sd.e.st, sd.ctx
-	if p := catalog.NameProblem(name); p != "" {
-		return nil, errors.New(p)
+	if p := catalog.NameProblem(name); p != nil {
+		return nil, p
 	}
 	all, err := st.ListClientTemplates(ctx, store.BookScope{All: true, Region: *rid})
 	if err != nil {
@@ -495,8 +497,8 @@ func (sd *seeder) clientTemplate(name string, rid *int64, configID int64, keyID 
 		}
 		keys, _ := st.Keys(ctx, *keyID)
 		for _, k := range keys {
-			if p := catalog.LineProblem(k.Line, names); p != "" {
-				return nil, fmt.Errorf("功能键「%s」的%s", k.Label, p)
+			if p := catalog.LineProblem(k.Line, names); p != nil {
+				return nil, i18n.Wrap(p, "cli.seed.key_line", "label", k.Label)
 			}
 		}
 	}

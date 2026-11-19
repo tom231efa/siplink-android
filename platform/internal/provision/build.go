@@ -1,11 +1,11 @@
 package provision
 
 import (
-	"fmt"
 	"slices"
 	"strings"
 	"unicode/utf8"
 
+	"siplink/internal/i18n"
 	"siplink/internal/rules"
 )
 
@@ -22,7 +22,7 @@ type Input struct {
 	CACertificates     []string // PEM, the platform's CA first; duplicates are dropped
 	Directories        []KeyedDirectory
 	Shortcuts          []rules.Shortcut
-	Problems           []string // found while assembling (e.g. a withdrawn LDAP grant)
+	Problems           []i18n.Msg // found while assembling (e.g. a withdrawn LDAP grant)
 }
 
 // KeyedAccount is one account with its stable key ("p" + profile id).
@@ -42,19 +42,19 @@ type KeyedDirectory struct {
 // Build validates the input with the app's rules and returns the document (Version set,
 // GeneratedAt left to the caller). problems lists everything that does not validate;
 // the document must not be sent then.
-func Build(in Input) (*Document, []string) {
-	problems := append([]string(nil), in.Problems...)
+func Build(in Input) (*Document, []i18n.Msg) {
+	problems := append([]i18n.Msg(nil), in.Problems...)
 	d := &Document{Schema: Schema, Platform: in.Platform, Client: in.Client, RefreshMinutes: in.RefreshMinutes,
 		ConfigPasswordHash: in.ConfigPasswordHash, Settings: in.Settings, Codecs: in.Codecs,
 		Accounts: []Account{}, CACertificates: []string{}, Directories: []Directory{}, Shortcuts: []Shortcut{}}
 	if in.RefreshMinutes < 5 || in.RefreshMinutes > 1440 {
-		problems = append(problems, "刷新间隔应为 5–1440 分钟")
+		problems = append(problems, RefreshRange)
 	}
 	var keys, names []string
 	for _, a := range in.Accounts {
 		draft := rules.NormalizeAccount(a.Draft)
 		for _, e := range rules.ValidateAccount(draft, keys, "", names) {
-			problems = append(problems, fmt.Sprintf("账号「%s」：%s", draft.Name, e.Full()))
+			problems = append(problems, AccountProblem(draft.Name, e.Msg()))
 		}
 		keys = append(keys, rules.IdentityKey(draft.Username, draft.Address()))
 		names = append(names, draft.Name)
@@ -80,7 +80,7 @@ func Build(in Input) (*Document, []string) {
 	for _, k := range in.Directories {
 		dir := rules.NormalizeLdap(k.Dir)
 		for _, e := range rules.ValidateLdap(dir, dirNames, true) {
-			problems = append(problems, fmt.Sprintf("通讯录「%s」：%s", dir.Name, e.Full()))
+			problems = append(problems, DirectoryProblem(dir.Name, e.Msg()))
 		}
 		dirNames = append(dirNames, dir.Name)
 		d.Directories = append(d.Directories, Directory{Key: k.Key, Name: dir.Name, Enabled: dir.Enabled, Host: dir.Host, Port: dir.Port,
@@ -90,12 +90,12 @@ func Build(in Input) (*Document, []string) {
 			NumberFilter: dir.NumberFilter})
 	}
 	if len(in.Shortcuts) > rules.MaxShortcuts {
-		problems = append(problems, rules.ShortcutLimitReached.Full())
+		problems = append(problems, rules.ShortcutLimitReached.Msg())
 	}
 	for _, s := range in.Shortcuts {
 		s = rules.NormalizeShortcut(s)
 		for _, e := range rules.ValidateShortcut(s) {
-			problems = append(problems, fmt.Sprintf("功能键「%s」：%s", s.Label, e.Full()))
+			problems = append(problems, i18n.M("provision.key_problem", "name", s.Label, "problem", e.Msg()))
 		}
 		d.Shortcuts = append(d.Shortcuts, Shortcut{Label: s.Label, Number: s.Number, Action: rules.TypeWord(s.Action),
 			Category: s.Category, Line: s.Line, Icon: strings.ToLower(string(s.Icon))})
@@ -103,35 +103,48 @@ func Build(in Input) (*Document, []string) {
 	problems = append(problems, SettingsProblems(in.Settings)...)
 	v, err := Version(d)
 	if err != nil {
-		problems = append(problems, err.Error())
+		problems = append(problems, i18n.M("provision.version_failed", "err", err.Error()))
 	}
 	d.Version = v
 	return d, problems
 }
 
+// RefreshRange is the problem of a refresh interval outside 5–1440 minutes.
+var RefreshRange = i18n.M("provision.refresh_range", "min", 5, "max", 1440)
+
+// AccountProblem names the account a problem belongs to.
+func AccountProblem(name string, problem i18n.Msg) i18n.Msg {
+	return i18n.M("provision.account_problem", "name", name, "problem", problem)
+}
+
+// DirectoryProblem names the directory a problem belongs to.
+func DirectoryProblem(name string, problem i18n.Msg) i18n.Msg {
+	return i18n.M("provision.directory_problem", "name", name, "problem", problem)
+}
+
 // SettingsProblems checks the locked settings of a template.
-func SettingsProblems(s Settings) []string {
-	var out []string
+func SettingsProblems(s Settings) []i18n.Msg {
+	var out []i18n.Msg
 	if !s.MediaSecurity.Valid() || !s.DndMode.Valid() || !s.DtmfMode.Valid() || !s.VideoSize.Valid() {
-		out = append(out, "选项的值无效")
+		out = append(out, i18n.M("provision.settings.invalid_option"))
 	}
 	if s.ForwardNoAnswerSeconds < rules.MinNoAnswerSeconds || s.ForwardNoAnswerSeconds > rules.MaxNoAnswerSeconds {
-		out = append(out, fmt.Sprintf("无应答转移等待时间应为 %d–%d 秒", rules.MinNoAnswerSeconds, rules.MaxNoAnswerSeconds))
+		out = append(out, i18n.M("provision.settings.no_answer_range", "min", rules.MinNoAnswerSeconds, "max", rules.MaxNoAnswerSeconds))
 	}
 	if !slices.Contains(rules.FrameRates, s.VideoFrameRate) {
-		out = append(out, "视频帧率无效")
+		out = append(out, i18n.M("provision.settings.frame_rate_invalid"))
 	}
 	if !slices.Contains(rules.AutoAnswerDelays, s.AutoAnswerSeconds) {
-		out = append(out, "自动接听时间无效")
+		out = append(out, i18n.M("provision.settings.auto_answer_invalid"))
 	}
 	for _, v := range []string{s.ForwardAlways, s.ForwardBusy, s.ForwardNoAnswer} {
-		if p := ForwardProblem(v); p != "" {
-			out = append(out, p)
+		if err := ForwardProblem(v); err != nil {
+			out = append(out, i18n.MsgOf(err))
 			break
 		}
 	}
-	if p := UserAgentProblem(s.UserAgent); p != "" {
-		out = append(out, p)
+	if err := UserAgentProblem(s.UserAgent); err != nil {
+		out = append(out, i18n.MsgOf(err))
 	}
 	return out
 }
@@ -140,25 +153,25 @@ func SettingsProblems(s Settings) []string {
 const MaxUserAgent = 120
 
 // UserAgentProblem checks the User-Agent: printable ASCII, no space at either end.
-func UserAgentProblem(v string) string {
+func UserAgentProblem(v string) error {
 	if len(v) > MaxUserAgent {
-		return fmt.Sprintf("客户端名称（User-Agent）最多 %d 个字符", MaxUserAgent)
+		return i18n.E("provision.user_agent.too_long", "max", MaxUserAgent)
 	}
 	for i := 0; i < len(v); i++ {
 		if v[i] < 0x20 || v[i] > 0x7e {
-			return "客户端名称（User-Agent）仅可使用可打印 ASCII 字符"
+			return i18n.E("provision.user_agent.not_ascii")
 		}
 	}
 	if strings.TrimSpace(v) != v {
-		return "客户端名称（User-Agent）首尾不得包含空格"
+		return i18n.E("provision.user_agent.spaces")
 	}
-	return ""
+	return nil
 }
 
 // ForwardProblem checks one forwarding target (template or per-client override).
-func ForwardProblem(v string) string {
+func ForwardProblem(v string) error {
 	if strings.ContainsAny(v, " \t\r\n") || utf8.RuneCountInString(v) > 128 {
-		return "转移号码不得包含空格，最多 128 个字符"
+		return i18n.E("provision.forward_invalid", "max", 128)
 	}
-	return ""
+	return nil
 }

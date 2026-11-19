@@ -14,18 +14,23 @@ import (
 	"slices"
 	"strings"
 	"time"
+
+	"siplink/internal/i18n"
 )
 
 // MaxChain is the number of certificates an uploaded chain may have.
 const MaxChain = 8
 
 // Refusal is why a certificate of the operator's cannot be used, in words for the
-// administrator.
-type Refusal struct{ Reason string }
+// administrator (an i18n.MsgError).
+type Refusal struct{ Reason i18n.Msg }
 
-func (r *Refusal) Error() string { return r.Reason }
+func (r *Refusal) Error() string { return i18n.For(i18n.English).Msg(r.Reason) }
 
-func refuse(format string, a ...any) error { return &Refusal{Reason: fmt.Sprintf(format, a...)} }
+// Msg is the reason, translated where it is shown.
+func (r *Refusal) Msg() i18n.Msg { return r.Reason }
+
+func refuse(key string, args ...any) error { return &Refusal{Reason: i18n.M(key, args...)} }
 
 // Own is a certificate chain of the operator's with its private key: uploaded on the
 // system page (or with "siplink pki import"), or read from the files named in the
@@ -112,35 +117,35 @@ func ParseOwn(chainPEM, keyPEM []byte) (*Own, error) {
 		}
 		if block.Type != "CERTIFICATE" {
 			if strings.Contains(block.Type, "PRIVATE KEY") {
-				return nil, refuse("证书链文件中包含私钥，请将私钥作为单独文件上传")
+				return nil, refuse("pki.refuse.key_in_chain")
 			}
 			continue
 		}
 		c, err := x509.ParseCertificate(block.Bytes)
 		if err != nil {
-			return nil, refuse("证书链中第 %d 个证书无法解析：%v", len(chain)+1, err)
+			return nil, refuse("pki.refuse.chain_unreadable", "n", len(chain)+1, "err", err.Error())
 		}
 		chain = append(chain, c)
 	}
 	switch {
 	case len(chain) == 0:
-		return nil, refuse("证书链文件中未找到 PEM 证书（应以 -----BEGIN CERTIFICATE----- 开头）")
+		return nil, refuse("pki.refuse.no_chain")
 	case len(chain) > MaxChain:
-		return nil, refuse("证书链最多 %d 个证书", MaxChain)
+		return nil, refuse("pki.refuse.chain_too_long", "max", MaxChain)
 	}
 	key, err := parseKey(keyPEM)
 	if err != nil {
 		return nil, err
 	}
 	if pub, ok := chain[0].PublicKey.(interface{ Equal(crypto.PublicKey) bool }); !ok || !pub.Equal(key.Public()) {
-		return nil, refuse("私钥与证书链中的第一个证书（服务器证书）不匹配：链须以服务器证书开头，私钥须是它的私钥")
+		return nil, refuse("pki.refuse.key_mismatch")
 	}
 	for i := 0; i+1 < len(chain); i++ {
 		if selfSigned(chain[i]) {
-			return nil, refuse("第 %d 个证书为自签名证书，仅可置于链末尾", i+1)
+			return nil, refuse("pki.refuse.self_signed_inside", "n", i+1)
 		}
 		if err := chain[i].CheckSignatureFrom(chain[i+1]); err != nil {
-			return nil, refuse("第 %d 个证书不是由第 %d 个证书签发的：链须按 服务器证书、中间证书、根证书 的顺序排列（%v）", i+1, i+2, err)
+			return nil, refuse("pki.refuse.order", "n", i+1, "next", i+2, "err", err.Error())
 		}
 	}
 	return newOwn(chain, key), nil
@@ -153,10 +158,10 @@ func parseKey(keyPEM []byte) (crypto.Signer, error) {
 		var block *pem.Block
 		block, rest = pem.Decode(rest)
 		if block == nil {
-			return nil, refuse("私钥文件中未找到 PEM 私钥（应以 -----BEGIN PRIVATE KEY----- 或类似内容开头）")
+			return nil, refuse("pki.refuse.no_key")
 		}
 		if block.Type == "ENCRYPTED PRIVATE KEY" || strings.Contains(block.Headers["Proc-Type"], "ENCRYPTED") {
-			return nil, refuse("私钥已加密。请上传未加密的私钥（例如先运行 openssl pkey -in 私钥.pem -out 私钥-未加密.pem）")
+			return nil, refuse("pki.refuse.key_encrypted")
 		}
 		var (
 			k   any
@@ -173,7 +178,7 @@ func parseKey(keyPEM []byte) (crypto.Signer, error) {
 			continue // parameters, certificates and the like
 		}
 		if err != nil {
-			return nil, refuse("私钥无法解析：%v", err)
+			return nil, refuse("pki.refuse.key_unreadable", "err", err.Error())
 		}
 		switch k := k.(type) {
 		case *rsa.PrivateKey:
@@ -181,7 +186,7 @@ func parseKey(keyPEM []byte) (crypto.Signer, error) {
 		case *ecdsa.PrivateKey:
 			return k, nil
 		}
-		return nil, refuse("仅支持 RSA 和 ECDSA 私钥")
+		return nil, refuse("pki.refuse.key_type")
 	}
 }
 

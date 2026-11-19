@@ -89,7 +89,7 @@
 
   // errorText is the message of the platform's error page, or a general one.
   function errorText(res) {
-    var fallback = "顺序未能保存，请刷新页面后重试。";
+    var fallback = (window.siplinkText || String)("order_failed");
     if (!res || !res.text) return Promise.resolve(fallback);
     return res.text().then(function (html) {
       var p = new DOMParser().parseFromString(html, "text/html").querySelector(".error-page p");
@@ -246,7 +246,7 @@
       row.scrollIntoView({ block: "nearest" }); // the list's scroll-margin keeps it clear of a sticky head
     });
     handle.focus({ preventScroll: true });
-    announce("已移至第 " + (j + 1) + " 位，共 " + list.length + " 位");
+    announce((window.siplinkText || String)("moved", { pos: j + 1, total: list.length }));
     save(box);
   }
 

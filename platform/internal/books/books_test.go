@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
+	"siplink/internal/i18n"
 	"strings"
 	"testing"
 
@@ -49,7 +50,7 @@ func TestParseGB18030AndEnglishHeader(t *testing.T) {
 	if p.Encoding != "GB18030" || len(p.Entries) != 1 || p.Entries[0].Name != "王芳" || p.Entries[0].Mobiles[0] != "13900001002" {
 		t.Fatalf("GB18030: %+v", p)
 	}
-	if len(p.Warnings) != 1 || !strings.Contains(p.Warnings[0], "Extra") {
+	if len(p.Warnings) != 1 || !strings.Contains(i18n.For(i18n.Source).Msg(p.Warnings[0]), "Extra") {
 		t.Errorf("unknown column warning: %v", p.Warnings)
 	}
 }
@@ -80,7 +81,7 @@ func TestParseErrors(t *testing.T) {
 	}
 	for i, line := range []int{2, 3, 4, 5, 6} {
 		if p.Errors[i].Line != line {
-			t.Errorf("error %d at line %d, want %d (%s)", i, p.Errors[i].Line, line, p.Errors[i].Message)
+			t.Errorf("error %d at line %d, want %d (%s)", i, p.Errors[i].Line, line, p.Errors[i].Problems)
 		}
 	}
 	p, _ = ParseCSV([]byte("姓名\n\"broken\n"))
@@ -108,7 +109,7 @@ func TestCSVRoundTrip(t *testing.T) {
 		{Name: "李娜"},
 	}
 	var buf bytes.Buffer
-	if err := WriteCSV(&buf, in); err != nil {
+	if err := WriteCSV(&buf, in, true); err != nil {
 		t.Fatal(err)
 	}
 	if !bytes.HasPrefix(buf.Bytes(), []byte("\xef\xbb\xbf姓名,办公电话,手机")) {
@@ -159,7 +160,7 @@ func TestLDIF(t *testing.T) {
 func TestValidateAndSlug(t *testing.T) {
 	for slug, ok := range map[string]bool{"staff": true, "a-1": true, "A": false, "a": false, "员工": false,
 		strings.Repeat("a", 33): false, "a_b": false} {
-		if (SlugProblem(slug) == "") != ok {
+		if (SlugProblem(slug) == nil) != ok {
 			t.Errorf("slug %q", slug)
 		}
 	}
@@ -168,7 +169,7 @@ func TestValidateAndSlug(t *testing.T) {
 	if e.Name != "张伟" || len(e.Phones) != 1 {
 		t.Errorf("normalize %+v", e)
 	}
-	if p := Validate(e); len(p) != 1 || !strings.Contains(p[0], "邮箱") {
+	if p := Validate(e); len(p) != 1 || !strings.Contains(i18n.For(i18n.Source).Msg(p[0]), "邮箱") {
 		t.Errorf("validate %v", p)
 	}
 	if got := SplitNumbers("1001；1002; ;1003"); len(got) != 3 {

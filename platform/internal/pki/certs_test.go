@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"siplink/internal/i18n"
 	"strings"
 	"testing"
 	"time"
@@ -96,7 +97,7 @@ func both() []string { return []string{"platform.example.com", "ldap.example.com
 func wantRefusal(t *testing.T, err error, part string) {
 	t.Helper()
 	var r *Refusal
-	if !errors.As(err, &r) || !strings.Contains(r.Reason, part) {
+	if !errors.As(err, &r) || !strings.Contains(zh(r.Reason), part) {
 		t.Errorf("want a refusal with %q, got %v", part, err)
 	}
 }
@@ -198,7 +199,7 @@ func TestPrecedenceAndPause(t *testing.T) {
 	// A certificate for the public host only: HTTPS uses it, LDAP keeps the built-in one.
 	leaf, inter, root := e.chain("platform.example.com")
 	a := e.use(leaf, inter, root)
-	if !a.HTTPS || a.LDAP || len(a.Warnings) != 1 || !strings.Contains(a.Warnings[0], "LDAP 继续使用内置 CA") {
+	if !a.HTTPS || a.LDAP || len(a.Warnings) != 1 || !strings.Contains(zh(a.Warnings[0]), "LDAP 继续使用内置 CA") {
 		t.Fatalf("assessment: %+v", a)
 	}
 	if h, l := c.Sources(); h != SourceOwn || l != SourceBuiltin || c.Paused() {
@@ -215,7 +216,7 @@ func TestPrecedenceAndPause(t *testing.T) {
 	// certificate would be renewed; reissuing is refused.
 	leaf, inter, root = e.chain(both()...)
 	e.use(leaf, inter, root)
-	if h, l := c.Sources(); h != SourceOwn || l != SourceOwn || !c.Paused() || c.Mode() != "使用自有证书（自动签发已暂停）" {
+	if h, l := c.Sources(); h != SourceOwn || l != SourceOwn || !c.Paused() || zh(c.Mode()) != "使用自有证书（自动签发已暂停）" {
 		t.Fatalf("both: %s %s %s", h, l, c.Mode())
 	}
 	if !served(t, c.LDAPConfig()).Equal(leaf.Cert) {
@@ -280,13 +281,13 @@ func TestFilesComeFirst(t *testing.T) {
 	if a.HTTPS || !a.LDAP {
 		t.Errorf("assessment with files: %+v", a)
 	}
-	if h, l := c.Sources(); h != SourceFiles || l != SourceOwn || !c.Paused() || !strings.Contains(c.Mode(), "并用") {
+	if h, l := c.Sources(); h != SourceFiles || l != SourceOwn || !c.Paused() || !strings.Contains(zh(c.Mode()), "并用") {
 		t.Errorf("files and upload: %s %s %s", h, l, c.Mode())
 	}
 	// The files' certificate is reminded too; the upload is far from its expiry.
 	e.clock.Advance(20 * 24 * time.Hour)
 	n := c.Notices(30)
-	if len(n) != 1 || n[0].Level != LevelWarn || !strings.Contains(n[0].Text, "证书文件将在") {
+	if len(n) != 1 || n[0].Level != LevelWarn || !strings.Contains(zh(n[0].Text), "证书文件将在") {
 		t.Errorf("notices: %+v", n)
 	}
 }
@@ -333,7 +334,7 @@ func TestPinAndDocumentCAs(t *testing.T) {
 	s := newCertEnv(t)
 	self := s.mk(testutil.CertSpec{CN: "self", Names: both()}, nil)
 	a = s.use(self)
-	if s.certs.Pin() != Pin(self.Cert) || len(a.Warnings) != 1 || !strings.Contains(a.Warnings[0], "自签名服务器证书") {
+	if s.certs.Pin() != Pin(self.Cert) || len(a.Warnings) != 1 || !strings.Contains(zh(a.Warnings[0]), "自签名服务器证书") {
 		t.Errorf("self-signed leaf: pin=%q warnings=%v", s.certs.Pin(), a.Warnings)
 	}
 
@@ -352,7 +353,7 @@ func TestEmptyAKIWarning(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if fmt.Sprint(a.Own.EmptyAKI) != "[2]" || len(a.Warnings) != 1 || !strings.Contains(a.Warnings[0], "mbedTLS 3.6.0") {
+	if fmt.Sprint(a.Own.EmptyAKI) != "[2]" || len(a.Warnings) != 1 || !strings.Contains(zh(a.Warnings[0]), "mbedTLS 3.6.0") {
 		t.Errorf("empty AKI: %v %v", a.Own.EmptyAKI, a.Warnings)
 	}
 }
@@ -383,7 +384,7 @@ func TestReminder(t *testing.T) {
 	}
 	e.clock.Advance(61 * 24 * time.Hour)
 	n := c.Notices(30)
-	if len(n) != 1 || n[0].Level != LevelWarn || n[0].DaysLeft != 28 || !strings.Contains(n[0].Text, "自有证书将在 28 天后") {
+	if len(n) != 1 || n[0].Level != LevelWarn || n[0].DaysLeft != 28 || !strings.Contains(zh(n[0].Text), "自有证书将在 28 天后") {
 		t.Fatalf("warning: %+v", n)
 	}
 	if err := c.SetReminderDays(ctx, 20); err != nil || c.ReminderDays(ctx) != 20 || len(c.Notices(20)) != 0 {
@@ -391,7 +392,7 @@ func TestReminder(t *testing.T) {
 	}
 	e.clock.Advance(30 * 24 * time.Hour)
 	n = c.Notices(20)
-	if len(n) != 1 || n[0].Level != LevelError || !strings.Contains(n[0].Text, "证书已过期，设备将无法同步") {
+	if len(n) != 1 || n[0].Level != LevelError || !strings.Contains(zh(n[0].Text), "证书已过期，设备将无法同步") {
 		t.Fatalf("expired: %+v", n)
 	}
 }
@@ -431,7 +432,7 @@ func TestRescanNeedsConfirmation(t *testing.T) {
 	e.bind(3, store.StatusActive)
 	// Phones that pinned the built-in CA cannot follow to a private root.
 	a, err := e.assess(leaf, leaf, inter, root)
-	if err != nil || a.Rescan != 3 || len(a.Warnings) != 1 || !strings.Contains(a.Warnings[0], "已绑定的 3 台设备") {
+	if err != nil || a.Rescan != 3 || len(a.Warnings) != 1 || !strings.Contains(zh(a.Warnings[0]), "已绑定的 3 台设备") {
 		t.Fatalf("private root: %+v %v", a, err)
 	}
 	e.use(leaf, inter, root)
@@ -441,7 +442,7 @@ func TestRescanNeedsConfirmation(t *testing.T) {
 		t.Errorf("renewal: %+v %v", a, err)
 	}
 	// Returning to the built-in CA locks them out as well.
-	if w, n, err := e.certs.RemovalWarnings(ctx); err != nil || n != 3 || len(w) != 1 || !strings.Contains(w[0], "已绑定的 3 台设备") {
+	if w, n, err := e.certs.RemovalWarnings(ctx); err != nil || n != 3 || len(w) != 1 || !strings.Contains(zh(w[0]), "已绑定的 3 台设备") {
 		t.Errorf("removal impact: %d %v %v", n, w, err)
 	}
 	// A public chain is trusted by every phone.
@@ -486,7 +487,7 @@ func TestReprintWarning(t *testing.T) {
 	e.bind(2, store.StatusPending)
 	leaf, inter, root := e.chain(both()...)
 	a, err := e.assess(leaf, leaf, inter, root)
-	if err != nil || a.Rescan != 0 || len(a.Warnings) != 1 || !strings.Contains(a.Warnings[0], "2 个待上线客户端") {
+	if err != nil || a.Rescan != 0 || len(a.Warnings) != 1 || !strings.Contains(zh(a.Warnings[0]), "2 个待上线客户端") {
 		t.Fatalf("new pin: %+v %v", a, err)
 	}
 	e.use(leaf, inter, root)
@@ -496,7 +497,10 @@ func TestReprintWarning(t *testing.T) {
 		t.Errorf("same pin: %+v %v", a, err)
 	}
 	// Back to the built-in CA changes it again.
-	if w, n, err := e.certs.RemovalWarnings(ctx); err != nil || n != 0 || len(w) != 1 || !strings.Contains(w[0], "二维码中的 pin 将改变") {
+	if w, n, err := e.certs.RemovalWarnings(ctx); err != nil || n != 0 || len(w) != 1 || !strings.Contains(zh(w[0]), "二维码中的 pin 将改变") {
 		t.Errorf("removal: %v %d %v", w, n, err)
 	}
 }
+
+// zh is a message in Simplified Chinese, the texts these tests were written against.
+func zh(m i18n.Msg) string { return i18n.For(i18n.Source).Msg(m) }

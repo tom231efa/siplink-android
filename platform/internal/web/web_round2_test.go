@@ -84,7 +84,7 @@ func TestTimesAndVideoLabels(t *testing.T) {
 	h := newHarness(t)
 	root, _ := h.loggedIn("root", store.RoleSuper)
 	r := root.get("/audit")
-	tag := regexp.MustCompile(`<time datetime="\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ" data-local="datetime">\d{4}-\d\d-\d\d \d\d:\d\d UTC(?:[+-]\d\d:\d\d)?</time>`)
+	tag := regexp.MustCompile(`<time dir="ltr" datetime="\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ" data-local="datetime">\d{4}-\d\d-\d\d \d\d:\d\d UTC(?:[+-]\d\d:\d\d)?</time>`)
 	if !tag.MatchString(r.body) {
 		t.Errorf("audit times are not <time> tags")
 	}

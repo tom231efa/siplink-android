@@ -127,8 +127,8 @@ func (s *Store) UpdateBook(ctx context.Context, b *Book) error {
 	return nil
 }
 
-// BookUsers lists what refers to a book (names for the UI); deletion needs it empty.
-func (s *Store) BookUsers(ctx context.Context, id int64) ([]string, error) {
+// BookUsers lists what refers to a book; deletion needs it empty.
+func (s *Store) BookUsers(ctx context.Context, id int64) ([]Use, error) {
 	return bookUsers(ctx, s.DB, id)
 }
 
@@ -336,25 +336,12 @@ func (s *Store) AllEntries(ctx context.Context, bookID int64) ([]*Entry, int64, 
 	return out, rev, nil
 }
 
-// bookUsers names what refers to a book.
-func bookUsers(ctx context.Context, q querier, id int64) ([]string, error) {
-	rows, err := q.QueryContext(ctx, `SELECT 'LDAP 账号 ' || a.name FROM ldap_accounts a JOIN ldap_account_books g ON g.account_id = a.id
+// bookUsers lists what refers to a book.
+func bookUsers(ctx context.Context, q querier, id int64) ([]Use, error) {
+	return uses(ctx, q, `SELECT 'ldap_account', a.name FROM ldap_accounts a JOIN ldap_account_books g ON g.account_id = a.id
 		WHERE g.book_id = ?
-		UNION ALL SELECT DISTINCT '配置模板 ' || t.name FROM config_templates t JOIN template_directories d ON d.config_template_id = t.id
-		WHERE d.book_id = ? ORDER BY 1`, id, id)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var out []string
-	for rows.Next() {
-		var name string
-		if err := rows.Scan(&name); err != nil {
-			return nil, err
-		}
-		out = append(out, name)
-	}
-	return out, rows.Err()
+		UNION ALL SELECT DISTINCT 'config_template', t.name FROM config_templates t JOIN template_directories d ON d.config_template_id = t.id
+		WHERE d.book_id = ? ORDER BY 1, 2`, id, id)
 }
 
 // CountBooks returns the number of books.

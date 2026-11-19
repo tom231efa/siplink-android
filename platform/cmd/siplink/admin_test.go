@@ -14,6 +14,7 @@ import (
 // TestAdminResetTwoStep: "siplink admin reset-2fa" removes every method, the recovery
 // and e-mail codes and the sessions of a (super) administrator (design §6.8).
 func TestAdminResetTwoStep(t *testing.T) {
+	t.Setenv("LANG", "zh_CN.UTF-8") // the texts below are the Simplified Chinese ones
 	testutil.FastHashes()
 	dir := t.TempDir()
 	t.Setenv("SIPLINK_PUBLIC_URL", "https://platform.example.com")

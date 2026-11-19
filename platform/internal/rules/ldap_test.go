@@ -2,6 +2,7 @@ package rules
 
 import (
 	"reflect"
+	"siplink/internal/i18n"
 	"strings"
 	"testing"
 )
@@ -256,9 +257,10 @@ func TestLdapServerText(t *testing.T) {
 
 // Not a Kotlin test: the error texts are the app's own.
 func TestLdapErrorTexts(t *testing.T) {
-	if LdapHostLdaps.Full() != "服务器地址不支持 ldaps://，请用 StartTLS" ||
-		LdapMaxResultsOutOfRange.Full() != "最大结果数应为 1–1000" ||
-		LdapLimitReached.Full() != "最多 50 个通讯录" ||
+	zh := func(e LdapError) string { return i18n.For(i18n.Source).Msg(e.Msg()) }
+	if zh(LdapHostLdaps) != "服务器地址不支持 ldaps://，请用 StartTLS" ||
+		zh(LdapMaxResultsOutOfRange) != "最大结果数应为 1–1000" ||
+		zh(LdapLimitReached) != "最多 50 个通讯录" ||
 		LdapStartTLSNeedsHostName.Name() != "STARTTLS_NEEDS_HOST_NAME" ||
 		len(ldapErrors) != int(LdapManaged)+1 {
 		t.Error("error texts differ")

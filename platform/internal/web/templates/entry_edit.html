@@ -5,25 +5,25 @@
 {{with $d.Errors}}<div class="flash error" role="alert"><ul class="errors">{{range .}}<li>{{.}}</li>{{end}}</ul></div>{{end}}
 <form method="post" action="{{if $d.New}}/books/{{$d.Book.ID}}/entries{{else}}/books/{{$d.Book.ID}}/entries/{{$d.Entry.ID}}{{end}}" class="card form-card">
   <div class="card-body form">
-    <label>姓名<input name="name" value="{{$d.Entry.Name}}" required maxlength="64"></label>
+    <label>{{t "books.field.name"}}<input name="name" value="{{$d.Entry.Name}}" required maxlength="64"></label>
     <div class="grid2">
-      <label>姓<input name="surname" value="{{$d.Entry.Surname}}" maxlength="64"></label>
-      <label>名<input name="given_name" value="{{$d.Entry.GivenName}}" maxlength="64"></label>
+      <label>{{t "books.field.surname"}}<input name="surname" value="{{$d.Entry.Surname}}" maxlength="64"></label>
+      <label>{{t "books.field.given_name"}}<input name="given_name" value="{{$d.Entry.GivenName}}" maxlength="64"></label>
     </div>
     <div class="grid2">
-      <div class="field"><span class="label-line"><label for="f-phones">办公电话</label>{{tip "f-phones-tip" "以 ; 分隔，最多 4 个"}}</span><input id="f-phones" aria-describedby="f-phones-tip" name="phones" value="{{$d.Phones}}"></div>
-      <div class="field"><span class="label-line"><label for="f-mobiles">手机</label>{{tip "f-mobiles-tip" "以 ; 分隔，最多 4 个"}}</span><input id="f-mobiles" aria-describedby="f-mobiles-tip" name="mobiles" value="{{$d.Mobiles}}"></div>
+      <div class="field"><span class="label-line"><label for="f-phones">{{t "books.field.phone"}}</label>{{tip "f-phones-tip" (t "dirs.entry.numbers_tip")}}</span><input id="f-phones" aria-describedby="f-phones-tip" name="phones" value="{{$d.Phones}}" dir="ltr"></div>
+      <div class="field"><span class="label-line"><label for="f-mobiles">{{t "books.field.mobile"}}</label>{{tip "f-mobiles-tip" (t "dirs.entry.numbers_tip")}}</span><input id="f-mobiles" aria-describedby="f-mobiles-tip" name="mobiles" value="{{$d.Mobiles}}" dir="ltr"></div>
     </div>
     <div class="grid2">
-      <label>单位<input name="organization" value="{{$d.Entry.Organization}}" maxlength="64"></label>
-      <label>部门<input name="department" value="{{$d.Entry.Department}}" maxlength="64"></label>
+      <label>{{t "books.field.organization"}}<input name="organization" value="{{$d.Entry.Organization}}" maxlength="64"></label>
+      <label>{{t "books.field.department"}}<input name="department" value="{{$d.Entry.Department}}" maxlength="64"></label>
     </div>
     <div class="grid2">
-      <label>职务<input name="title" value="{{$d.Entry.Title}}" maxlength="64"></label>
-      <label>邮箱<input name="email" type="email" value="{{$d.Entry.Email}}" maxlength="128"></label>
+      <label>{{t "books.field.title"}}<input name="title" value="{{$d.Entry.Title}}" maxlength="64"></label>
+      <label>{{t "books.field.email"}}<input name="email" type="email" value="{{$d.Entry.Email}}" maxlength="128" dir="ltr"></label>
     </div>
   </div>
-  <div class="card-foot form-actions"><a class="btn" href="/books/{{$d.Book.ID}}">取消</a><button type="submit" class="btn primary">保存</button></div>
+  <div class="card-foot form-actions"><a class="btn" href="/books/{{$d.Book.ID}}">{{t "common.cancel"}}</a><button type="submit" class="btn primary">{{t "common.save"}}</button></div>
 </form>
 </div>
 {{end}}

@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"regexp"
 	"slices"
-	"strings"
 
 	"siplink/internal/auth"
 	"siplink/internal/books"
@@ -55,7 +54,7 @@ func (s *Server) ldapAccountList(w http.ResponseWriter, r *http.Request) {
 	for _, b := range all {
 		bookNames[b.ID] = b.Name
 	}
-	s.ok(w, r, "ldap_accounts", &Page{Title: "LDAP 账号", Nav: "ldap", Data: ldapAccountsData{
+	s.ok(w, r, "ldap_accounts", &Page{Title: tr(r).T("nav.ldap_accounts"), Nav: "ldap", Data: ldapAccountsData{
 		Accounts: list, Regions: names, Books: bookNames, Suffix: s.Cfg.LDAPSuffix}})
 }
 
@@ -88,9 +87,9 @@ func (s *Server) ldapAccountFormPage(w http.ResponseWriter, r *http.Request, sta
 		s.internal(w, r, err)
 		return
 	}
-	title := "编辑 LDAP 账号"
+	title := tr(r).T("dirs.ldap.edit_title")
 	if f.New {
-		title = "新建 LDAP 账号"
+		title = tr(r).T("dirs.ldap.new")
 	}
 	s.render(w, r, status, "ldap_account_edit", &Page{Title: title, Nav: "ldap", Data: f})
 }
@@ -122,11 +121,11 @@ func (s *Server) readAccountForm(r *http.Request, a *store.LDAPAccount, regionEd
 	}
 	act := actor(r)
 	if !act.Can(auth.LDAPAccountManage, a.RegionID) {
-		return "您无权在所选区域管理 LDAP 账号。"
+		return tr(r).T("dirs.ldap.region_forbidden")
 	}
 	if a.RegionID != nil {
 		if _, err := s.St.RegionByID(r.Context(), *a.RegionID); err != nil {
-			return "所选区域不存在。"
+			return tr(r).T("dirs.region_missing")
 		}
 	}
 	a.BookIDs = formIDs(r, "books")
@@ -135,10 +134,10 @@ func (s *Server) readAccountForm(r *http.Request, a *store.LDAPAccount, regionEd
 	for _, id := range a.BookIDs {
 		b, err := s.St.BookByID(r.Context(), id)
 		if err != nil || !act.Can(auth.BookUse, b.RegionID) {
-			return "所选通讯录不存在或不可用。"
+			return tr(r).T("dirs.ldap.book_unavailable")
 		}
 		if b.RegionID != nil && (a.RegionID == nil || *a.RegionID != *b.RegionID) {
-			return "通讯录「" + b.Name + "」属于其他区域，账号仅可使用全局及本区域的通讯录。"
+			return tr(r).T("dirs.ldap.book_other_region", "name", b.Name)
 		}
 	}
 	return ""
@@ -156,7 +155,7 @@ func (s *Server) ldapAccountCreate(w http.ResponseWriter, r *http.Request) {
 	a := &store.LDAPAccount{Name: trimmed(r, "name")}
 	msg := s.readAccountForm(r, a, true)
 	if !accountNamePattern.MatchString(a.Name) {
-		msg = "账号名仅可使用 2-32 个小写字母、数字或 -。"
+		msg = tr(r).T("dirs.ldap.name_invalid")
 	}
 	if msg != "" {
 		s.ldapAccountFormPage(w, r, http.StatusBadRequest, ldapAccountForm{New: true, Account: a, Error: msg})
@@ -165,14 +164,14 @@ func (s *Server) ldapAccountCreate(w http.ResponseWriter, r *http.Request) {
 	password := secret.RandomText(ldapSecretLength)
 	a.PasswordHash = secret.HashHex(password)
 	if err := s.St.CreateLDAPAccount(r.Context(), a); errors.Is(err, store.ErrConflict) {
-		s.ldapAccountFormPage(w, r, http.StatusBadRequest, ldapAccountForm{New: true, Account: a, Error: "账号名已存在。"})
+		s.ldapAccountFormPage(w, r, http.StatusBadRequest, ldapAccountForm{New: true, Account: a, Error: tr(r).T("dirs.ldap.name_taken")})
 		return
 	} else if err != nil {
 		s.internal(w, r, err)
 		return
 	}
 	s.audit(r, "ldap_account.create", "ldap_account", a.ID, a.Name, a.RegionID, map[string]any{"books": a.BookIDs})
-	s.ok(w, r, "ldap_account_secret", &Page{Title: "LDAP 账号已创建", Nav: "ldap",
+	s.ok(w, r, "ldap_account_secret", &Page{Title: tr(r).T("dirs.ldap.created_title"), Nav: "ldap",
 		Data: ldapAccountForm{Account: a, BindDN: s.bindDN(a.Name), Password: password}})
 }
 
@@ -199,7 +198,7 @@ func (s *Server) ldapAccountUpdate(w http.ResponseWriter, r *http.Request) {
 	s.audit(r, "ldap_account.update", "ldap_account", a.ID, a.Name, a.RegionID, changes(
 		field{"note", old.Note, a.Note}, field{"disabled", old.Disabled, a.Disabled},
 		field{"region_id", derefOr(old.RegionID), derefOr(a.RegionID)}, field{"books", old.BookIDs, a.BookIDs}))
-	s.redirect(w, r, "/ldap-accounts", "ok", "LDAP 账号「"+a.Name+"」已保存。")
+	s.redirect(w, r, "/ldap-accounts", "ok", tr(r).T("dirs.ldap.saved", "name", a.Name))
 }
 
 func (s *Server) ldapAccountReset(w http.ResponseWriter, r *http.Request) {
@@ -212,8 +211,8 @@ func (s *Server) ldapAccountReset(w http.ResponseWriter, r *http.Request) {
 		s.internal(w, r, err)
 		return
 	}
-	s.audit(r, "ldap_account.reset", "ldap_account", a.ID, a.Name, a.RegionID, map[string]any{"password": "已修改"})
-	s.ok(w, r, "ldap_account_secret", &Page{Title: "LDAP 账号密码已重置", Nav: "ldap",
+	s.audit(r, "ldap_account.reset", "ldap_account", a.ID, a.Name, a.RegionID, map[string]any{"password": auditChanged})
+	s.ok(w, r, "ldap_account_secret", &Page{Title: tr(r).T("dirs.ldap.reset_title"), Nav: "ldap",
 		Data: ldapAccountForm{Account: a, BindDN: s.bindDN(a.Name), Password: password}})
 }
 
@@ -224,14 +223,14 @@ func (s *Server) ldapAccountDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := s.St.DeleteLDAPAccount(r.Context(), a.ID); errors.Is(err, store.ErrInUse) {
 		users, _ := s.St.LDAPAccountUsers(r.Context(), a.ID)
-		s.redirect(w, r, "/ldap-accounts", "error", "LDAP 账号「"+a.Name+"」仍被配置模板「"+strings.Join(users, "、")+"」的托管通讯录使用，无法删除。")
+		s.redirect(w, r, "/ldap-accounts", "error", tr(r).T("dirs.ldap.in_use", "name", a.Name, "templates", users))
 		return
 	} else if err != nil {
 		s.internal(w, r, err)
 		return
 	}
 	s.audit(r, "ldap_account.delete", "ldap_account", a.ID, a.Name, a.RegionID, nil)
-	s.redirect(w, r, "/ldap-accounts", "ok", "LDAP 账号「"+a.Name+"」已删除。")
+	s.redirect(w, r, "/ldap-accounts", "ok", tr(r).T("dirs.ldap.deleted", "name", a.Name))
 }
 
 // bookMoveProblem says why a book cannot move to another region, or "": an LDAP
@@ -246,11 +245,11 @@ func (s *Server) bookMoveProblem(r *http.Request, b *store.Book, to *int64) stri
 	}
 	regions, err := s.St.AccountRegionsOfBook(r.Context(), b.ID)
 	if err != nil {
-		return "内部错误，请稍后重试。"
+		return tr(r).T("error.internal_retry")
 	}
 	for _, reg := range regions {
 		if reg == nil || *reg != *to {
-			return "其他区域或全局的 LDAP 账号正在使用此通讯录，无法移至该区域。请先撤销相关授权。"
+			return tr(r).T("dirs.move_used_by_accounts")
 		}
 	}
 	return ""

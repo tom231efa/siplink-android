@@ -57,7 +57,7 @@ func stackedBar(parts ...barSegment) []barSegment {
 type attentionRow struct {
 	ID       int64
 	Name     string
-	Reason   string
+	Reason   string // in the request's language, for the trouble list
 	LastSeen string // stored time, for the offline list
 }
 
@@ -103,35 +103,35 @@ func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) {
 		s.internal(w, r, err)
 		return
 	}
-	now := s.Now()
+	now, t := s.Now(), tr(r)
 	for _, c := range active {
 		offline := store.Offline(c.LastSeenAt, c.RefreshMinutes, now)
 		if offline {
-			d.Offline = append(d.Offline, attentionRow{ID: c.ID, Name: c.Name, Reason: "最后同步", LastSeen: c.LastSeenAt})
+			d.Offline = append(d.Offline, attentionRow{ID: c.ID, Name: c.Name, LastSeen: c.LastSeenAt})
 		}
 		trouble := len(d.Trouble)
 		switch {
 		case c.BuildError != "":
-			d.Trouble = append(d.Trouble, attentionRow{ID: c.ID, Name: c.Name, Reason: "配置未通过校验"})
+			d.Trouble = append(d.Trouble, attentionRow{ID: c.ID, Name: c.Name, Reason: t.T("dashboard.attention.invalid_config")})
 		case c.ApplyError != "":
-			d.Trouble = append(d.Trouble, attentionRow{ID: c.ID, Name: c.Name, Reason: "设备应用配置失败：" + truncate(c.ApplyError, 80)})
+			d.Trouble = append(d.Trouble, attentionRow{ID: c.ID, Name: c.Name, Reason: t.T("dashboard.attention.apply_failed", "err", truncate(c.ApplyError, 80))})
 		case strings.Contains(c.Registrations, `"FAILED"`):
-			d.Trouble = append(d.Trouble, attentionRow{ID: c.ID, Name: c.Name, Reason: "注册失败：" + regSummary(c.Registrations)})
+			d.Trouble = append(d.Trouble, attentionRow{ID: c.ID, Name: c.Name, Reason: t.T("dashboard.attention.reg_failed", "summary", regSummary(t, c.Registrations))})
 		}
 		if !offline && len(d.Trouble) == trouble {
 			d.Healthy++
 		}
 	}
-	d.Bar = stackedBar(barSegment{Class: "ok", Label: "正常", N: d.Healthy},
-		barSegment{Class: "warn", Label: "待处理", N: d.Active - d.Healthy},
-		barSegment{Class: "idle", Label: "待上线", N: d.Pending})
+	d.Bar = stackedBar(barSegment{Class: "ok", Label: t.T("dashboard.bar.healthy"), N: d.Healthy},
+		barSegment{Class: "warn", Label: t.T("dashboard.bar.attention"), N: d.Active - d.Healthy},
+		barSegment{Class: "idle", Label: t.T("dashboard.bar.pending"), N: d.Pending})
 	f := visibleAudit(a)
 	f.Limit = 8
 	if d.Recent, err = s.St.ListAudit(ctx, f); err != nil {
 		s.internal(w, r, err)
 		return
 	}
-	s.ok(w, r, "dashboard", &Page{Title: "概览", Nav: "dashboard", Data: d})
+	s.ok(w, r, "dashboard", &Page{Title: t.T("nav.dashboard"), Nav: "dashboard", Data: d})
 }
 
 func regionNames(regions []store.Region) map[int64]string {

@@ -11,7 +11,6 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"mime"
 	"net"
 	"net/mail"
@@ -20,6 +19,8 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"siplink/internal/i18n"
 )
 
 // Connection security of the SMTP server.
@@ -54,23 +55,23 @@ func DefaultPort(security string) int {
 	return 587
 }
 
-// Problem checks the settings and returns a message in Chinese, or "".
-func (s Settings) Problem() string {
+// Problem says what is wrong with the settings, nil when nothing is.
+func (s Settings) Problem() error {
 	switch {
 	case s.Host == "" || len(s.Host) > 253 || strings.ContainsAny(s.Host, " /\r\n"):
-		return "请填写有效的服务器地址。"
+		return i18n.E("mail.host_invalid")
 	case s.Port < 1 || s.Port > 65535:
-		return "端口须为 1-65535。"
+		return i18n.E("mail.port_invalid")
 	case s.Security != SecuritySTARTTLS && s.Security != SecurityTLS && s.Security != SecurityNone:
-		return "请选择加密方式。"
+		return i18n.E("mail.security_invalid")
 	case len(s.Username) > 256 || strings.ContainsAny(s.Username, "\r\n"):
-		return "用户名无效。"
+		return i18n.E("mail.username_invalid")
 	case ValidAddress(s.From) != nil:
-		return "发件地址无效。"
+		return i18n.E("mail.from_invalid")
 	case utf8.RuneCountInString(s.FromName) > 64 || strings.ContainsAny(s.FromName, "\r\n"):
-		return "发件人名称无效。"
+		return i18n.E("mail.from_name_invalid")
 	}
-	return ""
+	return nil
 }
 
 // ValidAddress accepts one plain address such as name@example.com (no display name).
@@ -93,10 +94,10 @@ type Sender struct {
 // answer when it refused; it never contains the password.
 func (x *Sender) Send(ctx context.Context, set Settings, to, subject, body string) error {
 	if !set.Configured() {
-		return errors.New("邮件服务未配置")
+		return i18n.E("mail.not_configured")
 	}
 	if ValidAddress(to) != nil {
-		return errors.New("收件地址无效")
+		return i18n.E("mail.to_invalid")
 	}
 	dialTimeout, timeout := x.DialTimeout, x.Timeout
 	if dialTimeout <= 0 {
@@ -116,7 +117,7 @@ func (x *Sender) Send(ctx context.Context, set Settings, to, subject, body strin
 		conn, err = d.DialContext(ctx, "tcp", addr)
 	}
 	if err != nil {
-		return fmt.Errorf("连接失败: %w", err)
+		return i18n.Wrap(err, "mail.connect_failed")
 	}
 	defer conn.Close()
 	deadline := time.Now().Add(timeout)
@@ -128,37 +129,37 @@ func (x *Sender) Send(ctx context.Context, set Settings, to, subject, body strin
 	}
 	c, err := smtp.NewClient(conn, set.Host)
 	if err != nil {
-		return fmt.Errorf("服务器无应答: %w", err)
+		return i18n.Wrap(err, "mail.no_answer")
 	}
 	defer c.Close()
 	if set.Security == SecuritySTARTTLS {
 		if ok, _ := c.Extension("STARTTLS"); !ok {
-			return errors.New("服务器不支持 STARTTLS")
+			return i18n.E("mail.no_starttls")
 		}
 		if err := c.StartTLS(tlsConf); err != nil {
-			return fmt.Errorf("STARTTLS 失败: %w", err)
+			return i18n.Wrap(err, "mail.starttls_failed")
 		}
 	}
 	if set.Username != "" {
 		if err := c.Auth(smtp.PlainAuth("", set.Username, set.Password, set.Host)); err != nil {
-			return fmt.Errorf("认证失败: %w", err)
+			return i18n.Wrap(err, "mail.auth_failed")
 		}
 	}
 	if err := c.Mail(set.From); err != nil {
-		return fmt.Errorf("发件地址被拒绝: %w", err)
+		return i18n.Wrap(err, "mail.from_refused")
 	}
 	if err := c.Rcpt(to); err != nil {
-		return fmt.Errorf("收件地址被拒绝: %w", err)
+		return i18n.Wrap(err, "mail.to_refused")
 	}
 	w, err := c.Data()
 	if err != nil {
-		return fmt.Errorf("发送失败: %w", err)
+		return i18n.Wrap(err, "mail.send_failed")
 	}
 	if _, err := w.Write(Message(set, to, subject, body, time.Now())); err != nil {
-		return fmt.Errorf("发送失败: %w", err)
+		return i18n.Wrap(err, "mail.send_failed")
 	}
 	if err := w.Close(); err != nil {
-		return fmt.Errorf("发送失败: %w", err)
+		return i18n.Wrap(err, "mail.send_failed")
 	}
 	// The server accepted the mail with its answer to DATA: a failing QUIT does not
 	// take that back.

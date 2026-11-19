@@ -14,8 +14,10 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
+	"siplink/internal/i18n"
 	"siplink/internal/store"
 )
 
@@ -38,8 +40,17 @@ type Page struct {
 	Path      string // current path, for forms that come back here
 	Bare      bool   // print pages: no navigation
 	Theme     string // "light", "dark" or "" (follow the system)
+	Lang      *i18n.Lang
 	Data      any
+
+	tr *i18n.Tr
 }
+
+// Langs are the languages of the pickers.
+func (p *Page) Langs() []*i18n.Lang { return i18n.Langs }
+
+// JSText are the texts the scripts read from the page.
+func (p *Page) JSText() map[string]string { return jsTexts()[p.Lang] }
 
 // RegionFilter is the region choice in the top bar.
 type RegionFilter struct {
@@ -47,47 +58,38 @@ type RegionFilter struct {
 	Selected int64 // 0 = all
 }
 
-// timeTag shows a time as <time datetime="RFC 3339">. The text is the server's
-// zone and names it, so it is right without JavaScript; app.js rewrites it to the
-// viewer's local time in the same form. dateOnly shows the day alone.
-func timeTag(t time.Time, dateOnly bool) template.HTML {
-	if t.IsZero() {
+// timeTag shows a time as <time datetime="RFC 3339">. The text is the language's
+// pattern in the server's zone and names the zone, so it is right without JavaScript;
+// app.js rewrites it to the viewer's local time with the same pattern. dateOnly shows
+// the day alone.
+func timeTag(t *i18n.Tr, tm time.Time, dateOnly bool) template.HTML {
+	if tm.IsZero() {
 		return "—"
 	}
-	local := t.In(time.Local)
-	layout, kind := "2006-01-02 15:04", "datetime"
+	local := tm.In(time.Local)
+	kind := "datetime"
 	if dateOnly {
-		layout, kind = "2006-01-02", "date"
+		kind = "date"
 	}
 	zone := "UTC"
 	if _, off := local.Zone(); off != 0 {
 		zone += local.Format("-07:00")
 	}
-	return template.HTML(`<time datetime="` + t.UTC().Format(time.RFC3339) + `" data-local="` + kind + `">` +
-		local.Format(layout) + " " + zone + `</time>`) // only digits, '-', ':', ' ' and "UTC": nothing to escape
+	return template.HTML(`<time dir="ltr" datetime="` + tm.UTC().Format(time.RFC3339) + `" data-local="` + kind + `">` +
+		template.HTMLEscapeString(t.Date(local, dateOnly)) + " " + zone + `</time>`)
 }
-
-// whenText shows a stored time (store.TimeFormat), "—" when there is none.
-func whenText(s string) template.HTML { return timeTag(store.ParseTime(s), false) }
 
 type pages struct {
-	set map[string]*template.Template
+	set map[*i18n.Lang]map[string]*template.Template // language → page name → template
 }
 
-var funcs = template.FuncMap{
-	"when":         whenText,
-	"since":        sinceText,
-	"icon":         iconSVG,
-	"tip":          fieldTip,
-	"tabIcon":      func(id string) string { return configTabIcons[id] },
-	"initial":      initial,
-	"roleLabel":    roleLabel,
-	"asset":        assetURL,
-	"at":           func(t time.Time) template.HTML { return timeTag(t, false) },
-	"day":          func(t time.Time) template.HTML { return timeTag(t, true) },
-	"join":         strings.Join,
-	"actionLabel":  actionLabel,
-	"objectLabels": func() map[string]string { return objectLabels },
+// baseFuncs are the template helpers that do not depend on the language.
+var baseFuncs = template.FuncMap{
+	"icon":    iconSVG,
+	"tabIcon": func(id string) string { return configTabIcons[id] },
+	"initial": initial,
+	"asset":   assetURL,
+	"join":    strings.Join,
 	"pct": func(n, total int) int {
 		if total <= 0 {
 			return 0
@@ -110,9 +112,7 @@ var funcs = template.FuncMap{
 		}
 		return false
 	},
-	"fieldLabel": fieldLabel,
-	"regSummary": regSummary,
-	"mb":         func(n int64) float64 { return float64(n) / (1 << 20) },
+	"mb": func(n int64) float64 { return float64(n) / (1 << 20) },
 	"deref": func(p *int64) int64 {
 		if p == nil {
 			return 0
@@ -121,32 +121,70 @@ var funcs = template.FuncMap{
 	},
 }
 
-func loadPages() (*pages, error) {
+// langFuncs are the template helpers of one language: t translates a key with its
+// arguments, msg and msgs translate messages of other packages, and the rest put
+// labels and times into words.
+func langFuncs(t *i18n.Tr) template.FuncMap {
+	return template.FuncMap{
+		"t":            t.T,
+		"msg":          t.Msg,
+		"msgs":         t.Msgs,
+		"when":         func(s string) template.HTML { return timeTag(t, store.ParseTime(s), false) },
+		"since":        func(s string) template.HTML { return sinceText(t, s) },
+		"at":           func(tm time.Time) template.HTML { return timeTag(t, tm, false) },
+		"day":          func(tm time.Time) template.HTML { return timeTag(t, tm, true) },
+		"tip":          func(id, text string) template.HTML { return fieldTip(t, id, text) },
+		"roleLabel":    func(role string) string { return roleLabel(t, role) },
+		"actionLabel":  func(action string) string { return actionLabel(t, action) },
+		"objectLabels": func() map[string]string { return objectLabels(t) },
+		"fieldLabel":   func(key string) string { return fieldLabel(t, key) },
+		"objectName":   func(name string) string { return objectName(t, name) },
+		"regSummary":   func(raw string) string { return regSummary(t, raw) },
+	}
+}
+
+// parsedPages parses the templates once per process: each page is parsed with the
+// layout, then cloned for every language with that language's helpers.
+var parsedPages = sync.OnceValues(func() (*pages, error) {
 	names, err := fs.Glob(templateFiles, "templates/*.html")
 	if err != nil {
 		return nil, err
 	}
-	p := &pages{set: map[string]*template.Template{}}
+	p := &pages{set: map[*i18n.Lang]map[string]*template.Template{}}
+	for _, l := range i18n.Langs {
+		p.set[l] = map[string]*template.Template{}
+	}
+	probe := langFuncs(i18n.For(i18n.English))
 	for _, name := range names {
 		base := path.Base(name)
 		if base == "layout.html" {
 			continue
 		}
-		t, err := template.New("").Funcs(funcs).ParseFS(templateFiles, "templates/layout.html", name)
+		t, err := template.New("").Funcs(baseFuncs).Funcs(probe).ParseFS(templateFiles, "templates/layout.html", name)
 		if err != nil {
 			return nil, fmt.Errorf("template %s: %w", base, err)
 		}
-		p.set[strings.TrimSuffix(base, ".html")] = t
+		for _, l := range i18n.Langs {
+			c, err := t.Clone()
+			if err != nil {
+				return nil, fmt.Errorf("template %s: %w", base, err)
+			}
+			p.set[l][strings.TrimSuffix(base, ".html")] = c.Funcs(langFuncs(i18n.For(l)))
+		}
 	}
 	return p, nil
-}
+})
+
+func loadPages() (*pages, error) { return parsedPages() }
 
 // render executes a page inside the layout with the given status.
 func (s *Server) render(w http.ResponseWriter, r *http.Request, status int, name string, pg *Page) {
-	t := s.pages.set[name]
+	pg.tr = tr(r)
+	pg.Lang = pg.tr.Lang
+	t := s.pages.set[pg.Lang][name]
 	if t == nil {
 		s.Log.Error("unknown template", "name", name)
-		http.Error(w, "内部错误", http.StatusInternalServerError)
+		http.Error(w, pg.tr.T("error.internal"), http.StatusInternalServerError)
 		return
 	}
 	if pg.Admin == nil {
@@ -167,12 +205,13 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, status int, name
 	var buf bytes.Buffer
 	if err := t.ExecuteTemplate(&buf, "layout", pg); err != nil {
 		s.Log.Error("template failed", "name", name, "err", err)
-		http.Error(w, "内部错误", http.StatusInternalServerError)
+		http.Error(w, pg.tr.T("error.internal"), http.StatusInternalServerError)
 		return
 	}
 	h := w.Header()
 	h.Set("Content-Type", "text/html; charset=utf-8")
 	h.Set("Cache-Control", "no-store")
+	h.Set("Content-Language", pg.Lang.Code)
 	w.WriteHeader(status)
 	w.Write(buf.Bytes())
 }
@@ -181,33 +220,33 @@ func (s *Server) ok(w http.ResponseWriter, r *http.Request, name string, pg *Pag
 	s.render(w, r, http.StatusOK, name, pg)
 }
 
-// fail shows an error page.
+// fail shows an error page with a message already in the request's language.
 func (s *Server) fail(w http.ResponseWriter, r *http.Request, status int, msg string) {
-	s.render(w, r, status, "error", &Page{Title: statusTitle(status), Data: msg, Admin: current(r)})
+	s.render(w, r, status, "error", &Page{Title: statusTitle(tr(r), status), Data: msg, Admin: current(r)})
 }
 
-// statusTitle names an error page in the UI's language.
-func statusTitle(status int) string {
+// statusTitle names an error page.
+func statusTitle(t *i18n.Tr, status int) string {
 	switch status {
 	case http.StatusNotFound:
-		return "页面不存在"
+		return t.T("error.not_found_title")
 	case http.StatusForbidden:
-		return "无法访问"
+		return t.T("error.forbidden_title")
 	case http.StatusTooManyRequests:
-		return "请求过多"
+		return t.T("error.too_many_title")
 	case http.StatusInternalServerError:
-		return "内部错误"
+		return t.T("error.internal")
 	}
 	return http.StatusText(status)
 }
 
 func (s *Server) notFound(w http.ResponseWriter, r *http.Request) {
-	s.fail(w, r, http.StatusNotFound, "页面不存在或无权访问。")
+	s.fail(w, r, http.StatusNotFound, tr(r).T("error.not_found"))
 }
 
 func (s *Server) internal(w http.ResponseWriter, r *http.Request, err error) {
 	s.Log.Error("request failed", "route", logPattern(r), "err", err)
-	s.fail(w, r, http.StatusInternalServerError, "内部错误，请稍后重试。")
+	s.fail(w, r, http.StatusInternalServerError, tr(r).T("error.internal_retry"))
 }
 
 // ---- flash messages: one short message carried by a cookie across a redirect ----

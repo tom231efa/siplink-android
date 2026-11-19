@@ -102,9 +102,9 @@ func (s *Store) UpdateKeyTemplate(ctx context.Context, t *KeyTemplate) error {
 		updated_at = ? WHERE id = ?`, nullID(t.RegionID), t.Name, t.Note, s.NowText(), t.ID)
 }
 
-// KeyTemplateUsers names the client templates that use a key template.
-func (s *Store) KeyTemplateUsers(ctx context.Context, id int64) ([]string, error) {
-	return names(ctx, s.DB, `SELECT '客户端模板 ' || name FROM client_templates WHERE key_template_id = ? ORDER BY name`, id)
+// KeyTemplateUsers lists the client templates that use a key template.
+func (s *Store) KeyTemplateUsers(ctx context.Context, id int64) ([]Use, error) {
+	return uses(ctx, s.DB, `SELECT 'client_template', name FROM client_templates WHERE key_template_id = ? ORDER BY name`, id)
 }
 
 // DeleteKeyTemplate removes a key template nothing uses.

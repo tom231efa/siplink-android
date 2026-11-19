@@ -12,7 +12,7 @@ import (
 
 func TestSVGMatchesBitmap(t *testing.T) {
 	const url = "https://platform.example.com/p/abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG?pin=abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG"
-	svg, err := SVG(url)
+	svg, err := SVG(url, "QR")
 	if err != nil {
 		t.Fatal(err)
 	}

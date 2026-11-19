@@ -3,6 +3,7 @@ package mail
 import (
 	"context"
 	"net"
+	"siplink/internal/i18n"
 	"strconv"
 	"strings"
 	"testing"
@@ -43,7 +44,7 @@ func TestSendErrors(t *testing.T) {
 	set := settingsFor(t, srv, SecuritySTARTTLS)
 	srv.RejectRcpt = "nobody@example.com"
 	err := x.Send(context.Background(), set, "nobody@example.com", "s", "b")
-	if err == nil || !strings.Contains(err.Error(), "550") || !strings.Contains(err.Error(), "收件地址被拒绝") {
+	if err == nil || !strings.Contains(err.Error(), "550") || !strings.Contains(i18n.For(i18n.Source).Err(err), "收件地址被拒绝") {
 		t.Errorf("rejected recipient: %v", err)
 	}
 	bad := set
@@ -98,7 +99,7 @@ func TestSendTimeout(t *testing.T) {
 
 func TestProblem(t *testing.T) {
 	ok := Settings{Host: "smtp.example.com", Port: 587, Security: SecurityNone, From: "noreply@example.com"}
-	if p := ok.Problem(); p != "" {
+	if p := ok.Problem(); p != nil {
 		t.Fatal(p)
 	}
 	for _, bad := range []func(*Settings){
@@ -108,7 +109,7 @@ func TestProblem(t *testing.T) {
 	} {
 		s := ok
 		bad(&s)
-		if s.Problem() == "" {
+		if s.Problem() == nil {
 			t.Errorf("accepted %+v", s)
 		}
 	}

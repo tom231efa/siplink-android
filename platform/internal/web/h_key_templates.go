@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"siplink/internal/auth"
 	"siplink/internal/catalog"
+	"siplink/internal/i18n"
 	"siplink/internal/rules"
 	"siplink/internal/store"
 )
@@ -36,24 +36,26 @@ func (s *Server) keyList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	names, _ := s.allRegionNames(r)
+	tl := tr(r)
 	var rows []templateRow
 	for _, t := range list {
 		rows = append(rows, templateRow{ID: t.ID, Name: t.Name, Note: t.Note, Region: regionLabel(names, t.RegionID),
-			Global: t.RegionID == nil, Extra: strconv.Itoa(t.KeyCount) + " 个功能键"})
+			Global: t.RegionID == nil, Extra: tl.T("keys.list.count", "n", t.KeyCount)})
 	}
-	s.ok(w, r, "templates", &Page{Title: "功能键模板", Nav: "keys", Data: templatesData{Rows: rows, Base: "/key-templates", Kind: "功能键模板"}})
+	s.ok(w, r, "templates", &Page{Title: tl.T("nav.key_templates"), Nav: "keys", Data: templatesData{Rows: rows,
+		Base: "/key-templates", New: tl.T("templates.new.keys"), Empty: tl.T("templates.empty.keys")}})
 }
 
 func (s *Server) keyNew(w http.ResponseWriter, r *http.Request) {
-	s.metaFormPage(w, r, http.StatusOK, metaForm{Base: "/key-templates", Kind: "功能键模板", Region: s.defaultRegion(r)})
+	s.metaFormPage(w, r, http.StatusOK, metaForm{Base: "/key-templates", Title: tr(r).T("templates.new.keys"), Region: s.defaultRegion(r)})
 }
 
 func (s *Server) keyCreate(w http.ResponseWriter, r *http.Request) {
 	t := &store.KeyTemplate{}
-	f := metaForm{Base: "/key-templates", Kind: "功能键模板"}
+	f := metaForm{Base: "/key-templates", Title: tr(r).T("templates.new.keys")}
 	if f.Error = s.readMeta(r, &t.Name, &t.Note, &t.RegionID, true); f.Error == "" {
 		if err := s.St.CreateKeyTemplate(r.Context(), t); errors.Is(err, store.ErrConflict) {
-			f.Error = "同一区域已有同名模板。"
+			f.Error = tr(r).T("templates.error.name_taken")
 		} else if err != nil {
 			s.internal(w, r, err)
 			return
@@ -65,7 +67,7 @@ func (s *Server) keyCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.audit(r, "key_template.create", "key_template", t.ID, t.Name, t.RegionID, nil)
-	s.redirect(w, r, "/key-templates/"+itoa(t.ID), "ok", "功能键模板已创建。")
+	s.redirect(w, r, "/key-templates/"+itoa(t.ID), "ok", tr(r).T("keys.created"))
 }
 
 func (s *Server) loadKeyTemplate(w http.ResponseWriter, r *http.Request, edit bool) *store.KeyTemplate {
@@ -131,11 +133,12 @@ func (s *Server) renderKeys(w http.ResponseWriter, r *http.Request, status int, 
 	d.Keys, _ = s.St.Keys(r.Context(), t.ID)
 	d.Lines = s.lineNames(r, t.ID)
 	for _, a := range rules.ShortcutActions {
-		d.Actions = append(d.Actions, actionOption{rules.TypeWord(a), a.Label()})
+		d.Actions = append(d.Actions, actionOption{rules.TypeWord(a), tr(r).Msg(a.Text())})
 	}
 	d.Icons = rules.IconWords()
-	d.Users, _ = s.St.KeyTemplateUsers(r.Context(), t.ID)
-	d.Hint, d.Max = rules.FormatHint, rules.MaxShortcuts
+	users, _ := s.St.KeyTemplateUsers(r.Context(), t.ID)
+	d.Users = useNames(tr(r), users)
+	d.Hint, d.Max = tr(r).Msg(rules.FormatHint), rules.MaxShortcuts
 	a := current(r)
 	d.IsSuper = a.Role == store.RoleSuper
 	d.Regions, _ = s.St.ListRegions(r.Context(), a.RegionIDs, d.IsSuper)
@@ -168,13 +171,13 @@ func (s *Server) keyMeta(w http.ResponseWriter, r *http.Request) {
 		cts, _ := s.St.ClientTemplatesUsingKeys(r.Context(), t.ID)
 		for _, ct := range cts {
 			if ct.RegionID == nil || *ct.RegionID != *t.RegionID {
-				msg = "客户端模板「" + ct.Name + "」使用此模板，移动后将违反区域规则。"
+				msg = tr(r).T("keys.error.move_breaks_rule", "name", ct.Name)
 			}
 		}
 	}
 	if msg == "" {
 		if err := s.St.UpdateKeyTemplate(r.Context(), t); errors.Is(err, store.ErrConflict) {
-			msg = "同一区域已有同名模板。"
+			msg = tr(r).T("templates.error.name_taken")
 		} else if err != nil {
 			s.internal(w, r, err)
 			return
@@ -186,7 +189,7 @@ func (s *Server) keyMeta(w http.ResponseWriter, r *http.Request) {
 	}
 	s.audit(r, "key_template.update", "key_template", t.ID, t.Name, t.RegionID, changes(
 		field{"name", old.Name, t.Name}, field{"note", old.Note, t.Note}, field{"region_id", derefOr(old.RegionID), derefOr(t.RegionID)}))
-	s.redirect(w, r, "/key-templates/"+itoa(t.ID), "ok", "已保存。")
+	s.redirect(w, r, "/key-templates/"+itoa(t.ID), "ok", tr(r).T("common.saved"))
 }
 
 func (s *Server) keyDelete(w http.ResponseWriter, r *http.Request) {
@@ -195,14 +198,14 @@ func (s *Server) keyDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := s.St.DeleteKeyTemplate(r.Context(), t.ID); errors.Is(err, store.ErrInUse) {
-		s.redirect(w, r, "/key-templates/"+itoa(t.ID), "error", "模板仍被客户端模板使用，无法删除。")
+		s.redirect(w, r, "/key-templates/"+itoa(t.ID), "error", tr(r).T("keys.error.delete_in_use"))
 		return
 	} else if err != nil {
 		s.internal(w, r, err)
 		return
 	}
 	s.audit(r, "key_template.delete", "key_template", t.ID, t.Name, t.RegionID, nil)
-	s.redirect(w, r, "/key-templates", "ok", "功能键模板「"+t.Name+"」已删除。")
+	s.redirect(w, r, "/key-templates", "ok", tr(r).T("keys.deleted", "name", t.Name))
 }
 
 func (s *Server) keySave(w http.ResponseWriter, r *http.Request) {
@@ -218,7 +221,7 @@ func (s *Server) keySave(w http.ResponseWriter, r *http.Request) {
 	nk, problems := catalog.KeyProblems(k, s.lineNames(r, t.ID))
 	if len(problems) == 0 {
 		if err := s.St.SaveKey(r.Context(), t.ID, nk, rules.MaxShortcuts); errors.Is(err, store.ErrLimit) {
-			problems = append(problems, rules.ShortcutLimitReached.Full())
+			problems = append(problems, rules.ShortcutLimitReached.Msg())
 		} else if errors.Is(err, store.ErrNotFound) {
 			s.notFound(w, r)
 			return
@@ -228,11 +231,11 @@ func (s *Server) keySave(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if len(problems) > 0 {
-		s.renderKeys(w, r, http.StatusBadRequest, t, keyData{Edit: k, Error: strings.Join(problems, "；")})
+		s.renderKeys(w, r, http.StatusBadRequest, t, keyData{Edit: k, Error: strings.Join(tr(r).Msgs(problems), tr(r).T("format.problem_sep"))})
 		return
 	}
 	s.audit(r, "key_template.update", "key_template", t.ID, t.Name, t.RegionID, map[string]any{"key": nk.Label})
-	s.redirect(w, r, "/key-templates/"+itoa(t.ID), "ok", "功能键「"+nk.Label+"」已保存。")
+	s.redirect(w, r, "/key-templates/"+itoa(t.ID), "ok", tr(r).T("keys.key_saved", "name", nk.Label))
 }
 
 func (s *Server) keyRemove(w http.ResponseWriter, r *http.Request) {
@@ -249,7 +252,7 @@ func (s *Server) keyRemove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.audit(r, "key_template.update", "key_template", t.ID, t.Name, t.RegionID, map[string]any{"op": "delete"})
-	s.redirect(w, r, "/key-templates/"+itoa(t.ID), "ok", "已删除。")
+	s.redirect(w, r, "/key-templates/"+itoa(t.ID), "ok", tr(r).T("keys.key_deleted"))
 }
 
 // keyOrder saves the order of the keys set by dragging (sortable.js).
@@ -270,7 +273,7 @@ func (s *Server) keyImport(w http.ResponseWriter, r *http.Request) {
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, 2<<20)
 	if err := r.ParseMultipartForm(2 << 20); err != nil && !errors.Is(err, http.ErrNotMultipart) {
-		s.renderKeys(w, r, http.StatusBadRequest, t, keyData{Error: "文件过大（最大 2 MB）"})
+		s.renderKeys(w, r, http.StatusBadRequest, t, keyData{Error: tr(r).T("keys.import.too_large")})
 		return
 	}
 	text := r.FormValue("csv")
@@ -289,29 +292,29 @@ func (s *Server) keyImport(w http.ResponseWriter, r *http.Request) {
 	rowOf := acceptedRows(text, parsed.Errors)
 	var keys []*store.TemplateKey
 	for i, sc := range parsed.Shortcuts {
-		if p := catalog.LineProblem(sc.Line, lines); p != "" {
-			parsed.Errors = append(parsed.Errors, rules.CsvLineError{Line: rowOf[i], Reason: p})
+		if err := catalog.LineProblem(sc.Line, lines); err != nil {
+			parsed.Errors = append(parsed.Errors, rules.CsvLineError{Line: rowOf[i], Reason: i18n.MsgOf(err)})
 			continue
 		}
 		keys = append(keys, catalog.StoredKey(sc))
 	}
 	if len(parsed.Errors) > 0 || parsed.SkippedForLimit > 0 || len(keys) == 0 {
-		msg := "未导入任何功能键。"
+		msg := tr(r).T("keys.import.none")
 		if parsed.SkippedForLimit > 0 {
-			msg += fmt.Sprintf("超出 %d 个上限：%d 行。", rules.MaxShortcuts, parsed.SkippedForLimit)
+			msg = tr(r).T("keys.import.none_over_limit", "max", rules.MaxShortcuts, "n", parsed.SkippedForLimit)
 		}
 		s.renderKeys(w, r, http.StatusBadRequest, t, keyData{Error: msg, Errors: parsed.Errors})
 		return
 	}
 	if err := s.St.AddKeys(r.Context(), t.ID, keys, replace, rules.MaxShortcuts); errors.Is(err, store.ErrLimit) {
-		s.renderKeys(w, r, http.StatusBadRequest, t, keyData{Error: rules.ShortcutLimitReached.Full()})
+		s.renderKeys(w, r, http.StatusBadRequest, t, keyData{Error: tr(r).Msg(rules.ShortcutLimitReached.Msg())})
 		return
 	} else if err != nil {
 		s.internal(w, r, err)
 		return
 	}
 	s.audit(r, "key_template.import", "key_template", t.ID, t.Name, t.RegionID, map[string]any{"count": len(keys), "replace": replace})
-	s.redirect(w, r, "/key-templates/"+itoa(t.ID), "ok", fmt.Sprintf("已导入 %d 个功能键。", len(keys)))
+	s.redirect(w, r, "/key-templates/"+itoa(t.ID), "ok", tr(r).T("keys.import.done", "n", len(keys)))
 }
 
 // acceptedRows are the CSV line numbers of the keys DecodeShortcuts returned, in order:

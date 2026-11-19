@@ -49,7 +49,7 @@ func (s *Server) loginForm(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, to, http.StatusSeeOther)
 		return
 	}
-	s.ok(w, r, "login", &Page{Title: "登录", Data: loginData{Next: safeNext(r.URL.Query().Get("next"))}})
+	s.ok(w, r, "login", &Page{Title: tr(r).T("login.title"), Data: loginData{Next: safeNext(r.URL.Query().Get("next"))}})
 }
 
 func (s *Server) loginSubmit(w http.ResponseWriter, r *http.Request) {
@@ -61,8 +61,8 @@ func (s *Server) loginSubmit(w http.ResponseWriter, r *http.Request) {
 	data := loginData{Username: username, Next: next}
 
 	if !s.Logins.Attempt(key, ip) {
-		data.Error = "尝试次数过多，请 15 分钟后重试。"
-		s.render(w, r, http.StatusTooManyRequests, "login", &Page{Title: "登录", Data: data})
+		data.Error = tr(r).T("login.too_many")
+		s.render(w, r, http.StatusTooManyRequests, "login", &Page{Title: tr(r).T("login.title"), Data: data})
 		return
 	}
 	admin, err := s.St.AdminByUsername(r.Context(), username)
@@ -85,8 +85,8 @@ func (s *Server) loginSubmit(w http.ResponseWriter, r *http.Request) {
 			e.ObjectID = &admin.ID
 		}
 		s.addAudit(r, e)
-		data.Error = "用户名或密码不正确。"
-		s.render(w, r, http.StatusUnauthorized, "login", &Page{Title: "登录", Data: data})
+		data.Error = tr(r).T("login.failed")
+		s.render(w, r, http.StatusUnauthorized, "login", &Page{Title: tr(r).T("login.title"), Data: data})
 		return
 	}
 	s.Logins.Succeeded(key, ip)
@@ -128,6 +128,7 @@ func (s *Server) signIn(w http.ResponseWriter, r *http.Request, admin *store.Adm
 	s.addAudit(r, &store.AuditEntry{AdminID: &admin.ID, AdminName: admin.Username, Action: "login.success",
 		ObjectType: "admin", ObjectID: &admin.ID, ObjectName: admin.Username, IP: ip, Detail: detail})
 	s.setSessionCookie(w, r, token)
+	s.syncLanguage(w, r, admin)
 	if admin.MustChangePassword {
 		return "/me", nil
 	}

@@ -2,95 +2,95 @@
 {{$d := .Data}}{{$id := .Data.T.ID}}{{$ro := not .Data.CanEdit}}
 <header class="page-head">
   <div>
-    <div class="title-row fade-line"><h1 class="fade">{{$d.T.Name}}</h1>{{if $ro}}<span class="badge">只读</span>{{end}}</div>
-    <p class="page-sub fade">{{if $d.T.RegionID}}{{$d.Region}}{{else}}全局{{end}}<span class="dot-sep"></span>{{len $d.Keys}} / {{$d.Max}} 个功能键{{if $d.Users}}<span class="dot-sep"></span>被 {{join $d.Users "、"}} 使用{{end}}</p>
+    <div class="title-row fade-line"><h1 class="fade">{{$d.T.Name}}</h1>{{if $ro}}<span class="badge">{{t "templates.read_only"}}</span>{{end}}</div>
+    <p class="page-sub fade">{{if $d.T.RegionID}}{{$d.Region}}{{else}}{{t "common.global"}}{{end}}<span class="dot-sep"></span>{{t "keys.detail.count" "n" (len $d.Keys) "max" $d.Max}}{{if $d.Users}}<span class="dot-sep"></span>{{t "keys.detail.used_by" "names" $d.Users}}{{end}}</p>
   </div>
-  <div class="page-actions"><a class="btn" href="/key-templates/{{$id}}/export.csv">{{icon "download"}}导出 CSV</a>
-    {{if not $ro}}<a class="btn primary" href="#key-form">{{icon "plus"}}添加功能键</a>{{end}}</div>
+  <div class="page-actions"><a class="btn" href="/key-templates/{{$id}}/export.csv">{{icon "download"}}{{t "keys.detail.export"}}</a>
+    {{if not $ro}}<a class="btn primary" href="#key-form">{{icon "plus"}}{{t "keys.detail.add"}}</a>{{end}}</div>
 </header>
 {{with $d.Error}}<div class="flash error" role="alert">{{.}}</div>{{end}}
 {{if $d.Errors}}<section class="card table-card error-card">
-  <div class="card-head"><h2>{{icon "circle-alert"}}导入失败</h2></div>
-  <div class="table-wrap"><table class="table"><thead><tr><th class="num">行</th><th>原因</th></tr></thead>
-    <tbody>{{range $d.Errors}}<tr><td class="num">{{.Line}}</td><td>{{.Reason}}</td></tr>{{end}}</tbody></table></div>
+  <div class="card-head"><h2>{{icon "circle-alert"}}{{t "keys.import.failed"}}</h2></div>
+  <div class="table-wrap"><table class="table"><thead><tr><th class="num">{{t "keys.import.col_row"}}</th><th>{{t "keys.import.col_reason"}}</th></tr></thead>
+    <tbody>{{range $d.Errors}}<tr><td class="num">{{.Line}}</td><td>{{msg .Reason}}</td></tr>{{end}}</tbody></table></div>
 </section>{{end}}
 
 <section class="card table-card">
   {{if $d.Keys}}
   <div class="card-head list-tools">
-    <label class="search">{{icon "search"}}<input type="search" placeholder="名称、号码、类型、分类、线路" aria-label="搜索功能键" autocomplete="off" data-list-filter="key-rows"></label>
+    <label class="search">{{icon "search"}}<input type="search" placeholder="{{t "keys.list.search_placeholder"}}" aria-label="{{t "keys.list.search"}}" autocomplete="off" data-list-filter="key-rows"></label>
     <span class="muted count" data-list-count hidden></span>
   </div>
   <div class="table-wrap scroll-list" id="key-list"><table class="table">
-    <thead><tr>{{if not $ro}}<th class="grip-col"><span class="sr-only">顺序</span></th>{{end}}<th>名称</th><th>号码</th><th>类型</th><th class="hide-sm">分类</th><th class="hide-sm">线路</th><th class="hide-sm">图标</th><th class="actions-col"><span class="sr-only">操作</span></th></tr></thead>
+    <thead><tr>{{if not $ro}}<th class="grip-col"><span class="sr-only">{{t "keys.list.col_order"}}</span></th>{{end}}<th>{{t "common.name"}}</th><th>{{t "keys.field.number"}}</th><th>{{t "common.type"}}</th><th class="hide-sm">{{t "keys.field.category"}}</th><th class="hide-sm">{{t "keys.field.line"}}</th><th class="hide-sm">{{t "keys.field.icon"}}</th><th class="actions-col"><span class="sr-only">{{t "common.actions"}}</span></th></tr></thead>
     <tbody id="key-rows"{{if not $ro}} data-sortable data-sort-url="/key-templates/{{$id}}/keys/order"{{end}}>{{range $d.Keys}}{{$k := .}}{{$type := ""}}{{range $d.Actions}}{{if eq .Word $k.Action}}{{$type = .Label}}{{end}}{{end}}<tr data-sort-id="{{.ID}}" data-filter="{{.Label}} {{.Number}} {{$type}} {{.Category}} {{.Line}}">
       {{if not $ro}}<td class="grip-col">{{template "grip" .Label}}</td>{{end}}<td class="strong"><span class="fade">{{.Label}}</span></td><td class="mono"><span class="fade">{{.Number}}</span></td>
       <td class="nowrap">{{$type}}</td>
       <td class="hide-sm"><span class="fade">{{.Category}}</span></td><td class="hide-sm"><span class="fade">{{.Line}}</span></td><td class="hide-sm mono muted">{{.Icon}}</td>
       <td class="actions-col">{{if not $ro}}<div class="row-actions">
-        <a class="btn" href="/key-templates/{{$id}}?edit={{.ID}}#key-form">编辑</a>
-        <form method="post" action="/key-templates/{{$id}}/keys/{{.ID}}/delete" class="inline" data-confirm="确认删除功能键「{{.Label}}」？"><button class="btn danger" title="删除" aria-label="删除">{{icon "trash"}}</button></form>
+        <a class="btn" href="/key-templates/{{$id}}?edit={{.ID}}#key-form">{{t "common.edit"}}</a>
+        <form method="post" action="/key-templates/{{$id}}/keys/{{.ID}}/delete" class="inline" data-confirm="{{t "keys.list.delete_confirm" "name" .Label}}"><button class="btn danger" title="{{t "common.delete"}}" aria-label="{{t "common.delete"}}">{{icon "trash"}}</button></form>
       </div>{{end}}</td></tr>{{end}}</tbody>
   </table>
-  <div class="empty-state compact" data-list-empty hidden><p>无匹配的功能键</p></div></div>
-  <div class="resize-bar" role="separator" aria-orientation="horizontal" aria-label="列表高度" aria-controls="key-list" tabindex="0" data-resize="keys"></div>
-  {{else}}<div class="empty-state">{{icon "keyboard"}}<p>暂无功能键</p></div>{{end}}
+  <div class="empty-state compact" data-list-empty hidden><p>{{t "keys.list.no_match"}}</p></div></div>
+  <div class="resize-bar" role="separator" aria-orientation="horizontal" aria-label="{{t "keys.list.height"}}" aria-controls="key-list" tabindex="0" data-resize="keys"></div>
+  {{else}}<div class="empty-state">{{icon "keyboard"}}<p>{{t "keys.list.empty"}}</p></div>{{end}}
 </section>
 
 {{if not $ro}}
 {{$e := $d.Edit}}
 <div class="two-col even">
   <section class="card" id="key-form">
-    <div class="card-head"><h2>{{if and $e $e.ID}}编辑功能键{{else}}添加功能键{{end}}</h2></div>
+    <div class="card-head"><h2>{{if and $e $e.ID}}{{t "keys.form.edit_title"}}{{else}}{{t "keys.form.add_title"}}{{end}}</h2></div>
     <form method="post" action="/key-templates/{{$id}}/keys{{if and $e $e.ID}}/{{$e.ID}}{{end}}" class="card-body form">
       <div class="grid2">
-        <label>名称<input name="label" value="{{if $e}}{{$e.Label}}{{end}}" required maxlength="24"></label>
-        <label>号码<input name="number" value="{{if $e}}{{$e.Number}}{{end}}" maxlength="128" class="mono"></label>
-        <label>类型
+        <label>{{t "common.name"}}<input name="label" value="{{if $e}}{{$e.Label}}{{end}}" required maxlength="24"></label>
+        <label>{{t "keys.field.number"}}<input name="number" value="{{if $e}}{{$e.Number}}{{end}}" maxlength="128" class="mono" dir="ltr"></label>
+        <label>{{t "common.type"}}
           <select name="action">{{range $d.Actions}}<option value="{{.Word}}"{{if and $e (eq .Word $e.Action)}} selected{{end}}>{{.Label}}</option>{{end}}</select>
         </label>
-        <label>分类<input name="category" value="{{if $e}}{{$e.Category}}{{end}}" maxlength="16"></label>
-        <label>线路<input name="line" value="{{if $e}}{{$e.Line}}{{end}}" list="line-names" maxlength="160" placeholder="默认账号"></label>
-        <label>图标
-          <select name="icon"><option value="">无</option>{{range $d.Icons}}<option value="{{.}}"{{if and $e (eq . $e.Icon)}} selected{{end}}>{{.}}</option>{{end}}</select>
+        <label>{{t "keys.field.category"}}<input name="category" value="{{if $e}}{{$e.Category}}{{end}}" maxlength="16"></label>
+        <label>{{t "keys.field.line"}}<input name="line" value="{{if $e}}{{$e.Line}}{{end}}" list="line-names" maxlength="160" placeholder="{{t "keys.form.line_placeholder"}}"></label>
+        <label>{{t "keys.field.icon"}}
+          <select name="icon"><option value="">{{t "common.none"}}</option>{{range $d.Icons}}<option value="{{.}}"{{if and $e (eq . $e.Icon)}} selected{{end}}>{{.}}</option>{{end}}</select>
         </label>
       </div>
       <datalist id="line-names">{{range $d.Lines}}<option value="{{.}}">{{end}}</datalist>
-      <div class="form-foot">{{if and $e $e.ID}}<a class="btn" href="/key-templates/{{$id}}">取消</a>{{end}}<button type="submit" class="btn primary">保存</button></div>
+      <div class="form-foot">{{if and $e $e.ID}}<a class="btn" href="/key-templates/{{$id}}">{{t "common.cancel"}}</a>{{end}}<button type="submit" class="btn primary">{{t "common.save"}}</button></div>
     </form>
   </section>
 
   <section class="card">
-    <div class="card-head"><h2>导入 CSV<span class="help">{{template "help" "key-format"}}<span class="tooltip" role="tooltip" id="key-format"><span class="tip-line mono">{{$d.Hint}}</span><span class="tip-line">最大 2 MB。</span></span></span></h2></div>
+    <div class="card-head"><h2>{{t "keys.import.title"}}<span class="help">{{template "help" "key-format"}}<span class="tooltip" role="tooltip" id="key-format"><span class="tip-line mono">{{$d.Hint}}</span><span class="tip-line">{{t "keys.import.max_size"}}</span></span></span></h2></div>
     <form method="post" action="/key-templates/{{$id}}/import" enctype="multipart/form-data" class="card-body form fill">
-      <label>CSV 文件<input type="file" name="file" accept=".csv,.txt"></label>
-      <label class="grow">或粘贴<textarea name="csv" class="mono"></textarea></label>
+      <label>{{t "keys.import.file"}}<input type="file" name="file" accept=".csv,.txt"></label>
+      <label class="grow">{{t "keys.import.paste"}}<textarea name="csv" class="mono" dir="ltr"></textarea></label>
       <div class="form-foot spread">
-        <div class="segmented" role="radiogroup" aria-label="方式"><label><input type="radio" name="mode" value="append" checked><span>追加</span></label><label><input type="radio" name="mode" value="replace"><span>替换全部</span></label></div>
-        <button type="submit" class="btn">{{icon "upload"}}导入</button>
+        <div class="segmented" role="radiogroup" aria-label="{{t "keys.import.mode"}}"><label><input type="radio" name="mode" value="append" checked><span>{{t "keys.import.append"}}</span></label><label><input type="radio" name="mode" value="replace"><span>{{t "keys.import.replace"}}</span></label></div>
+        <button type="submit" class="btn">{{icon "upload"}}{{t "common.import"}}</button>
       </div>
     </form>
   </section>
 </div>
 
 <section class="card">
-  <div class="card-head"><h2>名称与区域</h2></div>
+  <div class="card-head"><h2>{{t "templates.meta_title"}}</h2></div>
   <form method="post" action="/key-templates/{{$id}}/meta" class="card-body form">
-    <label>名称<input name="name" value="{{$d.T.Name}}" required maxlength="64"></label>
-    {{if $d.IsSuper}}<label>区域
+    <label>{{t "common.name"}}<input name="name" value="{{$d.T.Name}}" required maxlength="64"></label>
+    {{if $d.IsSuper}}<label>{{t "common.region"}}
       <select name="region">
-        <option value="0"{{if not $d.T.RegionID}} selected{{end}}>全局</option>
+        <option value="0"{{if not $d.T.RegionID}} selected{{end}}>{{t "common.global"}}</option>
         {{range $d.Regions}}<option value="{{.ID}}"{{if eq .ID (deref $d.T.RegionID)}} selected{{end}}>{{.Name}}</option>{{end}}
       </select>
     </label>{{end}}
-    <label>备注<input name="note" value="{{$d.T.Note}}" maxlength="200"></label>
-    <div class="form-foot"><button type="submit" class="btn">保存</button></div>
+    <label>{{t "common.note"}}<input name="note" value="{{$d.T.Note}}" maxlength="200"></label>
+    <div class="form-foot"><button type="submit" class="btn">{{t "common.save"}}</button></div>
   </form>
 </section>
 <section class="card danger-card">
   <div class="card-body op">
-    <div><strong>删除模板</strong></div>
-    <form method="post" action="/key-templates/{{$id}}/delete" data-confirm="确认删除功能键模板「{{$d.T.Name}}」？"><button type="submit" class="btn danger">{{icon "trash"}}删除模板</button></form>
+    <div><strong>{{t "templates.delete"}}</strong></div>
+    <form method="post" action="/key-templates/{{$id}}/delete" data-confirm="{{t "keys.delete_confirm" "name" $d.T.Name}}"><button type="submit" class="btn danger">{{icon "trash"}}{{t "templates.delete"}}</button></form>
   </div>
 </section>
 {{end}}

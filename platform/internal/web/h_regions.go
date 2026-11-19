@@ -8,6 +8,7 @@ import (
 	"unicode/utf8"
 
 	"siplink/internal/auth"
+	"siplink/internal/i18n"
 	"siplink/internal/store"
 )
 
@@ -59,28 +60,31 @@ func (s *Server) renderRegions(w http.ResponseWriter, r *http.Request, status in
 		}
 		d.Rows = append(d.Rows, regionRow{Region: reg, Usage: u})
 	}
-	s.render(w, r, status, "regions", &Page{Title: "区域", Nav: "regions", Data: d})
+	s.render(w, r, status, "regions", &Page{Title: tr(r).T("nav.regions"), Nav: "regions", Data: d})
 }
 
-func regionNameProblem(name string) string {
+// maxRegionName is the longest region name, in characters.
+const maxRegionName = 64
+
+func regionNameProblem(t *i18n.Tr, name string) string {
 	switch n := utf8.RuneCountInString(name); {
 	case n == 0:
-		return "请填写区域名称。"
-	case n > 64:
-		return "区域名称不得超过 64 个字符。"
+		return t.T("regions.name_missing")
+	case n > maxRegionName:
+		return t.T("regions.name_too_long", "max", maxRegionName)
 	}
 	return ""
 }
 
 func (s *Server) regionCreate(w http.ResponseWriter, r *http.Request) {
 	reg := &store.Region{Name: trimmed(r, "name"), Note: truncate(trimmed(r, "note"), 200)}
-	if msg := regionNameProblem(reg.Name); msg != "" {
+	if msg := regionNameProblem(tr(r), reg.Name); msg != "" {
 		s.renderRegions(w, r, http.StatusBadRequest, regionsData{Error: msg, Name: reg.Name})
 		return
 	}
 	err := s.St.CreateRegion(r.Context(), reg)
 	if errors.Is(err, store.ErrConflict) {
-		s.renderRegions(w, r, http.StatusBadRequest, regionsData{Error: "已有同名区域。", Name: reg.Name})
+		s.renderRegions(w, r, http.StatusBadRequest, regionsData{Error: tr(r).T("regions.name_taken"), Name: reg.Name})
 		return
 	}
 	if err != nil {
@@ -88,7 +92,7 @@ func (s *Server) regionCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.audit(r, "region.create", "region", reg.ID, reg.Name, &reg.ID, map[string]any{"name": reg.Name})
-	s.redirect(w, r, "/regions", "ok", "区域「"+reg.Name+"」已创建。")
+	s.redirect(w, r, "/regions", "ok", tr(r).T("regions.created", "name", reg.Name))
 }
 
 func (s *Server) regionUpdate(w http.ResponseWriter, r *http.Request) {
@@ -103,12 +107,12 @@ func (s *Server) regionUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	reg := &store.Region{ID: id, Name: trimmed(r, "name"), Note: truncate(trimmed(r, "note"), 200)}
-	if msg := regionNameProblem(reg.Name); msg != "" {
+	if msg := regionNameProblem(tr(r), reg.Name); msg != "" {
 		s.redirect(w, r, "/regions", "error", msg)
 		return
 	}
 	if err := s.St.UpdateRegion(r.Context(), reg); errors.Is(err, store.ErrConflict) {
-		s.redirect(w, r, "/regions", "error", "已有同名区域。")
+		s.redirect(w, r, "/regions", "error", tr(r).T("regions.name_taken"))
 		return
 	} else if err != nil {
 		s.internal(w, r, err)
@@ -116,7 +120,7 @@ func (s *Server) regionUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	s.audit(r, "region.update", "region", id, reg.Name, &id, changes(
 		field{"name", old.Name, reg.Name}, field{"note", old.Note, reg.Note}))
-	s.redirect(w, r, "/regions", "ok", "区域已保存。")
+	s.redirect(w, r, "/regions", "ok", tr(r).T("regions.saved"))
 }
 
 func (s *Server) regionDelete(w http.ResponseWriter, r *http.Request) {
@@ -132,7 +136,7 @@ func (s *Server) regionDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	err = s.St.DeleteRegion(r.Context(), id)
 	if errors.Is(err, store.ErrInUse) {
-		s.redirect(w, r, "/regions", "error", "区域「"+reg.Name+"」非空，无法删除。请先移除其中的管理员、通讯录和 LDAP 账号。")
+		s.redirect(w, r, "/regions", "error", tr(r).T("regions.delete_not_empty", "name", reg.Name))
 		return
 	}
 	if err != nil {
@@ -140,7 +144,7 @@ func (s *Server) regionDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.audit(r, "region.delete", "region", id, reg.Name, &id, nil)
-	s.redirect(w, r, "/regions", "ok", "区域「"+reg.Name+"」已删除。")
+	s.redirect(w, r, "/regions", "ok", tr(r).T("regions.deleted", "name", reg.Name))
 }
 
 // field is one changed value for an audit entry.
@@ -150,7 +154,7 @@ type field struct {
 }
 
 // changes lists changed fields with old and new values. Secret fields must be
-// passed as "已修改" by the caller, never with their values.
+// passed as auditChanged by the caller, never with their values.
 func changes(fields ...field) map[string]any {
 	out := map[string]any{}
 	for _, f := range fields {

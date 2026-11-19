@@ -1,7 +1,6 @@
 package web
 
 import (
-	"context"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -10,39 +9,40 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"siplink/internal/i18n"
 	"siplink/internal/store"
 )
 
 // ---- navigation: one list drives the sidebar, the breadcrumb and the quick-jump palette ----
 
 type navItem struct {
-	Key, Href, Label, Icon string
-	Super                  bool // only super administrators see it
+	Key, Href, Label, Icon string // Label is a catalog key
+	Super                  bool   // only super administrators see it
 }
 
 type navGroup struct {
-	Label string // "" for the ungrouped first entry
+	Label string // catalog key; "" for the ungrouped first entry
 	Items []navItem
 }
 
 var navGroups = []navGroup{
-	{"", []navItem{{Key: "dashboard", Href: "/", Label: "概览", Icon: "layout-dashboard"}}},
-	{"设备", []navItem{
-		{Key: "clients", Href: "/clients", Label: "客户端", Icon: "smartphone"},
-		{Key: "clienttpl", Href: "/client-templates", Label: "客户端模板", Icon: "layers"},
-		{Key: "config", Href: "/config-templates", Label: "配置模板", Icon: "sliders-horizontal"},
-		{Key: "keys", Href: "/key-templates", Label: "功能键模板", Icon: "keyboard"},
+	{"", []navItem{{Key: "dashboard", Href: "/", Label: "nav.dashboard", Icon: "layout-dashboard"}}},
+	{"nav.group.devices", []navItem{
+		{Key: "clients", Href: "/clients", Label: "nav.clients", Icon: "smartphone"},
+		{Key: "clienttpl", Href: "/client-templates", Label: "nav.client_templates", Icon: "layers"},
+		{Key: "config", Href: "/config-templates", Label: "nav.config_templates", Icon: "sliders-horizontal"},
+		{Key: "keys", Href: "/key-templates", Label: "nav.key_templates", Icon: "keyboard"},
 	}},
-	{"通讯录", []navItem{
-		{Key: "books", Href: "/books", Label: "通讯录", Icon: "book-user"},
-		{Key: "ldap", Href: "/ldap-accounts", Label: "LDAP 账号", Icon: "key-round"},
+	{"nav.group.directories", []navItem{
+		{Key: "books", Href: "/books", Label: "nav.books", Icon: "book-user"},
+		{Key: "ldap", Href: "/ldap-accounts", Label: "nav.ldap_accounts", Icon: "key-round"},
 	}},
-	{"管理", []navItem{
-		{Key: "regions", Href: "/regions", Label: "区域", Icon: "map-pin"},
-		{Key: "admins", Href: "/admins", Label: "管理员", Icon: "shield-user", Super: true},
-		{Key: "mail", Href: "/mail", Label: "邮件", Icon: "mail", Super: true},
-		{Key: "audit", Href: "/audit", Label: "审计日志", Icon: "scroll-text"},
-		{Key: "system", Href: "/system", Label: "系统", Icon: "server", Super: true},
+	{"nav.group.admin", []navItem{
+		{Key: "regions", Href: "/regions", Label: "nav.regions", Icon: "map-pin"},
+		{Key: "admins", Href: "/admins", Label: "nav.admins", Icon: "shield-user", Super: true},
+		{Key: "mail", Href: "/mail", Label: "nav.mail", Icon: "mail", Super: true},
+		{Key: "audit", Href: "/audit", Label: "nav.audit", Icon: "scroll-text"},
+		{Key: "system", Href: "/system", Label: "nav.system", Icon: "server", Super: true},
 	}},
 }
 
@@ -66,7 +66,7 @@ func (p *Page) NavGroups() []navGroup {
 // Crumb is the breadcrumb: the section, the list the page belongs to (a link unless
 // it is the page itself) and the page's own title when it is a single object.
 type Crumb struct {
-	Section string
+	Section string // catalog key
 	List    *navItem
 	Here    string // "" when the list is the page itself
 }
@@ -76,7 +76,7 @@ func (p *Page) Crumb() Crumb {
 		for i := range g.Items {
 			if it := &g.Items[i]; it.Key == p.Nav {
 				c := Crumb{Section: g.Label, List: it}
-				if p.Title != it.Label {
+				if p.Title != p.tr.T(it.Label) {
 					c.Here = p.Title
 				}
 				return c
@@ -90,21 +90,29 @@ func (p *Page) Crumb() Crumb {
 
 // iconSVG is the template helper {{icon "name"}}: a Lucide icon as inline SVG that
 // takes the text colour. An unknown name fails the page, so a typo shows in the tests.
+// Icons that point a way carry the class "dir" and are mirrored in right-to-left pages.
 func iconSVG(name string) (template.HTML, error) {
 	inner, ok := icons[name]
 	if !ok {
 		return "", fmt.Errorf("unknown icon %q", name)
 	}
-	return template.HTML(`<svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">` + inner + `</svg>`), nil
+	class := "icon"
+	if directionalIcons[name] {
+		class = "icon dir"
+	}
+	return template.HTML(`<svg class="` + class + `" viewBox="0 0 24 24" aria-hidden="true" focusable="false">` + inner + `</svg>`), nil
 }
+
+// directionalIcons point left or right; a right-to-left page mirrors them (§5.5).
+var directionalIcons = map[string]bool{"arrow-left": true, "arrow-right": true, "log-out": true}
 
 // fieldTip is the template helper {{tip "id" "text"}}: the "?" beside a field's name
 // whose tooltip (with that id, for the input's aria-describedby) carries the field's
 // hint. It is the same component as the help of a card title (.help, app.js).
-func fieldTip(id, text string) template.HTML {
+func fieldTip(t *i18n.Tr, id, text string) template.HTML {
 	q, _ := iconSVG("circle-question-mark")
 	id = template.HTMLEscapeString(id)
-	return template.HTML(`<span class="help"><button type="button" class="help-tip" aria-label="说明" aria-describedby="` + id + `">` +
+	return template.HTML(`<span class="help"><button type="button" class="help-tip" aria-label="` + template.HTMLEscapeString(t.T("common.help")) + `" aria-describedby="` + id + `">` +
 		string(q) + `</button><span class="tooltip" role="tooltip" id="` + id + `">` + template.HTMLEscapeString(text) + `</span></span>`)
 }
 
@@ -125,18 +133,19 @@ func initial(name string) string {
 	return string(unicode.ToUpper(r))
 }
 
-func roleLabel(role string) string {
+func roleLabel(t *i18n.Tr, role string) string {
 	if role == store.RoleSuper {
-		return "超级管理员"
+		return t.T("common.role.super")
 	}
-	return "区域管理员"
+	return t.T("common.role.region")
 }
 
-// sinceText is a stored time as a <time> tag that app.js shows as "3 分钟前", with the
-// full local time in its title. Without JavaScript it reads like when.
-func sinceText(s string) template.HTML {
+// sinceText is a stored time as a <time> tag that app.js shows as "3 minutes ago" in
+// the page's language, with the full local time in its title. Without JavaScript it
+// reads like when.
+func sinceText(tr *i18n.Tr, s string) template.HTML {
 	t := store.ParseTime(s)
-	tag := string(timeTag(t, false))
+	tag := string(timeTag(tr, t, false))
 	if t.IsZero() {
 		return template.HTML(tag)
 	}
@@ -160,7 +169,7 @@ func (s *Server) unknownPath(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	s.notFound(w, r.WithContext(context.WithValue(r.Context(), adminKey{}, a)))
+	s.notFound(w, withAdmin(r, a))
 }
 
 // ---- theme: system, light or dark, kept in a cookie the layout reads ----

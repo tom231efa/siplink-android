@@ -1,9 +1,10 @@
-// SipLink management platform: passkeys (WebAuthn) on 我的账号 and in the second step
+// SipLink management platform: passkeys (WebAuthn) on the account page and in the second step
 // of the sign-in (design §6.8). The server sends the library's options as JSON with
 // base64url fields; this file turns them into buffers and the answer back into JSON.
 (function () {
   "use strict";
   if (!window.PublicKeyCredential || !navigator.credentials) return;
+  var text = window.siplinkText || String;
 
   function toBuf(s) {
     s = s.replace(/-/g, "+").replace(/_/g, "/");
@@ -23,7 +24,7 @@
       headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {})
     }).then(function (r) {
       return r.json().catch(function () { return {}; }).then(function (j) {
-        if (!r.ok) throw new Error(j.error || "请求失败。");
+        if (!r.ok) throw new Error(j.error || text("request_failed"));
         return j;
       });
     });
@@ -51,14 +52,14 @@
     return function (err) {
       var el = box.querySelector("[data-passkey-error]");
       if (el) {
-        el.textContent = err && err.name === "NotAllowedError" ? "已取消或超时。" : (err && err.message) || "操作失败。";
+        el.textContent = err && err.name === "NotAllowedError" ? text("cancelled") : (err && err.message) || text("failed");
         el.hidden = false;
       }
       btn.disabled = false;
     };
   }
 
-  // 我的账号: add a passkey under the name typed in.
+  // Account page: add a passkey under the name typed in.
   document.querySelectorAll("[data-passkey-register]").forEach(function (form) {
     var btn = form.querySelector("button");
     form.hidden = false;

@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -74,12 +75,22 @@ type importData struct {
 	Max      int
 	TooMany  bool
 	MaxBytes int
+	Columns  []string // header lines the format help shows
+}
+
+// newImportData is the import page of a book. Its format help shows the English
+// column names, on a page in Chinese the Chinese ones first; the import reads both.
+func (s *Server) newImportData(r *http.Request, b *store.Book) importData {
+	columns := []string{strings.Join(books.ExportHeader(false), ",")}
+	if chineseColumns(r) {
+		columns = append([]string{strings.Join(books.ExportHeader(true), ",")}, columns...)
+	}
+	return importData{Book: b, Max: s.Cfg.MaxBookEntries, MaxBytes: books.MaxCSVBytes >> 20, Columns: columns}
 }
 
 func (s *Server) importForm(w http.ResponseWriter, r *http.Request) {
 	if b := s.loadBook(w, r, true); b != nil {
-		s.ok(w, r, "book_import", &Page{Title: "导入联系人", Nav: "books",
-			Data: importData{Book: b, Max: s.Cfg.MaxBookEntries, MaxBytes: books.MaxCSVBytes >> 20}})
+		s.ok(w, r, "book_import", &Page{Title: tr(r).T("dirs.import.title"), Nav: "books", Data: s.newImportData(r, b)})
 	}
 }
 
@@ -90,32 +101,32 @@ func (s *Server) importDryRun(w http.ResponseWriter, r *http.Request) {
 	if b == nil {
 		return
 	}
-	d := importData{Book: b, Max: s.Cfg.MaxBookEntries, MaxBytes: books.MaxCSVBytes >> 20}
+	d := s.newImportData(r, b)
 	fail := func(msg string) {
 		d.Error = msg
-		s.render(w, r, http.StatusBadRequest, "book_import", &Page{Title: "导入联系人", Nav: "books", Data: d})
+		s.render(w, r, http.StatusBadRequest, "book_import", &Page{Title: tr(r).T("dirs.import.title"), Nav: "books", Data: d})
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, books.MaxCSVBytes+64<<10)
 	if err := r.ParseMultipartForm(1 << 20); err != nil {
-		fail(fmt.Sprintf("文件无法读取（最大 %d MB）。", books.MaxCSVBytes>>20))
+		fail(tr(r).T("dirs.import.unreadable_max", "max", books.MaxCSVBytes>>20))
 		return
 	}
 	defer r.MultipartForm.RemoveAll()
 	d.Replace = r.FormValue("mode") == "replace"
 	f, _, err := r.FormFile("file")
 	if err != nil {
-		fail("请选择一个 CSV 文件。")
+		fail(tr(r).T("dirs.import.no_file"))
 		return
 	}
 	defer f.Close()
 	var buf bytes.Buffer
 	if _, err := io.Copy(&buf, io.LimitReader(f, books.MaxCSVBytes+1)); err != nil {
-		fail("文件无法读取。")
+		fail(tr(r).T("dirs.import.unreadable"))
 		return
 	}
 	p, err := books.ParseCSV(buf.Bytes())
 	if err != nil {
-		fail(err.Error())
+		fail(errText(r, err))
 		return
 	}
 	d.Parsed = p
@@ -127,7 +138,7 @@ func (s *Server) importDryRun(w http.ResponseWriter, r *http.Request) {
 	if len(p.Entries) > 0 && !d.TooMany {
 		d.Key = s.imports.put(s.Now(), &pendingImport{adminID: current(r).ID, bookID: b.ID, replace: d.Replace, entries: p.Entries})
 	}
-	s.ok(w, r, "book_import", &Page{Title: "导入联系人：校验结果", Nav: "books", Data: d})
+	s.ok(w, r, "book_import", &Page{Title: tr(r).T("dirs.import.result_title"), Nav: "books", Data: d})
 }
 
 func (s *Server) importConfirm(w http.ResponseWriter, r *http.Request) {
@@ -137,13 +148,13 @@ func (s *Server) importConfirm(w http.ResponseWriter, r *http.Request) {
 	}
 	p := s.imports.take(s.Now(), r.FormValue("key"), current(r).ID, b.ID)
 	if p == nil {
-		s.redirect(w, r, "/books/"+itoa(b.ID)+"/import", "error", "校验结果已失效，请重新上传文件。")
+		s.redirect(w, r, "/books/"+itoa(b.ID)+"/import", "error", tr(r).T("dirs.import.expired"))
 		return
 	}
 	err := s.St.AddEntries(r.Context(), b.ID, p.entries, p.replace, s.Cfg.MaxBookEntries)
 	if errors.Is(err, store.ErrLimit) {
 		s.redirect(w, r, "/books/"+itoa(b.ID)+"/import", "error",
-			fmt.Sprintf("导入后将超出 %d 人上限，未导入任何联系人。", s.Cfg.MaxBookEntries))
+			tr(r).T("dirs.import.over_limit", "max", s.Cfg.MaxBookEntries))
 		return
 	}
 	if err != nil {
@@ -155,7 +166,7 @@ func (s *Server) importConfirm(w http.ResponseWriter, r *http.Request) {
 		mode = "replace"
 	}
 	s.audit(r, "book.import", "book", b.ID, b.Name, b.RegionID, map[string]any{"mode": mode, "count": len(p.entries)})
-	s.redirect(w, r, "/books/"+itoa(b.ID), "ok", fmt.Sprintf("已导入 %d 位联系人。", len(p.entries)))
+	s.redirect(w, r, "/books/"+itoa(b.ID), "ok", tr(r).T("dirs.import.done", "n", len(p.entries)))
 }
 
 func (s *Server) exportBook(w http.ResponseWriter, r *http.Request, format string) {
@@ -174,7 +185,7 @@ func (s *Server) exportBook(w http.ResponseWriter, r *http.Request, format strin
 		ctype = "text/plain; charset=utf-8"
 		err = books.WriteLDIF(&buf, b, entries, s.Cfg.LDAPSuffix)
 	} else {
-		err = books.WriteCSV(&buf, entries)
+		err = books.WriteCSV(&buf, entries, chineseColumns(r))
 	}
 	if err != nil {
 		s.internal(w, r, err)

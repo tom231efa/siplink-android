@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"encoding/csv"
 	"errors"
-	"fmt"
 	"io"
 	"strings"
 	"unicode/utf8"
 
 	"golang.org/x/text/encoding/simplifiedchinese"
 
+	"siplink/internal/i18n"
 	"siplink/internal/store"
 )
 
@@ -33,13 +33,24 @@ var columns = []struct {
 	{"given_name", []string{"名", "given_name"}},
 }
 
-// ExportHeader is the header line of exported files.
-var ExportHeader = []string{"姓名", "办公电话", "手机", "单位", "部门", "职务", "邮箱", "姓", "名"}
+// ExportHeader is the header line of exported files: the Chinese column names, or the
+// English ones (§5.5).
+func ExportHeader(chinese bool) []string {
+	out := make([]string, len(columns))
+	for i, c := range columns {
+		if chinese {
+			out[i] = c.names[0]
+		} else {
+			out[i] = c.names[1]
+		}
+	}
+	return out
+}
 
-// LineError is a problem of one line of the file.
+// LineError is what is wrong with one line of the file.
 type LineError struct {
-	Line    int
-	Message string
+	Line     int
+	Problems []i18n.Msg
 }
 
 // Parsed is the result of reading a CSV file.
@@ -47,12 +58,12 @@ type Parsed struct {
 	Entries  []*store.Entry
 	Lines    []int // file line of each entry
 	Errors   []LineError
-	Warnings []string
+	Warnings []i18n.Msg
 	Encoding string // "UTF-8" or "GB18030"
 }
 
 // ErrNoName is returned when the header has no name column.
-var ErrNoName = errors.New("文件第一行必须是表头，并包含「姓名」或 name 列")
+var ErrNoName = i18n.E("books.csv.no_name")
 
 // Decode returns the text of a file: UTF-8 (with or without BOM), else GB18030.
 func Decode(data []byte) (string, string, error) {
@@ -62,7 +73,7 @@ func Decode(data []byte) (string, string, error) {
 	}
 	out, err := simplifiedchinese.GB18030.NewDecoder().Bytes(data)
 	if err != nil {
-		return "", "", fmt.Errorf("文件既不是 UTF-8 也不是 GB18030 编码")
+		return "", "", i18n.E("books.csv.encoding")
 	}
 	return string(out), "GB18030", nil
 }
@@ -70,7 +81,7 @@ func Decode(data []byte) (string, string, error) {
 // ParseCSV reads people from a CSV file with a header line.
 func ParseCSV(data []byte) (*Parsed, error) {
 	if len(data) > MaxCSVBytes {
-		return nil, fmt.Errorf("文件超过 %d MB", MaxCSVBytes>>20)
+		return nil, i18n.E("books.csv.too_big", "max", MaxCSVBytes>>20)
 	}
 	text, enc, err := Decode(data)
 	if err != nil {
@@ -80,10 +91,10 @@ func ParseCSV(data []byte) (*Parsed, error) {
 	r.FieldsPerRecord = -1
 	header, err := r.Read()
 	if errors.Is(err, io.EOF) {
-		return nil, errors.New("文件是空的")
+		return nil, i18n.E("books.csv.empty")
 	}
 	if err != nil {
-		return nil, fmt.Errorf("表头无法读取：%v", err)
+		return nil, i18n.E("books.csv.header", "err", err.Error())
 	}
 	index := map[string]int{}
 	p := &Parsed{Encoding: enc}
@@ -100,10 +111,10 @@ func ParseCSV(data []byte) (*Parsed, error) {
 		switch {
 		case key == "":
 			if h != "" {
-				p.Warnings = append(p.Warnings, fmt.Sprintf("忽略未知的列「%s」", h))
+				p.Warnings = append(p.Warnings, i18n.M("books.csv.unknown_column", "name", h))
 			}
 		case index[key] != 0:
-			return nil, fmt.Errorf("列「%s」出现了两次", h)
+			return nil, i18n.E("books.csv.duplicate_column", "name", h)
 		default:
 			index[key] = i + 1 // 0 means absent
 		}
@@ -122,7 +133,7 @@ func ParseCSV(data []byte) (*Parsed, error) {
 			if errors.As(err, &pe) {
 				line = pe.StartLine
 			}
-			p.Errors = append(p.Errors, LineError{line, "格式错误（引号不匹配？）"})
+			p.Errors = append(p.Errors, LineError{line, []i18n.Msg{i18n.M("books.csv.bad_line")}})
 			continue
 		}
 		line, _ := r.FieldPos(0)
@@ -143,7 +154,7 @@ func ParseCSV(data []byte) (*Parsed, error) {
 		}
 		Normalize(e)
 		if problems := Validate(e); len(problems) > 0 {
-			p.Errors = append(p.Errors, LineError{line, strings.Join(problems, "；")})
+			p.Errors = append(p.Errors, LineError{line, problems})
 			continue
 		}
 		p.Entries = append(p.Entries, e)
@@ -168,14 +179,15 @@ func unescapeCell(s string) string {
 	return s
 }
 
-// WriteCSV writes entries as UTF-8 with BOM (opens correctly in Excel), numbers joined with ';'.
-func WriteCSV(w io.Writer, entries []*store.Entry) error {
+// WriteCSV writes entries as UTF-8 with BOM (opens correctly in Excel), numbers joined
+// with ';', under the Chinese or the English column names.
+func WriteCSV(w io.Writer, entries []*store.Entry, chinese bool) error {
 	if _, err := w.Write([]byte("\xef\xbb\xbf")); err != nil {
 		return err
 	}
 	cw := csv.NewWriter(w)
 	cw.UseCRLF = true
-	if err := cw.Write(ExportHeader); err != nil {
+	if err := cw.Write(ExportHeader(chinese)); err != nil {
 		return err
 	}
 	for _, e := range entries {

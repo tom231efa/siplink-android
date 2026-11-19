@@ -23,7 +23,7 @@
 }
 .btn:hover { background: var(--surface-2); text-decoration: none; }
 .btn:active:not([disabled]) { transform: translateY(1px); }
-.btn .icon { width: 15px; height: 15px; margin-left: -2px; }
+.btn .icon { width: 15px; height: 15px; margin-inline-start: -2px; }
 .btn.primary {
   color: var(--accent-fg); background: var(--accent); border-color: transparent;
   box-shadow: inset 0 1px 0 oklch(1 0 0 / .16), 0 1px 2px var(--shadow-c2), 0 0 0 1px var(--accent-hover);
@@ -70,7 +70,7 @@ input[type=number], input[type=url], select, textarea {
 textarea { height: auto; min-height: 88px; padding: 8px 10px; resize: vertical; line-height: 1.5; }
 input::placeholder, textarea::placeholder { color: var(--faint); }
 select {
-  appearance: none; padding-right: 30px; cursor: pointer;
+  appearance: none; padding-inline-end: 30px; cursor: pointer;
   background-image: var(--chevron); background-repeat: no-repeat; background-position: right 8px center; background-size: 16px;
 }
 select.compact { width: auto; max-width: min(100%, 16em); height: 32px; font-size: 13px; }
@@ -87,7 +87,7 @@ input[type=file] {
   border: 1px dashed var(--border-strong); border-radius: var(--radius-sm); background: var(--surface-2);
 }
 input[type=file]::file-selector-button {
-  font: inherit; font-size: 13px; font-weight: 500; height: 28px; padding: 0 10px; margin-right: 10px;
+  font: inherit; font-size: 13px; font-weight: 500; height: 28px; padding: 0 10px; margin-inline-end: 10px;
   color: var(--text); background: var(--surface); border: 1px solid var(--border-strong); border-radius: 6px; cursor: pointer;
 }
 /* checkboxes (multi-selection) and radios */
@@ -105,8 +105,8 @@ input[type=checkbox]:focus-visible, input[type=radio]:focus-visible { outline: 2
 input[type=checkbox]:focus, input[type=radio]:focus { box-shadow: none; }
 /* search field with an icon */
 .search { position: relative; display: flex; align-items: center; flex: 1 1 220px; max-width: 320px; min-width: 160px; }
-.search .icon { position: absolute; left: 10px; color: var(--faint); pointer-events: none; }
-.search input { padding-left: 32px; height: 32px; font-size: 13px; }
+.search .icon { position: absolute; inset-inline-start: 10px; color: var(--faint); pointer-events: none; }
+.search input { padding-inline-start: 32px; height: 32px; font-size: 13px; }
 
 /* switch: a checkbox for a setting. Markup: <span class="switch"><input type=checkbox role=switch …><span></span></span> */
 .switch { position: relative; display: inline-flex; flex: none; width: 34px; height: 20px; }
@@ -169,7 +169,7 @@ fieldset:disabled .segmented { opacity: .6; }
   display: grid; gap: 14px; min-width: 0;
 }
 .form fieldset.plain { border: 0; padding: 0; border-radius: 0; }
-.form fieldset.plain.manual { padding: 0 0 0 26px; transition: opacity var(--t) var(--ease); }
+.form fieldset.plain.manual { padding-block: 0; padding-inline: 26px 0; transition: opacity var(--t) var(--ease); }
 .form fieldset.plain.manual:disabled { opacity: .5; }
 .form legend { color: var(--muted); font-size: 12.5px; font-weight: 500; padding: 0 6px; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 16px; }
@@ -233,32 +233,32 @@ fieldset:disabled .segmented { opacity: .6; }
 .dot-sep::before { content: "·"; margin: 0 6px; color: var(--faint); }
 
 /* ---- tables: no header band, muted small heads, 44 px rows ---- */
-.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.table-wrap { position: relative; overflow-x: auto; -webkit-overflow-scrolling: touch; } /* relative: keeps a hidden header label inside the scroller */
 .table-wrap > .table { min-width: 640px; }
 .table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-.table th, .table td { text-align: left; padding: 11px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.table th, .table td { text-align: start; padding: 11px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
 .table th {
   font-size: 12px; font-weight: 500; color: var(--muted); padding-top: 8px; padding-bottom: 8px; white-space: nowrap;
 }
 .table tbody tr:last-child td { border-bottom: 0; }
 .table tbody tr:hover { background: color-mix(in oklch, var(--surface-2) 70%, transparent); }
 .table tbody tr:has(input[type=checkbox]:checked) { background: var(--accent-soft); }
-.table .num { text-align: right; }
-.table .check-col { width: 36px; padding-right: 0; }
-.table .actions-col { text-align: right; width: 1%; white-space: nowrap; }
+.table .num { text-align: end; }
+.table .check-col { width: 36px; padding-inline-end: 0; }
+.table .actions-col { text-align: end; width: 1%; white-space: nowrap; }
 .table td.strong, .table td.strong a { font-weight: 500; color: var(--text); }
 .table td.strong a:hover { color: var(--link); }
 .table .sub { display: block; color: var(--muted); font-size: 12.5px; font-weight: 400; }
 .table-card { padding: 0; overflow: clip; } /* clip, not hidden: keeps sticky bars working */
 .table .show-sm { display: none; }
-.table-card .table th:first-child, .table-card .table td:first-child { padding-left: 20px; }
-.table-card .table th:last-child, .table-card .table td:last-child { padding-right: 20px; }
+.table-card .table th:first-child, .table-card .table td:first-child { padding-inline-start: 20px; }
+.table-card .table th:last-child, .table-card .table td:last-child { padding-inline-end: 20px; }
 .panel .table-wrap, .card-body .table-wrap { margin: 0 -4px; }
 
 /* ---- sortable rows (sortable.js): a grip at the start of the row; the dragged row lifts
    and the rows it passes step aside ---- */
-.table .grip-col { width: 1%; padding-right: 0; }
-.table-card .table .grip-col:first-child { padding-left: 10px; }
+.table .grip-col { width: 1%; padding-inline-end: 0; }
+.table-card .table .grip-col:first-child { padding-inline-start: 10px; }
 .grip {
   display: grid; place-items: center; width: 24px; height: 28px; padding: 0; border: 0; border-radius: var(--radius-xs);
   background: none; color: var(--faint); cursor: grab; touch-action: none; visibility: hidden;
@@ -298,7 +298,7 @@ fieldset:disabled .segmented { opacity: .6; }
 .grip:disabled { visibility: hidden; }
 
 /* ---- help: a question mark beside a title; its tooltip shows on hover, focus and tap (app.js) ---- */
-.help { position: relative; display: inline-flex; margin-left: 2px; }
+.help { position: relative; display: inline-flex; margin-inline-start: 2px; }
 .help-tip {
   display: grid; place-items: center; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%;
   background: none; color: var(--muted); cursor: help;
@@ -306,9 +306,9 @@ fieldset:disabled .segmented { opacity: .6; }
 .card-head h2 .help-tip .icon { width: 15px; height: 15px; color: inherit; }
 .help-tip:hover, .help.open .help-tip { color: var(--text); background: var(--surface-2); }
 .tooltip {
-  display: none; position: absolute; z-index: 60; top: calc(100% + 6px); left: 0; width: max-content; max-width: min(420px, calc(100vw - 32px));
+  display: none; position: absolute; z-index: 60; top: calc(100% + 6px); inset-inline-start: 0; width: max-content; max-width: min(420px, calc(100vw - 32px));
   padding: 8px 10px; border-radius: var(--radius-sm); background: var(--surface); color: var(--text-2);
-  box-shadow: var(--shadow-lg); font-size: 12.5px; font-weight: 400; line-height: 1.55; text-align: left; white-space: normal;
+  box-shadow: var(--shadow-lg); font-size: 12.5px; font-weight: 400; line-height: 1.55; text-align: start; white-space: normal;
   animation: rise var(--t-fast) var(--ease) both;
 }
 .help:hover .tooltip, .help:focus-within .tooltip, .help.open .tooltip { display: block; }
@@ -353,11 +353,11 @@ fieldset:disabled .segmented { opacity: .6; }
 .status.warn::before { background: var(--warn); }
 .status.bad, .badge.bad { color: var(--danger-text); background: var(--danger-soft); box-shadow: none; }
 .status.bad::before { background: var(--danger); }
-.status + .status { margin-left: 4px; }
+.status + .status { margin-inline-start: 4px; }
 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--faint); flex: none; }
 .dot.ok { background: var(--ok); } .dot.warn { background: var(--warn); } .dot.bad { background: var(--danger); } .dot.blue { background: var(--accent); }
 .tag {
-  display: inline-flex; align-items: center; height: 20px; padding: 0 6px; margin: 1px 4px 1px 0; border-radius: 5px;
+  display: inline-flex; align-items: center; height: 20px; padding: 0 6px; margin-block: 1px; margin-inline: 0 4px; border-radius: 5px;
   font-size: 11.5px; color: var(--text-2); background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--border);
   white-space: nowrap; vertical-align: middle; max-width: 100%;
 }
@@ -383,18 +383,18 @@ fieldset:disabled .segmented { opacity: .6; }
 .flash.warn { color: var(--warn-text); background: var(--warn-soft); border-color: color-mix(in oklch, var(--warn) 34%, transparent); }
 .flash ul { margin-bottom: 0; }
 .toast {
-  position: fixed; z-index: 70; right: 20px; bottom: 20px; display: flex; align-items: center; gap: 10px;
-  max-width: min(420px, calc(100vw - 32px)); padding: 10px 10px 10px 14px; border-radius: 10px;
+  position: fixed; z-index: 70; inset-inline-end: 20px; bottom: 20px; display: flex; align-items: center; gap: 10px;
+  max-width: min(420px, calc(100vw - 32px)); padding-block: 10px; padding-inline: 14px 10px; border-radius: 10px;
   background: var(--surface); color: var(--text); box-shadow: var(--shadow-lg); font-size: 13.5px;
   animation: toast-in var(--t) var(--ease) both;
 }
 .toast > .icon { color: var(--ok); }
-.toast-close { margin-left: 4px; width: 24px; height: 24px; border: 0; border-radius: 6px; background: none; color: var(--muted); cursor: pointer; display: grid; place-items: center; }
+.toast-close { margin-inline-start: 4px; width: 24px; height: 24px; border: 0; border-radius: 6px; background: none; color: var(--muted); cursor: pointer; display: grid; place-items: center; }
 .toast-close:hover { background: var(--surface-2); color: var(--text); }
 .toast.leaving { opacity: 0; transform: translateY(8px); transition: opacity var(--t) var(--ease), transform var(--t) var(--ease); }
 
 /* ---- key–value lists, pager, legacy tabs ---- */
-.kv { display: grid; grid-template-columns: max-content 1fr; gap: 10px 24px; margin: 0; }
+.kv { display: grid; grid-template-columns: fit-content(45%) minmax(0, 1fr); gap: 10px 24px; margin: 0; } /* long labels wrap */
 .kv dt { color: var(--muted); font-size: 13px; }
 .kv dd { margin: 0; overflow-wrap: anywhere; min-width: 0; }
 .pager { display: flex; gap: 8px; align-items: center; justify-content: space-between; margin-top: 12px; }
@@ -437,7 +437,7 @@ html:has(dialog[open]) { overflow: hidden; }
 details[open] > .popover { animation: rise var(--t-fast) var(--ease); }
 .menu-item {
   display: flex; align-items: center; gap: 8px; width: 100%; height: 32px; padding: 0 10px; border-radius: 6px;
-  font: inherit; font-size: 13.5px; color: var(--text); background: none; border: 0; text-align: left; cursor: pointer;
+  font: inherit; font-size: 13.5px; color: var(--text); background: none; border: 0; text-align: start; cursor: pointer;
 }
 .menu-item .icon { color: var(--muted); }
 .menu-item:hover { background: var(--surface-2); text-decoration: none; }
@@ -468,14 +468,14 @@ meter.bar:-moz-meter-sub-optimum::-moz-meter-bar { background: var(--warn); }
   .search { max-width: none; flex-basis: 100%; }
   .toolbar > input[type=search] { max-width: none; flex-basis: 100%; }
   .panel { padding: 16px; }
-  .card-head, .card-body { padding-left: 16px; padding-right: 16px; }
-  .table-card .table th:first-child, .table-card .table td:first-child { padding-left: 16px; }
-  .table-card .table th:last-child, .table-card .table td:last-child { padding-right: 16px; }
-  .toast { left: 16px; right: 16px; bottom: 16px; }
+  .card-head, .card-body { padding-inline: 16px; }
+  .table-card .table th:first-child, .table-card .table td:first-child { padding-inline-start: 16px; }
+  .table-card .table th:last-child, .table-card .table td:last-child { padding-inline-end: 16px; }
+  .toast { inset-inline: 16px; bottom: 16px; }
   .table-wrap > .table.fit-sm { min-width: 0; }
   .table .hide-sm { display: none; }
   .table .show-sm { display: block; }
-  .table th, .table td { padding-left: 8px; padding-right: 8px; }
+  .table th, .table td { padding-inline: 8px; }
 }
 @media print {
   .toast, .dialog { display: none !important; }

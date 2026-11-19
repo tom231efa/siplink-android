@@ -2,6 +2,7 @@ package rules
 
 import (
 	"regexp"
+	"siplink/internal/i18n"
 	"strconv"
 	"strings"
 )
@@ -93,40 +94,35 @@ const (
 )
 
 var accountErrors = []errorText{
-	{"LIMIT_REACHED", "", "最多 " + strconv.Itoa(MaxAccounts) + " 个账号"},
-	{"NAME_TOO_LONG", "账号名称", "最多 " + strconv.Itoa(MaxAccountNameLength) + " 个字符"},
-	{"NAME_TAKEN", "账号名称", "已存在"},
-	{"USERNAME_EMPTY", "用户名", "必填"},
-	{"USERNAME_INVALID", "用户名", "含无效字符"},
-	{"DOMAIN_EMPTY", "域名", "必填"},
-	{"DOMAIN_INVALID", "域名", "格式不正确"},
-	{"PORT_INVALID", "端口", "应为 1–65535"},
-	{"SERVER_INVALID", "代理服务器", "应为 主机[:端口]"},
-	{"BACKUP_INVALID", "备用服务器", "应为 主机[:端口]"},
-	{"BACKUP_SAME", "备用服务器", "与主服务器相同"},
-	{"DNS_INVALID", "DNS 服务器", "应为 IP[:端口]"},
-	{"EXPIRES_OUT_OF_RANGE", "注册有效期", "应为 " + strconv.Itoa(MinExpires) + "–" + strconv.Itoa(MaxExpires) + " 秒"},
-	{"DUPLICATE", "", "账号已存在"},
-	{"PASSWORD_REQUIRED", "密码", "必填（已改用户名、域名或端口）"},
-	{"ADDRESS_REJECTED", "", "地址无法解析"},
-	{"NOT_FOUND", "", "账号不存在"},
-	{"MANAGED", "", ManagedNotice},
+	{"LIMIT_REACHED", i18n.M("rules.account.limit_reached", "max", MaxAccounts)},
+	{"NAME_TOO_LONG", i18n.M("rules.account.name_too_long", "max", MaxAccountNameLength)},
+	{"NAME_TAKEN", i18n.M("rules.account.name_taken")},
+	{"USERNAME_EMPTY", i18n.M("rules.account.username_empty")},
+	{"USERNAME_INVALID", i18n.M("rules.account.username_invalid")},
+	{"DOMAIN_EMPTY", i18n.M("rules.account.domain_empty")},
+	{"DOMAIN_INVALID", i18n.M("rules.account.domain_invalid")},
+	{"PORT_INVALID", i18n.M("rules.account.port_invalid")},
+	{"SERVER_INVALID", i18n.M("rules.account.server_invalid")},
+	{"BACKUP_INVALID", i18n.M("rules.account.backup_invalid")},
+	{"BACKUP_SAME", i18n.M("rules.account.backup_same")},
+	{"DNS_INVALID", i18n.M("rules.account.dns_invalid")},
+	{"EXPIRES_OUT_OF_RANGE", i18n.M("rules.account.expires_out_of_range", "min", MinExpires, "max", MaxExpires)},
+	{"DUPLICATE", i18n.M("rules.account.duplicate")},
+	{"PASSWORD_REQUIRED", i18n.M("rules.account.password_required")},
+	{"ADDRESS_REJECTED", i18n.M("rules.account.address_rejected")},
+	{"NOT_FOUND", i18n.M("rules.account.not_found")},
+	{"MANAGED", ManagedNotice},
 }
 
 // Name is the name of the Kotlin enum value, e.g. "LIMIT_REACHED".
 func (e AccountError) Name() string { return accountErrors[e].name }
 
-// Subject is what the error is about.
-func (e AccountError) Subject() string { return accountErrors[e].subject }
+// Msg is the error's text where no field stands next to it, translated where it is
+// shown. Port of AccountRules.Error.full.
+func (e AccountError) Msg() i18n.Msg { return accountErrors[e].msg }
 
-// Message is what is wrong, as shown right under that field.
-func (e AccountError) Message() string { return accountErrors[e].message }
-
-// Full is the error where no field stands next to it. Port of AccountRules.Error.full.
-func (e AccountError) Full() string { return accountErrors[e].full() }
-
-// Error returns Full, so that an AccountError is an error.
-func (e AccountError) Error() string { return e.Full() }
+// Error is the English text, so that an AccountError is an error.
+func (e AccountError) Error() string { return i18n.For(i18n.English).Msg(e.Msg()) }
 
 // String returns Name.
 func (e AccountError) String() string { return e.Name() }
@@ -357,10 +353,12 @@ func ParseTransport(value string) (SipTransport, bool) {
 	return "", false
 }
 
-// errorText holds the Kotlin name, subject and message of an error enum value.
-type errorText struct{ name, subject, message string }
-
-func (t errorText) full() string { return t.subject + t.message }
+// errorText holds the Kotlin name of an error enum value and its text (the app's
+// Error.full: subject and message in one).
+type errorText struct {
+	name string
+	msg  i18n.Msg
+}
 
 func contains[T comparable](list []T, value T) bool {
 	for _, item := range list {

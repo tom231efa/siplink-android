@@ -1,15 +1,15 @@
 {{define "content"}}
 {{$d := .Data}}
 <header class="page-head">
-  <div><h1>概览</h1></div>
-  <div class="page-actions"><a class="btn" href="/clients">{{icon "smartphone"}}全部客户端</a><a class="btn primary" href="/clients/new">{{icon "plus"}}新建客户端</a></div>
+  <div><h1>{{t "nav.dashboard"}}</h1></div>
+  <div class="page-actions"><a class="btn" href="/clients">{{icon "smartphone"}}{{t "dashboard.all_clients"}}</a><a class="btn primary" href="/clients/new">{{icon "plus"}}{{t "dashboard.new_client"}}</a></div>
 </header>
 
 <div class="bento">
   <a class="card tile tile-clients card-link" href="/clients">
-    <div class="tile-head"><span class="tile-icon">{{icon "smartphone"}}</span><span class="card-label">客户端</span>{{icon "arrow-right"}}</div>
-    <div class="tile-figure"><span class="card-value">{{$d.Active}}</span><span class="tile-unit">已绑定</span><span class="tile-aside">共 {{add $d.Active $d.Pending}} 个</span></div>
-    <svg class="stackbar" viewBox="0 0 100 8" preserveAspectRatio="none" role="img" aria-label="{{range $d.Bar}}{{.Label}} {{.N}}；{{end}}">
+    <div class="tile-head"><span class="tile-icon">{{icon "smartphone"}}</span><span class="card-label">{{t "nav.clients"}}</span>{{icon "arrow-right"}}</div>
+    <div class="tile-figure"><span class="card-value">{{$d.Active}}</span><span class="tile-unit">{{t "dashboard.clients.bound"}}</span><span class="tile-aside">{{t "dashboard.clients.total" "n" (add $d.Active $d.Pending)}}</span></div>
+    <svg class="stackbar" viewBox="0 0 100 8" preserveAspectRatio="none" role="img" aria-label="{{range $d.Bar}}{{t "dashboard.bar.aria_item" "label" .Label "n" .N}}{{end}}">
       <rect class="track" width="100" height="8"/>
       {{range $d.Bar}}{{if .N}}<rect class="seg {{.Class}}" x="{{.X}}" width="{{.W}}" height="8"/>{{end}}{{end}}
     </svg>
@@ -17,55 +17,55 @@
   </a>
   <div class="tile-grid">
     <a class="card tile card-link{{if $d.Offline}} is-warn{{end}}" href="/clients?status=offline">
-      <div class="tile-head"><span class="tile-icon">{{icon "clock"}}</span><span class="card-label">离线</span></div>
+      <div class="tile-head"><span class="tile-icon">{{icon "clock"}}</span><span class="card-label">{{t "dashboard.offline"}}</span></div>
       <div class="card-value">{{len $d.Offline}}</div>
     </a>
     <a class="card tile card-link" href="/books">
-      <div class="tile-head"><span class="tile-icon">{{icon "book-user"}}</span><span class="card-label">通讯录</span></div>
+      <div class="tile-head"><span class="tile-icon">{{icon "book-user"}}</span><span class="card-label">{{t "nav.books"}}</span></div>
       <div class="card-value">{{$d.Books}}</div>
-      <div class="card-note">共 {{$d.Entries}} 人</div>
+      <div class="card-note">{{t "dashboard.books.entries" "n" $d.Entries}}</div>
     </a>
     <a class="card tile card-link" href="/regions">
-      <div class="tile-head"><span class="tile-icon">{{icon "map-pin"}}</span><span class="card-label">区域</span></div>
+      <div class="tile-head"><span class="tile-icon">{{icon "map-pin"}}</span><span class="card-label">{{t "nav.regions"}}</span></div>
       <div class="card-value">{{$d.Regions}}</div>
     </a>
     {{if .Super}}<a class="card tile card-link" href="/admins">
-      <div class="tile-head"><span class="tile-icon">{{icon "shield-user"}}</span><span class="card-label">管理员</span></div>
+      <div class="tile-head"><span class="tile-icon">{{icon "shield-user"}}</span><span class="card-label">{{t "nav.admins"}}</span></div>
       <div class="card-value">{{$d.Admins}}</div>
     </a>{{end}}
   </div>
 
   <section class="card attention" id="attention" aria-labelledby="attention-title">
-    <div class="card-head"><h2 id="attention-title">{{icon "circle-alert"}}待处理事项</h2>
+    <div class="card-head"><h2 id="attention-title">{{icon "circle-alert"}}{{t "dashboard.attention.title"}}</h2>
       {{$n := add (len $d.Cert) (add (len $d.Trouble) (add (len $d.Offline) (len $d.Full)))}}{{if $n}}<span class="badge warn">{{$n}}</span>{{end}}</div>
     {{if $n}}
     <ul class="attention-list">
-      {{range $d.Cert}}<li><span class="dot {{if eq .Level "error"}}bad{{else}}warn{{end}}"></span><div><a href="/system">证书</a><span class="sub">{{.Text}}</span></div></li>{{end}}
+      {{range $d.Cert}}<li><span class="dot {{if eq .Level "error"}}bad{{else}}warn{{end}}"></span><div><a href="/system">{{t "dashboard.attention.cert"}}</a><span class="sub">{{msg .Text}}</span></div></li>{{end}}
       {{range $d.Trouble}}<li><span class="dot bad"></span><div><a class="fade" href="/clients/{{.ID}}">{{.Name}}</a><span class="sub">{{.Reason}}</span></div></li>{{end}}
-      {{range $d.Offline}}<li><span class="dot warn"></span><div><a class="fade" href="/clients/{{.ID}}">{{.Name}}</a><span class="sub">离线 · {{.Reason}} {{since .LastSeen}}</span></div></li>{{end}}
-      {{range $d.Full}}<li><span class="dot warn"></span><div><a class="fade" href="/books/{{.ID}}">{{.Name}}</a><span class="sub">联系人数接近上限：{{.EntryCount}} / {{$d.Max}}</span></div></li>{{end}}
+      {{range $d.Offline}}<li><span class="dot warn"></span><div><a class="fade" href="/clients/{{.ID}}">{{.Name}}</a><span class="sub">{{t "dashboard.attention.offline_since"}} {{since .LastSeen}}</span></div></li>{{end}}
+      {{range $d.Full}}<li><span class="dot warn"></span><div><a class="fade" href="/books/{{.ID}}">{{.Name}}</a><span class="sub">{{t "dashboard.attention.book_full" "n" .EntryCount "max" $d.Max}}</span></div></li>{{end}}
     </ul>
     {{else}}
-    <div class="empty-state compact">{{icon "circle-check"}}<p>暂无待处理事项</p></div>
+    <div class="empty-state compact">{{icon "circle-check"}}<p>{{t "dashboard.attention.empty"}}</p></div>
     {{end}}
   </section>
 
   <section class="card activity" aria-labelledby="activity-title">
-    <div class="card-head"><h2 id="activity-title">{{icon "activity"}}最近操作</h2><a class="btn ghost small" href="/audit">审计日志{{icon "arrow-right"}}</a></div>
+    <div class="card-head"><h2 id="activity-title">{{icon "activity"}}{{t "dashboard.activity.title"}}</h2><a class="btn ghost small" href="/audit">{{t "nav.audit"}}{{icon "arrow-right"}}</a></div>
     {{if $d.Recent}}
     <ol class="activity-list">
       {{range $d.Recent}}
       <li>
         <span class="avatar small" aria-hidden="true">{{if .AdminName}}{{initial .AdminName}}{{else}}·{{end}}</span>
         <div class="activity-text">
-          <p class="fade"><strong>{{if .AdminName}}{{.AdminName}}{{else}}系统{{end}}</strong> <span class="activity-action">{{actionLabel .Action}}</span>{{with .ObjectName}} <strong>{{.}}</strong>{{end}}</p>
+          <p class="fade"><strong>{{if .AdminName}}{{.AdminName}}{{else}}{{t "dashboard.activity.system"}}{{end}}</strong> <span class="activity-action">{{actionLabel .Action}}</span>{{with .ObjectName}} <strong>{{objectName .}}</strong>{{end}}</p>
           <p class="sub fade">{{since .At}}{{with .RegionID}}<span class="dot-sep"></span>{{index $d.Names (deref .)}}{{end}}{{with .IP}}<span class="dot-sep"></span><span class="mono">{{.}}</span>{{end}}</p>
         </div>
       </li>
       {{end}}
     </ol>
     {{else}}
-    <div class="empty-state compact">{{icon "inbox"}}<p>暂无记录</p></div>
+    <div class="empty-state compact">{{icon "inbox"}}<p>{{t "dashboard.activity.empty"}}</p></div>
     {{end}}
   </section>
 </div>

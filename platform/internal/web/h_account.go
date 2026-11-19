@@ -64,27 +64,28 @@ func (s *Server) renderAccount(w http.ResponseWriter, r *http.Request, status in
 		s.internal(w, r, err)
 		return
 	}
-	s.render(w, r, status, "me", &Page{Title: "我的账号", Nav: "me", Data: d})
+	s.render(w, r, status, "me", &Page{Title: tr(r).T("layout.my_account"), Nav: "me", Data: d})
 }
 
 func (s *Server) meSubmit(w http.ResponseWriter, r *http.Request) {
 	a := current(r)
 	old, pw, again := r.FormValue("current"), r.FormValue("password"), r.FormValue("password2")
-	msg := s.recheckPassword(a, old)
+	t := tr(r)
+	msg := s.recheckPassword(r, a, old)
 	switch {
-	case msg == wrongPassword:
-		msg = "当前密码不正确。"
+	case msg == t.T("twostep.wrong_password"):
+		msg = t.T("me.password.wrong_current")
 	case msg == "" && pw != again:
-		msg = "两次输入的新密码不一致。"
+		msg = t.T("me.password.mismatch")
 	case msg == "" && pw == old:
-		msg = "新密码不得与当前密码相同。"
+		msg = t.T("me.password.same")
 	case msg == "":
 		strict, err := s.St.PasswordCheck(r.Context())
 		if err != nil {
 			s.internal(w, r, err)
 			return
 		}
-		msg = auth.PasswordProblem(pw, a.Username, strict)
+		msg = errText(r, auth.PasswordProblem(pw, a.Username, strict))
 	}
 	if msg != "" {
 		s.renderAccount(w, r, http.StatusBadRequest, msg)
@@ -100,14 +101,14 @@ func (s *Server) meSubmit(w http.ResponseWriter, r *http.Request) {
 		s.internal(w, r, err)
 		return
 	}
-	s.audit(r, "admin.password_change", "admin", a.ID, a.Username, nil, map[string]any{"password": "已修改"})
+	s.audit(r, "admin.password_change", "admin", a.ID, a.Username, nil, map[string]any{"password": auditChanged})
 	token, err := s.Sessions.Create(r.Context(), a.ID, s.clientIP(r), r.UserAgent())
 	if err != nil {
 		s.internal(w, r, err)
 		return
 	}
 	s.setSessionCookie(w, r, token)
-	s.redirect(w, r, "/", "ok", "密码已修改。")
+	s.redirect(w, r, "/", "ok", t.T("me.password.changed"))
 }
 
 // emailSave changes the own address (password typed again). A new address is
@@ -120,10 +121,10 @@ func (s *Server) emailSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if email != "" && mail.ValidAddress(email) != nil {
-		s.redirect(w, r, "/me", "error", "邮箱地址无效。")
+		s.redirect(w, r, "/me", "error", tr(r).T("me.email.invalid"))
 		return
 	}
-	if m := s.recheckPassword(a, r.FormValue("password")); m != "" {
+	if m := s.recheckPassword(r, a, r.FormValue("password")); m != "" {
 		s.redirect(w, r, "/me", "error", m)
 		return
 	}
@@ -133,7 +134,7 @@ func (s *Server) emailSave(w http.ResponseWriter, r *http.Request) {
 		err = s.St.SetAdminEmail(r.Context(), a.ID, email, keep)
 	}
 	if errors.Is(err, store.ErrLastMethod) {
-		s.redirect(w, r, "/me", "error", lastMethodText)
+		s.redirect(w, r, "/me", "error", tr(r).T("twostep.last_method"))
 		return
 	}
 	if err != nil {
@@ -142,14 +143,14 @@ func (s *Server) emailSave(w http.ResponseWriter, r *http.Request) {
 	}
 	s.audit(r, "admin.email", "admin", a.ID, a.Username, nil, changes(field{"email", a.Email, email}))
 	if email == "" {
-		s.redirect(w, r, "/me", "ok", "邮箱已删除。")
+		s.redirect(w, r, "/me", "ok", tr(r).T("me.email.removed"))
 		return
 	}
 	if m := s.sendCode(r, a, twostep.PurposeConfirm, email); m != "" {
-		s.redirect(w, r, "/me", "error", "邮箱已保存。"+m)
+		s.redirect(w, r, "/me", "error", tr(r).T("me.email.saved_unsent", "reason", m))
 		return
 	}
-	s.redirect(w, r, "/me", "ok", "邮箱已保存，验证码已发送。")
+	s.redirect(w, r, "/me", "ok", tr(r).T("me.email.saved_sent"))
 }
 
 func (s *Server) emailSend(w http.ResponseWriter, r *http.Request) {
@@ -162,7 +163,7 @@ func (s *Server) emailSend(w http.ResponseWriter, r *http.Request) {
 		s.redirect(w, r, "/me", "error", m)
 		return
 	}
-	s.redirect(w, r, "/me", "ok", "验证码已发送。")
+	s.redirect(w, r, "/me", "ok", tr(r).T("twostep.code_sent"))
 }
 
 func (s *Server) emailConfirm(w http.ResponseWriter, r *http.Request) {
@@ -181,9 +182,9 @@ func (s *Server) emailConfirm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !ok || addr != a.Email {
-		s.redirect(w, r, "/me", "error", "验证码不正确或已过期。")
+		s.redirect(w, r, "/me", "error", tr(r).T("me.email.wrong_code"))
 		return
 	}
 	s.audit(r, "admin.email_confirm", "admin", a.ID, a.Username, nil, nil)
-	s.redirect(w, r, "/me", "ok", "邮箱已验证。")
+	s.redirect(w, r, "/me", "ok", tr(r).T("me.email.confirm_done"))
 }

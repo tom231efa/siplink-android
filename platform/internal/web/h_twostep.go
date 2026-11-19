@@ -55,12 +55,6 @@ func (s *Server) mustSetUp(ctx context.Context, a *store.Admin) (bool, error) {
 	return twostep.MustSetUp(true, true, ts.Methods()), err
 }
 
-// Messages of the checks below.
-const (
-	wrongPassword  = "密码不正确。"
-	lastMethodText = "区域管理员须至少保留一种两步验证方式。"
-)
-
 // tryStep runs one check of the administrator's (second step, password typed again,
 // first TOTP code) under the limit of §6.8. The slot is taken before the check, so
 // parallel requests cannot all pass, and given back when the check passes (or fails for
@@ -78,14 +72,15 @@ func (s *Server) tryStep(a *store.Admin, check func() (bool, error)) (ok, limite
 }
 
 // recheckPassword verifies a password typed again (sensitive changes, 修改密码, viewing
-// stored passwords) under the same limit. It returns a message, "" when it is right.
-func (s *Server) recheckPassword(a *store.Admin, password string) string {
+// stored passwords) under the same limit. It returns a message in the request's
+// language, "" when it is right.
+func (s *Server) recheckPassword(r *http.Request, a *store.Admin, password string) string {
 	ok, limited, _ := s.tryStep(a, func() (bool, error) { return auth.VerifyPassword(a.PasswordHash, password) })
 	switch {
 	case limited:
-		return tooManySteps
+		return tr(r).T("login.too_many")
 	case !ok:
-		return wrongPassword
+		return tr(r).T("twostep.wrong_password")
 	}
 	return ""
 }
@@ -132,36 +127,41 @@ func (s *Server) newRecoveryCodes(r *http.Request, a *store.Admin) (string, erro
 	return s.shown.put(s.Now(), a.ID, codes), nil
 }
 
-// sendCode makes a new e-mail code and sends it; it returns a message on failure. The
-// reason of a failed send goes to the log only (the 邮件 page's test shows it).
+// sendCode makes a new e-mail code and sends it in the administrator's language (§5.5);
+// it returns a message in the request's language on failure. The reason of a failed send
+// goes to the log only (the 邮件 page's test shows it).
 func (s *Server) sendCode(r *http.Request, a *store.Admin, purpose, address string) string {
+	t := tr(r)
 	set, err := s.mailSettings(r.Context())
 	if err != nil {
 		s.Log.Error("mail settings unreadable", "err", err)
-		return "内部错误，请稍后重试。"
+		return t.T("error.internal_retry")
 	}
 	if !set.Configured() {
-		return "邮件服务未配置。"
+		return t.T("twostep.mail_off")
 	}
 	key := itoa(a.ID)
 	if !s.mailMinute.Take(key) {
-		return "发送过于频繁，请 1 分钟后重试。"
+		return t.T("twostep.send_wait")
 	}
 	if !s.mailHour.Take(key) {
 		s.mailMinute.Release(key)
-		return "发送次数过多，请稍后重试。"
+		return t.T("twostep.send_limit")
 	}
 	code := twostep.NewCode()
 	err = s.St.PutEmailCode(r.Context(), &store.EmailCode{AdminID: a.ID, Purpose: purpose, Address: address,
 		CodeHash: twostep.CodeHash(s.Ext.CodeKey, a.ID, purpose, code), ExpiresAt: s.Now().Add(twostep.CodeTTL).UTC().Format(store.TimeFormat)})
 	if err != nil {
 		s.Log.Error("e-mail code not stored", "err", err)
-		return "内部错误，请稍后重试。"
+		return t.T("error.internal_retry")
 	}
-	body := "SipLink 管理平台验证码：" + code + "\n10 分钟内有效。\n"
-	if err := s.Mailer.Send(r.Context(), set, address, "SipLink 管理平台验证码", body); err != nil {
+	// The code follows its label as it is: as an argument it would be wrapped in
+	// isolates in a right-to-left language, and a copy of it would carry them along.
+	mt := adminTr(r, a)
+	body := mt.T("mailtext.code_label") + code + "\n" + mt.T("mailtext.code_valid") + "\n"
+	if err := s.Mailer.Send(r.Context(), set, address, mt.T("mailtext.code_subject"), body); err != nil {
 		s.Log.Warn("e-mail code not sent", "admin", a.ID, "err", err)
-		return "邮件发送失败。"
+		return t.T("twostep.send_failed")
 	}
 	return ""
 }
@@ -182,7 +182,7 @@ func (s *Server) totpNew(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := s.St.PutPendingTOTP(r.Context(), a.ID, enc); errors.Is(err, store.ErrTOTPOn) {
-		s.redirect(w, r, "/me#two-step", "error", "身份验证器已启用。")
+		s.redirect(w, r, "/me#two-step", "error", tr(r).T("me.totp.already_on"))
 		return
 	} else if err != nil {
 		s.internal(w, r, err)
@@ -225,13 +225,13 @@ func (s *Server) renderTOTP(w http.ResponseWriter, r *http.Request, status int, 
 	if done {
 		return
 	}
-	svg, err := qr.SVG(twostep.TOTPURI(current(r).Username, key))
+	svg, err := qr.SVG(twostep.TOTPURI(current(r).Username, key), tr(r).T("common.qr_code"))
 	if err != nil {
 		s.internal(w, r, err)
 		return
 	}
 	d := totpData{QR: template.HTML(svg), Secret: twostep.SecretText(key), Error: msg} // our own SVG
-	s.render(w, r, status, "totp_setup", &Page{Title: "身份验证器", Nav: "me", Data: d})
+	s.render(w, r, status, "totp_setup", &Page{Title: tr(r).T("twostep.totp"), Nav: "me", Data: d})
 }
 
 func (s *Server) totpConfirm(w http.ResponseWriter, r *http.Request) {
@@ -248,10 +248,10 @@ func (s *Server) totpConfirm(w http.ResponseWriter, r *http.Request) {
 	})
 	switch {
 	case limited:
-		s.renderTOTP(w, r, http.StatusTooManyRequests, tooManySteps)
+		s.renderTOTP(w, r, http.StatusTooManyRequests, tr(r).T("login.too_many"))
 		return
 	case !ok:
-		s.renderTOTP(w, r, http.StatusBadRequest, "验证码不正确。")
+		s.renderTOTP(w, r, http.StatusBadRequest, tr(r).T("twostep.wrong_code"))
 		return
 	}
 	before, err := s.St.TwoStepState(r.Context(), a.ID)
@@ -259,7 +259,7 @@ func (s *Server) totpConfirm(w http.ResponseWriter, r *http.Request) {
 		err = s.St.ConfirmTOTP(r.Context(), a.ID, step, row.SecretEnc)
 	}
 	if errors.Is(err, store.ErrNotFound) { // the set-up was started again meanwhile
-		s.redirect(w, r, "/me/totp", "error", "验证码不正确。")
+		s.redirect(w, r, "/me/totp", "error", tr(r).T("twostep.wrong_code"))
 		return
 	}
 	if err != nil {
@@ -267,7 +267,7 @@ func (s *Server) totpConfirm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.audit(r, "two_step.enable", "admin", a.ID, a.Username, nil, map[string]any{"method": "totp"})
-	to, err := s.methodAdded(w, r, a, before, "身份验证器已启用。")
+	to, err := s.methodAdded(w, r, a, before, tr(r).T("me.totp.enabled"))
 	if err != nil {
 		s.internal(w, r, err)
 		return
@@ -298,7 +298,7 @@ func (s *Server) emailMethodOn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !a.EmailConfirmed || !set.Configured() {
-		s.redirect(w, r, "/me#two-step", "error", "须先验证邮箱，且邮件服务已配置。")
+		s.redirect(w, r, "/me#two-step", "error", tr(r).T("me.email_code.unavailable"))
 		return
 	}
 	before, err := s.St.TwoStepState(r.Context(), a.ID)
@@ -314,7 +314,7 @@ func (s *Server) emailMethodOn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.audit(r, "two_step.enable", "admin", a.ID, a.Username, nil, map[string]any{"method": "email"})
-	to, err := s.methodAdded(w, r, a, before, "邮箱验证码已启用。")
+	to, err := s.methodAdded(w, r, a, before, tr(r).T("me.email_code.enabled"))
 	if err != nil {
 		s.internal(w, r, err)
 		return
@@ -330,7 +330,7 @@ func (s *Server) emailMethodOff(w http.ResponseWriter, r *http.Request) {
 // removal in one store transaction.
 func (s *Server) switchOff(w http.ResponseWriter, r *http.Request, method string) {
 	a := current(r)
-	if msg := s.recheckPassword(a, r.FormValue("password")); msg != "" {
+	if msg := s.recheckPassword(r, a, r.FormValue("password")); msg != "" {
 		s.redirect(w, r, "/me#two-step", "error", msg)
 		return
 	}
@@ -343,14 +343,14 @@ func (s *Server) switchOff(w http.ResponseWriter, r *http.Request, method string
 		http.Redirect(w, r, "/me#two-step", http.StatusSeeOther)
 		return
 	case errors.Is(err, store.ErrLastMethod):
-		s.redirect(w, r, "/me#two-step", "error", lastMethodText)
+		s.redirect(w, r, "/me#two-step", "error", tr(r).T("twostep.last_method"))
 		return
 	case err != nil:
 		s.internal(w, r, err)
 		return
 	}
 	s.audit(r, "two_step.disable", "admin", a.ID, a.Username, nil, map[string]any{"method": method})
-	s.redirect(w, r, "/me#two-step", "ok", "已关闭。")
+	s.redirect(w, r, "/me#two-step", "ok", tr(r).T("me.turned_off"))
 }
 
 // ---- recovery codes ----
@@ -366,7 +366,7 @@ func (s *Server) recoveryRenew(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/me#two-step", http.StatusSeeOther)
 		return
 	}
-	if msg := s.recheckPassword(a, r.FormValue("password")); msg != "" {
+	if msg := s.recheckPassword(r, a, r.FormValue("password")); msg != "" {
 		s.redirect(w, r, "/me#two-step", "error", msg)
 		return
 	}
@@ -394,7 +394,7 @@ func (s *Server) recoveryShow(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/me#two-step", http.StatusSeeOther)
 		return
 	}
-	s.ok(w, r, "recovery_codes", &Page{Title: "恢复码", Nav: "me", Data: recoveryData{Codes: codes, Token: token}})
+	s.ok(w, r, "recovery_codes", &Page{Title: tr(r).T("twostep.recovery_codes"), Nav: "me", Data: recoveryData{Codes: codes, Token: token}})
 }
 
 // recoveryDone ("完成") forgets the codes shown.
@@ -411,7 +411,7 @@ func (s *Server) adminResetTwoStep(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if a.Role != store.RoleRegion {
-		s.redirect(w, r, "/admins/"+itoa(a.ID), "error", "超级管理员的两步验证只能在服务器上用命令行重置。")
+		s.redirect(w, r, "/admins/"+itoa(a.ID), "error", tr(r).T("twostep.reset_super_cli"))
 		return
 	}
 	if err := s.St.ResetTwoStep(r.Context(), a.ID); err != nil {
@@ -419,7 +419,7 @@ func (s *Server) adminResetTwoStep(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.audit(r, "two_step.reset", "admin", a.ID, a.Username, nil, nil)
-	s.redirect(w, r, "/admins/"+itoa(a.ID), "ok", "「"+a.Username+"」的两步验证已重置。")
+	s.redirect(w, r, "/admins/"+itoa(a.ID), "ok", tr(r).T("twostep.reset_done", "name", a.Username))
 }
 
 func (s *Server) policySave(w http.ResponseWriter, r *http.Request) {
@@ -432,8 +432,8 @@ func (s *Server) policySave(w http.ResponseWriter, r *http.Request) {
 		s.internal(w, r, err)
 		return
 	}
-	if old != on {
-		s.audit(r, "two_step.policy", "system", 0, "两步验证", nil, map[string]any{"required": on})
+	if old != on { // the object's name is a code, shown as audit.name.two_step
+		s.audit(r, "two_step.policy", "system", 0, "two_step", nil, map[string]any{"required": on})
 	}
-	s.redirect(w, r, "/system#security", "ok", "已保存。")
+	s.redirect(w, r, "/system#security", "ok", tr(r).T("common.saved"))
 }

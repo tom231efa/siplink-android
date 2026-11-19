@@ -16,7 +16,7 @@ import (
 func TestThemeCookie(t *testing.T) {
 	h := newHarness(t)
 	root, _ := h.loggedIn("root", store.RoleSuper)
-	if r := root.get("/"); !strings.Contains(r.body, `<html lang="zh-CN">`) || !strings.Contains(r.body, `content="light dark"`) {
+	if r := root.get("/"); !strings.Contains(r.body, `<html lang="zh-Hans" dir="ltr">`) || !strings.Contains(r.body, `content="light dark"`) {
 		t.Fatal("default page does not follow the system theme")
 	}
 	for _, theme := range []string{"dark", "light"} {
@@ -27,7 +27,7 @@ func TestThemeCookie(t *testing.T) {
 		if c := cookieOf(r, themeCookie); c == nil || c.Value != theme || c.MaxAge <= 0 || c.HttpOnly {
 			t.Fatalf("%s: cookie %+v", theme, c)
 		}
-		if body := root.get("/clients").body; !strings.Contains(body, `<html lang="zh-CN" data-theme="`+theme+`">`) ||
+		if body := root.get("/clients").body; !strings.Contains(body, `<html lang="zh-Hans" dir="ltr" data-theme="`+theme+`">`) ||
 			!strings.Contains(body, `<meta name="color-scheme" content="`+theme+`">`) ||
 			!strings.Contains(body, `value="`+theme+`" aria-pressed="true"`) {
 			t.Errorf("%s: page does not carry the theme", theme)

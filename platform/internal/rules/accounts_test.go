@@ -3,6 +3,7 @@ package rules
 import (
 	"fmt"
 	"reflect"
+	"siplink/internal/i18n"
 	"strings"
 	"testing"
 )
@@ -372,8 +373,8 @@ func TestAccountErrorTexts(t *testing.T) {
 		AccountManaged:           "配置由远程下发，不能在本机修改",
 	}
 	for e, want := range cases {
-		if e.Full() != want {
-			t.Errorf("%v: %q", e, e.Full())
+		if got := i18n.For(i18n.Source).Msg(e.Msg()); got != want {
+			t.Errorf("%v: %q", e, got)
 		}
 	}
 	if len(accountErrors) != int(AccountManaged)+1 || AccountBackupSame.Name() != "BACKUP_SAME" {

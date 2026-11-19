@@ -11,6 +11,7 @@ import (
 
 	"siplink/internal/auth"
 	"siplink/internal/catalog"
+	"siplink/internal/i18n"
 	"siplink/internal/provision"
 	"siplink/internal/secret"
 	"siplink/internal/store"
@@ -69,7 +70,7 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 
 // enrollInfo is the page a browser sees for a QR code: the same for every token.
 func (s *Server) enrollInfo(w http.ResponseWriter, r *http.Request) {
-	s.render(w, r, http.StatusOK, "enroll_info", &Page{Title: "SipLink 远程配置", Admin: nil, Bare: true})
+	s.render(w, r, http.StatusOK, "enroll_info", &Page{Title: tr(r).T("clients.enroll_info.title"), Admin: nil, Bare: true})
 }
 
 // deviceReport is what the phone says about itself (§3.4).
@@ -143,7 +144,7 @@ func (s *Server) updateReport(r *http.Request, rep *store.Report, d *deviceRepor
 			if i >= 64 {
 				break
 			}
-			if catalog.CodecProblem(k) == "" {
+			if catalog.CodecProblem(k) == nil {
 				out = append(out, k)
 			}
 		}
@@ -152,6 +153,14 @@ func (s *Server) updateReport(r *http.Request, rep *store.Report, d *deviceRepor
 	if err := s.St.ReportCodecs(r.Context(), rep.AppVersion, clipList(d.Codecs.Audio), clipList(d.Codecs.Video)); err != nil {
 		s.Log.Error("codec report failed", "err", err)
 	}
+}
+
+// buildError is what a sync stores in the client's report when the document does not
+// validate: the problems in English. Only whether it is empty counts (the client list
+// and the dashboard flag it; the client page builds the document again and shows the
+// problems in the viewer's language).
+func buildError(problems []i18n.Msg) string {
+	return strings.Join(i18n.For(i18n.English).Msgs(problems), "; ")
 }
 
 // PlatformName is shown on the phone's remote configuration screen.
@@ -170,7 +179,7 @@ func (s *Server) platform(r *http.Request) catalog.Platform {
 // built is the outcome of building a client's document.
 type built struct {
 	doc      *provision.Document
-	problems []string
+	problems []i18n.Msg
 	revKey   string
 }
 
@@ -272,7 +281,7 @@ func (s *Server) enroll(w http.ResponseWriter, r *http.Request) {
 	rep, _ := s.St.ClientReport(r.Context(), c.ID)
 	if len(b.problems) > 0 {
 		// The QR stays valid: nothing is bound before the configuration is right.
-		rep.BuildError = strings.Join(b.problems, "；")
+		rep.BuildError = buildError(b.problems)
 		s.St.SaveReport(r.Context(), rep)
 		jsonError(w, http.StatusConflict, "invalid_configuration")
 		return
@@ -376,7 +385,7 @@ func (s *Server) sync(w http.ResponseWriter, r *http.Request) {
 	}
 	doc := b.doc
 	if len(b.problems) > 0 {
-		rep.BuildError = strings.Join(b.problems, "；")
+		rep.BuildError = buildError(b.problems)
 		if doc = s.lastValid(rep); doc == nil {
 			s.St.SaveReport(ctx, rep)
 			s.deviceFailed(w, r, errors.New("no valid document for client"))

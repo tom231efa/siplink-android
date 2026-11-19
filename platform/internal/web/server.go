@@ -99,7 +99,7 @@ func New(cfg *config.Config, st *store.Store, log *slog.Logger, now func() time.
 		return nil, err
 	}
 	s.csrf.SetDenyHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		s.fail(w, r, http.StatusForbidden, "跨站请求已被拒绝，请从本站页面重新提交。")
+		s.fail(w, r, http.StatusForbidden, tr(r).T("error.cross_site"))
 	}))
 	s.routes()
 	return s, nil
@@ -107,7 +107,7 @@ func New(cfg *config.Config, st *store.Store, log *slog.Logger, now func() time.
 
 // Handler returns the root handler with all middleware.
 func (s *Server) Handler() http.Handler {
-	return s.logRequests(s.recoverPanics(s.headers(s.mux)))
+	return s.logRequests(s.language(s.recoverPanics(s.headers(s.mux))))
 }
 
 // handle registers a route. Every route records its pattern for the log.
@@ -141,6 +141,7 @@ func (s *Server) routes() {
 	s.page("GET /{$}", s.dashboard)
 	s.page("POST /filter", s.setFilter)
 	s.page("POST /theme", s.setTheme)
+	s.publicPage("POST /language", s.setLanguage)
 	s.handle("GET /", s.requireSecure(s.unknownPath))
 	s.routesP2()
 	s.routesBooks()
@@ -225,7 +226,7 @@ func (s *Server) recoverPanics(next http.Handler) http.Handler {
 				}
 				// No request data in the log: only the fact and the value type.
 				s.Log.Error("panic in handler", "route", logPattern(r))
-				http.Error(w, "内部错误", http.StatusInternalServerError)
+				http.Error(w, tr(r).T("error.internal"), http.StatusInternalServerError)
 			}
 		}()
 		next.ServeHTTP(w, r)
@@ -308,7 +309,7 @@ func (s *Server) clientIP(r *http.Request) string {
 func (s *Server) requireSecure(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !s.isSecure(r) && !s.Cfg.AllowHTTPProvisioning {
-			s.fail(w, r, http.StatusForbidden, "请通过 HTTPS 访问本平台。")
+			s.fail(w, r, http.StatusForbidden, tr(r).T("error.https_only"))
 			return
 		}
 		next(w, r)

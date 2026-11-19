@@ -7,58 +7,58 @@
   <div class="card-body form">
     <div class="grid2">
       {{if $d.New}}
-      <label>用户名<input name="username" value="{{$d.Admin.Username}}" required pattern="[A-Za-z0-9._-]{2,32}" maxlength="32" autocomplete="off"></label>
+      <label>{{t "common.username"}}<input name="username" value="{{$d.Admin.Username}}" required pattern="[A-Za-z0-9._-]{2,32}" maxlength="32" autocomplete="off" dir="ltr"></label>
       {{else}}
-      <label>用户名<input value="{{$d.Admin.Username}}" disabled></label>
+      <label>{{t "common.username"}}<input value="{{$d.Admin.Username}}" disabled dir="ltr"></label>
       {{end}}
-      <label>显示名<input name="display_name" value="{{$d.Admin.DisplayName}}" maxlength="64"></label>
+      <label>{{t "admins.form.display_name"}}<input name="display_name" value="{{$d.Admin.DisplayName}}" maxlength="64"></label>
     </div>
     {{if not $d.New}}<input type="hidden" name="email_was" value="{{$d.EmailWas}}">{{end}}
-    <label>邮箱<input name="email" type="email" value="{{$d.Admin.Email}}" maxlength="254" autocomplete="off"{{if and (not $d.New) (eq $d.Admin.Role "super")}} disabled{{end}}></label>
+    <label>{{t "admins.form.email"}}<input dir="ltr" name="email" type="email" value="{{$d.Admin.Email}}" maxlength="254" autocomplete="off"{{if and (not $d.New) (eq $d.Admin.Role "super")}} disabled{{end}}></label>
     <fieldset class="plain">
-      <legend class="field-label">角色</legend>
-      {{if $d.Self}}<p class="hint">不可修改本人角色</p><input type="hidden" name="role" value="{{$d.Admin.Role}}">{{end}}
+      <legend class="field-label">{{t "admins.form.role"}}</legend>
+      {{if $d.Self}}<p class="hint">{{t "admins.form.own_role_fixed"}}</p><input type="hidden" name="role" value="{{$d.Admin.Role}}">{{end}}
       <div class="option-cards">
-        <label class="option-card"><input type="radio" name="role" value="super"{{if eq $d.Admin.Role "super"}} checked{{end}}{{if $d.Self}} disabled{{end}}><span><strong>超级管理员</strong></span></label>
-        <label class="option-card"><input type="radio" name="role" value="region"{{if eq $d.Admin.Role "region"}} checked{{end}}{{if $d.Self}} disabled{{end}}><span><strong>区域管理员</strong></span></label>
+        <label class="option-card"><input type="radio" name="role" value="super"{{if eq $d.Admin.Role "super"}} checked{{end}}{{if $d.Self}} disabled{{end}}><span><strong>{{t "common.role.super"}}</strong></span></label>
+        <label class="option-card"><input type="radio" name="role" value="region"{{if eq $d.Admin.Role "region"}} checked{{end}}{{if $d.Self}} disabled{{end}}><span><strong>{{t "common.role.region"}}</strong></span></label>
       </div>
     </fieldset>
     <fieldset class="plain">
-      <legend class="field-label">区域</legend>
+      <legend class="field-label">{{t "common.region"}}</legend>
       {{if $d.Regions}}<div class="check-grid">
       {{range $d.Regions}}<label class="check-chip"><input type="checkbox" name="regions" value="{{.ID}}"{{if hasID $d.Admin.RegionIDs .ID}} checked{{end}}><span>{{.Name}}</span></label>{{end}}
-      </div>{{else}}<p class="muted">暂无区域</p>{{end}}
+      </div>{{else}}<p class="muted">{{t "admins.form.no_regions"}}</p>{{end}}
     </fieldset>
     {{if not $d.New}}
-    <label class="setting toggle"><span class="setting-text"><span class="setting-name">停用</span><span class="hint">修改角色、区域或停用后，该管理员的全部会话将立即结束。</span></span>
+    <label class="setting toggle"><span class="setting-text"><span class="setting-name">{{t "admins.form.disabled"}}</span><span class="hint">{{t "admins.form.disabled_hint"}}</span></span>
       <span class="switch"><input type="checkbox" role="switch" name="disabled" value="1"{{if $d.Admin.Disabled}} checked{{end}}{{if $d.Self}} disabled{{end}}><span></span></span></label>
     {{end}}
   </div>
-  <div class="card-foot form-actions"><a class="btn" href="/admins">取消</a><button type="submit" class="btn primary">保存</button></div>
+  <div class="card-foot form-actions"><a class="btn" href="/admins">{{t "common.cancel"}}</a><button type="submit" class="btn primary">{{t "common.save"}}</button></div>
 </form>
 {{if not $d.New}}
 <section class="card section-gap">
-  <div class="card-head"><h2>{{icon "shield-check"}}两步验证</h2></div>
+  <div class="card-head"><h2>{{icon "shield-check"}}{{t "admins.two_step.title"}}</h2></div>
   <div class="card-body">
     <dl class="kv">
-      <dt>邮箱</dt><dd>{{if not $d.Admin.Email}}<span class="muted">—</span>{{else if $d.Admin.EmailConfirmed}}<span class="status ok">已验证</span>{{else}}<span class="status warn">未验证</span>{{end}}</dd>
-      <dt>身份验证器</dt><dd>{{if $d.TwoStep.TOTP}}<span class="status ok">已启用</span>{{else}}<span class="muted">—</span>{{end}}</dd>
-      <dt>通行密钥</dt><dd>{{if $d.TwoStep.Passkeys}}{{$d.TwoStep.Passkeys}} 个{{else}}<span class="muted">—</span>{{end}}</dd>
-      <dt>邮箱验证码</dt><dd>{{if $d.TwoStep.Email}}<span class="status ok">已启用</span>{{else}}<span class="muted">—</span>{{end}}</dd>
-      <dt>恢复码</dt><dd>{{if $d.TwoStep.Methods}}剩余 {{$d.TwoStep.RecoveryLeft}} 个{{else}}<span class="muted">—</span>{{end}}</dd>
+      <dt>{{t "admins.two_step.email"}}</dt><dd>{{if not $d.Admin.Email}}<span class="muted">—</span>{{else if $d.Admin.EmailConfirmed}}<span class="status ok">{{t "admins.two_step.email_confirmed"}}</span>{{else}}<span class="status warn">{{t "admins.two_step.email_unconfirmed"}}</span>{{end}}</dd>
+      <dt>{{t "admins.two_step.totp"}}</dt><dd>{{if $d.TwoStep.TOTP}}<span class="status ok">{{t "common.enabled"}}</span>{{else}}<span class="muted">—</span>{{end}}</dd>
+      <dt>{{t "admins.two_step.passkeys"}}</dt><dd>{{if $d.TwoStep.Passkeys}}{{t "admins.two_step.passkey_count" "n" $d.TwoStep.Passkeys}}{{else}}<span class="muted">—</span>{{end}}</dd>
+      <dt>{{t "admins.two_step.email_code"}}</dt><dd>{{if $d.TwoStep.Email}}<span class="status ok">{{t "common.enabled"}}</span>{{else}}<span class="muted">—</span>{{end}}</dd>
+      <dt>{{t "admins.two_step.recovery"}}</dt><dd>{{if $d.TwoStep.Methods}}{{t "admins.two_step.recovery_left" "n" $d.TwoStep.RecoveryLeft}}{{else}}<span class="muted">—</span>{{end}}</dd>
     </dl>
   </div>
 </section>
 <section class="card danger-card">
   <div class="op-list">
-  <form method="post" action="/admins/{{$d.Admin.ID}}/reset-password" class="op" data-confirm="确认重置「{{$d.Admin.Username}}」的密码？该管理员的全部会话将结束。">
-    <div><strong>重置密码</strong></div>
-    <button type="submit" class="btn danger">{{icon "key-round"}}重置密码</button>
+  <form method="post" action="/admins/{{$d.Admin.ID}}/reset-password" class="op" data-confirm="{{t "admins.reset_password_confirm" "name" $d.Admin.Username}}">
+    <div><strong>{{t "admins.reset_password"}}</strong></div>
+    <button type="submit" class="btn danger">{{icon "key-round"}}{{t "admins.reset_password"}}</button>
   </form>
   {{if and (eq $d.Admin.Role "region") $d.TwoStep.Methods}}
-  <form method="post" action="/admins/{{$d.Admin.ID}}/reset-2fa" class="op" data-confirm="确认重置「{{$d.Admin.Username}}」的两步验证？全部验证方式和恢复码将被删除，该管理员的全部会话将结束。">
-    <div><strong>重置两步验证</strong></div>
-    <button type="submit" class="btn danger">{{icon "shield-check"}}重置两步验证</button>
+  <form method="post" action="/admins/{{$d.Admin.ID}}/reset-2fa" class="op" data-confirm="{{t "admins.reset_two_step_confirm" "name" $d.Admin.Username}}">
+    <div><strong>{{t "admins.reset_two_step"}}</strong></div>
+    <button type="submit" class="btn danger">{{icon "shield-check"}}{{t "admins.reset_two_step"}}</button>
   </form>
   {{end}}
   </div>

@@ -119,6 +119,11 @@ type resp struct {
 
 func (c *client) do(req *http.Request) resp {
 	c.h.t.Helper()
+	if req.Header.Get("Accept-Language") == "" {
+		// The tests read the Simplified Chinese texts, as the console showed them before
+		// it had other languages (§5.5).
+		req.Header.Set("Accept-Language", "zh-CN")
+	}
 	r, err := c.c.Do(req)
 	if err != nil {
 		c.h.t.Fatal(err)

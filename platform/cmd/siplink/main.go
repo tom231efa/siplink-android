@@ -10,34 +10,18 @@ import (
 	"path/filepath"
 
 	"siplink/internal/config"
+	"siplink/internal/i18n"
 	"siplink/internal/secret"
 	"siplink/internal/store"
 	"siplink/internal/web"
 )
 
+// cli is the translator of the command line: the language of the POSIX locale (LC_ALL,
+// LC_MESSAGES, LANG), English when it names none of the console's languages (§5.5).
+func cli() *i18n.Tr { return i18n.For(i18n.FromEnv(os.Getenv)) }
+
 // version is set at build time with -ldflags "-X main.version=...".
 var version = "dev"
-
-const usage = `用法: siplink <命令> [参数]
-
-命令:
-  serve                          启动平台（默认）
-  admin create [--super] [--region 名称]... [--name 显示名] <用户名>
-                                 新建管理员，一次性密码打印到终端
-  admin reset-password <用户名>  重置管理员密码，一次性密码打印到终端
-  admin reset-2fa <用户名>       删除管理员的全部两步验证方式和恢复码
-  pki show                       显示证书模式、内置 CA、服务器证书和自有证书
-  pki export-ca <路径>           导出内置 CA 证书（PEM）
-  pki renew                      立即重新签发服务器证书（自动签发暂停时不可用）
-  pki import [--yes] <证书链文件> <私钥文件>
-                                 使用自有证书（PEM，服务器证书在前）；有提示时需加 --yes
-  pki use-builtin [--yes]        停用自有证书，回到内置 CA
-  seed <规格文件.json>            按规格创建或更新测试数据，打印客户端的绑定地址
-  backup <目标文件>              把数据库备份到文件（密钥文件需另行备份）
-  health                         检查本机的 HTTP(S) 服务（Docker 健康检查）
-  migrate                        只执行数据库迁移
-  version                        显示版本
-`
 
 func main() {
 	web.Version = version
@@ -65,13 +49,13 @@ func main() {
 	case "version":
 		fmt.Println("siplink", version)
 	case "help", "-h", "--help":
-		fmt.Print(usage)
+		fmt.Println(cli().T("cli.usage"))
 	default:
-		fmt.Fprint(os.Stderr, usage)
+		fmt.Fprintln(os.Stderr, cli().T("cli.usage"))
 		os.Exit(2)
 	}
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "错误:", err)
+		fmt.Fprintln(os.Stderr, cli().T("cli.error", "err", err))
 		os.Exit(1)
 	}
 }
@@ -132,6 +116,6 @@ func migrateCommand(out io.Writer) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(out, "数据库结构版本:", v)
+	fmt.Fprintln(out, cli().T("cli.migrate.version", "version", v))
 	return nil
 }

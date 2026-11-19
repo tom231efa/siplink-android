@@ -18,7 +18,8 @@ own project directory.
 
 ### In scope
 - One Go program, `siplink`, that contains:
-  - a web UI for administrators (Simplified Chinese), server-rendered;
+  - a web UI for administrators in eight languages (Simplified Chinese as the source text, §5.5),
+    server-rendered;
   - the provisioning endpoint the SipLink app fetches its managed configuration from;
   - a read-only LDAPv3 server that serves the hosted address books;
   - a built-in certificate authority that signs the certificates of its own listeners (§6.7);
@@ -771,18 +772,22 @@ it.
 
 ### 5.1 Navigation
 
-Left sidebar (collapses to a top bar on narrow screens), items shown by role:
+Left sidebar (collapses to a top bar on narrow screens; on the right side in a right-to-left
+language, §5.5), items shown by role:
 
 概览 · 客户端 · 客户端模板 · 配置模板 · 功能键模板 · 通讯录 · LDAP 账号 · 区域 (super) ·
 管理员 (super) · 邮件 (super) · 审计日志 · 系统 (super). Top right: region filter (for administrators with several
-regions; "全部区域" for super), the administrator's name → 我的账号 / 退出.
+regions; "全部区域" for super), the administrator's name → 外观 / 语言 / 我的账号 / 退出.
+
+Names of pages, fields and buttons in this document are the Simplified Chinese texts; the other
+languages show their translations of them (§5.5).
 
 ### 5.2 Pages
 
 | Page | What it does |
 |---|---|
-| 登录 `/login` | user name + password; rate-limited; then 两步验证 when the administrator has a method; after `must_change_password` goes to 我的账号 |
-| 两步验证 `/login/step` | the administrator's methods (passkey, TOTP code, e-mail code, recovery code), §6.8 |
+| 登录 `/login` | user name + password; rate-limited; then 两步验证 when the administrator has a method; after `must_change_password` goes to 我的账号; the language choice at its foot (§5.5) |
+| 两步验证 `/login/step` | the administrator's methods (passkey, TOTP code, e-mail code, recovery code), §6.8; the language choice at its foot |
 | 概览 `/` | counts (clients active / pending / 离线 = bound and not seen for more than 3× the refresh interval, the same rule as the 离线 status and filter of the client list), clients with apply errors or failed registrations, for super administrators the expiry notice of an operator's certificate (§6.7), books near the limit, last 20 audit entries of visible regions |
 | 客户端 `/clients` | table: name, region, client template, status, app version, last seen, registration summary; filter by region/template/status, search by name or SIP user; bulk actions: change template, print QR, delete |
 | 新建客户端 `/clients/new` | region (first load: the region filter of the top bar, else the administrator's first region), client template (only those usable in the selected region; a template in the query that does not fit the region is dropped, so the template shown, the form below and its hidden fields always agree; the same for 编辑客户端), name, credentials for each account profile of the template, directory passwords where the template asks for them, optional forwarding overrides |
@@ -817,7 +822,9 @@ whether two-step sign-in is on.
 - Danger actions are neutral buttons with red text plus a confirmation dialog — no large
   saturated red/green buttons. Status shown as small dots + text (grey/blue/amber/red at low
   saturation).
-- System font stack with `"PingFang SC", "Microsoft YaHei"`; 14 px base; 8 px spacing grid;
+- Inter for Latin and Cyrillic, then a system font stack per language (§5.5: `"PingFang SC",
+  "Microsoft YaHei"` for Simplified Chinese, the Traditional Chinese, Japanese and Arabic system
+  fonts for those); 14 px base; 8 px spacing grid;
   1 px borders, 6 px radii, no shadows except dialogs; tables dense but readable.
 - Plain `html/template` pages, one CSS file (~600 lines) and one JS file (~300 lines: confirm
   dialogs, copy buttons, row reordering, password reveal, tab state), embedded with `embed.FS`.
@@ -843,6 +850,123 @@ Produced on the server by `github.com/skip2/go-qrcode` (§7): its bitmap is turn
 by our own few lines (crisp at any size, prints well); PNG download via the library's PNG
 encoder. Level M. The page never puts the token into a URL other than the QR target itself (no
 `?token=` image URLs: the QR image is inlined in the page).
+
+### 5.5 Languages (added 2026-11-19)
+
+Request of the owner (2026-11-19): "web和app加入几种主流语言(中文，日文，英文，阿拉伯文，法文，繁体字，俄文，西班牙文)".
+Package `internal/i18n`, web file `internal/web/lang.go`, migration `0010_admin_language.sql`,
+glossary `docs/GLOSSARY.md`.
+
+**Languages.** Eight, each with a code (a BCP 47 tag: the catalog's directory, the value stored
+and the page's `lang`) and named in itself, in this order in every picker: `zh-Hans` 中文（简体）,
+`en` English, `ja` 日本語, `ar` العربية (right to left), `fr` Français, `zh-Hant` 中文（繁體）,
+`ru` Русский, `es` Español. Simplified Chinese is the source: its catalog holds the console's
+texts as they were before; the others translate it, with the terms of the glossary (one column
+per language), so that a term reads the same everywhere. Standard technical terms (SIP, TLS,
+LDAP, StartTLS/STARTTLS, SRTP, DTMF, CSV, LDIF, QR, CA, DNS, URL, PEM, TOTP, User-Agent) are not
+translated.
+
+**Catalogs.** `internal/i18n/locales/{code}/{area}.json`, embedded in the binary: flat JSON
+objects, key → text, the same files and keys in every language. Keys are lower case,
+dot-separated, named after where the text is used (`clients.title`, `rules.account.name_taken`).
+Arguments are named, `{name}`; every translation of a key has the same arguments as the
+Simplified Chinese text. A key that a catalog lacks falls back to English, then shows as
+`⟦key⟧`; an argument the caller did not pass shows as `⟦name⟧`. The tests (§8.1) keep both
+from happening.
+
+**Translating.** `i18n.Tr` is one language. `Tr.T(key, name, value, …)` gives the text with its
+arguments. Values: strings as they are (names, addresses and values people typed are never
+translated), integers as plain ASCII digits, an `i18n.Msg` translated in the same language, a
+`[]string` or `[]int` joined with the language's separator (`format.list_sep`). In a
+right-to-left language every string argument is wrapped in U+2068 FSI … U+2069 PDI, so a name
+or an address in Latin letters keeps its order inside Arabic text (also in flash messages,
+confirmations and mail, where no markup can do it).
+
+**Messages from other packages.** Packages outside `internal/web` that produce text a person
+reads (`rules`, `catalog`, `provision`, `auth`, `books`, `pki`, `mail`, the CLI) return
+`i18n.Msg` (a key and its arguments) or `[]i18n.Msg` in place of Chinese strings, and errors
+that carry one (`i18n.E(key, …)`, `i18n.Wrap(err, key, …)`); the web layer translates them in the
+request's language (`errText`), the CLI in its own (below). An error's `Error()` is the English
+text, for logs and for code that only wraps errors; a printed `Msg` shows `⟦key⟧`, so a message
+that skipped translation is caught by the tests.
+
+**Counts.** No plural forms: every text with a number is phrased so that the number does not
+change the words — a label and the number ("客户端：15", "Clients: 15", "Клиенты: 15"), or the
+number alone in a column, chip or field. Chinese and Japanese keep their sentences (they have
+no grammatical number). Relative times in the browser ("3 minutes ago") come from the
+browser's `Intl.RelativeTimeFormat`, which knows each language's plural rules.
+
+**Which language.** For a request with a complete session: the administrator's stored language
+(`admins.language`, migration 0010, `''` = none); then the cookie `siplink_lang`; then the
+browser's `Accept-Language`, matched with `golang.org/x/text/language` (`NewMatcher` over the
+eight tags: `zh-CN`, `zh-SG`, `zh` → `zh-Hans`; `zh-TW`, `zh-HK`, `zh-MO` → `zh-Hant`; `ar-EG`
+→ `ar`; …); when nothing matches (confidence `No`), English. Pages before sign-in (login, the
+second step, the `/p/{token}` page for browsers, error pages of public routes) use the cookie,
+then `Accept-Language`.
+
+**Choosing.** `POST /language` (`lang`, `next`; a public route with CSRF protection, so it works
+before sign-in) sets the cookie (one year, `HttpOnly`, `SameSite=Lax`, `Secure` like the session
+cookie) and, for a complete session, stores the language for the administrator; it is a personal
+display setting like the theme, so no audit entry. The control is a compact drop-down with the
+Lucide `languages` icon: in the user menu under 外观, and at the foot of the login and the
+second-step page; it submits on change (a button without JavaScript). When a sign-in completes,
+a stored language refreshes the cookie; without one, the cookie's language (if any) becomes the
+administrator's stored language, so a choice made on the login page follows them to other
+browsers.
+
+**Pages.** `<html lang="{code}" dir="ltr|rtl">`. The templates are parsed once per language with
+that language's functions (`t`, `msg`, `msgs` and the label helpers of the audit log and the
+shell), so `{{t "key" "name" .Value}}` works at any depth; handlers use `tr(r)`. The few texts
+the scripts need travel in the layout as JSON (`<script type="application/json" id="i18n">`:
+not executed, so the CSP of §6.3 is unchanged).
+
+**Right to left.** The stylesheets use logical properties wherever a side matters (margins,
+paddings, insets, borders, text alignment, radii of grouped controls), so in Arabic the sidebar
+is on the right, the narrow-screen drawer comes in from the right, popovers and tooltips anchor
+at the mirrored side and tables align to the start. Icons that point a way (arrows, chevrons, the
+breadcrumb separator, the dashboard's stacked bar) are mirrored by `[dir=rtl]` rules; switches
+and the select's arrow move to the other side. What must read left to right stays so: SIP
+addresses, host names, URLs, code, keys, fingerprints, CSV and LDIF samples are `.mono`, `<code>`
+or `<kbd>` elements, which the stylesheet sets left to right and isolates (aligned to the right in
+an Arabic page), and inputs for such values carry `dir="ltr"` (their placeholder follows the page
+while they are empty). Names people typed that run inside a sentence are isolated by the FSI/PDI
+of the arguments (above).
+
+**Formats.** Times use the language's numeric pattern (`format.date`, `format.datetime`, tokens
+`YYYY MM DD HH mm`), always with ASCII digits; the server writes them in its zone with the zone
+named, and `app.js` rewrites them with the same pattern in the viewer's zone, and the relative
+ones with `Intl.RelativeTimeFormat` (numbering system `latn`; "yesterday 08:05" and "just now"
+from the catalog, keys `js.*`, which `app.js` offers the other scripts as
+`window.siplinkText`). Numbers stay plain (no grouping, no Arabic-Indic digits). Lists use
+`format.list_sep`; each language quotes names its own way (「」, “”, « »).
+
+**Fonts.** Inter stays first (Latin, Cyrillic); then per `:lang()`: Simplified Chinese PingFang
+SC / Microsoft YaHei (as before), Traditional Chinese PingFang TC / Microsoft JhengHei, Japanese
+Hiragino Sans / Yu Gothic / Meiryo, Arabic the system's Arabic faces (Geeza Pro, Segoe UI, Noto
+Sans Arabic). No font is added to the image.
+
+**Mail.** The code mails (§6.8) are written in the language stored for the administrator they
+go to, else in the language of the request that sends them; the test mail in the language of the
+administrator who sends it.
+
+**What does not change.** The provisioning document (§3.5; `platform.name` stays "SipLink
+管理平台", the golden files stay byte for byte), the device API, LDAP, backups, the key
+template CSV (the app's format, §3.5.7), the audit action codes, stored audit entries and log
+lines. Audit entries written from now on store codes, not text (`"changed"` in place of
+"已修改" for a secret); the audit page translates actions, object types and field names, and
+shows what older entries stored as it is.
+
+**CSV.** The client import (§5.2) reads the Chinese column names as before and English ones as
+aliases: `name`, `region`, `client_template`, `note`, and `{profile} username`, `{profile}
+password`, `{profile} auth user`, `{profile} display name`, `{directory} LDAP password` (the
+English part in any case). The address book import already reads both (§4.7). The client
+template download and the address book export write the Chinese names in `zh-Hans` and
+`zh-Hant`, the English ones in every other language.
+
+**CLI.** `siplink admin …`, `pki …`, `backup`, `migrate` speak the language of the POSIX locale
+(`LC_ALL`, else `LC_MESSAGES`, else `LANG`; `zh_CN.UTF-8` → `zh-Hans`, `zh_TW.UTF-8` →
+`zh-Hant`), matched like `Accept-Language`; unset, `C` or `POSIX` → English. In the container:
+`docker compose exec -e LANG=zh_CN.UTF-8 siplink siplink admin create --super {用户名}`.
 
 ---
 
@@ -925,8 +1049,8 @@ then with values masked), CSV contents. Panics are recovered and logged without 
 Audit trail (`audit_log`): every create/update/delete of every object, logins (success/failure),
 password resets, secret views, QR regeneration, unbinds, device enroll/leave, imports (counts),
 backups, certificate re-issue, upload and removal of an own certificate (subject, issuer, names,
-expiry, fingerprint — never the key) and the reminder setting. `detail_json` lists changed field names and old/new values **except** secrets (shown as
-"已修改").
+expiry, fingerprint — never the key) and the reminder setting. `detail_json` lists changed field names and old/new values **except** secrets (stored as
+`"changed"`; entries written before the languages of §5.5 hold "已修改").
 
 Backups: daily at `SIPLINK_BACKUP_TIME` (default 03:30 local) `VACUUM INTO
 {data}/backups/siplink-{date}.db`, keep `SIPLINK_BACKUP_KEEP` (default 14); "立即备份" on the
@@ -1235,7 +1359,8 @@ name. "发送测试邮件" to an address typed in; on failure the page shows the
 uses `net/smtp` + `crypto/tls` (system roots, server name = host): dial 10 s, the whole exchange
 30 s; with STARTTLS the upgrade is required (a server without it fails); authentication is
 PLAIN, which `net/smtp` refuses on an unencrypted connection except to localhost. Mail: plain
-text, UTF-8, base64 body, subject "SipLink 管理平台验证码", body with the code and "10 分钟内有效".
+text, UTF-8, base64 body, subject "SipLink 管理平台验证码", body with the code and "10 分钟内有效" (in
+Simplified Chinese; in the recipient's language, §5.5).
 Once the server accepted DATA, an error on QUIT still counts as sent. Outside the 邮件 page a
 failed send shows only "邮件发送失败。"; the cause goes to the log. Changing host, port or
 security without typing the password again is refused ("修改服务器、端口或加密方式后，须重新输入密码。")
@@ -1268,7 +1393,7 @@ proxy.golang.org)
 | `modernc.org/sqlite` v1.62.0 | SQLite without CGO | Vanity path resolves to `gitlab.com/cznic/sqlite` (proxy.golang.org `Origin.URL`); repo since 2018-11, last tag v1.62.0 on 2026-11-07, tags every few weeks; by Jan Mercl (cznic), the long-standing author of the modernc.org tool chain; the most used pure-Go SQLite driver. Pulls in `modernc.org/libc`, `mathutil`, `memory`, `fileutil` and a few small indirect modules of the same author plus `golang.org/x/sys`. |
 | `github.com/go-asn1-ber/asn1-ber` v1.5.8 | BER encoding/decoding of LDAP messages | Organization `go-asn1-ber`, the same maintainers as `go-ldap/ldap`; repo since 2014-10; last release 2026-07-16; recent commits "Harden and modernize the BER decoder" (2026-09). MIT. No dependencies. |
 | `golang.org/x/crypto` v0.59.0 | argon2id | Official Go sub-repository (go.googlesource.com/crypto, mirror github.com/golang/crypto since 2014), released 2026-11-11. BSD-3. |
-| `golang.org/x/text` (current) | GB18030 decoding of CSV (`encoding/simplifiedchinese`) | Official Go sub-repository. |
+| `golang.org/x/text` v0.44.0 | GB18030 decoding of CSV (`encoding/simplifiedchinese`); matching `Accept-Language` and the POSIX locale against the console's languages (`language`, §5.5) | Official Go sub-repository. Already a dependency; the languages add no module. |
 | `github.com/skip2/go-qrcode` (v0.0.0-20200617195104-da1b6568686e) | QR matrix and PNG | Repo since 2015-03, ~3,000 stars, MIT, **zero dependencies** (its go.mod has no requires). Last code change 2020-06: the QR standard does not change, the library is feature-complete; risk accepted because it is tiny and dependency-free. Alternative if the owner prefers an active project: `github.com/yeqown/go-qrcode/v2` v2.3.0 (2026-08, active, but adds `yeqown/reedsolomon` and `x/text`). |
 | `github.com/go-webauthn/webauthn` v0.18.2 (added 2026-11-17, evidence fetched that day from the GitHub API and proxy.golang.org) | WebAuthn ceremonies for passkeys (§6.8) | Organization `go-webauthn`, repo since 2021-12-15, ~1,365 stars, BSD-3, not archived, last push 2026-11-17, release v0.18.2 on 2026-09-19 (v0.18.0 2026-08-27, v0.18.1 2026-09-10). It is the maintained successor of `duo-labs/webauthn`: that repository (since 2017-10, ~1,028 stars) is archived since 2022-12 and its README opens with "THIS LIBRARY IS DEPRECATED" and points to `github.com/go-webauthn/webauthn` and its migration guide. Pulls in (linked or in `go.sum`): `fxamacker/cbor/v2` (since 2019, ~1,100 stars, MIT), `go-viper/mapstructure/v2` (org, MIT), `go-webauthn/x` (same org), `golang-jwt/jwt/v5` (org, ~9,300 stars, MIT), `google/go-tpm` (Google org, Apache-2.0), `google/uuid` (already present), `tinylib/msgp` (org, ~1,960 stars, MIT) with `philhofer/fwd`, `x448/float16` (MIT); `testify` and `go.uber.org/mock` are its test dependencies only. TOTP and SMTP use the standard library (no dependency). No virtual-authenticator library: the Go tests build authenticator responses themselves (P-256 key, CBOR and COSE through the library's own `protocol/webauthncbor` and `protocol/webauthncose`). |
 | `filippo.io/age` v1.3.2 (added 2026-11-18, evidence fetched that day from proxy.golang.org, the vanity page and the GitHub API) | encryption of a backup download with a passphrase (§6.6) | The vanity path's `go-import` points to `github.com/FiloSottile/age`; proxy.golang.org `@latest` = v1.3.2 of 2026-08-29 with `Origin.URL` that repository (tags v1.3.0 2025-12-27, v1.3.1 2025-12-28, v1.3.2 2026-08-29); repository since 2019-05-18 by Filippo Valsorda (former Go security lead, the format's author), ~24,000 stars, BSD-3, not archived; pkg.go.dev lists 432 importers. Implements the age v1 format (C2SP spec), so `age -d` of the official CLI opens the files. Its go.mod requires `filippo.io/hpke`, `filippo.io/edwards25519`, `filippo.io/nistec` (same author), `golang.org/x/crypto`, `x/sys`, `x/term` (official); of these only `filippo.io/hpke` is new in our `go.mod` (indirect). |
@@ -1303,6 +1428,7 @@ siplink/
   internal/qr/            qr.go (SVG/PNG)
   internal/twostep/       totp.go, codes.go, policy.go   two-step sign-in rules (§6.8)
   internal/mail/          mail.go                        SMTP settings and sending (§6.8)
+  internal/i18n/          i18n.go, catalog.go, locales/{code}/*.json   languages, catalogs, Msg (§5.5)
   internal/web/           server.go (routes, middleware), render.go, flash.go,
                           h_login.go, h_dashboard.go, h_clients.go, h_client_import.go, h_templates_config.go,
                           h_templates_key.go, h_templates_client.go, h_books.go, h_ldapaccounts.go,
@@ -1425,7 +1551,22 @@ docker build -t ghcr.io/tom231efa/siplink:dev .
   region, a global template) is migrated with the key; entries, names, re-sealed passwords,
   per-client passwords and the document are checked; without the key it refuses and stays at 7.
 
+- `i18n` (§5.5): every catalog has the same files and keys as `zh-Hans`, no key twice, the same
+  arguments in every translation, no empty text, the patterns of `format.*` valid; matching of
+  `Accept-Language` and of the POSIX locale (regional and script variants, no match → English);
+  arguments (strings isolated in Arabic only, numbers, nested messages, lists, missing ones
+  marked). A source scan fails when a template, a script or a non-test Go file outside the
+  catalogs still holds Chinese text, except an allow-list of what is data (language names, the
+  Chinese CSV column names, the app's reserved shortcut categories, `platform.name`, sample data
+  of `seed`).
+
 ### 8.2 HTTP integration tests (`httptest`, real SQLite in a temp dir)
+- Languages (§5.5): every page, signed in as a super and as a region administrator, rendered in
+  every language without a template error, a `⟦…⟧` marker or a leftover `{argument}`; `lang`
+  and `dir` of the page; the choice by cookie, by `Accept-Language` and stored per administrator
+  (it follows them to a new browser, a cookie is adopted at sign-in); mail in the recipient's
+  language. The existing tests send `Accept-Language: zh-CN`, so they read the texts they always
+  did.
 - Login, lockout, session idle/absolute expiry, CSRF rejection of cross-site POST.
 - Own certificate: upload as super only, CSRF, each refusal shown with its reason, the
   confirmation when a bound phone would have to scan again, removal with confirmation, the

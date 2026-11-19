@@ -1,56 +1,55 @@
 {{define "content"}}
 {{$d := .Data}}
 <div class="narrow-page wide">
-<header class="page-head"><div><h1>导入联系人</h1><p class="page-sub fade"><a href="/books/{{$d.Book.ID}}">{{$d.Book.Name}}</a><span class="dot-sep"></span>{{$d.Book.EntryCount}} / {{$d.Max}} 人</p></div></header>
+<header class="page-head"><div><h1>{{t "dirs.import.title"}}</h1><p class="page-sub fade"><a href="/books/{{$d.Book.ID}}">{{$d.Book.Name}}</a><span class="dot-sep"></span>{{t "dirs.entries_of" "n" $d.Book.EntryCount "max" $d.Max}}</p></div></header>
 {{with $d.Error}}<div class="flash error" role="alert">{{.}}</div>{{end}}
 {{with $d.Parsed}}
 <section class="card">
-  <div class="card-head"><h2>校验结果</h2></div>
+  <div class="card-head"><h2>{{t "dirs.import.result"}}</h2></div>
   <div class="card-body">
     <div class="stat-row">
-      <div><span class="card-label">可导入</span><span class="stat-value">{{len .Entries}}</span></div>
-      <div><span class="card-label">错误（不导入）</span><span class="stat-value{{if .Errors}} danger-text{{end}}">{{len .Errors}}</span></div>
-      <div><span class="card-label">导入后人数</span><span class="stat-value{{if $.Data.TooMany}} danger-text{{end}}">{{$.Data.After}}</span></div>
+      <div><span class="card-label">{{t "dirs.import.ready"}}</span><span class="stat-value">{{len .Entries}}</span></div>
+      <div><span class="card-label">{{t "dirs.import.errors"}}</span><span class="stat-value{{if .Errors}} danger-text{{end}}">{{len .Errors}}</span></div>
+      <div><span class="card-label">{{t "dirs.import.after"}}</span><span class="stat-value{{if $.Data.TooMany}} danger-text{{end}}">{{$.Data.After}}</span></div>
     </div>
     <dl class="kv spaced">
-      <dt>文件编码</dt><dd>{{.Encoding}}</dd>
-      <dt>方式</dt><dd>{{if $.Data.Replace}}替换全部（删除现有联系人）{{else}}追加{{end}}</dd>
+      <dt>{{t "dirs.import.encoding"}}</dt><dd>{{.Encoding}}</dd>
+      <dt>{{t "dirs.import.mode"}}</dt><dd>{{if $.Data.Replace}}{{t "dirs.import.mode_replace_long"}}{{else}}{{t "dirs.import.mode_append"}}{{end}}</dd>
     </dl>
-    {{if $.Data.TooMany}}<div class="flash error spaced"><strong>超出上限 {{$.Data.Max}}，无法导入</strong></div>{{end}}
-    {{range .Warnings}}<div class="flash warn spaced">{{.}}</div>{{end}}
+    {{if $.Data.TooMany}}<div class="flash error spaced"><strong>{{t "dirs.import.too_many" "max" $.Data.Max}}</strong></div>{{end}}
+    {{range .Warnings}}<div class="flash warn spaced">{{msg .}}</div>{{end}}
   </div>
   {{if .Errors}}
   <div class="table-wrap codec-table"><table class="table">
-    <thead><tr><th class="num">行号</th><th>原因</th></tr></thead>
-    <tbody>{{range .Errors}}<tr><td class="num">{{.Line}}</td><td>{{.Message}}</td></tr>{{end}}</tbody>
+    <thead><tr><th class="num">{{t "dirs.import.col_line"}}</th><th>{{t "dirs.import.col_reason"}}</th></tr></thead>
+    <tbody>{{range .Errors}}<tr><td class="num">{{.Line}}</td><td>{{join (msgs .Problems) (t "format.problem_sep")}}</td></tr>{{end}}</tbody>
   </table></div>
   {{end}}
-  <div class="card-foot form-actions"><a class="btn" href="/books/{{$.Data.Book.ID}}/import">重新选择文件</a>
+  <div class="card-foot form-actions"><a class="btn" href="/books/{{$.Data.Book.ID}}/import">{{t "dirs.import.choose_again"}}</a>
   {{if $.Data.Key}}
   <form method="post" action="/books/{{$.Data.Book.ID}}/import/confirm" class="inline"
-    {{if $.Data.Replace}}data-confirm="确认替换？将删除现有 {{$.Data.Book.EntryCount}} 人并导入 {{len .Entries}} 人。"{{end}}>
+    {{if $.Data.Replace}}data-confirm="{{t "dirs.import.replace_confirm" "old" $.Data.Book.EntryCount "new" (len .Entries)}}"{{end}}>
     <input type="hidden" name="key" value="{{$.Data.Key}}">
-    <button type="submit" class="btn primary">确认导入 {{len .Entries}} 人</button>
+    <button type="submit" class="btn primary">{{t "dirs.import.confirm" "n" (len .Entries)}}</button>
   </form>
   {{end}}</div>
 </section>
 {{else}}
 <form method="post" action="/books/{{$d.Book.ID}}/import" enctype="multipart/form-data" class="card form-card">
-  <div class="card-head"><h2>导入 CSV<span class="help">{{template "help" "book-format"}}<span class="tooltip" role="tooltip" id="book-format">
-    <span class="tip-line">首行为表头，列名可用中文或英文，「姓名」必填：</span>
-    <span class="tip-line mono">姓名,办公电话,手机,单位,部门,职务,邮箱,姓,名</span>
-    <span class="tip-line mono">name,phone,mobile,organization,department,title,email,surname,given_name</span>
-    <span class="tip-line">多个号码以 ; 分隔，每类最多 4 个；号码仅限数字、空格及 + * # - ( )。</span>
-    <span class="tip-line">最大 {{$d.MaxBytes}} MB，UTF-8 或 GB18030。</span></span></span></h2></div>
+  <div class="card-head"><h2>{{t "dirs.import.csv_title"}}<span class="help">{{template "help" "book-format"}}<span class="tooltip" role="tooltip" id="book-format">
+    <span class="tip-line">{{t "dirs.import.tip_header"}}</span>
+    {{range $d.Columns}}<span class="tip-line mono">{{.}}</span>
+    {{end}}<span class="tip-line">{{t "dirs.import.tip_numbers"}}</span>
+    <span class="tip-line">{{t "dirs.import.tip_size" "max" $d.MaxBytes}}</span></span></span></h2></div>
   <div class="card-body form wide">
-    <label>CSV 文件<input type="file" name="file" accept=".csv,text/csv" required></label>
-    <div class="field"><span class="field-label" id="l-mode">方式</span>
+    <label>{{t "dirs.import.file"}}<input type="file" name="file" accept=".csv,text/csv" required></label>
+    <div class="field"><span class="field-label" id="l-mode">{{t "dirs.import.mode"}}</span>
       <div class="option-cards" role="radiogroup" aria-labelledby="l-mode">
-        <label class="option-card"><input type="radio" name="mode" value="append" checked><span><strong>追加</strong></span></label>
-        <label class="option-card"><input type="radio" name="mode" value="replace"><span><strong>替换全部</strong></span></label>
+        <label class="option-card"><input type="radio" name="mode" value="append" checked><span><strong>{{t "dirs.import.mode_append"}}</strong></span></label>
+        <label class="option-card"><input type="radio" name="mode" value="replace"><span><strong>{{t "dirs.import.mode_replace"}}</strong></span></label>
       </div></div>
   </div>
-  <div class="card-foot form-actions"><a class="btn" href="/books/{{$d.Book.ID}}">取消</a><button type="submit" class="btn primary">校验文件</button></div>
+  <div class="card-foot form-actions"><a class="btn" href="/books/{{$d.Book.ID}}">{{t "common.cancel"}}</a><button type="submit" class="btn primary">{{t "dirs.import.check"}}</button></div>
 </form>
 {{end}}
 </div>

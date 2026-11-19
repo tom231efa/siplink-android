@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -10,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"siplink/internal/i18n"
 	"siplink/internal/pki"
 	"siplink/internal/store"
 )
@@ -28,7 +28,7 @@ func openCerts(ctx context.Context, e *env, logCreated bool) (*pki.Certs, error)
 
 func pkiCommand(args []string, out io.Writer) error {
 	if len(args) == 0 {
-		return errors.New("pki 需要子命令: show, export-ca, renew, import, use-builtin")
+		return i18n.E("cli.pki.subcommand")
 	}
 	yes := slices.Contains(args[1:], "--yes")
 	rest := slices.DeleteFunc(slices.Clone(args[1:]), func(a string) bool { return a == "--yes" })
@@ -48,26 +48,26 @@ func pkiCommand(args []string, out io.Writer) error {
 		pkiShow(ctx, certs, out)
 	case "export-ca":
 		if len(rest) != 1 {
-			return errors.New("用法: siplink pki export-ca <路径>")
+			return i18n.E("cli.pki.export_usage")
 		}
 		if err := os.WriteFile(rest[0], ca.CAPEM(), 0o644); err != nil {
 			return err
 		}
-		fmt.Fprintln(out, "CA 证书已写入", rest[0])
+		fmt.Fprintln(out, cli().T("cli.pki.exported", "path", rest[0]))
 	case "renew":
 		if err := certs.Issue(ctx); err != nil {
 			return err
 		}
-		fmt.Fprintln(out, "服务器证书已重新签发，运行中的平台将在一分钟内启用。")
+		fmt.Fprintln(out, cli().T("cli.pki.renewed"))
 	case "import":
 		if len(rest) != 2 {
-			return errors.New("用法: siplink pki import [--yes] <证书链文件> <私钥文件>")
+			return i18n.E("cli.pki.import_usage")
 		}
 		return pkiImport(ctx, e, certs, rest[0], rest[1], yes, out)
 	case "use-builtin":
 		return pkiUseBuiltin(ctx, e, certs, yes, out)
 	default:
-		return fmt.Errorf("未知的 pki 子命令 %q", args[0])
+		return i18n.E("cli.pki.unknown", "name", args[0])
 	}
 	return nil
 }
@@ -75,54 +75,66 @@ func pkiCommand(args []string, out io.Writer) error {
 func pkiShow(ctx context.Context, certs *pki.Certs, out io.Writer) {
 	ca := certs.CA()
 	https, ldap := certs.Sources()
-	fmt.Fprintf(out, "模式: %s\n  HTTPS: %s\n  LDAP: %s\n", certs.Mode(),
-		pki.SourceLabel(https, "关闭（SIPLINK_TLS=off，由反向代理提供 HTTPS）"), pki.SourceLabel(ldap, "未开启"))
+	t := cli()
+	fmt.Fprintln(out, t.T("cli.pki.mode", "mode", certs.Mode()))
+	fmt.Fprintf(out, "  HTTPS: %s\n  LDAP: %s\n",
+		t.Msg(pki.SourceLabel(https, i18n.M("pki.source.proxy"))), t.Msg(pki.SourceLabel(ldap, i18n.M("pki.source.off"))))
+	// Values people copy (pins, fingerprints) follow their labels as they are, never as
+	// arguments, which a right-to-left language wraps in isolates.
+	issuing := t.T("cli.pki.issuing_running")
 	if certs.Paused() {
-		fmt.Fprintln(out, "  内置 CA 自动签发: 已暂停")
-	} else {
-		fmt.Fprintln(out, "  内置 CA 自动签发: 运行中（剩余不足 30 天或名称变化时续签）")
+		issuing = t.T("cli.pki.issuing_paused")
 	}
-	if pin := certs.Pin(); pin != "" {
-		fmt.Fprintln(out, "  二维码 pin:", pin)
-	} else {
-		fmt.Fprintln(out, "  二维码 pin: 无（设备按 Android 系统 CA 校验）")
+	fmt.Fprintln(out, "  "+t.T("cli.pki.issuing"), issuing)
+	pin := certs.Pin()
+	if pin == "" {
+		pin = t.T("cli.pki.qr_pin_none")
 	}
+	fmt.Fprintln(out, "  "+t.T("cli.pki.qr_pin"), pin)
 	c := ca.CA()
-	fmt.Fprintf(out, "内置 CA: %s\n  有效期: %s 至 %s\n  SHA-256 指纹: %s\n  pin: %s\n",
-		c.Subject.String(), localDay(c.NotBefore), localDay(c.NotAfter), pki.Fingerprint(c), ca.Pin())
+	fmt.Fprintln(out, t.T("cli.pki.ca"), c.Subject.String())
+	fmt.Fprintln(out, "  "+t.T("cli.pki.validity", "from", localDay(c.NotBefore), "to", localDay(c.NotAfter)))
+	fmt.Fprintln(out, "  "+t.T("cli.pki.fingerprint"), pki.Fingerprint(c))
+	fmt.Fprintln(out, "  pin:", ca.Pin())
 	if s := ca.Server(); s != nil {
-		fmt.Fprintf(out, "内置服务器证书: %v %v\n  到期: %s\n", s.DNSNames, s.IPAddresses, localDay(s.NotAfter))
+		fmt.Fprintln(out, t.T("cli.pki.server"), s.DNSNames, s.IPAddresses)
+		fmt.Fprintln(out, "  "+t.T("cli.pki.expires"), localDay(s.NotAfter))
 	} else {
-		fmt.Fprintln(out, "内置服务器证书: 尚未签发")
+		fmt.Fprintln(out, t.T("cli.pki.server"), t.T("cli.pki.not_issued"))
 	}
 	httpsFiles, ldapFiles := certs.Files()
 	if httpsFiles != nil {
-		showOwn(out, "HTTPS 证书文件", httpsFiles, certs)
+		showOwn(out, t.T("cli.pki.https_files"), httpsFiles, certs)
 	}
 	if ldapFiles != nil && ldapFiles != httpsFiles {
-		showOwn(out, "LDAP 证书文件", ldapFiles, certs)
+		showOwn(out, t.T("cli.pki.ldap_files"), ldapFiles, certs)
 	}
 	if o := certs.Uploaded(); o != nil {
-		showOwn(out, "自有证书（已上传）", o, certs)
+		showOwn(out, t.T("cli.pki.uploaded"), o, certs)
 	}
 	days := certs.ReminderDays(ctx)
-	fmt.Fprintf(out, "到期提醒: 提前 %d 天\n", days)
+	fmt.Fprintln(out, t.T("cli.pki.reminder", "n", days))
 	for _, n := range certs.Notices(days) {
-		fmt.Fprintf(out, "%s: %s\n", map[string]string{pki.LevelWarn: "提醒", pki.LevelError: "错误"}[n.Level], n.Text)
+		fmt.Fprintln(out, t.T(map[string]string{pki.LevelWarn: "cli.pki.level_warn", pki.LevelError: "cli.pki.level_error"}[n.Level]), t.Msg(n.Text))
 	}
 }
 
+// showOwn shows an operator's certificate under its title (a label with its colon).
 func showOwn(out io.Writer, title string, o *pki.Own, certs *pki.Certs) {
+	t := cli()
 	leaf := o.Leaf()
-	trust := "公共 CA（设备按 Android 系统 CA 校验）"
+	trust := t.T("cli.pki.trust_public")
 	if p := o.Private(); p != nil {
-		trust = "私有根证书 " + p.Subject.String() + "，pin " + pki.Pin(p)
+		trust = t.T("cli.pki.trust_private", "subject", p.Subject.String(), "pin", pki.Pin(p))
 	} else if !o.Public {
-		trust = "不受公共 CA 信任，且证书链不含根证书"
+		trust = t.T("cli.pki.trust_none")
 	}
-	fmt.Fprintf(out, "%s: %s\n  签发者: %s\n  名称: %s\n  到期: %s（剩余 %d 天）\n  信任: %s\n  SHA-256 指纹: %s\n",
-		title, leaf.Subject.String(), leaf.Issuer.String(), strings.Join(o.Names(), ", "),
-		localDay(leaf.NotAfter), certs.DaysLeft(leaf.NotAfter), trust, pki.Fingerprint(leaf))
+	fmt.Fprintln(out, title, leaf.Subject.String())
+	fmt.Fprintln(out, "  "+t.T("cli.pki.issuer"), leaf.Issuer.String())
+	fmt.Fprintln(out, "  "+t.T("cli.pki.names"), strings.Join(o.Names(), ", "))
+	fmt.Fprintln(out, "  "+t.T("cli.pki.expires_left", "date", localDay(leaf.NotAfter), "n", certs.DaysLeft(leaf.NotAfter)))
+	fmt.Fprintln(out, "  "+t.T("cli.pki.trust"), trust)
+	fmt.Fprintln(out, "  "+t.T("cli.pki.fingerprint"), pki.Fingerprint(leaf))
 }
 
 func localDay(t time.Time) string { return t.Local().Format("2006-01-02") }
@@ -145,34 +157,34 @@ func pkiImport(ctx context.Context, e *env, certs *pki.Certs, chainFile, keyFile
 		return err
 	}
 	for _, w := range a.Warnings {
-		fmt.Fprintln(out, "提示:", w)
+		fmt.Fprintln(out, cli().T("cli.pki.notice"), cli().Msg(w))
 	}
 	if len(a.Warnings) > 0 && !yes {
-		return errors.New("证书未启用：确认以上提示后加 --yes 重新运行")
+		return i18n.E("cli.pki.import_unconfirmed")
 	}
 	if err := certs.Import(ctx, o); err != nil {
 		return err
 	}
 	_ = e.st.AddAudit(ctx, &store.AuditEntry{AdminName: "CLI", Action: "pki.own_import", ObjectType: "system",
 		ObjectName: o.Leaf().Subject.String(), Detail: pki.AuditDetail(a)})
-	fmt.Fprintln(out, "自有证书已保存，运行中的平台将在一分钟内启用。", certs.Mode())
+	fmt.Fprintln(out, cli().T("cli.pki.imported"), cli().Msg(certs.Mode()))
 	return nil
 }
 
 func pkiUseBuiltin(ctx context.Context, e *env, certs *pki.Certs, yes bool, out io.Writer) error {
 	o := certs.Uploaded()
 	if o == nil {
-		return errors.New("尚未上传自有证书")
+		return i18n.E("cli.pki.no_own")
 	}
 	warnings, rescan, err := certs.RemovalWarnings(ctx)
 	if err != nil {
 		return err
 	}
 	for _, w := range warnings {
-		fmt.Fprintln(out, "提示:", w)
+		fmt.Fprintln(out, cli().T("cli.pki.notice"), cli().Msg(w))
 	}
 	if len(warnings) > 0 && !yes {
-		return errors.New("未停用：确认以上提示后加 --yes 重新运行")
+		return i18n.E("cli.pki.remove_unconfirmed")
 	}
 	reason, err := certs.Remove(ctx)
 	if err != nil {
@@ -181,8 +193,8 @@ func pkiUseBuiltin(ctx context.Context, e *env, certs *pki.Certs, yes bool, out 
 	_ = e.st.AddAudit(ctx, &store.AuditEntry{AdminName: "CLI", Action: "pki.own_remove", ObjectType: "system",
 		ObjectName: o.Leaf().Subject.String(), Detail: map[string]any{"rescan": rescan}})
 	if reason != "" {
-		fmt.Fprintln(out, "已签发内置服务器证书（"+reason+"）。")
+		fmt.Fprintln(out, cli().T("cli.pki.issued", "reason", reason))
 	}
-	fmt.Fprintln(out, "已停用自有证书并恢复使用内置 CA，运行中的平台将在一分钟内切换。")
+	fmt.Fprintln(out, cli().T("cli.pki.removed"))
 	return nil
 }

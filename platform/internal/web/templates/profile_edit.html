@@ -4,34 +4,34 @@
 <header class="page-head"><div><h1 class="fade">{{.Title}}</h1><p class="page-sub fade"><a href="/config-templates/{{$d.T.ID}}?tab=accounts">{{$d.T.Name}}</a></p></div></header>
 {{with $d.Errors}}<div class="flash error" role="alert"><ul class="errors">{{range .}}<li>{{.}}</li>{{end}}</ul></div>{{end}}
 <form method="post" action="/config-templates/{{$d.T.ID}}/profiles{{if not $d.New}}/{{$d.P.ID}}{{end}}" class="card form-card"
-  {{if gt $d.Clients 0}}data-confirm="此模板已被 {{$d.Clients}} 个客户端使用，保存后将于下次同步时生效。确认保存？"{{end}}>
+  {{if gt $d.Clients 0}}data-confirm="{{t "config.save_confirm" "n" $d.Clients}}"{{end}}>
   <div class="card-body form">
-    <label>账号名称<input name="name" value="{{$d.P.Name}}" required maxlength="30"></label>
+    <label>{{t "config.profile.name"}}<input name="name" value="{{$d.P.Name}}" required maxlength="30"></label>
     <div class="grid2 domain-port trio">
-      <label>域名<input name="domain" value="{{$d.P.Domain}}" required placeholder="pbx.example.com"></label>
-      <div class="field"><span class="label-line"><label for="f-port">端口</label>{{tip "f-port-tip" "默认"}}</span><input id="f-port" aria-describedby="f-port-tip" name="port" value="{{$d.P.Port}}" inputmode="numeric"></div>
-      <label>传输方式
+      <label>{{t "config.profile.domain"}}<input name="domain" value="{{$d.P.Domain}}" required placeholder="pbx.example.com" dir="ltr"></label>
+      <div class="field"><span class="label-line"><label for="f-port">{{t "config.profile.port"}}</label>{{tip "f-port-tip" (t "config.profile.port_tip")}}</span><input id="f-port" aria-describedby="f-port-tip" name="port" value="{{$d.P.Port}}" inputmode="numeric" dir="ltr"></div>
+      <label>{{t "config.profile.transport"}}
         <select name="transport">{{range $d.Options.Transports}}<option value="{{.}}"{{if eq (print .) $d.P.Transport}} selected{{end}}>{{.}}</option>{{end}}</select>
       </label>
     </div>
     <div class="grid2">
-      <div class="field"><span class="label-line"><label for="f-server">代理服务器</label>{{tip "f-server-tip" "主机[:端口]"}}</span><input id="f-server" aria-describedby="f-server-tip" name="server" value="{{$d.P.Server}}"></div>
-      <div class="field"><span class="label-line"><label for="f-backup">备用服务器</label>{{tip "f-backup-tip" "主机[:端口]"}}</span><input id="f-backup" aria-describedby="f-backup-tip" name="backupServer" value="{{$d.P.BackupServer}}"></div>
+      <div class="field"><span class="label-line"><label for="f-server">{{t "config.profile.server"}}</label>{{tip "f-server-tip" (t "config.profile.host_port_tip")}}</span><input id="f-server" aria-describedby="f-server-tip" name="server" value="{{$d.P.Server}}" dir="ltr"></div>
+      <div class="field"><span class="label-line"><label for="f-backup">{{t "config.profile.backup_server"}}</label>{{tip "f-backup-tip" (t "config.profile.host_port_tip")}}</span><input id="f-backup" aria-describedby="f-backup-tip" name="backupServer" value="{{$d.P.BackupServer}}" dir="ltr"></div>
     </div>
     <div class="grid2">
-      <div class="field"><span class="label-line"><label for="f-dns">DNS 服务器</label>{{tip "f-dns-tip" "IP[:端口]"}}</span><input id="f-dns" aria-describedby="f-dns-tip" name="dnsServer" value="{{$d.P.DNSServer}}"></div>
-      <label>注册有效期<span class="input-suffix"><input type="number" name="expires" value="{{$d.P.Expires}}" min="60" max="86400" required><span>秒</span></span></label>
+      <div class="field"><span class="label-line"><label for="f-dns">{{t "config.profile.dns_server"}}</label>{{tip "f-dns-tip" (t "config.profile.ip_port_tip")}}</span><input id="f-dns" aria-describedby="f-dns-tip" name="dnsServer" value="{{$d.P.DNSServer}}" dir="ltr"></div>
+      <label>{{t "config.profile.expires"}}<span class="input-suffix"><input type="number" name="expires" value="{{$d.P.Expires}}" min="60" max="86400" required dir="ltr"><span>{{t "config.unit.seconds"}}</span></span></label>
     </div>
     <div class="settings">
-      <label class="setting toggle"><span class="setting-text"><span class="setting-name">订阅语音信箱通知</span></span>
+      <label class="setting toggle"><span class="setting-text"><span class="setting-name">{{t "config.profile.subscribe_mwi"}}</span></span>
         <span class="switch"><input type="checkbox" role="switch" name="subscribeMwi" value="1"{{if $d.P.SubscribeMWI}} checked{{end}}><span></span></span></label>
-      <label class="setting toggle"><span class="setting-text"><span class="setting-name">启用</span></span>
+      <label class="setting toggle"><span class="setting-text"><span class="setting-name">{{t "config.toggle.enabled"}}</span></span>
         <span class="switch"><input type="checkbox" role="switch" name="enabled" value="1"{{if $d.P.Enabled}} checked{{end}}><span></span></span></label>
-      <label class="setting toggle"><span class="setting-text"><span class="setting-name">默认账号</span></span>
+      <label class="setting toggle"><span class="setting-text"><span class="setting-name">{{t "config.profile.is_default"}}</span></span>
         <span class="switch"><input type="checkbox" role="switch" name="isDefault" value="1"{{if $d.P.IsDefault}} checked{{end}}><span></span></span></label>
     </div>
   </div>
-  <div class="card-foot form-actions"><a class="btn" href="/config-templates/{{$d.T.ID}}?tab=accounts">取消</a><button type="submit" class="btn primary">保存</button></div>
+  <div class="card-foot form-actions"><a class="btn" href="/config-templates/{{$d.T.ID}}?tab=accounts">{{t "common.cancel"}}</a><button type="submit" class="btn primary">{{t "common.save"}}</button></div>
 </form>
 </div>
 {{end}}

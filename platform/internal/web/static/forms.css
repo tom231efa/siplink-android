@@ -2,7 +2,7 @@
 
 /* ---- page widths ---- */
 .narrow-page { max-width: 680px; }
-.savebar { width: fit-content; margin-left: auto; padding: 6px; gap: 6px; }
+.savebar { width: fit-content; margin-inline-start: auto; padding: 6px; gap: 6px; }
 .narrow-page.wide { max-width: 920px; }
 .two-col { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
 /* even: both cards as tall as the taller one; a .form.fill gives the spare room to its .grow field */
@@ -26,7 +26,7 @@ fieldset.bare { border: 0; padding: 0; margin: 0; min-width: 0; }
 .form-card { display: block; }
 .form-card .card-body.form, .card-body.form { max-width: none; }
 .form-actions { justify-content: flex-end; }
-.form-actions .hint { margin: 0 auto 0 0; }
+.form-actions .hint { margin-block: 0; margin-inline: 0 auto; }
 .form-foot.spread { justify-content: space-between; }
 .field { display: grid; gap: 6px; }
 .field-label, .form legend.field-label {
@@ -40,8 +40,8 @@ fieldset.bare { border: 0; padding: 0; margin: 0; min-width: 0; }
 .label-line .help-tip { width: 20px; height: 20px; margin: -2px 0; }
 .label-line .help-tip .icon { width: 14px; height: 14px; }
 .input-suffix { position: relative; display: flex; align-items: center; }
-.input-suffix input { padding-right: 44px; }
-.input-suffix > span { position: absolute; right: 10px; color: var(--muted); font-size: 13px; pointer-events: none; }
+.input-suffix input { padding-inline-end: 44px; }
+.input-suffix > span { position: absolute; inset-inline-end: 10px; color: var(--muted); font-size: 13px; pointer-events: none; }
 .input-suffix.short { flex: 0 1 140px; }
 input[type=number] { -moz-appearance: textfield; }
 input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
@@ -51,7 +51,7 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
 /* multi-selection: chips for short names, rows for names with details */
 .check-grid { display: flex; flex-wrap: wrap; gap: 8px; }
 .check-chip {
-  display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px 0 10px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 8px; height: 32px; padding-block: 0; padding-inline: 10px 12px; cursor: pointer;
   border: 1px solid var(--border-strong); border-radius: 999px; background: var(--input-bg); font-size: 13.5px;
   transition: background-color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
 }
@@ -60,7 +60,7 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
 .check-row { display: flex; align-items: center; gap: 10px; padding: 9px 12px; cursor: pointer; font-size: 14px; }
 .check-row + .check-row { border-top: 1px solid var(--border); }
 .check-row:hover { background: var(--surface-2); }
-.check-row .muted { margin-left: auto; font-size: 12.5px; }
+.check-row .muted { margin-inline-start: auto; font-size: 12.5px; }
 .form label.check-row, .form label.check-chip { display: flex; font-weight: 400; color: var(--text); font-size: 14px; }
 .form label.check-chip { display: inline-flex; font-size: 13.5px; }
 .form label.option-card { display: flex; font-size: 14px; color: var(--text); }
@@ -76,7 +76,7 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
 .popover-host { position: relative; }
 .popover-host > summary { list-style: none; }
 .popover-host > summary::-webkit-details-marker { display: none; }
-.popover-host > .popover { position: absolute; top: calc(100% + 6px); right: 0; }
+.popover-host > .popover { position: absolute; top: calc(100% + 6px); inset-inline-end: 0; }
 .popover-form { width: min(320px, calc(100vw - 32px)); padding: 16px; gap: 12px; }
 .menu-pop { min-width: 140px; }
 
@@ -91,7 +91,7 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
 .list-row > summary::-webkit-details-marker { display: none; }
 .list-row > summary:hover { background: color-mix(in oklch, var(--surface-2) 70%, transparent); }
 .list-row + .list-row { border-top: 1px solid var(--border); }
-.list-row .num { text-align: right; }
+.list-row .num { text-align: end; }
 .list-row .strong { font-weight: 500; min-width: 0; }
 .row-toggle { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 6px; color: var(--faint); justify-self: end; }
 .list-row > summary:hover .row-toggle { color: var(--text-2); background: var(--surface-3); }
@@ -110,12 +110,12 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
 .search.wide { max-width: 420px; }
 .filters .count { font-size: 13px; }
 .date-range { position: relative; display: inline-flex; align-items: center; gap: 4px; }
-.date-range > .icon { position: absolute; left: 9px; color: var(--muted); width: 14px; height: 14px; pointer-events: none; }
+.date-range > .icon { position: absolute; inset-inline-start: 9px; color: var(--muted); width: 14px; height: 14px; pointer-events: none; }
 .date-range input[type=date] {
   width: auto; height: 32px; font: inherit; font-size: 13px; color: var(--text); background: var(--input-bg);
   border: 1px solid var(--border-strong); border-radius: var(--radius-sm); padding: 0 8px; box-shadow: var(--shadow-xs);
 }
-.date-range input[type=date]:first-of-type { padding-left: 28px; }
+.date-range input[type=date]:first-of-type { padding-inline-start: 28px; }
 .date-range input[type=date]:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--focus); }
 
 /* ---- small pages ---- */
@@ -148,7 +148,7 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
   .row-body { padding: 12px 16px 16px; }
   .inline-fields input { width: 100%; }
   .inline-fields, .inline-fields label { flex: 1 1 100%; }
-  .page-actions .popover-host > .popover { right: auto; left: 0; }
+  .page-actions .popover-host > .popover { inset-inline-end: auto; inset-inline-start: 0; }
   .filters .date-range { flex: 1 1 100%; }
   .date-range input[type=date] { flex: 1; min-width: 0; }
   .search.wide { max-width: none; }
@@ -172,3 +172,7 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
 /* without JavaScript the server opens it as a plain dialog: centred, over a scrim */
 .dialog[open]:not(:modal) { position: fixed; inset: 0; margin: auto; z-index: 80; height: fit-content; max-height: calc(100dvh - 32px); overflow: auto; }
 .dialog-scrim { position: fixed; inset: 0; z-index: 79; background: oklch(0.2 0.01 255 / .32); animation: none; }
+/* Arabic placeholders in technical (monospaced, left-to-right) inputs: the text font, aligned
+   with the page while the input is empty */
+:lang(ar) :is(input, textarea).mono::placeholder { font-family: var(--font); }
+[dir="rtl"] :is(input, textarea)[dir="ltr"]:placeholder-shown { direction: rtl; }

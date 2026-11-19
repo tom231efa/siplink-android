@@ -31,15 +31,15 @@ func (s *Server) backupDownload(w http.ResponseWriter, r *http.Request) {
 	defer f.Close()
 	encrypt := r.FormValue("encrypt") == "1"
 	pass := r.FormValue("passphrase")
-	msg := s.recheckPassword(a, r.FormValue("password"))
+	msg := s.recheckPassword(r, a, r.FormValue("password"))
 	if msg == "" && encrypt {
 		strict, err := s.St.PasswordCheck(r.Context())
 		if err != nil {
 			s.internal(w, r, err)
 			return
 		}
-		if msg = auth.PassphraseProblem(pass, strict); msg == "" && pass != r.FormValue("passphrase2") {
-			msg = "两次输入的加密口令不一致。"
+		if msg = errText(r, auth.PassphraseProblem(pass, strict)); msg == "" && pass != r.FormValue("passphrase2") {
+			msg = tr(r).T("system.backup.passphrase_mismatch")
 		}
 	}
 	if msg != "" {

@@ -3,12 +3,12 @@
 package books
 
 import (
-	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
 	"unicode/utf8"
 
+	"siplink/internal/i18n"
 	"siplink/internal/store"
 )
 
@@ -26,23 +26,23 @@ var (
 	numberPattern = regexp.MustCompile(`^[0-9+*#\-() ]+$`)
 )
 
-// SlugProblem returns a message when slug is not acceptable, or "".
-func SlugProblem(slug string) string {
+// SlugProblem says why slug is not acceptable, nil when it is.
+func SlugProblem(slug string) error {
 	if !slugPattern.MatchString(slug) {
-		return "标识仅可使用 2-32 个小写字母、数字或 -。"
+		return i18n.E("books.slug_invalid")
 	}
-	return ""
+	return nil
 }
 
 // NameProblem checks a book name.
-func NameProblem(name string) string {
+func NameProblem(name string) error {
 	switch n := utf8.RuneCountInString(name); {
 	case n == 0:
-		return "请填写通讯录名称。"
+		return i18n.E("books.name_required")
 	case n > MaxText:
-		return fmt.Sprintf("通讯录名称不得超过 %d 个字符。", MaxText)
+		return i18n.E("books.name_too_long", "max", MaxText)
 	}
-	return ""
+	return nil
 }
 
 // SplitNumbers splits "a;b" (also the full-width "；") into trimmed, non-empty numbers.
@@ -75,43 +75,44 @@ func trimAll(list []string) []string {
 	return out
 }
 
-// Validate returns the problems of an entry in Chinese; empty when it is fine.
-func Validate(e *store.Entry) []string {
-	var out []string
+// Validate returns the problems of an entry; empty when it is fine.
+func Validate(e *store.Entry) []i18n.Msg {
+	var out []i18n.Msg
 	if e.Name == "" {
-		out = append(out, "姓名为必填项")
+		out = append(out, i18n.M("books.entry.name_required"))
 	}
 	for _, f := range []struct {
-		label, value string
+		field, value string
 		max          int
 	}{
-		{"姓名", e.Name, MaxText}, {"姓", e.Surname, MaxText}, {"名", e.GivenName, MaxText},
-		{"单位", e.Organization, MaxText}, {"部门", e.Department, MaxText}, {"职务", e.Title, MaxText},
-		{"邮箱", e.Email, MaxEmail},
+		{"name", e.Name, MaxText}, {"surname", e.Surname, MaxText}, {"given_name", e.GivenName, MaxText},
+		{"organization", e.Organization, MaxText}, {"department", e.Department, MaxText}, {"title", e.Title, MaxText},
+		{"email", e.Email, MaxEmail},
 	} {
+		label := i18n.M("books.field." + f.field)
 		if utf8.RuneCountInString(f.value) > f.max {
-			out = append(out, fmt.Sprintf("%s超过 %d 个字符", f.label, f.max))
+			out = append(out, i18n.M("books.entry.too_long", "field", label, "max", f.max))
 		}
 		if strings.ContainsAny(f.value, "\r\n\x00") {
-			out = append(out, f.label+"含有换行或控制字符")
+			out = append(out, i18n.M("books.entry.control", "field", label))
 		}
 	}
-	out = append(out, numberProblems("办公电话", e.Phones)...)
-	out = append(out, numberProblems("手机", e.Mobiles)...)
+	out = append(out, numberProblems(i18n.M("books.field.phone"), e.Phones)...)
+	out = append(out, numberProblems(i18n.M("books.field.mobile"), e.Mobiles)...)
 	return out
 }
 
-func numberProblems(label string, numbers []string) []string {
-	var out []string
+func numberProblems(label i18n.Msg, numbers []string) []i18n.Msg {
+	var out []i18n.Msg
 	if len(numbers) > MaxNumbers {
-		out = append(out, fmt.Sprintf("%s最多 %d 个号码", label, MaxNumbers))
+		out = append(out, i18n.M("books.entry.too_many_numbers", "field", label, "max", MaxNumbers))
 	}
 	for _, n := range numbers {
 		switch {
 		case len(n) > MaxNumber:
-			out = append(out, fmt.Sprintf("%s「%s」超过 %d 个字符", label, n, MaxNumber))
+			out = append(out, i18n.M("books.entry.number_too_long", "field", label, "number", n, "max", MaxNumber))
 		case !numberPattern.MatchString(n):
-			out = append(out, fmt.Sprintf("%s「%s」仅限数字、空格及 + * # - ( )", label, n))
+			out = append(out, i18n.M("books.entry.number_invalid", "field", label, "number", n))
 		}
 	}
 	return out

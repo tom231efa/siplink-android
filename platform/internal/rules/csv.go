@@ -1,12 +1,16 @@
 package rules
 
-import "strings"
+import (
+	"strings"
+
+	"siplink/internal/i18n"
+)
 
 // CsvLineError is a line of CSV text that could not be read, and why.
 // Port of Csv.LineError (app/src/main/java/com/sky/siplink/core/logic/Csv.kt).
 type CsvLineError struct {
-	Line   int    `json:"line"`
-	Reason string `json:"reason"`
+	Line   int      `json:"line"`
+	Reason i18n.Msg `json:"reason"`
 }
 
 // CsvRow is one row of CSV text: its line number (from 1) and its fields; Fields is nil

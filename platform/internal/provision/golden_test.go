@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"siplink/internal/i18n"
 	"strings"
 	"testing"
 	"time"
@@ -129,7 +130,7 @@ func (w *world) document(c *store.Client) (*provision.Document, []string) {
 	w.must(err)
 	d, problems := provision.Build(in)
 	d.GeneratedAt = fixedTime.Format(time.RFC3339)
-	return d, problems
+	return d, i18n.For(i18n.Source).Msgs(problems)
 }
 
 // golden compares a document with a file, or writes it with -update.
@@ -341,7 +342,7 @@ func TestNewSettingsDefaults(t *testing.T) {
 	}
 	for v, ok := range map[string]bool{"": true, "Acme Phone/2.1 (x)": true, " lead": false, "trail ": false,
 		"中文": false, "tab\t": false, strings.Repeat("a", 120): true, strings.Repeat("a", 121): false} {
-		if got := provision.UserAgentProblem(v) == ""; got != ok {
+		if got := provision.UserAgentProblem(v) == nil; got != ok {
 			t.Errorf("UserAgentProblem(%q) ok=%v", v, got)
 		}
 	}
@@ -397,8 +398,9 @@ func TestBuildRefusesInvalid(t *testing.T) {
 			{Key: "p1", Draft: rules.AccountDraft{Name: "a", Username: "1001", Domain: "pbx.example.com", Transport: "UDP", Expires: 3600, Enabled: true}},
 			{Key: "p2", Draft: rules.AccountDraft{Name: "b", Username: "1001", Domain: "pbx.example.com", Transport: "UDP", Expires: 3600, Enabled: true}},
 		}}
+	zh := i18n.For(i18n.Source)
 	_, problems := provision.Build(in)
-	if len(problems) != 1 || !strings.Contains(problems[0], rules.AccountDuplicate.Full()) {
+	if len(problems) != 1 || !strings.Contains(zh.Msg(problems[0]), zh.Msg(rules.AccountDuplicate.Msg())) {
 		t.Errorf("duplicate account: %v", problems)
 	}
 	in.Accounts = in.Accounts[:1]
@@ -407,7 +409,7 @@ func TestBuildRefusesInvalid(t *testing.T) {
 		t.Errorf("frame rate: %v", problems)
 	}
 	in.Settings.VideoFrameRate, in.Settings.AutoAnswerSeconds = 0, 4
-	if _, problems = provision.Build(in); len(problems) != 1 || problems[0] != "自动接听时间无效" {
+	if _, problems = provision.Build(in); len(problems) != 1 || zh.Msg(problems[0]) != "自动接听时间无效" {
 		t.Errorf("auto answer wait: %v", problems)
 	}
 }

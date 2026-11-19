@@ -1,11 +1,14 @@
 package rules
 
-import "net"
+import (
+	"net"
+
+	"siplink/internal/i18n"
+)
 
 // HostedNeedsName is shown where a hosted address book cannot be offered because the
 // platform's LDAP host is a literal address while TLS is required.
-const HostedNeedsName = "托管通讯录需要平台的 LDAP 地址是域名：手机的 LDAP 库只能按域名校验证书。" +
-	"请为平台设置 DNS 名称（SIPLINK_LDAP_PUBLIC_HOST），或设置 SIPLINK_LDAP_REQUIRE_TLS=false 以不加密方式提供通讯录。"
+var HostedNeedsName = i18n.M("rules.hosted_needs_name")
 
 // HostedSecurity chooses the security of a hosted address book in a provisioning
 // document. This is platform policy (decided 2026-11-16), kept in this one place:

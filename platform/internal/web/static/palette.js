@@ -8,6 +8,7 @@
   var input = dlg.querySelector("[data-palette-input]");
   var list = dlg.querySelector("[data-palette-list]");
   var mac = /Mac|iPhone|iPad/.test(navigator.platform || "");
+  var text = window.siplinkText || String;
   var pages = [];
   document.querySelectorAll(".nav a").forEach(function (a) {
     var group = a.closest(".nav-group");
@@ -42,11 +43,11 @@
   function render() {
     var q = input.value.trim().toLowerCase();
     items = pages.filter(function (p) { return !q || p.text.toLowerCase().indexOf(q) >= 0 || p.where.toLowerCase().indexOf(q) >= 0; });
-    if (q) items.push({ href: "/clients?q=" + encodeURIComponent(input.value.trim()), text: "搜索客户端：" + input.value.trim(), where: "客户端", icon: searchIcon });
+    if (q) items.push({ href: "/clients?q=" + encodeURIComponent(input.value.trim()), text: text("palette_search", { q: input.value.trim() }), where: text("palette_clients"), icon: searchIcon });
     list.textContent = "";
-    if (!q) list.appendChild(el("li", "group", "页面"));
+    if (!q) list.appendChild(el("li", "group", text("palette_pages")));
     items.forEach(function (it, i) { list.appendChild(option(it, i)); });
-    if (!items.length) list.appendChild(el("li", "none", "无匹配结果"));
+    if (!items.length) list.appendChild(el("li", "none", text("palette_none")));
     select(0);
   }
   function select(i) {

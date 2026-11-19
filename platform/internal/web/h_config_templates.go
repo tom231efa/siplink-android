@@ -69,26 +69,31 @@ func (s *Server) configList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	names, _ := s.allRegionNames(r)
+	tl := tr(r)
 	var rows []templateRow
 	for _, t := range list {
 		n, _ := s.St.ClientCountOfConfigTemplate(r.Context(), t.ID)
 		profiles, _ := s.St.Profiles(r.Context(), t.ID)
 		rows = append(rows, templateRow{ID: t.ID, Name: t.Name, Note: t.Note, Region: regionLabel(names, t.RegionID),
-			Global: t.RegionID == nil, Clients: n, Extra: strconv.Itoa(len(profiles)) + " 个账号"})
+			Global: t.RegionID == nil, Clients: n, Extra: tl.T("config.list.accounts", "n", len(profiles))})
 	}
-	s.ok(w, r, "templates", &Page{Title: "配置模板", Nav: "config", Data: templatesData{Rows: rows, Base: "/config-templates", Kind: "配置模板"}})
+	s.ok(w, r, "templates", &Page{Title: tl.T("nav.config_templates"), Nav: "config", Data: templatesData{Rows: rows,
+		Base: "/config-templates", New: tl.T("config.list.new"), Empty: tl.T("config.list.empty")}})
 }
 
+// templatesData is the list page shared by the three template kinds; each caller fills
+// the texts in the request's language.
 type templatesData struct {
-	Rows []templateRow
-	Base string
-	Kind string
+	Rows  []templateRow
+	Base  string
+	New   string // the button that makes one
+	Empty string // the empty list's text
 }
 
 // metaForm is the name / region / note form shared by the three template kinds.
 type metaForm struct {
 	Base    string
-	Kind    string
+	Title   string // the page's title in the request's language
 	ID      int64
 	Name    string
 	Note    string
@@ -102,7 +107,7 @@ func (s *Server) metaFormPage(w http.ResponseWriter, r *http.Request, status int
 	a := current(r)
 	f.Regions, _ = s.St.ListRegions(r.Context(), a.RegionIDs, a.Role == store.RoleSuper)
 	f.Global = a.Role == store.RoleSuper
-	s.render(w, r, status, "template_new", &Page{Title: "新建" + f.Kind, Nav: navOf(f.Base), Data: f})
+	s.render(w, r, status, "template_new", &Page{Title: f.Title, Nav: navOf(f.Base), Data: f})
 }
 
 func navOf(base string) string {
@@ -110,7 +115,7 @@ func navOf(base string) string {
 }
 
 func (s *Server) configNew(w http.ResponseWriter, r *http.Request) {
-	s.metaFormPage(w, r, http.StatusOK, metaForm{Base: "/config-templates", Kind: "配置模板", Region: s.defaultRegion(r)})
+	s.metaFormPage(w, r, http.StatusOK, metaForm{Base: "/config-templates", Title: tr(r).T("config.new.title"), Region: s.defaultRegion(r)})
 }
 
 // defaultRegion is the region preselected in a new object's form.
@@ -130,15 +135,15 @@ func (s *Server) readMeta(r *http.Request, name, note *string, region **int64, r
 	if regionEditable {
 		*region = formRegion(r)
 	}
-	if msg := catalog.NameProblem(*name); msg != "" {
+	if msg := errText(r, catalog.NameProblem(*name)); msg != "" {
 		return msg
 	}
 	if !actor(r).Can(auth.TemplateEdit, *region) {
-		return "您无权在所选区域创建或修改模板。"
+		return tr(r).T("config.meta.no_right")
 	}
 	if *region != nil {
 		if _, err := s.St.RegionByID(r.Context(), **region); err != nil {
-			return "所选区域不存在。"
+			return tr(r).T("config.meta.region_missing")
 		}
 	}
 	return ""
@@ -146,10 +151,10 @@ func (s *Server) readMeta(r *http.Request, name, note *string, region **int64, r
 
 func (s *Server) configCreate(w http.ResponseWriter, r *http.Request) {
 	t := &store.ConfigTemplate{SettingsJSON: catalog.SettingsJSON(provision.DefaultSettings()), RefreshMinutes: 60}
-	f := metaForm{Base: "/config-templates", Kind: "配置模板"}
+	f := metaForm{Base: "/config-templates", Title: tr(r).T("config.new.title")}
 	if f.Error = s.readMeta(r, &t.Name, &t.Note, &t.RegionID, true); f.Error == "" {
 		if err := s.St.CreateConfigTemplate(r.Context(), t); errors.Is(err, store.ErrConflict) {
-			f.Error = "同一区域已有同名模板。"
+			f.Error = tr(r).T("config.meta.name_taken")
 		} else if err != nil {
 			s.internal(w, r, err)
 			return
@@ -161,7 +166,7 @@ func (s *Server) configCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.audit(r, "config_template.create", "config_template", t.ID, t.Name, t.RegionID, nil)
-	s.redirect(w, r, "/config-templates/"+itoa(t.ID), "ok", "配置模板已创建。")
+	s.redirect(w, r, "/config-templates/"+itoa(t.ID), "ok", tr(r).T("config.created"))
 }
 
 // loadConfig returns the template of the path when visible (and editable when edit).
@@ -186,15 +191,18 @@ func (s *Server) checkTemplate(w http.ResponseWriter, r *http.Request, region *i
 		return nil
 	}
 	if edit && !editable {
-		s.fail(w, r, http.StatusForbidden, "全局模板仅可由超级管理员修改。")
+		s.fail(w, r, http.StatusForbidden, tr(r).T("config.meta.global_super_only"))
 		return nil
 	}
 	return t
 }
 
+// configTabs are the tabs of a configuration template in their order; Label is a
+// catalog key.
 var configTabs = []struct{ ID, Label string }{
-	{"accounts", "账号"}, {"calls", "高级设置"}, {"features", "功能码"}, {"general", "接听与保活"},
-	{"media", "音视频"}, {"security", "安全"}, {"directories", "通讯录"}, {"advanced", "同步与管理"},
+	{"accounts", "config.tab.accounts"}, {"calls", "config.tab.calls"}, {"features", "config.tab.features"},
+	{"general", "config.tab.general"}, {"media", "config.tab.media"}, {"security", "config.tab.security"},
+	{"directories", "config.tab.directories"}, {"advanced", "config.tab.advanced"},
 }
 
 type configData struct {
@@ -232,7 +240,8 @@ type codecRow struct {
 	Order     int // 1 = first; 0 = not in the template
 }
 
-// codecGroup is the audio or the video part of the codec table, in order.
+// codecGroup is the audio or the video part of the codec table, in order; Label is a
+// catalog key.
 type codecGroup struct {
 	Kind, Label string
 	Rows        []codecRow
@@ -274,7 +283,8 @@ func (s *Server) renderConfig(w http.ResponseWriter, r *http.Request, status int
 		d.RegionList, _ = s.St.ListRegions(ctx, nil, true)
 	}
 	d.Clients, _ = s.St.ClientCountOfConfigTemplate(ctx, t.ID)
-	d.Users, _ = s.St.ConfigTemplateUsers(ctx, t.ID)
+	users, _ := s.St.ConfigTemplateUsers(ctx, t.ID)
+	d.Users = useNames(tr(r), users)
 	var err error
 	if d.Profiles, err = s.St.Profiles(ctx, t.ID); err != nil {
 		s.internal(w, r, err)
@@ -302,7 +312,7 @@ func (s *Server) renderConfig(w http.ResponseWriter, r *http.Request, status int
 	sec, ok := s.hosted().Security()
 	switch {
 	case !ok:
-		d.HostedNote = rules.HostedNeedsName
+		d.HostedNote = tr(r).Msg(rules.HostedNeedsName)
 	case sec == rules.LdapSecurityNone:
 		d.HostedPlain = true
 	}
@@ -344,7 +354,7 @@ func (s *Server) codecGroups(r *http.Request, c *provision.Codecs) []codecGroup 
 		}
 		return a.Order - b.Order
 	})
-	groups := []codecGroup{{Kind: "audio", Label: "音频"}, {Kind: "video", Label: "视频"}}
+	groups := []codecGroup{{Kind: "audio", Label: "config.codec.audio"}, {Kind: "video", Label: "config.codec.video"}}
 	for i := range groups {
 		for _, row := range rows {
 			if row.Kind == groups[i].Kind {
@@ -368,7 +378,7 @@ func (s *Server) configMeta(w http.ResponseWriter, r *http.Request) {
 	}
 	if msg == "" {
 		if err := s.St.UpdateConfigTemplate(r.Context(), t); errors.Is(err, store.ErrConflict) {
-			msg = "同一区域已有同名模板。"
+			msg = tr(r).T("config.meta.name_taken")
 		} else if err != nil {
 			s.internal(w, r, err)
 			return
@@ -380,7 +390,7 @@ func (s *Server) configMeta(w http.ResponseWriter, r *http.Request) {
 	}
 	s.audit(r, "config_template.update", "config_template", t.ID, t.Name, t.RegionID, changes(
 		field{"name", old.Name, t.Name}, field{"note", old.Note, t.Note}, field{"region_id", derefOr(old.RegionID), derefOr(t.RegionID)}))
-	s.redirect(w, r, "/config-templates/"+itoa(t.ID)+"?tab=advanced", "ok", "已保存。")
+	s.redirect(w, r, "/config-templates/"+itoa(t.ID)+"?tab=advanced", "ok", tr(r).T("common.saved"))
 }
 
 // configMoveProblem refuses a move that would break the ownership rule (§2.3): the
@@ -397,13 +407,13 @@ func (s *Server) configMoveProblem(r *http.Request, t *store.ConfigTemplate) str
 			region = d.External.RegionID
 		}
 		if !compatible(t.RegionID, region) {
-			return "模板引用了其他区域的通讯录「" + d.Source + "」，无法移至该区域。"
+			return tr(r).T("config.meta.move_directory", "name", d.Source)
 		}
 	}
 	users, _ := s.St.ListClientTemplates(r.Context(), store.BookScope{All: true})
 	for _, ct := range users {
 		if ct.ConfigTemplateID == t.ID && t.RegionID != nil && (ct.RegionID == nil || *ct.RegionID != *t.RegionID) {
-			return "客户端模板「" + ct.Name + "」使用此模板，移动后将违反区域规则。"
+			return tr(r).T("config.meta.move_client_template", "name", ct.Name)
 		}
 	}
 	return ""
@@ -450,7 +460,7 @@ func (s *Server) configSettings(w http.ResponseWriter, r *http.Request) {
 			{"dndOn", &f.DndOn}, {"dndOff", &f.DndOff}} {
 			*p.v = trimmed(r, p.name)
 			if strings.ContainsAny(*p.v, " \t") || len(*p.v) > 32 {
-				problems = append(problems, "功能码不得包含空格，最多 32 个字符")
+				problems = append(problems, tr(r).T("config.features.code_invalid", "max", 32))
 			}
 		}
 	case "general":
@@ -474,16 +484,16 @@ func (s *Server) configSettings(w http.ResponseWriter, r *http.Request) {
 	case "advanced":
 		set.AutoUpdateCheck = checkbox(r, "autoUpdateCheck")
 		t.RefreshMinutes = intValue(r, "refreshMinutes", -1)
-		if p := catalog.RefreshProblem(t.RefreshMinutes); p != "" {
+		if p := errText(r, catalog.RefreshProblem(t.RefreshMinutes)); p != "" {
 			problems = append(problems, p)
 		}
 		switch {
 		case checkbox(r, "clearPassword"):
 			t.ConfigPasswordHash = ""
 		case r.FormValue("configPassword") != "":
-			hash, p := catalog.ConfigPasswordHash(r.FormValue("configPassword"))
-			if p != "" {
-				problems = append(problems, p)
+			hash, err := catalog.ConfigPasswordHash(r.FormValue("configPassword"))
+			if err != nil {
+				problems = append(problems, errText(r, err))
 			}
 			t.ConfigPasswordHash = hash
 		}
@@ -491,9 +501,9 @@ func (s *Server) configSettings(w http.ResponseWriter, r *http.Request) {
 		s.notFound(w, r)
 		return
 	}
-	problems = append(problems, provision.SettingsProblems(set)...)
+	problems = append(problems, tr(r).Msgs(provision.SettingsProblems(set))...)
 	if len(problems) > 0 {
-		s.renderConfig(w, r, http.StatusBadRequest, &old, tab, strings.Join(problems, "；"))
+		s.renderConfig(w, r, http.StatusBadRequest, &old, tab, strings.Join(problems, tr(r).T("format.problem_sep")))
 		return
 	}
 	t.SettingsJSON = catalog.SettingsJSON(set)
@@ -503,16 +513,16 @@ func (s *Server) configSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	detail := settingsChanges(before, set)
 	if old.ConfigPasswordHash != t.ConfigPasswordHash {
-		detail["config_password"] = "已修改"
+		detail["config_password"] = auditChanged
 	}
 	if old.RefreshMinutes != t.RefreshMinutes {
 		detail["refresh_minutes"] = map[string]any{"old": old.RefreshMinutes, "new": t.RefreshMinutes}
 	}
 	if old.CodecsJSON != t.CodecsJSON {
-		detail["codecs"] = "已修改"
+		detail["codecs"] = auditChanged
 	}
 	s.audit(r, "config_template.update", "config_template", t.ID, t.Name, t.RegionID, detail)
-	s.redirect(w, r, "/config-templates/"+itoa(t.ID)+"?tab="+tab, "ok", "已保存。")
+	s.redirect(w, r, "/config-templates/"+itoa(t.ID)+"?tab="+tab, "ok", tr(r).T("common.saved"))
 }
 
 // settingsChanges lists the changed settings fields by their JSON names.
@@ -554,7 +564,7 @@ func readCodecs(r *http.Request) (*provision.Codecs, []string) {
 		items = append(items, item{kind, key, formAt(r, "codecOn", i) == "1", order})
 	}
 	if key := trimmed(r, "newCodec"); key != "" {
-		if p := catalog.CodecProblem(key); p != "" {
+		if p := errText(r, catalog.CodecProblem(key)); p != "" {
 			problems = append(problems, p)
 		} else {
 			kind := "audio"
@@ -568,7 +578,7 @@ func readCodecs(r *http.Request) (*provision.Codecs, []string) {
 	c := &provision.Codecs{Audio: []provision.Codec{}, Video: []provision.Codec{}}
 	seen := map[string]bool{}
 	for _, it := range items {
-		if p := catalog.CodecProblem(it.key); p != "" {
+		if p := errText(r, catalog.CodecProblem(it.key)); p != "" {
 			problems = append(problems, p)
 			continue
 		}
@@ -600,7 +610,7 @@ func (s *Server) configCAAdd(w http.ResponseWriter, r *http.Request) {
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	if err := r.ParseMultipartForm(1 << 20); err != nil && !errors.Is(err, http.ErrNotMultipart) {
-		s.renderConfig(w, r, http.StatusBadRequest, t, "security", "文件过大（最大 1 MB）")
+		s.renderConfig(w, r, http.StatusBadRequest, t, "security", tr(r).T("config.ca.too_large"))
 		return
 	}
 	text := r.FormValue("pem")
@@ -610,16 +620,17 @@ func (s *Server) configCAAdd(w http.ResponseWriter, r *http.Request) {
 		text += "\n" + string(b)
 	}
 	added, err := catalog.SplitCAs(text)
+	msg := errText(r, err)
 	if err == nil && len(added) == 0 {
-		err = errors.New("未找到证书")
+		msg = tr(r).T("config.ca.none_found")
 	}
-	if err != nil {
-		s.renderConfig(w, r, http.StatusBadRequest, t, "security", err.Error())
+	if msg != "" {
+		s.renderConfig(w, r, http.StatusBadRequest, t, "security", msg)
 		return
 	}
 	merged := catalog.MergeCAs(t.CAPEMs, text)
 	if len(merged) > catalog.MaxCAs {
-		s.renderConfig(w, r, http.StatusBadRequest, t, "security", "最多 50 个 CA 证书")
+		s.renderConfig(w, r, http.StatusBadRequest, t, "security", tr(r).T("config.ca.limit", "max", catalog.MaxCAs))
 		return
 	}
 	t.CAPEMs = strings.Join(merged, "")
@@ -628,7 +639,7 @@ func (s *Server) configCAAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.audit(r, "config_template.update", "config_template", t.ID, t.Name, t.RegionID, map[string]any{"ca_certificates": len(merged)})
-	s.redirect(w, r, "/config-templates/"+itoa(t.ID)+"?tab=security", "ok", "CA 证书已添加。")
+	s.redirect(w, r, "/config-templates/"+itoa(t.ID)+"?tab=security", "ok", tr(r).T("config.ca.added"))
 }
 
 func (s *Server) configCARemove(w http.ResponseWriter, r *http.Request) {
@@ -649,7 +660,7 @@ func (s *Server) configCARemove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.audit(r, "config_template.update", "config_template", t.ID, t.Name, t.RegionID, map[string]any{"ca_certificates": len(keep)})
-	s.redirect(w, r, "/config-templates/"+itoa(t.ID)+"?tab=security", "ok", "CA 证书已移除。")
+	s.redirect(w, r, "/config-templates/"+itoa(t.ID)+"?tab=security", "ok", tr(r).T("config.ca.removed"))
 }
 
 func (s *Server) configDelete(w http.ResponseWriter, r *http.Request) {
@@ -658,12 +669,12 @@ func (s *Server) configDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := s.St.DeleteConfigTemplate(r.Context(), t.ID); errors.Is(err, store.ErrInUse) {
-		s.redirect(w, r, "/config-templates/"+itoa(t.ID)+"?tab=advanced", "error", "模板仍被客户端模板使用，无法删除。")
+		s.redirect(w, r, "/config-templates/"+itoa(t.ID)+"?tab=advanced", "error", tr(r).T("config.delete.in_use"))
 		return
 	} else if err != nil {
 		s.internal(w, r, err)
 		return
 	}
 	s.audit(r, "config_template.delete", "config_template", t.ID, t.Name, t.RegionID, nil)
-	s.redirect(w, r, "/config-templates", "ok", "配置模板「"+t.Name+"」已删除。")
+	s.redirect(w, r, "/config-templates", "ok", tr(r).T("config.deleted", "name", t.Name))
 }

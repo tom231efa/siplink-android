@@ -2,13 +2,13 @@ package web
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
+	"siplink/internal/i18n"
 	"siplink/internal/pki"
 )
 
@@ -69,8 +69,9 @@ type ownInfo struct {
 func (s *Server) certCard(r *http.Request) *certCard {
 	c := s.Ext.Certs
 	https, ldap := c.Sources()
-	card := &certCard{Mode: c.Mode(), HTTPS: pki.SourceLabel(https, "反向代理（SIPLINK_TLS=off）"),
-		LDAP: pki.SourceLabel(ldap, "未开启"), Paused: c.Paused(), ReminderDays: c.ReminderDays(r.Context()),
+	t := tr(r)
+	card := &certCard{Mode: t.Msg(c.Mode()), HTTPS: t.Msg(pki.SourceLabel(https, i18n.M("pki.source.proxy"))),
+		LDAP: t.Msg(pki.SourceLabel(ldap, i18n.M("pki.source.off"))), Paused: c.Paused(), ReminderDays: c.ReminderDays(r.Context()),
 		MaxDays: pki.MaxReminderDays}
 	card.Notices = c.Notices(card.ReminderDays)
 	card.BuiltinUsed = https == pki.SourceBuiltin || ldap == pki.SourceBuiltin
@@ -85,60 +86,56 @@ func (s *Server) certCard(r *http.Request) *certCard {
 	}
 	httpsFiles, ldapFiles := c.Files()
 	if httpsFiles != nil {
-		card.Own = append(card.Own, s.ownInfo("HTTPS 证书文件", httpsFiles, ""))
+		card.Own = append(card.Own, s.ownInfo(t, t.T("system.cert.https_files"), httpsFiles, ""))
 	}
 	if ldapFiles != nil && ldapFiles != httpsFiles {
-		card.Own = append(card.Own, s.ownInfo("LDAP 证书文件", ldapFiles, ""))
+		card.Own = append(card.Own, s.ownInfo(t, t.T("system.cert.ldap_files"), ldapFiles, ""))
 	}
 	if o := c.Uploaded(); o != nil {
 		card.HasUploaded = true
-		card.Own = append(card.Own, s.ownInfo("自有证书", o, usesText(https, ldap, c.Options())))
+		card.Own = append(card.Own, s.ownInfo(t, t.T("system.cert.own"), o, usesText(t, https, ldap, c.Options())))
 	}
 	return card
 }
 
 // usesText says which listeners use the uploaded certificate, and why not the others.
-func usesText(https, ldap pki.Source, opt pki.Options) string {
-	var used, notes []string
-	if https == pki.SourceOwn {
-		used = append(used, "HTTPS")
+func usesText(t *i18n.Tr, https, ldap pki.Source, opt pki.Options) string {
+	text := t.T("system.cert.unused")
+	switch {
+	case https == pki.SourceOwn && ldap == pki.SourceOwn:
+		text = t.T("system.cert.uses_both")
+	case https == pki.SourceOwn:
+		text = "HTTPS"
+	case ldap == pki.SourceOwn:
+		text = "LDAP"
 	}
-	if ldap == pki.SourceOwn {
-		used = append(used, "LDAP")
-	} else if ldap == pki.SourceBuiltin {
-		notes = append(notes, "证书不包含 LDAP 地址 "+opt.LDAPHost+"，LDAP 使用内置 CA 签发的证书")
+	var notes []string
+	if ldap == pki.SourceBuiltin {
+		notes = append(notes, t.T("system.cert.ldap_builtin", "host", opt.LDAPHost))
 	}
 	if https == pki.SourceBuiltin {
-		notes = append(notes, "证书不包含公开地址的主机名 "+opt.HTTPSHost+"，HTTPS 使用内置 CA 签发的证书")
-	}
-	text := "未使用"
-	if len(used) > 0 {
-		text = strings.Join(used, " 与 ")
+		notes = append(notes, t.T("system.cert.https_builtin", "host", opt.HTTPSHost))
 	}
 	if len(notes) > 0 {
-		text += "（" + strings.Join(notes, "；") + "）"
+		text = t.T("system.cert.uses_notes", "uses", text, "notes", strings.Join(notes, t.T("format.problem_sep")))
 	}
 	return text
 }
 
-func (s *Server) ownInfo(title string, o *pki.Own, uses string) ownInfo {
+func (s *Server) ownInfo(t *i18n.Tr, title string, o *pki.Own, uses string) ownInfo {
 	leaf := o.Leaf()
 	i := ownInfo{Title: title, Subject: leaf.Subject.String(), Issuer: leaf.Issuer.String(), Names: o.Names(),
 		NotAfter: leaf.NotAfter, DaysLeft: s.Ext.Certs.DaysLeft(leaf.NotAfter), Fingerprint: pki.Fingerprint(leaf), Uses: uses}
 	switch p := o.Private(); {
 	case o.Public:
-		i.Trust = "公共 CA（二维码不带 pin）"
+		i.Trust = t.T("system.cert.trust_public")
 	case p != nil:
-		i.Trust = "私有根证书「" + p.Subject.String() + "」（二维码带 pin）"
+		i.Trust = t.T("system.cert.trust_private", "name", p.Subject.String())
 	default:
-		i.Trust = "设备无法信任：不受公共 CA 信任，且证书链不含根证书"
+		i.Trust = t.T("system.cert.trust_none")
 	}
 	if len(o.EmptyAKI) > 0 {
-		parts := make([]string, len(o.EmptyAKI))
-		for k, n := range o.EmptyAKI {
-			parts[k] = strconv.Itoa(n)
-		}
-		i.EmptyAKI = "证书链中第 " + strings.Join(parts, "、") + " 个证书的 AuthorityKeyIdentifier 扩展为空，设备的 SIP/LDAP TLS 库（mbedTLS 3.6.0）将中止握手"
+		i.EmptyAKI = t.T("system.cert.empty_aki", "n", o.EmptyAKI)
 	}
 	return i
 }
@@ -149,7 +146,7 @@ func (s *Server) certUpload(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, 2*maxCertFile+16<<10)
 	// Everything stays in memory: the private key never reaches a temporary file.
 	if err := r.ParseMultipartForm(4 * maxCertFile); err != nil {
-		s.certRefused(w, r, "上传失败：单个文件不得超过 64 KB，请通过本页表单上传。")
+		s.certRefused(w, r, tr(r).T("system.cert.upload_too_big", "max", maxCertFile>>10))
 		return
 	}
 	defer r.MultipartForm.RemoveAll()
@@ -157,14 +154,16 @@ func (s *Server) certUpload(w http.ResponseWriter, r *http.Request) {
 	var refusal *pki.Refusal
 	switch {
 	case errors.As(err, &refusal):
-		s.certRefused(w, r, refusal.Reason)
+		s.certRefused(w, r, tr(r).Msg(refusal.Reason))
 	case err != nil:
 		s.internal(w, r, err)
 	case len(a.Warnings) == 0:
 		s.certImport(w, r, a)
 	default:
 		token := s.pending.put(s.Now(), current(r).ID, a.Own)
-		s.renderSystem(w, r, http.StatusOK, func(d *systemData) { d.Cert.Warnings, d.Cert.Token, d.Cert.View = a.Warnings, token, certOwn })
+		s.renderSystem(w, r, http.StatusOK, func(d *systemData) {
+			d.Cert.Warnings, d.Cert.Token, d.Cert.View = tr(r).Msgs(a.Warnings), token, certOwn
+		})
 	}
 }
 
@@ -185,20 +184,22 @@ func (s *Server) assessUpload(r *http.Request) (*pki.Assessment, error) {
 }
 
 func formFile(r *http.Request, name string) ([]byte, error) {
-	label := map[string]string{"chain": "证书链文件", "key": "私钥文件"}[name]
+	label := i18n.M("pki.file." + name)
 	f, h, err := r.FormFile(name)
 	if err != nil {
-		return nil, &pki.Refusal{Reason: "请选择" + label + "。"}
+		return nil, &pki.Refusal{Reason: i18n.M("pki.file.missing", "file", label)}
 	}
 	defer f.Close()
 	if h.Size > maxCertFile {
-		return nil, &pki.Refusal{Reason: label + "过大（最多 64 KB）。"}
+		return nil, &pki.Refusal{Reason: i18n.M("pki.file.too_big", "file", label, "max", maxCertFile>>10)}
 	}
 	return io.ReadAll(io.LimitReader(f, maxCertFile))
 }
 
 func (s *Server) certRefused(w http.ResponseWriter, r *http.Request, reason string) {
-	s.renderSystem(w, r, http.StatusBadRequest, func(d *systemData) { d.Cert.Error, d.Cert.View = "证书未启用："+reason, certOwn })
+	s.renderSystem(w, r, http.StatusBadRequest, func(d *systemData) {
+		d.Cert.Error, d.Cert.View = tr(r).T("system.cert.refused", "reason", reason), certOwn
+	})
 }
 
 // certConfirm uses an upload whose warnings the administrator has read. It is checked
@@ -206,13 +207,13 @@ func (s *Server) certRefused(w http.ResponseWriter, r *http.Request, reason stri
 func (s *Server) certConfirm(w http.ResponseWriter, r *http.Request) {
 	o, ok := s.pending.take(s.Now(), r.FormValue("token"), current(r).ID)
 	if !ok {
-		s.redirect(w, r, "/system", "error", "确认已失效，请重新上传证书。")
+		s.redirect(w, r, "/system", "error", tr(r).T("system.cert.confirm_expired"))
 		return
 	}
 	a, err := s.Ext.Certs.Assess(r.Context(), o)
 	var refusal *pki.Refusal
 	if errors.As(err, &refusal) {
-		s.certRefused(w, r, refusal.Reason)
+		s.certRefused(w, r, tr(r).Msg(refusal.Reason))
 		return
 	} else if err != nil {
 		s.internal(w, r, err)
@@ -227,7 +228,7 @@ func (s *Server) certImport(w http.ResponseWriter, r *http.Request, a *pki.Asses
 		return
 	}
 	s.audit(r, "pki.own_import", "system", 0, a.Own.Leaf().Subject.String(), nil, pki.AuditDetail(a))
-	s.redirect(w, r, "/system", "ok", "已启用自有证书。")
+	s.redirect(w, r, "/system", "ok", tr(r).T("system.cert.imported"))
 }
 
 // certRemove returns to the built-in CA. When phones would have to scan again it asks first.
@@ -235,7 +236,7 @@ func (s *Server) certRemove(w http.ResponseWriter, r *http.Request) {
 	c := s.Ext.Certs
 	o := c.Uploaded()
 	if o == nil {
-		s.redirect(w, r, "/system?cert=own#certificate", "error", "尚未上传自有证书。")
+		s.redirect(w, r, "/system?cert=own#certificate", "error", tr(r).T("system.cert.not_uploaded"))
 		return
 	}
 	warnings, rescan, err := c.RemovalWarnings(r.Context())
@@ -246,7 +247,7 @@ func (s *Server) certRemove(w http.ResponseWriter, r *http.Request) {
 	if len(warnings) > 0 && r.FormValue("confirm") != "1" {
 		s.renderSystem(w, r, http.StatusOK, func(d *systemData) {
 			card := d.Cert
-			card.Warnings, card.RemoveAsk, card.RemoveRescan, card.View = warnings, true, rescan, certOwn
+			card.Warnings, card.RemoveAsk, card.RemoveRescan, card.View = tr(r).Msgs(warnings), true, rescan, certOwn
 		})
 		return
 	}
@@ -263,7 +264,7 @@ func (s *Server) certRemove(w http.ResponseWriter, r *http.Request) {
 		detail["issued"] = reason
 	}
 	s.audit(r, "pki.own_remove", "system", 0, o.Leaf().Subject.String(), nil, detail)
-	s.redirect(w, r, "/system", "ok", "已停用自有证书，已恢复使用内置 CA。")
+	s.redirect(w, r, "/system", "ok", tr(r).T("system.cert.removed"))
 }
 
 func (s *Server) certReminder(w http.ResponseWriter, r *http.Request) {
@@ -272,7 +273,7 @@ func (s *Server) certReminder(w http.ResponseWriter, r *http.Request) {
 	days, err := strconv.Atoi(strings.TrimSpace(r.FormValue("days")))
 	if err != nil || days < 1 || days > pki.MaxReminderDays {
 		s.renderSystem(w, r, http.StatusBadRequest, func(d *systemData) {
-			d.Cert.Error, d.Cert.View = fmt.Sprintf("到期前提醒天数须为 1 到 %d 的整数。", pki.MaxReminderDays), certOwn
+			d.Cert.Error, d.Cert.View = tr(r).T("system.cert.reminder_invalid", "max", pki.MaxReminderDays), certOwn
 		})
 		return
 	}
@@ -281,9 +282,9 @@ func (s *Server) certReminder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if days != old {
-		s.audit(r, "pki.reminder", "system", 0, "到期前提醒天数", nil, changes(field{"reminder_days", old, days}))
+		s.audit(r, "pki.reminder", "system", 0, "cert_reminder", nil, changes(field{"reminder_days", old, days}))
 	}
-	s.redirect(w, r, "/system?cert=own#certificate", "ok", fmt.Sprintf("已设置为到期前 %d 天提醒。", days))
+	s.redirect(w, r, "/system?cert=own#certificate", "ok", tr(r).T("system.cert.reminder_saved", "n", days))
 }
 
 // certNotices are the reminders the dashboard shows super administrators.
@@ -299,7 +300,7 @@ func (s *Server) healthz(w http.ResponseWriter, r *http.Request) {
 	b.WriteString("ok\n")
 	if s.Ext.Certs != nil {
 		for _, n := range s.certNotices(r) {
-			b.WriteString(n.Level + " " + n.Text + "\n")
+			b.WriteString(n.Level + " " + tr(r).Msg(n.Text) + "\n")
 		}
 	}
 	w.Write([]byte(b.String()))

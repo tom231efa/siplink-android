@@ -1,9 +1,9 @@
 {{define "content"}}
 <div class="print-bar">
-  <a class="btn" href="/clients">{{icon "arrow-left"}}返回</a>
-  {{if .Data.Skipped}}<span class="muted">已跳过 {{.Data.Skipped}} 个已绑定或二维码已过期的客户端</span>{{end}}
+  <a class="btn" href="/clients">{{icon "arrow-left"}}{{t "common.back"}}</a>
+  {{if .Data.Skipped}}<span class="muted">{{t "clients.print.skipped" "n" .Data.Skipped}}</span>{{end}}
   <span class="spacer"></span>
-  {{if .Data.Cards}}<span class="muted">{{len .Data.Cards}} 张</span><button type="button" class="btn primary" data-print>{{icon "printer"}}打印</button>{{end}}
+  {{if .Data.Cards}}<span class="muted">{{t "clients.print.cards" "n" (len .Data.Cards)}}</span><button type="button" class="btn primary" data-print>{{icon "printer"}}{{t "clients.print.action"}}</button>{{end}}
 </div>
 {{if .Data.Cards}}
 <div class="print-grid">
@@ -11,8 +11,8 @@
     <div class="qr">{{.QR}}</div>
     <strong>{{.Name}}</strong>
     <p>{{.Region}}</p>
-    <p>SipLink → 设置 → 远程配置 → 扫描二维码</p>
+    <p>{{t "clients.app_path"}}</p>
   </div>{{end}}
 </div>
-{{else}}<div class="card"><div class="empty-state">{{icon "printer"}}<p>暂无可打印的二维码</p></div></div>{{end}}
+{{else}}<div class="card"><div class="empty-state">{{icon "printer"}}<p>{{t "clients.print.empty"}}</p></div></div>{{end}}
 {{end}}

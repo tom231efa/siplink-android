@@ -182,9 +182,9 @@ func (s *Store) UpdateConfigTemplate(ctx context.Context, t *ConfigTemplate) err
 	return nil
 }
 
-// ConfigTemplateUsers names the client templates that use a configuration template.
-func (s *Store) ConfigTemplateUsers(ctx context.Context, id int64) ([]string, error) {
-	return names(ctx, s.DB, `SELECT '客户端模板 ' || name FROM client_templates WHERE config_template_id = ? ORDER BY name`, id)
+// ConfigTemplateUsers lists the client templates that use a configuration template.
+func (s *Store) ConfigTemplateUsers(ctx context.Context, id int64) ([]Use, error) {
+	return uses(ctx, s.DB, `SELECT 'client_template', name FROM client_templates WHERE config_template_id = ? ORDER BY name`, id)
 }
 
 // DeleteConfigTemplate removes a template nothing uses.
@@ -214,6 +214,28 @@ func names(ctx context.Context, q querier, query string, args ...any) ([]string,
 			return nil, err
 		}
 		out = append(out, n)
+	}
+	return out, rows.Err()
+}
+
+// Use is an object that refers to another: its kind (the audit log's object type, such
+// as "client_template") and its name. The page puts the kind into words.
+type Use struct{ Kind, Name string }
+
+// uses reads rows of kind and name.
+func uses(ctx context.Context, q querier, query string, args ...any) ([]Use, error) {
+	rows, err := q.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Use
+	for rows.Next() {
+		var u Use
+		if err := rows.Scan(&u.Kind, &u.Name); err != nil {
+			return nil, err
+		}
+		out = append(out, u)
 	}
 	return out, rows.Err()
 }

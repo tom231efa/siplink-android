@@ -104,7 +104,7 @@ func (s *Server) clientList(w http.ResponseWriter, r *http.Request) {
 		d.Rows = append(d.Rows, clientRow{Client: c, Region: names[c.RegionID], Template: tplNames[c.ClientTemplateID], Report: rep,
 			Offline: c.Status == store.StatusActive && store.Offline(rep.LastSeenAt, refresh[c.ID], f.Now)})
 	}
-	s.ok(w, r, "clients", &Page{Title: "客户端", Nav: "clients", Data: d})
+	s.ok(w, r, "clients", &Page{Title: tr(r).T("nav.clients"), Nav: "clients", Data: d})
 }
 
 // loadClient returns the client of the path when the administrator may manage it.
@@ -252,9 +252,9 @@ func (s *Server) clientFormPage(w http.ResponseWriter, r *http.Request, status i
 			*f.v, *f.set = *f.p, true
 		}
 	}
-	title := "新建客户端"
+	title := tr(r).T("clients.form.title_new")
 	if !d.New {
-		title = "编辑客户端：" + d.C.Name
+		title = tr(r).T("clients.form.title_edit", "name", d.C.Name)
 	}
 	s.render(w, r, status, "client_edit", &Page{Title: title, Nav: "clients", Data: d})
 }
@@ -303,24 +303,24 @@ func (s *Server) clientSave(w http.ResponseWriter, r *http.Request) {
 	c.RegionID, c.ClientTemplateID = formID(r, "region"), formID(r, "template")
 	c.ForwardAlways, c.ForwardBusy, c.ForwardNoAnswer = readForward(r, "fwdAlways"), readForward(r, "fwdBusy"), readForward(r, "fwdNoAnswer")
 	var problems []string
-	if p := catalog.ClientNameProblem(c.Name); p != "" {
+	if p := errText(r, catalog.ClientNameProblem(c.Name)); p != "" {
 		problems = append(problems, p)
 	}
 	if !act.Can(auth.ClientManage, &c.RegionID) || !isNew && !act.CanMoveClient(old.RegionID, c.RegionID) {
-		problems = append(problems, "您无权在所选区域管理客户端。")
+		problems = append(problems, tr(r).T("clients.form.region_forbidden"))
 	} else if _, err := s.St.RegionByID(ctx, c.RegionID); err != nil {
-		problems = append(problems, "请选择区域。")
+		problems = append(problems, tr(r).T("clients.form.region_required"))
 	}
 	usable := false
 	for _, t := range s.usableClientTemplates(r, c.RegionID) {
 		usable = usable || t.ID == c.ClientTemplateID
 	}
 	if !usable {
-		problems = append(problems, "请选择可用的客户端模板（全局的或属于同一区域）。")
+		problems = append(problems, tr(r).T("clients.form.template_required"))
 	}
 	for _, v := range []*string{c.ForwardAlways, c.ForwardBusy, c.ForwardNoAnswer} {
 		if v != nil {
-			if p := provision.ForwardProblem(*v); p != "" {
+			if p := errText(r, provision.ForwardProblem(*v)); p != "" {
 				problems = append(problems, p)
 				break
 			}
@@ -343,8 +343,8 @@ func (s *Server) clientSave(w http.ResponseWriter, r *http.Request) {
 			dirs[d.ID] = r.FormValue("dir_" + itoa(d.ID))
 			if d.LDAPAccountID != nil && dirs[d.ID] != "" {
 				a, err := s.St.LDAPAccountByID(ctx, *d.LDAPAccountID)
-				if p := s.accountPasswordProblem(a, dirs[d.ID]); err == nil && p != "" {
-					problems = append(problems, "通讯录「"+d.DisplayName()+"」："+p)
+				if p := s.accountPasswordProblem(r, a, dirs[d.ID]); err == nil && p != "" {
+					problems = append(problems, tr(r).T("provision.directory_problem", "name", d.DisplayName(), "problem", p))
 				}
 			}
 		}
@@ -357,7 +357,7 @@ func (s *Server) clientSave(w http.ResponseWriter, r *http.Request) {
 		}
 		err := s.St.SaveClient(ctx, c, creds, dirs, s.Ext.Box, token)
 		if errors.Is(err, store.ErrConflict) {
-			problems = append(problems, "该区域已有同名客户端。")
+			problems = append(problems, tr(r).T("clients.form.name_taken"))
 		} else if err != nil {
 			s.internal(w, r, err)
 			return
@@ -368,7 +368,7 @@ func (s *Server) clientSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.auditClientSave(r, isNew, &old, c, creds, dirs)
-	s.redirect(w, r, "/clients/"+itoa(c.ID), "ok", "客户端「"+c.Name+"」已保存。")
+	s.redirect(w, r, "/clients/"+itoa(c.ID), "ok", tr(r).T("clients.saved", "name", c.Name))
 }
 
 // readCredentials reads and checks the credentials of every profile of the template.
@@ -387,7 +387,7 @@ func readCredentials(r *http.Request, profiles []*store.Profile, problems []stri
 		if in.Username == "" {
 			continue
 		}
-		problems = append(problems, catalog.CredentialProblems(p, in, taken)...)
+		problems = append(problems, tr(r).Msgs(catalog.CredentialProblems(p, in, taken))...)
 		taken = append(taken, catalog.CredentialDraft(p, in).Name)
 	}
 	return creds, problems
@@ -401,12 +401,12 @@ func (s *Server) auditClientSave(r *http.Request, isNew bool, old, c *store.Clie
 		field{"forward_no_answer", derefText(old.ForwardNoAnswer), derefText(c.ForwardNoAnswer)})
 	for _, in := range creds {
 		if in.Password != "" {
-			detail["password"] = "已修改"
+			detail["password"] = auditChanged
 		}
 	}
 	for _, pw := range dirs {
 		if pw != "" {
-			detail["directory_password"] = "已修改"
+			detail["directory_password"] = auditChanged
 		}
 	}
 	action := "client.update"

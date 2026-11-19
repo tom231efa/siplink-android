@@ -40,14 +40,20 @@ func (s *Server) bookScope(r *http.Request) store.BookScope {
 	return sc
 }
 
+// allRegionNames maps the ID of every region to its name, and 0 (no region) to the
+// word for global in the request's language, for regionLabel.
 func (s *Server) allRegionNames(r *http.Request) (map[int64]string, error) {
 	regions, err := s.St.ListRegions(r.Context(), nil, true)
-	return regionNames(regions), err
+	names := regionNames(regions)
+	names[0] = tr(r).T("common.global")
+	return names, err
 }
 
+// regionLabel is the name of a region of allRegionNames, the word for global when id
+// is nil.
 func regionLabel(names map[int64]string, id *int64) string {
 	if id == nil {
-		return "全局"
+		return names[0]
 	}
 	return names[*id]
 }
@@ -71,7 +77,7 @@ func (s *Server) loadBook(w http.ResponseWriter, r *http.Request, edit bool) *st
 		return nil
 	}
 	if edit && !act.Can(auth.BookEdit, b.RegionID) {
-		s.fail(w, r, http.StatusForbidden, "全局通讯录仅可由超级管理员修改。")
+		s.fail(w, r, http.StatusForbidden, tr(r).T("dirs.global_super_only"))
 		return nil
 	}
 	return b
@@ -97,9 +103,9 @@ func (s *Server) bookFormPage(w http.ResponseWriter, r *http.Request, status int
 		return
 	}
 	f.Regions, f.Global, f.Kind = regions, a.Role == store.RoleSuper, store.KindHosted
-	title := "编辑通讯录"
+	title := tr(r).T("dirs.book.edit_title")
 	if f.New {
-		title = "新建通讯录"
+		title = tr(r).T("dirs.new")
 	}
 	s.render(w, r, status, "book_edit", &Page{Title: title, Nav: "books", Data: f})
 }
@@ -125,15 +131,15 @@ func formRegion(r *http.Request) *int64 {
 func (s *Server) bookCreate(w http.ResponseWriter, r *http.Request) {
 	b := &store.Book{Slug: strings.ToLower(trimmed(r, "slug")), Name: trimmed(r, "name"), Note: truncate(trimmed(r, "note"), books.MaxNote),
 		AllowAnonymous: r.FormValue("allow_anonymous") == "1", RegionID: formRegion(r)}
-	msg := books.NameProblem(b.Name)
-	if m := books.SlugProblem(b.Slug); m != "" {
+	msg := errText(r, books.NameProblem(b.Name))
+	if m := errText(r, books.SlugProblem(b.Slug)); m != "" {
 		msg = m
 	}
 	if !actor(r).Can(auth.BookEdit, b.RegionID) {
-		msg = "您无权在所选区域创建通讯录。"
+		msg = tr(r).T("dirs.create_forbidden")
 	} else if b.RegionID != nil {
 		if _, err := s.St.RegionByID(r.Context(), *b.RegionID); err != nil {
-			msg = "所选区域不存在。"
+			msg = tr(r).T("dirs.region_missing")
 		}
 	}
 	if msg != "" {
@@ -143,9 +149,9 @@ func (s *Server) bookCreate(w http.ResponseWriter, r *http.Request) {
 	err := s.St.CreateBook(r.Context(), b, s.Cfg.MaxBooks)
 	switch {
 	case errors.Is(err, store.ErrConflict):
-		msg = "标识「" + b.Slug + "」已被使用。"
+		msg = tr(r).T("dirs.book.slug_taken", "slug", b.Slug)
 	case errors.Is(err, store.ErrLimit):
-		msg = fmt.Sprintf("通讯录数量已达上限 %d 个。", s.Cfg.MaxBooks)
+		msg = tr(r).T("dirs.book.limit", "max", s.Cfg.MaxBooks)
 	case err != nil:
 		s.internal(w, r, err)
 		return
@@ -155,7 +161,7 @@ func (s *Server) bookCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.audit(r, "book.create", "book", b.ID, b.Name, b.RegionID, map[string]any{"slug": b.Slug, "name": b.Name})
-	s.redirect(w, r, "/books/"+itoa(b.ID), "ok", "通讯录「"+b.Name+"」已创建。")
+	s.redirect(w, r, "/books/"+itoa(b.ID), "ok", tr(r).T("dirs.created", "name", b.Name))
 }
 
 func (s *Server) bookEdit(w http.ResponseWriter, r *http.Request) {
@@ -168,7 +174,7 @@ func (s *Server) bookEdit(w http.ResponseWriter, r *http.Request) {
 		s.internal(w, r, err)
 		return
 	}
-	s.bookFormPage(w, r, http.StatusOK, bookForm{Book: b, Users: users})
+	s.bookFormPage(w, r, http.StatusOK, bookForm{Book: b, Users: useNames(tr(r), users)})
 }
 
 func (s *Server) bookUpdate(w http.ResponseWriter, r *http.Request) {
@@ -179,13 +185,13 @@ func (s *Server) bookUpdate(w http.ResponseWriter, r *http.Request) {
 	b := *old
 	b.Name, b.Note = trimmed(r, "name"), truncate(trimmed(r, "note"), books.MaxNote)
 	b.AllowAnonymous = r.FormValue("allow_anonymous") == "1"
-	msg := books.NameProblem(b.Name)
+	msg := errText(r, books.NameProblem(b.Name))
 	if current(r).Role == store.RoleSuper {
 		// Moving a book between regions is a super-administrator action (§2.3).
 		b.RegionID = formRegion(r)
 		if b.RegionID != nil {
 			if _, err := s.St.RegionByID(r.Context(), *b.RegionID); err != nil {
-				msg = "所选区域不存在。"
+				msg = tr(r).T("dirs.region_missing")
 			}
 		}
 		if msg == "" && !sameRegion(old.RegionID, b.RegionID) {
@@ -204,7 +210,7 @@ func (s *Server) bookUpdate(w http.ResponseWriter, r *http.Request) {
 		field{"name", old.Name, b.Name}, field{"note", old.Note, b.Note},
 		field{"allow_anonymous", old.AllowAnonymous, b.AllowAnonymous},
 		field{"region_id", derefOr(old.RegionID), derefOr(b.RegionID)}))
-	s.redirect(w, r, "/books/"+itoa(b.ID), "ok", "通讯录已保存。")
+	s.redirect(w, r, "/books/"+itoa(b.ID), "ok", tr(r).T("dirs.saved"))
 }
 
 func sameRegion(a, b *int64) bool { return a == nil && b == nil || a != nil && b != nil && *a == *b }
@@ -224,7 +230,7 @@ func (s *Server) bookDelete(w http.ResponseWriter, r *http.Request) {
 	err := s.St.DeleteBook(r.Context(), b.ID)
 	if errors.Is(err, store.ErrInUse) {
 		users, _ := s.St.BookUsers(r.Context(), b.ID)
-		s.redirect(w, r, "/books/"+itoa(b.ID)+"/edit", "error", "通讯录正在使用中，无法删除："+strings.Join(users, "、"))
+		s.redirect(w, r, "/books/"+itoa(b.ID)+"/edit", "error", tr(r).T("dirs.in_use", "users", useNames(tr(r), users)))
 		return
 	}
 	if err != nil {
@@ -232,7 +238,7 @@ func (s *Server) bookDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.audit(r, "book.delete", "book", b.ID, b.Name, b.RegionID, map[string]any{"slug": b.Slug, "entries": b.EntryCount})
-	s.redirect(w, r, "/books", "ok", "通讯录「"+b.Name+"」已删除。")
+	s.redirect(w, r, "/books", "ok", tr(r).T("dirs.deleted", "name", b.Name))
 }
 
 // ---- book page with entries ----
@@ -315,9 +321,9 @@ func (s *Server) entryFormPage(w http.ResponseWriter, r *http.Request, status in
 	if f.Mobiles == "" {
 		f.Mobiles = strings.Join(f.Entry.Mobiles, "; ")
 	}
-	title := "编辑联系人"
+	title := tr(r).T("dirs.entry.edit_title")
 	if f.New {
-		title = "新建联系人"
+		title = tr(r).T("dirs.entry.new_title")
 	}
 	s.render(w, r, status, "entry_edit", &Page{Title: title, Nav: "books", Data: f})
 }
@@ -344,14 +350,14 @@ func (s *Server) entryCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	e := readEntry(r)
 	if problems := books.Validate(e); len(problems) > 0 {
-		s.entryFormPage(w, r, http.StatusBadRequest, entryForm{Book: b, Entry: e, New: true, Errors: problems,
+		s.entryFormPage(w, r, http.StatusBadRequest, entryForm{Book: b, Entry: e, New: true, Errors: tr(r).Msgs(problems),
 			Phones: r.FormValue("phones"), Mobiles: r.FormValue("mobiles")})
 		return
 	}
 	err := s.St.AddEntries(r.Context(), b.ID, []*store.Entry{e}, false, s.Cfg.MaxBookEntries)
 	if errors.Is(err, store.ErrLimit) {
 		s.entryFormPage(w, r, http.StatusBadRequest, entryForm{Book: b, Entry: e, New: true,
-			Errors: []string{fmt.Sprintf("通讯录已达 %d 人上限。", s.Cfg.MaxBookEntries)}})
+			Errors: []string{tr(r).T("dirs.entry.limit", "max", s.Cfg.MaxBookEntries)}})
 		return
 	}
 	if err != nil {
@@ -359,7 +365,7 @@ func (s *Server) entryCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.audit(r, "entry.create", "entry", e.ID, e.Name, b.RegionID, map[string]any{"book": b.Slug})
-	s.redirect(w, r, "/books/"+itoa(b.ID), "ok", "联系人「"+e.Name+"」已添加。")
+	s.redirect(w, r, "/books/"+itoa(b.ID), "ok", tr(r).T("dirs.entry.added", "name", e.Name))
 }
 
 func (s *Server) loadEntry(w http.ResponseWriter, r *http.Request, b *store.Book) *store.Entry {
@@ -398,7 +404,7 @@ func (s *Server) entryUpdate(w http.ResponseWriter, r *http.Request) {
 	e := readEntry(r)
 	e.ID, e.BookID = old.ID, b.ID
 	if problems := books.Validate(e); len(problems) > 0 {
-		s.entryFormPage(w, r, http.StatusBadRequest, entryForm{Book: b, Entry: e, Errors: problems,
+		s.entryFormPage(w, r, http.StatusBadRequest, entryForm{Book: b, Entry: e, Errors: tr(r).Msgs(problems),
 			Phones: r.FormValue("phones"), Mobiles: r.FormValue("mobiles")})
 		return
 	}
@@ -411,7 +417,7 @@ func (s *Server) entryUpdate(w http.ResponseWriter, r *http.Request) {
 		field{"phones", old.Phones, e.Phones}, field{"mobiles", old.Mobiles, e.Mobiles},
 		field{"organization", old.Organization, e.Organization}, field{"department", old.Department, e.Department},
 		field{"title", old.Title, e.Title}, field{"email", old.Email, e.Email}))
-	s.redirect(w, r, "/books/"+itoa(b.ID), "ok", "联系人已保存。")
+	s.redirect(w, r, "/books/"+itoa(b.ID), "ok", tr(r).T("dirs.entry.saved"))
 }
 
 func (s *Server) entryDelete(w http.ResponseWriter, r *http.Request) {
@@ -428,5 +434,5 @@ func (s *Server) entryDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.audit(r, "entry.delete", "entry", e.ID, e.Name, b.RegionID, map[string]any{"book": b.Slug})
-	s.redirect(w, r, "/books/"+itoa(b.ID), "ok", "联系人「"+e.Name+"」已删除。")
+	s.redirect(w, r, "/books/"+itoa(b.ID), "ok", tr(r).T("dirs.entry.deleted", "name", e.Name))
 }

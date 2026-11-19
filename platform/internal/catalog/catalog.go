@@ -6,12 +6,12 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
-	"fmt"
 	"regexp"
 	"strings"
 	"time"
 	"unicode/utf8"
 
+	"siplink/internal/i18n"
 	"siplink/internal/pki"
 	"siplink/internal/provision"
 	"siplink/internal/rules"
@@ -28,14 +28,14 @@ const (
 )
 
 // NameProblem checks the name of a template or client.
-func NameProblem(name string) string {
+func NameProblem(name string) error {
 	switch n := utf8.RuneCountInString(name); {
 	case n == 0:
-		return "请填写名称。"
+		return i18n.E("catalog.name_required")
 	case n > MaxTemplateName:
-		return fmt.Sprintf("名称不得超过 %d 个字符。", MaxTemplateName)
+		return i18n.E("catalog.name_too_long", "max", MaxTemplateName)
 	}
-	return ""
+	return nil
 }
 
 // ---- account profiles ----
@@ -54,13 +54,13 @@ func NormalizeProfile(p *store.Profile) {
 }
 
 // ProfileProblems checks a normalized profile; others are the other profiles of the template.
-func ProfileProblems(p *store.Profile, others []*store.Profile) []string {
-	var out []string
+func ProfileProblems(p *store.Profile, others []*store.Profile) []i18n.Msg {
+	var out []i18n.Msg
 	if p.Name == "" {
-		out = append(out, "账号名称必填")
+		out = append(out, i18n.M("catalog.profile_name_required"))
 	}
 	if !rules.SipTransport(p.Transport).Valid() {
-		out = append(out, "传输方式应为 UDP、TCP 或 TLS")
+		out = append(out, i18n.M("catalog.transport_invalid"))
 	}
 	var taken []string
 	for _, o := range others {
@@ -71,7 +71,7 @@ func ProfileProblems(p *store.Profile, others []*store.Profile) []string {
 	d := ProfileDraft(p)
 	d.Username = "x" // the user name is the client's; only the server side is checked here
 	for _, e := range rules.ValidateAccount(d, nil, "x@x", taken) {
-		out = append(out, e.Full())
+		out = append(out, e.Msg())
 	}
 	return out
 }
@@ -96,20 +96,20 @@ func SettingsJSON(s provision.Settings) string {
 }
 
 // RefreshProblem checks the refresh interval.
-func RefreshProblem(minutes int) string {
+func RefreshProblem(minutes int) error {
 	if minutes < MinRefreshMinutes || minutes > MaxRefreshMinutes {
-		return fmt.Sprintf("刷新间隔应为 %d–%d 分钟", MinRefreshMinutes, MaxRefreshMinutes)
+		return i18n.ErrorOf(provision.RefreshRange)
 	}
-	return ""
+	return nil
 }
 
 // ConfigPasswordHash checks a new configuration password and returns the hash the app
 // expects (ManagedConfig.isPassword).
-func ConfigPasswordHash(password string) (string, string) {
+func ConfigPasswordHash(password string) (string, error) {
 	if utf8.RuneCountInString(password) < MinConfigPassword {
-		return "", fmt.Sprintf("配置密码至少为 %d 个字符", MinConfigPassword)
+		return "", i18n.E("catalog.config_password_short", "min", MinConfigPassword)
 	}
-	return rules.PasswordHash(password), ""
+	return rules.PasswordHash(password), nil
 }
 
 // ---- codecs ----
@@ -117,11 +117,11 @@ func ConfigPasswordHash(password string) (string, string) {
 var codecKey = regexp.MustCompile(`^[A-Za-z0-9._+-]+/[0-9]+/[0-9]+$`)
 
 // CodecProblem checks one Codec.key ("mime/clockRate/channels").
-func CodecProblem(key string) string {
+func CodecProblem(key string) error {
 	if !codecKey.MatchString(key) {
-		return "编解码器应写作 名称/采样率/声道，例如 opus/48000/2"
+		return i18n.E("catalog.codec_invalid")
 	}
-	return ""
+	return nil
 }
 
 // ParseCodecs reads stored codecs; nil means the SDK's defaults.
@@ -172,17 +172,17 @@ func SplitCAs(bundle string) ([]CAInfo, error) {
 			break
 		}
 		if block.Type != "CERTIFICATE" {
-			return nil, fmt.Errorf("仅可上传证书（PEM 中包含 %s）", block.Type)
+			return nil, i18n.E("catalog.ca_not_certificate", "type", block.Type)
 		}
 		c, err := x509.ParseCertificate(block.Bytes)
 		if err != nil {
-			return nil, fmt.Errorf("证书无法解析：%v", err)
+			return nil, i18n.E("catalog.ca_unreadable", "err", err.Error())
 		}
 		out = append(out, CAInfo{Subject: c.Subject.String(), NotAfter: c.NotAfter, Fingerprint: pki.Fingerprint(c),
 			PEM: string(pem.EncodeToMemory(block))})
 	}
 	if strings.TrimSpace(string(rest)) != "" && len(out) == 0 {
-		return nil, fmt.Errorf("未找到 PEM 格式的证书")
+		return nil, i18n.E("catalog.ca_none")
 	}
 	return out, nil
 }

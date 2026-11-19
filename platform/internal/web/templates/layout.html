@@ -1,10 +1,10 @@
 {{define "layout"}}<!doctype html>
-<html lang="zh-CN"{{with .Theme}} data-theme="{{.}}"{{end}}>
+<html lang="{{.Lang.Code}}" dir="{{.Lang.Dir}}"{{with .Theme}} data-theme="{{.}}"{{end}}>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="{{if .Theme}}{{.Theme}}{{else}}light dark{{end}}">
-<title>{{.Title}} · SipLink 管理平台</title>
+<title>{{.Title}} · {{t "app.name"}}</title>
 <link rel="icon" href="{{asset "favicon.svg"}}" type="image/svg+xml">
 <link rel="preload" href="{{asset "InterVariable.woff2"}}" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="{{asset "app.css"}}">
@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="{{asset "shell.css"}}">
 <link rel="stylesheet" href="{{asset "pages.css"}}">
 <link rel="stylesheet" href="{{asset "forms.css"}}">
+<script type="application/json" id="i18n">{{.JSText}}</script>
 <script src="{{asset "app.js"}}" defer></script>
 <script src="{{asset "passkey.js"}}" defer></script>
 {{if and .Admin (not .Bare)}}<script src="{{asset "palette.js"}}" defer></script>
@@ -20,15 +21,15 @@
 </head>
 <body class="{{if or (not .Admin) .Bare}}bare{{else}}app{{end}}">
 {{if and .Admin (not .Bare)}}
-<input type="checkbox" id="nav-toggle" class="nav-toggle" aria-label="展开导航" aria-controls="sidebar">
+<input type="checkbox" id="nav-toggle" class="nav-toggle" aria-label="{{t "layout.expand_nav"}}" aria-controls="sidebar">
 <div class="shell">
   <aside class="sidebar" id="sidebar">
-    <a class="brand" href="/">{{template "brand-mark"}}<span class="brand-name">SipLink</span><span class="brand-sub">管理平台</span></a>
-    <nav class="nav" aria-label="主导航">
+    <a class="brand" href="/">{{template "brand-mark"}}<span class="brand-name">SipLink</span><span class="brand-sub">{{t "app.brand_sub"}}</span></a>
+    <nav class="nav" aria-label="{{t "layout.main_nav"}}">
       {{range .NavGroups}}
       <div class="nav-group">
-        {{with .Label}}<div class="nav-label">{{.}}</div>{{end}}
-        <ul>{{range .Items}}<li><a href="{{.Href}}"{{if eq .Key $.Nav}} aria-current="page"{{end}}>{{icon .Icon}}<span>{{.Label}}</span></a></li>{{end}}</ul>
+        {{with .Label}}<div class="nav-label">{{t .}}</div>{{end}}
+        <ul>{{range .Items}}<li><a href="{{.Href}}"{{if eq .Key $.Nav}} aria-current="page"{{end}}>{{icon .Icon}}<span>{{t .Label}}</span></a></li>{{end}}</ul>
       </div>
       {{end}}
     </nav>
@@ -38,43 +39,44 @@
         <span class="user-text"><span class="user-name fade">{{if .Admin.DisplayName}}{{.Admin.DisplayName}}{{else}}{{.Admin.Username}}{{end}}</span><span class="user-role">{{roleLabel .Admin.Role}}</span></span>
         {{icon "chevrons-up-down"}}
       </summary>
-      <div class="menu-body popover" role="group" aria-label="账户">
-        <form method="post" action="/theme" class="theme-switch" aria-label="外观">
+      <div class="menu-body popover" role="group" aria-label="{{t "layout.account"}}">
+        <form method="post" action="/theme" class="theme-switch" aria-label="{{t "layout.appearance"}}">
           <input type="hidden" name="next" value="{{$.Path}}">
-          <span class="menu-label">外观</span>
+          <span class="menu-label">{{t "layout.appearance"}}</span>
           <div class="segmented small">
-            <button type="submit" name="theme" value="system" aria-pressed="{{if not .Theme}}true{{else}}false{{end}}" title="跟随系统">{{icon "monitor"}}<span>系统</span></button>
-            <button type="submit" name="theme" value="light" aria-pressed="{{if eq .Theme "light"}}true{{else}}false{{end}}" title="浅色">{{icon "sun"}}<span>浅色</span></button>
-            <button type="submit" name="theme" value="dark" aria-pressed="{{if eq .Theme "dark"}}true{{else}}false{{end}}" title="深色">{{icon "moon"}}<span>深色</span></button>
+            <button type="submit" name="theme" value="system" aria-pressed="{{if not .Theme}}true{{else}}false{{end}}" title="{{t "layout.theme.system_title"}}">{{icon "monitor"}}<span>{{t "layout.theme.system"}}</span></button>
+            <button type="submit" name="theme" value="light" aria-pressed="{{if eq .Theme "light"}}true{{else}}false{{end}}" title="{{t "layout.theme.light"}}">{{icon "sun"}}<span>{{t "layout.theme.light"}}</span></button>
+            <button type="submit" name="theme" value="dark" aria-pressed="{{if eq .Theme "dark"}}true{{else}}false{{end}}" title="{{t "layout.theme.dark"}}">{{icon "moon"}}<span>{{t "layout.theme.dark"}}</span></button>
           </div>
         </form>
+        {{template "lang-switch" .}}
         <div class="menu-sep"></div>
-        <a class="menu-item" href="/me">{{icon "lock"}}我的账号</a>
-        <form method="post" action="/logout"><button type="submit" class="menu-item">{{icon "log-out"}}退出</button></form>
+        <a class="menu-item" href="/me">{{icon "lock"}}{{t "layout.my_account"}}</a>
+        <form method="post" action="/logout"><button type="submit" class="menu-item">{{icon "log-out"}}{{t "layout.sign_out"}}</button></form>
       </div>
     </details>
   </aside>
   <label for="nav-toggle" class="scrim" aria-hidden="true"></label>
   <div class="main">
     <header class="topbar">
-      <label for="nav-toggle" class="icon-btn nav-open" title="导航">{{icon "menu"}}</label>
+      <label for="nav-toggle" class="icon-btn nav-open" title="{{t "layout.nav"}}">{{icon "menu"}}</label>
       {{with .Crumb}}
-      <nav class="crumbs" aria-label="位置">
-        {{with .Section}}<span class="crumb-section">{{.}}</span><span class="crumb-sep" aria-hidden="true">/</span>{{end}}
-        {{if .List}}{{if .Here}}<a href="{{.List.Href}}">{{.List.Label}}</a><span class="crumb-sep" aria-hidden="true">/</span><span class="crumb-here fade" aria-current="page">{{.Here}}</span>{{else}}<span class="crumb-here fade" aria-current="page">{{.List.Label}}</span>{{end}}{{else}}<span class="crumb-here fade" aria-current="page">{{.Here}}</span>{{end}}
+      <nav class="crumbs" aria-label="{{t "layout.location"}}">
+        {{with .Section}}<span class="crumb-section">{{t .}}</span><span class="crumb-sep" aria-hidden="true">/</span>{{end}}
+        {{if .List}}{{if .Here}}<a href="{{.List.Href}}">{{t .List.Label}}</a><span class="crumb-sep" aria-hidden="true">/</span><span class="crumb-here fade" aria-current="page">{{.Here}}</span>{{else}}<span class="crumb-here fade" aria-current="page">{{t .List.Label}}</span>{{end}}{{else}}<span class="crumb-here fade" aria-current="page">{{.Here}}</span>{{end}}
       </nav>
       {{end}}
       <div class="topbar-right">
-        <button type="button" class="palette-open" data-palette-open hidden>{{icon "search"}}<span class="palette-open-text">跳转…</span><kbd data-palette-key>Ctrl K</kbd></button>
+        <button type="button" class="palette-open" data-palette-open hidden>{{icon "search"}}<span class="palette-open-text">{{t "layout.jump"}}</span><kbd data-palette-key>Ctrl K</kbd></button>
         {{with .Filter}}
         <form method="post" action="/filter" class="region-filter">
           <input type="hidden" name="next" value="{{$.Path}}">
           {{icon "map-pin"}}
-          <select name="region" aria-label="区域筛选" data-autosubmit class="compact">
-            <option value="0">全部区域</option>
+          <select name="region" aria-label="{{t "layout.region_filter"}}" data-autosubmit class="compact">
+            <option value="0">{{t "common.all_regions"}}</option>
             {{range .Options}}<option value="{{.ID}}"{{if eq .ID $.Filter.Selected}} selected{{end}}>{{.Name}}</option>{{end}}
           </select>
-          <noscript><button type="submit" class="btn small">筛选</button></noscript>
+          <noscript><button type="submit" class="btn small">{{t "common.filter"}}</button></noscript>
         </form>
         {{end}}
       </div>
@@ -83,13 +85,13 @@
       {{template "flash" .}}
       {{template "content" .}}
     </main>
-    <footer class="footer"><span>SipLink 管理平台 {{.Version}}</span>{{template "repo-link"}}</footer>
+    <footer class="footer"><span>{{t "app.name"}} {{.Version}}</span>{{template "repo-link"}}</footer>
   </div>
 </div>
-<dialog id="palette" class="dialog palette" aria-label="快速跳转">
-  <div class="palette-search">{{icon "search"}}<input type="text" placeholder="跳转到页面，或搜索客户端…" aria-label="跳转或搜索" autocomplete="off" spellcheck="false" data-palette-input></div>
-  <ul class="palette-list" role="listbox" aria-label="结果" data-palette-list></ul>
-  <div class="palette-foot"><span><kbd>↑</kbd><kbd>↓</kbd> 选择</span><span><kbd>Enter</kbd> 打开</span><span><kbd>Esc</kbd> 关闭</span></div>
+<dialog id="palette" class="dialog palette" aria-label="{{t "layout.palette"}}">
+  <div class="palette-search">{{icon "search"}}<input type="text" placeholder="{{t "layout.palette_placeholder"}}" aria-label="{{t "layout.palette_aria"}}" autocomplete="off" spellcheck="false" data-palette-input></div>
+  <ul class="palette-list" role="listbox" aria-label="{{t "layout.palette_results"}}" data-palette-list></ul>
+  <div class="palette-foot"><span><kbd>↑</kbd><kbd>↓</kbd> {{t "layout.palette_select"}}</span><span><kbd>Enter</kbd> {{t "layout.palette_open"}}</span><span><kbd>Esc</kbd> {{t "common.close"}}</span></div>
 </dialog>
 {{else}}
 <main class="bare-main{{if .Bare}} wide{{end}}">
@@ -102,8 +104,8 @@
     <div class="dialog-icon" aria-hidden="true">{{icon "triangle-alert"}}</div>
     <p class="dialog-text"></p>
     <div class="actions">
-      <button value="cancel" class="btn">取消</button>
-      <button value="ok" class="btn danger-solid">确定</button>
+      <button value="cancel" class="btn">{{t "common.cancel"}}</button>
+      <button value="ok" class="btn danger-solid">{{t "common.ok"}}</button>
     </div>
   </form>
 </dialog>
@@ -111,29 +113,37 @@
 </html>{{end}}
 
 {{/* The project's repository, as the GitHub mark (Octicons mark-github-16, see THIRD_PARTY.md). */}}
-{{define "repo-link"}}<a class="repo-link" href="https://github.com/tom231efa/siplink-android" target="_blank" rel="noopener noreferrer" aria-label="GitHub 仓库" title="GitHub"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M6.766 11.328c-2.063-.25-3.516-1.734-3.516-3.656 0-.781.281-1.625.75-2.188-.203-.515-.172-1.609.063-2.062.625-.078 1.468.25 1.968.703.594-.187 1.219-.281 1.985-.281.765 0 1.39.094 1.953.265.484-.437 1.344-.765 1.969-.687.218.422.25 1.515.046 2.047.5.593.766 1.39.766 2.203 0 1.922-1.453 3.375-3.547 3.64.531.344.89 1.094.89 1.954v1.625c0 .468.391.734.86.547C13.781 14.359 16 11.53 16 8.03 16 3.61 12.406 0 7.984 0 3.563 0 0 3.61 0 8.031a7.88 7.88 0 0 0 5.172 7.422c.422.156.828-.125.828-.547v-1.25c-.219.094-.5.156-.75.156-1.031 0-1.64-.562-2.078-1.609-.172-.422-.36-.672-.719-.719-.187-.015-.25-.093-.25-.187 0-.188.313-.328.625-.328.453 0 .844.281 1.25.86.313.452.64.655 1.031.655s.641-.14 1-.5c.266-.265.47-.5.657-.656"/></svg></a>{{end}}
+{{define "repo-link"}}<a class="repo-link" href="https://github.com/tom231efa/siplink-android" target="_blank" rel="noopener noreferrer" aria-label="{{t "layout.github"}}" title="GitHub"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M6.766 11.328c-2.063-.25-3.516-1.734-3.516-3.656 0-.781.281-1.625.75-2.188-.203-.515-.172-1.609.063-2.062.625-.078 1.468.25 1.968.703.594-.187 1.219-.281 1.985-.281.765 0 1.39.094 1.953.265.484-.437 1.344-.765 1.969-.687.218.422.25 1.515.046 2.047.5.593.766 1.39.766 2.203 0 1.922-1.453 3.375-3.547 3.64.531.344.89 1.094.89 1.954v1.625c0 .468.391.734.86.547C13.781 14.359 16 11.53 16 8.03 16 3.61 12.406 0 7.984 0 3.563 0 0 3.61 0 8.031a7.88 7.88 0 0 0 5.172 7.422c.422.156.828-.125.828-.547v-1.25c-.219.094-.5.156-.75.156-1.031 0-1.64-.562-2.078-1.609-.172-.422-.36-.672-.719-.719-.187-.015-.25-.093-.25-.187 0-.188.313-.328.625-.328.453 0 .844.281 1.25.86.313.452.64.655 1.031.655s.641-.14 1-.5c.266-.265.47-.5.657-.656"/></svg></a>{{end}}
 
-{{define "flash"}}{{if .Flash}}{{if eq .FlashKind "ok"}}<div class="toast" role="status">{{icon "circle-check"}}<span>{{.Flash}}</span><button type="button" class="toast-close" data-dismiss hidden aria-label="关闭">{{icon "x"}}</button></div>{{else}}<div class="flash {{.FlashKind}}" role="alert">{{.Flash}}</div>{{end}}{{end}}{{end}}
+{{define "flash"}}{{if .Flash}}{{if eq .FlashKind "ok"}}<div class="toast" role="status">{{icon "circle-check"}}<span>{{.Flash}}</span><button type="button" class="toast-close" data-dismiss hidden aria-label="{{t "common.close"}}">{{icon "x"}}</button></div>{{else}}<div class="flash {{.FlashKind}}" role="alert">{{.Flash}}</div>{{end}}{{end}}{{end}}
+
+{{/* The language choice: in the user menu and at the foot of the pages before sign-in (§5.5). */}}
+{{define "lang-switch"}}<form method="post" action="/language" class="lang-switch">
+  <input type="hidden" name="next" value="{{.Path}}">
+  <label class="lang-select">{{icon "languages"}}<span class="menu-label">{{t "layout.language"}}</span>
+    <select name="lang" data-autosubmit class="compact" aria-label="{{t "layout.language"}}">{{range .Langs}}<option value="{{.Code}}" lang="{{.Code}}"{{if eq .Code $.Lang.Code}} selected{{end}}>{{.Name}}</option>{{end}}</select></label>
+  <noscript><button type="submit" class="btn small">{{t "common.switch"}}</button></noscript>
+</form>{{end}}
 
 {{define "brand-mark"}}<img class="brand-mark" src="{{asset "favicon.svg"}}" alt="" width="26" height="26">{{end}}
 
-{{define "help"}}<button type="button" class="help-tip" aria-label="格式说明" aria-describedby="{{.}}">{{icon "circle-question-mark"}}</button>{{end}}
+{{define "help"}}<button type="button" class="help-tip" aria-label="{{t "layout.format_help"}}" aria-describedby="{{.}}">{{icon "circle-question-mark"}}</button>{{end}}
 
 {{define "kind_choice"}}<form method="get" action="/books/new" class="card scope-bar">
-  <span class="field-label" id="l-kind">类型</span>
+  <span class="field-label" id="l-kind">{{t "common.type"}}</span>
   <div class="segmented" role="radiogroup" aria-labelledby="l-kind">
-    <label><input type="radio" name="kind" value="hosted" data-autosubmit{{if eq . "hosted"}} checked{{end}}><span>内部</span></label>
-    <label><input type="radio" name="kind" value="external" data-autosubmit{{if eq . "external"}} checked{{end}}><span>外部</span></label>
+    <label><input type="radio" name="kind" value="hosted" data-autosubmit{{if eq . "hosted"}} checked{{end}}><span>{{t "books.kind.hosted"}}</span></label>
+    <label><input type="radio" name="kind" value="external" data-autosubmit{{if eq . "external"}} checked{{end}}><span>{{t "books.kind.external"}}</span></label>
   </div>
-  <button type="submit" class="btn small" data-js-hide>切换</button>
+  <button type="submit" class="btn small" data-js-hide>{{t "common.switch"}}</button>
 </form>{{end}}
 
-{{define "grip"}}<button type="button" class="grip" data-sort-handle aria-label="调整「{{.}}」的顺序" title="拖动排序">{{icon "grip-vertical"}}</button>{{end}}
+{{define "grip"}}<button type="button" class="grip" data-sort-handle aria-label="{{t "layout.reorder" "name" .}}" title="{{t "layout.drag_to_sort"}}">{{icon "grip-vertical"}}</button>{{end}}
 
 {{define "audit-table"}}
 {{if .Recent}}
 <div class="table-wrap"><table class="table fit-sm">
-  <thead><tr><th>时间</th><th class="hide-sm">管理员</th><th class="hide-sm">区域</th><th>操作</th><th>对象</th><th class="hide-sm">改动</th><th class="hide-sm">来源</th></tr></thead>
+  <thead><tr><th>{{t "audit.col.time"}}</th><th class="hide-sm">{{t "audit.col.admin"}}</th><th class="hide-sm">{{t "audit.col.region"}}</th><th>{{t "audit.col.action"}}</th><th>{{t "audit.col.object"}}</th><th class="hide-sm">{{t "audit.col.changes"}}</th><th class="hide-sm">{{t "audit.col.source"}}</th></tr></thead>
   <tbody>
   {{range .Recent}}
   <tr>
@@ -141,14 +151,14 @@
     <td class="hide-sm"><span class="fade">{{if .AdminName}}{{.AdminName}}{{else}}—{{end}}</span></td>
     <td class="hide-sm">{{with .RegionID}}<span class="fade">{{index $.Names (deref .)}}</span>{{else}}<span class="muted">—</span>{{end}}</td>
     <td class="nowrap">{{actionLabel .Action}}</td>
-    <td class="strong"><span class="fade">{{.ObjectName}}</span><span class="sub show-sm fade">{{if .AdminName}}{{.AdminName}}{{end}}</span></td>
+    <td class="strong"><span class="fade">{{objectName .ObjectName}}</span><span class="sub show-sm fade">{{if .AdminName}}{{.AdminName}}{{end}}</span></td>
     <td class="hide-sm">{{range $k, $v := .Detail}}<span class="tag">{{fieldLabel $k}}</span>{{end}}</td>
-    <td class="muted mono nowrap hide-sm">{{.IP}}</td>
+    <td class="muted mono nowrap hide-sm" dir="ltr">{{.IP}}</td>
   </tr>
   {{end}}
   </tbody>
 </table></div>
 {{else}}
-<div class="empty-state">{{icon "scroll-text"}}<p>暂无记录。</p></div>
+<div class="empty-state">{{icon "scroll-text"}}<p>{{t "audit.empty"}}</p></div>
 {{end}}
 {{end}}

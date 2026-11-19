@@ -3,6 +3,7 @@ package rules
 import (
 	"fmt"
 	"reflect"
+	"siplink/internal/i18n"
 	"strings"
 	"testing"
 )
@@ -219,8 +220,8 @@ func TestShortcutDecode(t *testing.T) {
 		"引号未闭合",
 	}
 	for i, e := range parsed.Errors {
-		if e.Reason != reasons[i] {
-			t.Errorf("line %d: %q", e.Line, e.Reason)
+		if got := i18n.For(i18n.Source).Msg(e.Reason); got != reasons[i] {
+			t.Errorf("line %d: %q", e.Line, got)
 		}
 	}
 }
@@ -385,8 +386,9 @@ func TestShortcutOwnNotInCSV(t *testing.T) {
 
 // Not a Kotlin test: the error texts are the app's own.
 func TestShortcutErrorTexts(t *testing.T) {
-	if ShortcutLimitReached.Full() != "最多 2000 个快捷键" || ShortcutOwnLimitReached.Full() != "最多自建 50 个快捷键" ||
-		ShortcutNumberTooLong.Full() != "号码最多 128 个字符" || ShortcutDTMFInvalid.Name() != "DTMF_INVALID" ||
+	zh := func(e ShortcutError) string { return i18n.For(i18n.Source).Msg(e.Msg()) }
+	if zh(ShortcutLimitReached) != "最多 2000 个快捷键" || zh(ShortcutOwnLimitReached) != "最多自建 50 个快捷键" ||
+		zh(ShortcutNumberTooLong) != "号码最多 128 个字符" || ShortcutDTMFInvalid.Name() != "DTMF_INVALID" ||
 		len(shortcutErrors) != int(ShortcutManaged)+1 {
 		t.Error("error texts differ")
 	}

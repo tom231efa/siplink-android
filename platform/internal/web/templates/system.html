@@ -1,41 +1,41 @@
 {{define "content"}}
 {{$d := .Data}}
-<header class="page-head"><div><h1>系统</h1><p class="page-sub">版本 {{$d.Version}}</p></div></header>
+<header class="page-head"><div><h1>{{t "nav.system"}}</h1><p class="page-sub">{{t "system.version" "version" $d.Version}}</p></div></header>
 {{with $d.HostedNote}}<div class="flash warn">{{.}}</div>{{end}}
-{{if $d.HostedPlain}}<div class="flash warn">SIPLINK_LDAP_PUBLIC_HOST 为 IP 地址且 SIPLINK_LDAP_REQUIRE_TLS=false，托管通讯录的姓名和号码将以明文传输。</div>{{end}}
+{{if $d.HostedPlain}}<div class="flash warn">{{t "system.hosted_plain"}}</div>{{end}}
 <section class="card">
-  <div class="card-head"><h2>{{icon "server"}}平台</h2></div>
+  <div class="card-head"><h2>{{icon "server"}}{{t "system.platform.title"}}</h2></div>
   <div class="card-body">
     <dl class="kv">
-      <dt>公开地址</dt><dd class="mono fade">{{$d.PublicURL}}</dd>
-      <dt>LDAP 地址（下发至客户端）</dt><dd class="mono fade">{{$d.LDAPHost}}:{{$d.LDAPPort}} · {{$d.LDAPSuffix}}</dd>
-      <dt>LDAP 必须加密</dt><dd>{{if $d.RequireTLS}}是{{else}}否{{end}}</dd>
-      <dt>托管通讯录</dt><dd>{{if $d.HostedNote}}<span class="status warn">无法下发</span>{{else if $d.HostedPlain}}<span class="status warn">不加密</span>{{else}}<span class="status ok">StartTLS</span>{{end}}</dd>
+      <dt>{{t "system.platform.public_url"}}</dt><dd class="mono fade">{{$d.PublicURL}}</dd>
+      <dt>{{t "system.platform.ldap_address"}}</dt><dd class="mono fade">{{$d.LDAPHost}}:{{$d.LDAPPort}} · {{$d.LDAPSuffix}}</dd>
+      <dt>{{t "system.platform.ldap_require_tls"}}</dt><dd>{{if $d.RequireTLS}}{{t "common.yes"}}{{else}}{{t "common.no"}}{{end}}</dd>
+      <dt>{{t "system.platform.hosted"}}</dt><dd>{{if $d.HostedNote}}<span class="status warn">{{t "system.platform.hosted_unavailable"}}</span>{{else if $d.HostedPlain}}<span class="status warn">{{t "system.platform.hosted_plain"}}</span>{{else}}<span class="status ok">StartTLS</span>{{end}}</dd>
     </dl>
   </div>
 </section>
 
 <section class="card section-gap" id="security">
-  <div class="card-head"><h2>{{icon "shield-check"}}安全</h2></div>
+  <div class="card-head"><h2>{{icon "shield-check"}}{{t "system.security.title"}}</h2></div>
   <div class="card-body settings">
-    <label class="setting toggle"><span class="setting-text"><span class="setting-name">区域管理员必须启用两步验证</span></span>
+    <label class="setting toggle"><span class="setting-text"><span class="setting-name">{{t "system.security.two_step_required"}}</span></span>
       <span class="switch"><input type="checkbox" role="switch" name="required" value="1" form="f-two-step" data-autosubmit{{if $d.TwoStepRequired}} checked{{end}}><span></span></span></label>
-    <label class="setting toggle"><span class="setting-text"><span class="setting-name">密码强度检测</span></span>
+    <label class="setting toggle"><span class="setting-text"><span class="setting-name">{{t "system.security.password_check"}}</span></span>
       <span class="switch"><input type="checkbox" role="switch" name="check" value="1" form="f-password-check" data-autosubmit{{if $d.PasswordCheck}} checked{{end}}><span></span></span></label>
   </div>
-  <form method="post" action="/system/two-step" id="f-two-step"><noscript><div class="card-foot form-actions"><button type="submit" class="btn">保存</button></div></noscript></form>
-  <form method="post" action="/system/password-check" id="f-password-check"><noscript><div class="card-foot form-actions"><button type="submit" class="btn">保存</button></div></noscript></form>
+  <form method="post" action="/system/two-step" id="f-two-step"><noscript><div class="card-foot form-actions"><button type="submit" class="btn">{{t "common.save"}}</button></div></noscript></form>
+  <form method="post" action="/system/password-check" id="f-password-check"><noscript><div class="card-foot form-actions"><button type="submit" class="btn">{{t "common.save"}}</button></div></noscript></form>
 </section>
 
 <section class="card section-gap" id="certificate" aria-labelledby="cert-title">
   {{$c := $d.Cert}}{{$own := eq $c.View "own"}}
-  <div class="card-head"><h2 id="cert-title">{{icon "shield-check"}}证书</h2>
-    <form method="get" action="/system#certificate" class="segmented small" aria-label="证书来源">
-      <button type="submit" name="cert" value="builtin" aria-pressed="{{not $own}}">{{if $c.BuiltinUsed}}<span class="dot ok" role="img" aria-label="使用中"></span>{{end}}内置 CA</button>
-      <button type="submit" name="cert" value="own" aria-pressed="{{$own}}">{{if $c.OwnUsed}}<span class="dot ok" role="img" aria-label="使用中"></span>{{end}}自有证书</button>
+  <div class="card-head"><h2 id="cert-title">{{icon "shield-check"}}{{t "system.cert.title"}}</h2>
+    <form method="get" action="/system#certificate" class="segmented small" aria-label="{{t "system.cert.source"}}">
+      <button type="submit" name="cert" value="builtin" aria-pressed="{{not $own}}">{{if $c.BuiltinUsed}}<span class="dot ok" role="img" aria-label="{{t "system.cert.in_use"}}"></span>{{end}}{{t "system.cert.builtin"}}</button>
+      <button type="submit" name="cert" value="own" aria-pressed="{{$own}}">{{if $c.OwnUsed}}<span class="dot ok" role="img" aria-label="{{t "system.cert.in_use"}}"></span>{{end}}{{t "system.cert.own"}}</button>
     </form></div>
   <div class="card-body">
-    {{range $c.Notices}}<div class="flash {{.Level}}" role="alert">{{.Text}}</div>{{end}}
+    {{range $c.Notices}}<div class="flash {{.Level}}" role="alert">{{msg .Text}}</div>{{end}}
     {{with $c.Error}}<div class="flash error" role="alert">{{.}}</div>{{end}}
     {{if $c.Warnings}}
     <div class="flash warn" role="alert">
@@ -43,116 +43,116 @@
       {{if $c.Token}}
       <form method="post" action="/system/certificate/confirm" class="actions spaced">
         <input type="hidden" name="token" value="{{$c.Token}}">
-        <button type="submit" class="btn primary">{{icon "check"}}确认启用此证书</button><a class="btn ghost" href="/system?cert=own#certificate">取消</a>
+        <button type="submit" class="btn primary">{{icon "check"}}{{t "system.cert.confirm_use"}}</button><a class="btn ghost" href="/system?cert=own#certificate">{{t "common.cancel"}}</a>
       </form>
       {{else if $c.RemoveAsk}}
       <form method="post" action="/system/certificate/remove" class="actions spaced">
         <input type="hidden" name="confirm" value="1">
-        <button type="submit" class="btn danger">{{icon "check"}}确认改用内置 CA{{with $c.RemoveRescan}}，{{.}} 台设备需重新扫码{{end}}</button><a class="btn ghost" href="/system?cert=own#certificate">取消</a>
+        <button type="submit" class="btn danger">{{icon "check"}}{{with $c.RemoveRescan}}{{t "system.cert.confirm_remove_rescan" "n" .}}{{else}}{{t "system.cert.confirm_remove"}}{{end}}</button><a class="btn ghost" href="/system?cert=own#certificate">{{t "common.cancel"}}</a>
       </form>
       {{end}}
     </div>
     {{end}}
     <dl class="kv compact">
-      <dt>模式</dt><dd>{{$c.Mode}}</dd>
+      <dt>{{t "system.cert.mode"}}</dt><dd>{{$c.Mode}}</dd>
       <dt>HTTPS</dt><dd>{{$c.HTTPS}}</dd>
       <dt>LDAP</dt><dd>{{$c.LDAP}}</dd>
     </dl>
   </div>
   {{if not $own}}
   <div class="card-body cert-view">
-    <h3>内置 CA {{if $c.BuiltinUsed}}<span class="status ok">使用中</span>{{else}}<span class="status">未使用</span>{{end}}</h3>
+    <h3>{{t "system.cert.builtin"}} {{if $c.BuiltinUsed}}<span class="status ok">{{t "system.cert.in_use"}}</span>{{else}}<span class="status">{{t "system.cert.unused"}}</span>{{end}}</h3>
     <dl class="kv">
       {{with $d.CA}}
       <dt>CA</dt><dd class="fade">{{.Subject}}</dd>
-      <dt>有效期</dt><dd>{{day .NotBefore}} 至 {{day .NotAfter}}</dd>
-      <dt>指纹</dt><dd class="mono small-text muted">{{.Fingerprint}}</dd>
+      <dt>{{t "system.cert.validity"}}</dt><dd>{{day .NotBefore}} {{t "system.cert.validity_to"}} {{day .NotAfter}}</dd>
+      <dt>{{t "system.cert.fingerprint"}}</dt><dd class="mono small-text muted">{{.Fingerprint}}</dd>
       {{end}}
       {{with $d.Server}}
-      <dt>服务器证书</dt><dd class="mono">{{join .Names ", "}}</dd>
-      <dt>到期</dt><dd>{{day .NotAfter}}</dd>
+      <dt>{{t "system.cert.server"}}</dt><dd class="mono">{{join .Names ", "}}</dd>
+      <dt>{{t "system.cert.expires"}}</dt><dd>{{day .NotAfter}}</dd>
       {{end}}
-      <dt>自动签发</dt><dd>{{if $c.Paused}}<span class="status warn">已暂停</span>{{else}}<span class="status ok">运行中</span>{{end}}</dd>
+      <dt>{{t "system.cert.issuing"}}</dt><dd>{{if $c.Paused}}<span class="status warn">{{t "system.cert.issuing_paused"}}</span>{{else}}<span class="status ok">{{t "system.cert.issuing_running"}}</span>{{end}}</dd>
     </dl>
   </div>
   <div class="card-foot form-actions">
-    <a class="btn" href="/system/ca.pem">{{icon "download"}}下载 CA 证书</a>
-    {{if not $c.Paused}}<form method="post" action="/system/reissue" data-confirm="确认重新签发服务器证书？CA 不变，设备无需重新扫码。"><button type="submit" class="btn">{{icon "refresh-cw"}}重新签发服务器证书</button></form>{{end}}
+    <a class="btn" href="/system/ca.pem">{{icon "download"}}{{t "system.cert.download_ca"}}</a>
+    {{if not $c.Paused}}<form method="post" action="/system/reissue" data-confirm="{{t "system.cert.reissue_confirm"}}"><button type="submit" class="btn">{{icon "refresh-cw"}}{{t "system.cert.reissue"}}</button></form>{{end}}
   </div>
   {{else}}
   {{with $c.Own}}
   <div class="card-body cert-view">
     {{range .}}
-    <h3>{{.Title}} {{if $c.OwnUsed}}<span class="status ok">使用中</span>{{end}}</h3>
+    <h3>{{.Title}} {{if $c.OwnUsed}}<span class="status ok">{{t "system.cert.in_use"}}</span>{{end}}</h3>
     <dl class="kv">
-      <dt>主题</dt><dd class="fade">{{.Subject}}</dd>
-      <dt>签发者</dt><dd class="fade">{{.Issuer}}</dd>
-      <dt>名称</dt><dd class="mono">{{join .Names ", "}}</dd>
-      <dt>到期</dt><dd>{{day .NotAfter}} <span class="status{{if le .DaysLeft $c.ReminderDays}} warn{{end}}">剩余 {{.DaysLeft}} 天</span></dd>
-      <dt>设备信任</dt><dd>{{.Trust}}</dd>
-      {{with .Uses}}<dt>用于</dt><dd>{{.}}</dd>{{end}}
-      <dt>指纹</dt><dd class="mono small-text muted">{{.Fingerprint}}</dd>
-      {{with .EmptyAKI}}<dt>注意</dt><dd><span class="status warn">{{.}}</span></dd>{{end}}
+      <dt>{{t "system.cert.subject"}}</dt><dd class="fade">{{.Subject}}</dd>
+      <dt>{{t "system.cert.issuer"}}</dt><dd class="fade">{{.Issuer}}</dd>
+      <dt>{{t "system.cert.names"}}</dt><dd class="mono">{{join .Names ", "}}</dd>
+      <dt>{{t "system.cert.expires"}}</dt><dd>{{day .NotAfter}} <span class="status{{if le .DaysLeft $c.ReminderDays}} warn{{end}}">{{t "system.cert.days_left" "n" .DaysLeft}}</span></dd>
+      <dt>{{t "system.cert.trust"}}</dt><dd>{{.Trust}}</dd>
+      {{with .Uses}}<dt>{{t "system.cert.uses"}}</dt><dd>{{.}}</dd>{{end}}
+      <dt>{{t "system.cert.fingerprint"}}</dt><dd class="mono small-text muted">{{.Fingerprint}}</dd>
+      {{with .EmptyAKI}}<dt>{{t "system.cert.note"}}</dt><dd><span class="status warn">{{.}}</span></dd>{{end}}
     </dl>
     {{end}}
   </div>
   {{end}}
   <form method="post" action="/system/certificate/reminder" class="card-body settings">
-    <label class="setting"><span class="setting-text"><span class="setting-name">到期前提醒（天）</span></span>
-      <span class="setting-control"><input type="number" name="days" min="1" max="{{$c.MaxDays}}" value="{{$c.ReminderDays}}" class="narrow-input" required><button type="submit" class="btn">保存</button></span></label>
+    <label class="setting"><span class="setting-text"><span class="setting-name">{{t "system.cert.reminder"}}</span></span>
+      <span class="setting-control"><input type="number" name="days" min="1" max="{{$c.MaxDays}}" value="{{$c.ReminderDays}}" class="narrow-input" required dir="ltr"><button type="submit" class="btn">{{t "common.save"}}</button></span></label>
   </form>
   <form method="post" action="/system/certificate" enctype="multipart/form-data" class="card-body form cert-upload">
-    <h3>上传自有证书</h3>
+    <h3>{{t "system.cert.upload_title"}}</h3>
     <div class="grid2">
-      <label>证书链（PEM）<input type="file" name="chain" accept=".pem,.crt,.cer" required></label>
-      <label>私钥（PEM，未加密）<input type="file" name="key" accept=".pem,.key" required></label>
+      <label>{{t "system.cert.chain"}}<input type="file" name="chain" accept=".pem,.crt,.cer" required></label>
+      <label>{{t "system.cert.key"}}<input type="file" name="key" accept=".pem,.key" required></label>
     </div>
-    <div class="form-foot"><button type="submit" class="btn">{{icon "upload"}}上传</button></div>
+    <div class="form-foot"><button type="submit" class="btn">{{icon "upload"}}{{t "common.upload"}}</button></div>
   </form>
   {{if $c.HasUploaded}}
   <div class="card-foot form-actions">
-    <form method="post" action="/system/certificate/remove" data-confirm="确认改用内置 CA？自有证书将停用，平台改用内置 CA 签发的证书。"><button type="submit" class="btn danger">{{icon "x"}}改用内置 CA</button></form>
+    <form method="post" action="/system/certificate/remove" data-confirm="{{t "system.cert.remove_confirm"}}"><button type="submit" class="btn danger">{{icon "x"}}{{t "system.cert.remove"}}</button></form>
   </div>
   {{end}}
   {{end}}
 </section>
 
 <section class="card table-card section-gap" id="backups">
-  <div class="card-head"><h2>{{icon "download"}}备份</h2>
-    <form method="post" action="/system/backup"><button type="submit" class="btn small primary">立即备份</button></form></div>
+  <div class="card-head"><h2>{{icon "download"}}{{t "system.backup.title"}}</h2>
+    <form method="post" action="/system/backup"><button type="submit" class="btn small primary">{{t "system.backup.now"}}</button></form></div>
   <div class="card-body">
     <div class="stat-row">
-      <div><span class="card-label">自动备份</span><span class="stat-value small">每天 {{$d.BackupTime}}</span></div>
-      <div><span class="card-label">保留</span><span class="stat-value small">{{$d.BackupKeep}} 份</span></div>
-      <div><span class="card-label">数据库</span><span class="stat-value small">{{printf "%.1f" (mb $d.DBSize)}} MB</span></div>
+      <div><span class="card-label">{{t "system.backup.auto"}}</span><span class="stat-value small">{{t "system.backup.daily" "time" $d.BackupTime}}</span></div>
+      <div><span class="card-label">{{t "system.backup.keep"}}</span><span class="stat-value small">{{t "system.backup.keep_count" "n" $d.BackupKeep}}</span></div>
+      <div><span class="card-label">{{t "system.backup.database"}}</span><span class="stat-value small">{{printf "%.1f" (mb $d.DBSize)}} MB</span></div>
     </div>
-    <div class="flash warn spaced">备份中的密码已加密，须配合密钥文件（<span class="mono">{{$d.KeyFile}}</span>）方可使用，请另行妥善备份密钥文件。</div>
+    <div class="flash warn spaced">{{$d.KeyNote}}</div>
   </div>
   {{if $d.Backups}}
   <div class="table-wrap codec-table"><table class="table">
-    <thead><tr><th>文件</th><th>时间</th><th class="num">大小</th><th class="actions-col"><span class="sr-only">操作</span></th></tr></thead>
+    <thead><tr><th>{{t "system.backup.col.file"}}</th><th>{{t "system.backup.col.time"}}</th><th class="num">{{t "system.backup.col.size"}}</th><th class="actions-col"><span class="sr-only">{{t "common.actions"}}</span></th></tr></thead>
     <tbody>{{range $d.Backups}}<tr><td class="mono">{{.Name}}</td><td class="muted">{{at .ModTime}}</td><td class="num">{{printf "%.1f" (mb .Size)}} MB</td>
-      <td class="actions-col"><a class="btn small ghost" href="/system?backup={{.Name}}" data-download="{{.Name}}">{{icon "download"}}下载</a></td></tr>{{end}}</tbody>
+      <td class="actions-col"><a class="btn small ghost" href="/system?backup={{.Name}}" data-download="{{.Name}}">{{icon "download"}}{{t "common.download"}}</a></td></tr>{{end}}</tbody>
   </table></div>
-  {{else}}<div class="empty-state compact">{{icon "inbox"}}<p>暂无备份</p></div>{{end}}
+  {{else}}<div class="empty-state compact">{{icon "inbox"}}<p>{{t "system.backup.empty"}}</p></div>{{end}}
 </section>
 {{if $d.Backups}}
 {{if $d.Download}}<a class="dialog-scrim" href="/system#backups" tabindex="-1" aria-hidden="true"></a>{{end}}
   <dialog class="dialog download-dialog" id="download" aria-labelledby="download-title"{{if $d.Download}} open{{end}}>
     <form method="post" action="/system/backups/download" class="form"
-      data-confirm="未加密的备份文件含全部配置、密码哈希与加密保存的密码，确认下载？" data-confirm-unless="encrypt">
+      data-confirm="{{t "system.backup.plain_confirm"}}" data-confirm-unless="encrypt">
       <input type="hidden" name="name" value="{{$d.Download}}">
-      <h2 id="download-title">下载备份<span class="mono" data-download-name>{{$d.Download}}</span></h2>
+      <h2 id="download-title">{{t "system.backup.download_title"}}<span class="mono" data-download-name>{{$d.Download}}</span></h2>
       {{with $d.DownloadError}}<div class="flash error" role="alert">{{.}}</div>{{end}}
-      <label>当前密码<input type="password" name="password" autocomplete="current-password" required></label>
-      <label class="setting toggle"><span class="setting-text"><span class="setting-name">加密</span></span>
+      <label>{{t "system.backup.current_password"}}<input type="password" name="password" autocomplete="current-password" required></label>
+      <label class="setting toggle"><span class="setting-text"><span class="setting-name">{{t "system.backup.encrypt"}}</span></span>
         <span class="switch"><input type="checkbox" role="switch" name="encrypt" value="1"{{if not $d.DownloadPlain}} checked{{end}}><span></span></span></label>
       <div class="passphrase">
-        {{if $d.PasswordCheck}}<div class="field"><span class="label-line"><label for="f-passphrase">加密口令</label>{{tip "f-passphrase-tip" "至少 10 个字符"}}</span><input id="f-passphrase" aria-describedby="f-passphrase-tip" type="password" name="passphrase" autocomplete="new-password" maxlength="256"></div>
-        {{else}}<label>加密口令<input type="password" name="passphrase" autocomplete="new-password" maxlength="256"></label>{{end}}
-        <label>再次输入加密口令<input type="password" name="passphrase2" autocomplete="new-password" maxlength="256"></label>
+        {{if $d.PasswordCheck}}<div class="field"><span class="label-line"><label for="f-passphrase">{{t "system.backup.passphrase"}}</label>{{tip "f-passphrase-tip" (t "system.backup.passphrase_tip")}}</span><input id="f-passphrase" aria-describedby="f-passphrase-tip" type="password" name="passphrase" autocomplete="new-password" maxlength="256"></div>
+        {{else}}<label>{{t "system.backup.passphrase"}}<input type="password" name="passphrase" autocomplete="new-password" maxlength="256"></label>{{end}}
+        <label>{{t "system.backup.passphrase_again"}}<input type="password" name="passphrase2" autocomplete="new-password" maxlength="256"></label>
       </div>
-      <div class="actions"><a class="btn" href="/system#backups" data-dialog-close>取消</a><button type="submit" class="btn primary">{{icon "download"}}下载</button></div>
+      <div class="actions"><a class="btn" href="/system#backups" data-dialog-close>{{t "common.cancel"}}</a><button type="submit" class="btn primary">{{icon "download"}}{{t "common.download"}}</button></div>
     </form>
   </dialog>
 {{end}}

@@ -16,6 +16,7 @@ import (
 // TestPKICommands imports a certificate made at test time, shows it, and returns to the
 // built-in CA, the way an operator does it on the command line.
 func TestPKICommands(t *testing.T) {
+	t.Setenv("LANG", "zh_CN.UTF-8") // the texts below are the Simplified Chinese ones
 	dir := t.TempDir()
 	t.Setenv("SIPLINK_PUBLIC_URL", "https://platform.example.com")
 	t.Setenv("SIPLINK_DATA_DIR", dir)
@@ -42,7 +43,7 @@ func TestPKICommands(t *testing.T) {
 	chain, key := write("chain.pem", testutil.ChainPEM(leaf, root)), write("key.pem", testutil.KeyPEM(t, leaf))
 	block, _ := pem.Decode(testutil.KeyPEM(t, leaf))
 	encrypted := write("enc.pem", pem.EncodeToMemory(&pem.Block{Type: "ENCRYPTED PRIVATE KEY", Bytes: block.Bytes}))
-	if _, err := run("import", chain, encrypted); err == nil || !strings.Contains(err.Error(), "私钥已加密") {
+	if _, err := run("import", chain, encrypted); err == nil || !strings.Contains(cli().Err(err), "私钥已加密") {
 		t.Errorf("encrypted key: %v", err)
 	}
 	if out, err := run("import", chain, key); err != nil || !strings.Contains(out, "使用自有证书（自动签发已暂停）") {
@@ -53,7 +54,7 @@ func TestPKICommands(t *testing.T) {
 		!strings.Contains(out, "签发者: CN=CLI Root") || !strings.Contains(out, "私有根证书 CN=CLI Root") || !strings.Contains(out, "剩余 364 天") {
 		t.Fatalf("show after import: %v\n%s", err, out)
 	}
-	if _, err := run("renew"); err == nil || !strings.Contains(err.Error(), "自动签发已暂停") {
+	if _, err := run("renew"); err == nil || !strings.Contains(cli().Err(err), "自动签发已暂停") {
 		t.Errorf("renew while paused: %v", err)
 	}
 

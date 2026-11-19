@@ -14,8 +14,6 @@ import (
 // The second step of the sign-in (design §6.8). Its routes need a session waiting for
 // it (requirePending); the administrator is pendingAdmin(r), not current(r).
 
-const tooManySteps = "尝试次数过多，请 15 分钟后重试。"
-
 // stepPage registers a route of the second step.
 func (s *Server) stepPage(pattern string, h http.HandlerFunc) {
 	s.handle(pattern, s.requireSecure(s.csrfCheck(s.requirePending(h))))
@@ -44,7 +42,7 @@ func (s *Server) renderStep(w http.ResponseWriter, r *http.Request, status int, 
 	if ts.Email && a.EmailConfirmed {
 		d.Email = maskAddress(a.Email)
 	}
-	s.render(w, r, status, "login_step", &Page{Title: "两步验证", Data: d})
+	s.render(w, r, status, "login_step", &Page{Title: tr(r).T("twostep.title"), Data: d})
 }
 
 // maskAddress shows an address as "z***@example.com".
@@ -78,7 +76,7 @@ func (s *Server) stepSubmit(w http.ResponseWriter, r *http.Request) {
 		return false, nil
 	})
 	if limited {
-		s.renderStep(w, r, http.StatusTooManyRequests, next, tooManySteps)
+		s.renderStep(w, r, http.StatusTooManyRequests, next, tr(r).T("login.too_many"))
 		return
 	}
 	if err != nil {
@@ -87,7 +85,7 @@ func (s *Server) stepSubmit(w http.ResponseWriter, r *http.Request) {
 	}
 	if !ok {
 		s.stepFailed(r, a, method)
-		s.renderStep(w, r, http.StatusUnauthorized, next, "验证码不正确。")
+		s.renderStep(w, r, http.StatusUnauthorized, next, tr(r).T("twostep.wrong_code"))
 		return
 	}
 	if method == "recovery" {
@@ -107,14 +105,14 @@ func (s *Server) stepEmail(w http.ResponseWriter, r *http.Request) {
 	a := pendingAdmin(r)
 	back := "/login/step?next=" + url.QueryEscape(safeNext(r.FormValue("next")))
 	if !a.TwoStepEmail || !a.EmailConfirmed {
-		s.redirect(w, r, back, "error", "未启用邮箱验证码。")
+		s.redirect(w, r, back, "error", tr(r).T("step.email_off"))
 		return
 	}
 	if msg := s.sendCode(r, a, twostep.PurposeLogin, a.Email); msg != "" {
 		s.redirect(w, r, back, "error", msg)
 		return
 	}
-	s.redirect(w, r, back, "ok", "验证码已发送。")
+	s.redirect(w, r, back, "ok", tr(r).T("twostep.code_sent"))
 }
 
 // checkTOTP verifies a code against the administrator's TOTP secret and spends its step.

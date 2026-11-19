@@ -1,13 +1,13 @@
 {{define "content"}}
 <header class="page-head">
-  <div><h1>区域</h1></div>
+  <div><h1>{{t "nav.regions"}}</h1></div>
   {{if .Super}}<div class="page-actions">
     <details class="popover-host"{{if .Data.Name}} open{{end}}>
-      <summary class="btn primary">{{icon "plus"}}新建区域</summary>
+      <summary class="btn primary">{{icon "plus"}}{{t "regions.new"}}</summary>
       <form method="post" action="/regions" class="popover popover-form form">
-        <label>名称<input name="name" value="{{.Data.Name}}" required maxlength="64"></label>
-        <label>备注<input name="note" maxlength="200"></label>
-        <div class="form-foot"><button type="submit" class="btn primary">创建</button></div>
+        <label>{{t "common.name"}}<input name="name" value="{{.Data.Name}}" required maxlength="64"></label>
+        <label>{{t "common.note"}}<input name="note" maxlength="200"></label>
+        <div class="form-foot"><button type="submit" class="btn primary">{{t "common.create"}}</button></div>
       </form>
     </details>
   </div>{{end}}
@@ -15,25 +15,25 @@
 {{with .Data.Error}}<div class="flash error" role="alert">{{.}}</div>{{end}}
 <div class="card list-card regions">
   {{if .Data.Rows}}
-  <div class="list-head" aria-hidden="true"><span>名称</span><span class="num">管理员</span><span class="num">通讯录</span><span class="num hide-sm">LDAP 账号</span><span class="num hide-sm">模板</span><span class="num">客户端</span><span></span></div>
+  <div class="list-head" aria-hidden="true"><span>{{t "common.name"}}</span><span class="num">{{t "regions.col.admins"}}</span><span class="num">{{t "regions.col.books"}}</span><span class="num hide-sm">{{t "regions.col.ldap_accounts"}}</span><span class="num hide-sm">{{t "regions.col.templates"}}</span><span class="num">{{t "regions.col.clients"}}</span><span></span></div>
   {{range .Data.Rows}}
   {{if $.Super}}
   <details class="list-row">
     <summary>
       <span class="strong"><span class="fade">{{.Name}}</span>{{with .Note}}<span class="sub">{{.}}</span>{{end}}</span>
-      <span class="num" title="管理员">{{.Usage.Admins}}</span><span class="num" title="通讯录">{{.Usage.Books}}</span>
-      <span class="num hide-sm" title="LDAP 账号">{{.Usage.LDAPAccounts}}</span><span class="num hide-sm" title="模板">{{.Usage.Templates}}</span>
-      <span class="num" title="客户端">{{.Usage.Clients}}</span>
-      <span class="row-toggle" aria-label="编辑 {{.Name}}">{{icon "pencil"}}</span>
+      <span class="num" title="{{t "regions.col.admins"}}">{{.Usage.Admins}}</span><span class="num" title="{{t "regions.col.books"}}">{{.Usage.Books}}</span>
+      <span class="num hide-sm" title="{{t "regions.col.ldap_accounts"}}">{{.Usage.LDAPAccounts}}</span><span class="num hide-sm" title="{{t "regions.col.templates"}}">{{.Usage.Templates}}</span>
+      <span class="num" title="{{t "regions.col.clients"}}">{{.Usage.Clients}}</span>
+      <span class="row-toggle" aria-label="{{t "regions.edit_aria" "name" .Name}}">{{icon "pencil"}}</span>
     </summary>
     <div class="row-body">
       <form method="post" action="/regions/{{.ID}}" class="inline-fields">
-        <label>名称<input name="name" value="{{.Name}}" required maxlength="64"></label>
-        <label>备注<input name="note" value="{{.Note}}" maxlength="200"></label>
-        <button type="submit" class="btn primary">保存</button>
+        <label>{{t "common.name"}}<input name="name" value="{{.Name}}" required maxlength="64"></label>
+        <label>{{t "common.note"}}<input name="note" value="{{.Note}}" maxlength="200"></label>
+        <button type="submit" class="btn primary">{{t "common.save"}}</button>
       </form>
-      <form method="post" action="/regions/{{.ID}}/delete" data-confirm="确认删除区域「{{.Name}}」？">
-        <button type="submit" class="btn danger"{{if not .Usage.Empty}} disabled title="区域非空"{{end}}>{{icon "trash"}}删除</button>
+      <form method="post" action="/regions/{{.ID}}/delete" data-confirm="{{t "regions.delete_confirm" "name" .Name}}">
+        <button type="submit" class="btn danger"{{if not .Usage.Empty}} disabled title="{{t "regions.not_empty"}}"{{end}}>{{icon "trash"}}{{t "common.delete"}}</button>
       </form>
     </div>
   </details>
@@ -47,7 +47,7 @@
   {{end}}
   {{end}}
   {{else}}
-  <div class="empty-state">{{icon "map-pin"}}<p>暂无区域</p></div>
+  <div class="empty-state">{{icon "map-pin"}}<p>{{t "regions.empty"}}</p></div>
   {{end}}
 </div>
 {{end}}

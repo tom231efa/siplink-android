@@ -6,36 +6,36 @@
 {{with $d.Error}}<div class="flash error" role="alert">{{.}}</div>{{end}}
 <form method="post" action="{{if $d.New}}/books{{else}}/books/{{$d.Book.ID}}{{end}}" class="card form-card">
   <div class="card-body form">
-    <label>名称<input name="name" value="{{$d.Book.Name}}" required maxlength="64"></label>
-    {{if not $d.New}}<label>类型<input value="内部" disabled></label>{{end}}
+    <label>{{t "common.name"}}<input name="name" value="{{$d.Book.Name}}" required maxlength="64"></label>
+    {{if not $d.New}}<label>{{t "common.type"}}<input value="{{t "books.kind.hosted"}}" disabled></label>{{end}}
     {{if $d.New}}
-    <div class="field"><span class="label-line"><label for="f-slug">标识</label>{{tip "f-slug-tip" "创建后不可修改"}}</span><input id="f-slug" aria-describedby="f-slug-tip" name="slug" value="{{$d.Book.Slug}}" required pattern="[a-z0-9-]{2,32}" maxlength="32" class="mono" placeholder="staff" title="2-32 个小写字母、数字或 -"></div>
+    <div class="field"><span class="label-line"><label for="f-slug">{{t "dirs.book.slug"}}</label>{{tip "f-slug-tip" (t "dirs.book.slug_tip")}}</span><input id="f-slug" aria-describedby="f-slug-tip" name="slug" value="{{$d.Book.Slug}}" required pattern="[a-z0-9-]{2,32}" maxlength="32" class="mono" dir="ltr" placeholder="staff" title="{{t "dirs.slug_pattern"}}"></div>
     {{else}}
-    <label>标识<input value="{{$d.Book.Slug}}" disabled class="mono"></label>
+    <label>{{t "dirs.book.slug"}}<input value="{{$d.Book.Slug}}" disabled class="mono" dir="ltr"></label>
     {{end}}
     {{if or $d.New .Super}}
-    <label>区域
+    <label>{{t "common.region"}}
       <select name="region">
-        {{if $d.Global}}<option value="0"{{if not $d.Book.RegionID}} selected{{end}}>全局</option>{{end}}
+        {{if $d.Global}}<option value="0"{{if not $d.Book.RegionID}} selected{{end}}>{{t "common.global"}}</option>{{end}}
         {{range $d.Regions}}<option value="{{.ID}}"{{if eq .ID (deref $d.Book.RegionID)}} selected{{end}}>{{.Name}}</option>{{end}}
       </select>
     </label>
     {{end}}
-    <label>备注<input name="note" value="{{$d.Book.Note}}" maxlength="200"></label>
-    <label class="setting toggle"><span class="setting-text"><span class="setting-name">允许匿名读取</span></span>
+    <label>{{t "common.note"}}<input name="note" value="{{$d.Book.Note}}" maxlength="200"></label>
+    <label class="setting toggle"><span class="setting-text"><span class="setting-name">{{t "dirs.book.allow_anonymous"}}</span></span>
       <span class="switch"><input type="checkbox" role="switch" name="allow_anonymous" value="1"{{if $d.Book.AllowAnonymous}} checked{{end}}><span></span></span></label>
   </div>
-  <div class="card-foot form-actions"><a class="btn" href="{{if $d.New}}/books{{else}}/books/{{$d.Book.ID}}{{end}}">取消</a><button type="submit" class="btn primary">保存</button></div>
+  <div class="card-foot form-actions"><a class="btn" href="{{if $d.New}}/books{{else}}/books/{{$d.Book.ID}}{{end}}">{{t "common.cancel"}}</a><button type="submit" class="btn primary">{{t "common.save"}}</button></div>
 </form>
 {{if not $d.New}}
 <section class="card danger-card">
   {{if $d.Users}}
-  <div class="card-body op"><div><strong>删除通讯录</strong><p class="hint">使用中：{{join $d.Users "、"}}</p></div>
-    <button type="button" class="btn danger" disabled>{{icon "trash"}}删除通讯录</button></div>
+  <div class="card-body op"><div><strong>{{t "dirs.delete"}}</strong><p class="hint">{{t "dirs.in_use_hint" "users" $d.Users}}</p></div>
+    <button type="button" class="btn danger" disabled>{{icon "trash"}}{{t "dirs.delete"}}</button></div>
   {{else}}
-  <form method="post" action="/books/{{$d.Book.ID}}/delete" class="card-body op" data-confirm="确认删除通讯录「{{$d.Book.Name}}」及其全部 {{$d.Book.EntryCount}} 位联系人？此操作不可撤销。">
-    <div><strong>删除通讯录</strong></div>
-    <button type="submit" class="btn danger">{{icon "trash"}}删除通讯录</button>
+  <form method="post" action="/books/{{$d.Book.ID}}/delete" class="card-body op" data-confirm="{{t "dirs.book.delete_confirm" "name" $d.Book.Name "n" $d.Book.EntryCount}}">
+    <div><strong>{{t "dirs.delete"}}</strong></div>
+    <button type="submit" class="btn danger">{{icon "trash"}}{{t "dirs.delete"}}</button>
   </form>
   {{end}}
 </section>

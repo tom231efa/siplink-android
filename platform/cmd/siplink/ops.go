@@ -13,6 +13,7 @@ import (
 
 	"siplink/internal/backup"
 	"siplink/internal/config"
+	"siplink/internal/i18n"
 	"siplink/internal/pki"
 	"siplink/internal/store"
 )
@@ -20,7 +21,7 @@ import (
 // backupCommand writes a copy of the database to a path ("siplink backup {path}").
 func backupCommand(args []string, out io.Writer) error {
 	if len(args) != 1 {
-		return errors.New("用法: siplink backup <目标文件>")
+		return i18n.E("cli.backup.usage")
 	}
 	ctx := context.Background()
 	e, err := open(ctx)
@@ -32,7 +33,7 @@ func backupCommand(args []string, out io.Writer) error {
 		return err
 	}
 	_ = e.st.AddAudit(ctx, &store.AuditEntry{AdminName: "CLI", Action: "backup.create", ObjectType: "backup", ObjectName: args[0]})
-	fmt.Fprintln(out, "备份已写入", args[0], "（不含密钥文件，请另行备份）")
+	fmt.Fprintln(out, cli().T("cli.backup.done", "path", args[0]))
 	return nil
 }
 
@@ -56,7 +57,12 @@ func healthCommand(out io.Writer) error {
 		// Liveness on the loopback interface only: the certificate is not the point here.
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec
 	}}
-	resp, err := client.Get(scheme + "://127.0.0.1:" + port + "/healthz")
+	req, err := http.NewRequest(http.MethodGet, scheme+"://127.0.0.1:"+port+"/healthz", nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Accept-Language", cli().Lang.Code) // the notices in the terminal's language
+	resp, err := client.Do(req)
 	if err != nil {
 		return err
 	}
@@ -83,7 +89,7 @@ func healthReport(body string, out io.Writer) error {
 		}
 	}
 	if len(expired) > 0 {
-		return errors.New(strings.Join(expired, "；"))
+		return errors.New(strings.Join(expired, cli().T("format.problem_sep")))
 	}
 	return nil
 }

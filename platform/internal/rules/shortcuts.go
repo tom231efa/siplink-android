@@ -1,7 +1,7 @@
 package rules
 
 import (
-	"strconv"
+	"siplink/internal/i18n"
 	"strings"
 )
 
@@ -24,7 +24,10 @@ var ShortcutActions = []ShortcutAction{
 	ShortcutSpeedDial, ShortcutBlindTransfer, ShortcutAttendedTransfer, ShortcutDTMF, ShortcutForward, ShortcutDND,
 }
 
-var shortcutActionLabels = map[ShortcutAction]string{
+// appActionNames are the app's names of the types (ShortcutAction.label). They are data,
+// not the console's text: the CSV format reads them and a key without a label is named
+// by them on the phone. The console shows Text.
+var appActionNames = map[ShortcutAction]string{
 	ShortcutSpeedDial:        "速拨",
 	ShortcutBlindTransfer:    "盲转",
 	ShortcutAttendedTransfer: "咨询转",
@@ -36,8 +39,11 @@ var shortcutActionLabels = map[ShortcutAction]string{
 // Valid reports whether a is one of ShortcutActions.
 func (a ShortcutAction) Valid() bool { return contains(ShortcutActions, a) }
 
-// Label is the Chinese name of the type (ShortcutAction.label).
-func (a ShortcutAction) Label() string { return shortcutActionLabels[a] }
+// AppName is the app's name of the type (ShortcutAction.label), see appActionNames.
+func (a ShortcutAction) AppName() string { return appActionNames[a] }
+
+// Text is the name of the type in the console, translated where it is shown.
+func (a ShortcutAction) Text() i18n.Msg { return i18n.M("rules.shortcut.action." + TypeWord(a)) }
 
 // HasNumber reports whether a key of this type carries a number (ShortcutAction.hasNumber).
 func (a ShortcutAction) HasNumber() bool { return a != ShortcutDND }
@@ -56,7 +62,9 @@ var ShortcutIcons = []ShortcutIcon{
 	"REPAIR", "COMPUTER", "DELIVERY", "LIGHT",
 }
 
-var shortcutIconLabels = []string{
+// appIconNames are the app's names of the icons (ShortcutIcon.label), in the order of
+// ShortcutIcons; data of the CSV format like appActionNames.
+var appIconNames = []string{
 	"电话", "个人", "团队", "收藏", "家", "办公楼", "门店",
 	"前台", "客服", "广播", "会议", "门", "锁", "钥匙",
 	"车库", "车辆", "电梯", "保安", "监控", "门铃", "报警",
@@ -67,14 +75,19 @@ var shortcutIconLabels = []string{
 // Valid reports whether i is one of ShortcutIcons.
 func (i ShortcutIcon) Valid() bool { return contains(ShortcutIcons, i) }
 
-// Label is the Chinese name of the icon (ShortcutIcon.label).
-func (i ShortcutIcon) Label() string {
+// AppName is the app's name of the icon (ShortcutIcon.label), see appIconNames.
+func (i ShortcutIcon) AppName() string {
 	for n, icon := range ShortcutIcons {
 		if icon == i {
-			return shortcutIconLabels[n]
+			return appIconNames[n]
 		}
 	}
 	return ""
+}
+
+// Text is the name of the icon in the console, translated where it is shown.
+func (i ShortcutIcon) Text() i18n.Msg {
+	return i18n.M("rules.shortcut.icon." + strings.ToLower(string(i)))
 }
 
 // Shortcut is a programmable key.
@@ -101,8 +114,10 @@ const (
 	MaxNumberLength   = 128
 	MaxCategoryLength = 16
 	MaxLineLength     = 160
-	FormatHint        = "名称,号码[,类型[,分类[,线路[,图标]]]]"
 )
+
+// FormatHint is the CSV format of keys (FORMAT_HINT), translated where it is shown.
+var FormatHint = i18n.M("rules.shortcut.format_hint")
 
 // ShortcutError is what is wrong with a shortcut key.
 // Port of enum ShortcutRules.Error (app/src/main/java/com/sky/siplink/core/logic/ShortcutRules.kt).
@@ -125,34 +140,29 @@ const (
 )
 
 var shortcutErrors = []errorText{
-	{"LIMIT_REACHED", "", "最多 " + strconv.Itoa(MaxShortcuts) + " 个快捷键"},
-	{"OWN_LIMIT_REACHED", "", "最多自建 " + strconv.Itoa(MaxOwn) + " 个快捷键"},
-	{"NUMBER_EMPTY", "号码", "必填"},
-	{"NUMBER_INVALID", "号码", "不能有空格"},
-	{"DTMF_INVALID", "按键", "仅限 0-9 * #"},
-	{"NUMBER_TOO_LONG", "号码", "最多 " + strconv.Itoa(MaxNumberLength) + " 个字符"},
-	{"LABEL_TOO_LONG", "名称", "最多 " + strconv.Itoa(MaxLabelLength) + " 个字符"},
-	{"CATEGORY_TOO_LONG", "分类", "最多 " + strconv.Itoa(MaxCategoryLength) + " 个字符"},
-	{"CATEGORY_EMPTY", "分类", "必填"},
-	{"CATEGORY_RESERVED", "分类", "名称不可用"},
-	{"CATEGORY_TAKEN", "分类", "已存在"},
-	{"MANAGED", "", ManagedNotice},
+	{"LIMIT_REACHED", i18n.M("rules.shortcut.limit_reached", "max", MaxShortcuts)},
+	{"OWN_LIMIT_REACHED", i18n.M("rules.shortcut.own_limit_reached", "max", MaxOwn)},
+	{"NUMBER_EMPTY", i18n.M("rules.shortcut.number_empty")},
+	{"NUMBER_INVALID", i18n.M("rules.shortcut.number_invalid")},
+	{"DTMF_INVALID", i18n.M("rules.shortcut.dtmf_invalid")},
+	{"NUMBER_TOO_LONG", i18n.M("rules.shortcut.number_too_long", "max", MaxNumberLength)},
+	{"LABEL_TOO_LONG", i18n.M("rules.shortcut.label_too_long", "max", MaxLabelLength)},
+	{"CATEGORY_TOO_LONG", i18n.M("rules.shortcut.category_too_long", "max", MaxCategoryLength)},
+	{"CATEGORY_EMPTY", i18n.M("rules.shortcut.category_empty")},
+	{"CATEGORY_RESERVED", i18n.M("rules.shortcut.category_reserved")},
+	{"CATEGORY_TAKEN", i18n.M("rules.shortcut.category_taken")},
+	{"MANAGED", ManagedNotice},
 }
 
 // Name is the name of the Kotlin enum value, e.g. "DTMF_INVALID".
 func (e ShortcutError) Name() string { return shortcutErrors[e].name }
 
-// Subject is what the error is about.
-func (e ShortcutError) Subject() string { return shortcutErrors[e].subject }
+// Msg is the error's text where no field stands next to it, translated where it is
+// shown. Port of ShortcutRules.Error.full.
+func (e ShortcutError) Msg() i18n.Msg { return shortcutErrors[e].msg }
 
-// Message is what is wrong, as shown right under that field.
-func (e ShortcutError) Message() string { return shortcutErrors[e].message }
-
-// Full is the error where no field stands next to it. Port of ShortcutRules.Error.full.
-func (e ShortcutError) Full() string { return shortcutErrors[e].full() }
-
-// Error returns Full, so that a ShortcutError is an error.
-func (e ShortcutError) Error() string { return e.Full() }
+// Error is the English text, so that a ShortcutError is an error.
+func (e ShortcutError) Error() string { return i18n.For(i18n.English).Msg(e.Msg()) }
 
 // String returns Name.
 func (e ShortcutError) String() string { return e.Name() }
@@ -259,7 +269,7 @@ func NormalizeShortcut(shortcut Shortcut) Shortcut {
 	if label == "" {
 		label = take(number, MaxLabelLength)
 		if label == "" {
-			label = shortcut.Action.Label()
+			label = shortcut.Action.AppName()
 		}
 	}
 	line := ""
@@ -366,7 +376,7 @@ func ParseAction(value string) (ShortcutAction, bool) {
 		return ShortcutSpeedDial, true
 	}
 	for _, action := range ShortcutActions {
-		if equalsIgnoreCase(TypeWord(action), word) || action.Label() == word {
+		if equalsIgnoreCase(TypeWord(action), word) || action.AppName() == word {
 			return action, true
 		}
 	}
@@ -379,7 +389,7 @@ func ParseAction(value string) (ShortcutAction, bool) {
 func ParseIcon(value string) (ShortcutIcon, bool) {
 	word := trim(value)
 	for _, icon := range ShortcutIcons {
-		if equalsIgnoreCase(string(icon), word) || icon.Label() == word {
+		if equalsIgnoreCase(string(icon), word) || icon.AppName() == word {
 			return icon, true
 		}
 	}
@@ -408,11 +418,11 @@ func DecodeShortcuts(text string, room int, firstID int64) ParsedShortcuts {
 	parsed := ParsedShortcuts{Shortcuts: []Shortcut{}, Errors: []CsvLineError{}}
 	for _, row := range CsvRows(text) {
 		fields := row.Fields
-		var reason string
+		var reason i18n.Msg
 		var action ShortcutAction
 		var icon ShortcutIcon
 		if fields == nil {
-			reason = "引号未闭合"
+			reason = i18n.M("rules.csv.unclosed_quote")
 		} else {
 			var actionOK, iconOK bool
 			action, actionOK = ParseAction(field(fields, 2))
@@ -420,14 +430,14 @@ func DecodeShortcuts(text string, room int, firstID int64) ParsedShortcuts {
 			icon, iconOK = ParseIcon(iconWord)
 			switch {
 			case len(fields) < 2:
-				reason = "字段不足，格式：" + FormatHint
+				reason = i18n.M("rules.csv.too_few_fields", "format", FormatHint)
 			case !actionOK:
-				reason = "未知的类型“" + fields[2] + "”，可用 " + strings.Join(TypeWords(), " / ")
+				reason = i18n.M("rules.csv.unknown_type", "word", fields[2], "words", strings.Join(TypeWords(), " / "))
 			case iconWord != "" && !iconOK:
-				reason = "未知的图标“" + iconWord + "”，可用 " + strings.Join(IconWords(), " / ")
+				reason = i18n.M("rules.csv.unknown_icon", "word", iconWord, "words", strings.Join(IconWords(), " / "))
 			}
 		}
-		if reason != "" {
+		if reason.Key != "" {
 			parsed.Errors = append(parsed.Errors, CsvLineError{Line: row.Line, Reason: reason})
 			continue
 		}
@@ -443,7 +453,7 @@ func DecodeShortcuts(text string, room int, firstID int64) ParsedShortcuts {
 		problems := ValidateShortcut(shortcut)
 		switch {
 		case len(problems) > 0:
-			parsed.Errors = append(parsed.Errors, CsvLineError{Line: row.Line, Reason: problems[0].Full()})
+			parsed.Errors = append(parsed.Errors, CsvLineError{Line: row.Line, Reason: problems[0].Msg()})
 		case len(parsed.Shortcuts) >= room:
 			parsed.SkippedForLimit++
 		default:

@@ -7,7 +7,7 @@
   width: var(--sidebar-w); flex: none; position: sticky; top: 0; height: 100vh; z-index: 30;
   display: flex; flex-direction: column; gap: 4px; padding: 14px 12px 12px;
   background: light-dark(oklch(0.975 0.003 250), oklch(0.155 0.004 260));
-  border-right: 1px solid var(--border);
+  border-inline-end: 1px solid var(--border);
   view-transition-name: sidebar;
 }
 .brand {
@@ -17,13 +17,13 @@
 .brand:hover { text-decoration: none; }
 /* The app's launcher icon; on dark surfaces a hairline keeps its dark tile apart. */
 .brand-mark { width: 26px; height: 26px; flex: none; border-radius: 29%; box-shadow: 0 0 0 1px light-dark(transparent, oklch(1 0 0 / .14)); }
-.brand-sub { color: var(--muted); font-weight: 500; font-size: 12px; letter-spacing: 0; margin-left: -2px; padding-top: 1px; }
+.brand-sub { color: var(--muted); font-weight: 500; font-size: 12px; letter-spacing: 0; margin-inline-start: -2px; padding-top: 1px; }
 .nav { flex: 1; overflow-y: auto; margin: 0 -4px; padding: 0 4px; }
 .nav-group + .nav-group { margin-top: 14px; }
 .nav-label { font-size: 11.5px; font-weight: 500; color: var(--muted); padding: 0 10px 4px; letter-spacing: .02em; }
 .nav ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; }
 .nav a {
-  display: flex; align-items: center; gap: 10px; height: 32px; padding: 0 10px; border-radius: var(--radius-sm);
+  display: flex; align-items: center; gap: 10px; min-height: 32px; padding: 6px 10px; line-height: 1.3; border-radius: var(--radius-sm);
   color: var(--text-2); font-size: 13.5px; font-weight: 450;
 }
 .nav a .icon { color: var(--muted); }
@@ -43,7 +43,7 @@
 }
 .user-chip::-webkit-details-marker { display: none; }
 .user-chip:hover, .user-menu[open] .user-chip { background: var(--surface-3); }
-.user-chip > .icon { color: var(--faint); margin-left: auto; }
+.user-chip > .icon { color: var(--faint); margin-inline-start: auto; }
 .avatar {
   width: 30px; height: 30px; border-radius: 50%; flex: none; display: grid; place-items: center;
   font-size: 13px; font-weight: 600; color: var(--accent-text); background: var(--accent-soft-2);
@@ -51,11 +51,22 @@
 .user-text { display: grid; min-width: 0; line-height: 1.3; }
 .user-name { font-weight: 500; font-size: 13.5px; }
 .user-role { font-size: 12px; color: var(--muted); }
-.user-menu .popover { position: absolute; left: 0; right: 0; bottom: calc(100% + 6px); }
+.user-menu .popover { position: absolute; inset-inline: 0; bottom: calc(100% + 6px); }
 .theme-switch { padding: 0 6px 6px; }
-.theme-switch .menu-label { padding-left: 4px; }
+.theme-switch .menu-label, .lang-switch .menu-label { padding-inline-start: 4px; }
 .theme-switch .segmented { display: flex; }
 .theme-switch .segmented button { flex: 1 1 0; min-width: 0; justify-content: center; gap: 5px; padding: 0 4px; font-size: 12px; }
+/* language: under the appearance in the menu; on the pages before sign-in a small choice
+   centred under the foot line */
+.lang-switch { padding: 0 6px 6px; }
+.lang-select { display: block; }
+.lang-select > .icon { display: none; }
+.lang-switch select.compact { width: 100%; max-width: none; height: 28px; font-size: 12.5px; }
+.bare .lang-switch { display: flex; justify-content: center; gap: 6px; padding: 0; margin-top: -8px; }
+.bare .lang-select { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); }
+.bare .lang-select > .icon { display: inline-block; width: 14px; height: 14px; }
+.bare .lang-select .menu-label { display: none; }
+.bare .lang-switch select.compact { width: auto; height: 30px; font-size: 12.5px; }
 
 /* ---- main column and top bar ---- */
 .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
@@ -72,18 +83,18 @@
 .crumbs a:hover { color: var(--text); text-decoration: none; }
 .crumb-sep { color: var(--faint); }
 .crumb-here { color: var(--text); font-weight: 500; }
-.topbar-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.topbar-right { margin-inline-start: auto; display: flex; align-items: center; gap: 8px; }
 .region-filter { position: relative; display: flex; align-items: center; gap: 6px; }
-.region-filter > .icon { position: absolute; left: 9px; color: var(--muted); pointer-events: none; width: 14px; height: 14px; }
-.region-filter select { padding-left: 28px; background-color: var(--surface); }
+.region-filter > .icon { position: absolute; inset-inline-start: 9px; color: var(--muted); pointer-events: none; width: 14px; height: 14px; }
+.region-filter select { padding-inline-start: 28px; background-color: var(--surface); }
 .palette-open {
-  display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 6px 0 10px; min-width: 200px;
+  display: inline-flex; align-items: center; gap: 8px; height: 32px; padding-block: 0; padding-inline: 10px 6px; min-width: 200px;
   font: inherit; font-size: 13px; color: var(--muted); cursor: pointer;
   background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); box-shadow: var(--shadow-xs);
 }
 .palette-open:hover { color: var(--text); border-color: color-mix(in oklch, var(--border-strong), var(--text) 14%); }
-.palette-open kbd { margin-left: auto; }
-.nav-open { display: none; margin-left: -6px; }
+.palette-open kbd { margin-inline-start: auto; }
+.nav-open { display: none; margin-inline-start: -6px; }
 
 .content { flex: 1; width: 100%; max-width: var(--content-max); margin: 0 auto; padding: 24px 28px 40px; }
 .content > * { animation: settle var(--t) var(--ease) backwards; }
@@ -107,13 +118,13 @@
   display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 10px; border-radius: 8px; color: var(--text);
 }
 .palette-list a .icon { color: var(--muted); }
-.palette-list a .where { margin-left: auto; color: var(--muted); font-size: 12px; }
+.palette-list a .where { margin-inline-start: auto; color: var(--muted); font-size: 12px; }
 .palette-list a:hover { text-decoration: none; }
 .palette-list a[aria-selected="true"] { background: var(--accent-soft); color: var(--accent-text); }
 .palette-list a[aria-selected="true"] .icon { color: var(--accent-text); }
 .palette-list .none { padding: 16px 10px; color: var(--muted); }
 .palette-foot { display: flex; gap: 16px; padding: 8px 16px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; }
-.palette-foot kbd { margin-right: 2px; }
+.palette-foot kbd { margin-inline-end: 2px; }
 
 /* ---- pages without the frame: login, enrollment info, print ---- */
 .bare-main { max-width: 400px; margin: 0 auto; padding: 12vh 16px 40px; }
@@ -124,11 +135,11 @@
 .nav-toggle { display: none; }
 .scrim { display: none; }
 @media (max-width: 760px) {
-  .nav-toggle { display: block; position: fixed; top: 12px; left: 12px; width: 32px; height: 32px; margin: 0; opacity: 0; z-index: 25; }
+  .nav-toggle { display: block; position: fixed; top: 12px; inset-inline-start: 12px; width: 32px; height: 32px; margin: 0; opacity: 0; z-index: 25; }
   .nav-open { display: inline-grid; }
   .nav-toggle:focus-visible ~ .shell .nav-open { outline: 2px solid var(--accent); outline-offset: 2px; }
   .sidebar {
-    position: fixed; left: 0; top: 0; bottom: 0; height: auto; width: min(280px, 84vw); z-index: 50;
+    position: fixed; inset-inline-start: 0; top: 0; bottom: 0; height: auto; width: min(280px, 84vw); z-index: 50;
     transform: translateX(-102%); visibility: hidden; box-shadow: var(--shadow-lg);
     transition: transform var(--t) var(--ease), visibility 0s linear var(--t);
   }
@@ -146,6 +157,17 @@
   .palette-open-text, .palette-open kbd { display: none; }
   .crumb-section, .crumb-section + .crumb-sep { display: none; }
   .region-filter select { max-width: 132px; }
+}
+
+/* ---- right-to-left pages (§5.5): what the logical properties do not turn by themselves ---- */
+[dir="rtl"] :is(.icon.dir, .crumb-sep, .switch, .stackbar) { scale: -1 1; }
+[dir="rtl"] select { background-position: left 8px center; }
+[dir="rtl"] .fade.overflowing:not(.mono) {
+  -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 2.5em), transparent);
+  mask-image: linear-gradient(to left, #000 calc(100% - 2.5em), transparent);
+}
+@media (max-width: 760px) {
+  [dir="rtl"] .sidebar { transform: translateX(102%); }
 }
 
 @media print {

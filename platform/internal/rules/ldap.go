@@ -2,6 +2,7 @@ package rules
 
 import (
 	"regexp"
+	"siplink/internal/i18n"
 	"strconv"
 	"strings"
 )
@@ -103,38 +104,33 @@ const (
 )
 
 var ldapErrors = []errorText{
-	{"LIMIT_REACHED", "", "最多 " + strconv.Itoa(MaxDirectories) + " 个通讯录"},
-	{"NAME_TAKEN", "名称", "已存在"},
-	{"NAME_TOO_LONG", "名称", "最多 " + strconv.Itoa(MaxDirectoryNameLength) + " 个字符"},
-	{"HOST_EMPTY", "服务器地址", "必填"},
-	{"HOST_INVALID", "服务器地址", "应为 主机[:端口]"},
-	{"HOST_LDAPS", "服务器地址", "不支持 ldaps://，请用 StartTLS"},
-	{"STARTTLS_NEEDS_HOST_NAME", "服务器地址", "StartTLS 需用域名"},
-	{"PORT_OUT_OF_RANGE", "服务器地址", "端口应为 1–65535"},
-	{"PASSWORD_WITHOUT_USER", "用户名", "必填（已填密码）"},
-	{"BASE_DN_EMPTY", "搜索基准", "必填"},
-	{"MAX_RESULTS_OUT_OF_RANGE", "最大结果数", "应为 1–" + strconv.Itoa(MaxResults)},
-	{"NAME_ATTRIBUTES_EMPTY", "姓名属性", "必填"},
-	{"NUMBER_ATTRIBUTES_EMPTY", "号码属性", "必填"},
-	{"NAME_FILTER_NO_PLACEHOLDER", "姓名过滤器", "需包含 %"},
-	{"NUMBER_FILTER_NO_PLACEHOLDER", "号码过滤器", "需包含 %"},
-	{"MANAGED", "", ManagedNotice},
+	{"LIMIT_REACHED", i18n.M("rules.ldap.limit_reached", "max", MaxDirectories)},
+	{"NAME_TAKEN", i18n.M("rules.ldap.name_taken")},
+	{"NAME_TOO_LONG", i18n.M("rules.ldap.name_too_long", "max", MaxDirectoryNameLength)},
+	{"HOST_EMPTY", i18n.M("rules.ldap.host_empty")},
+	{"HOST_INVALID", i18n.M("rules.ldap.host_invalid")},
+	{"HOST_LDAPS", i18n.M("rules.ldap.host_ldaps")},
+	{"STARTTLS_NEEDS_HOST_NAME", i18n.M("rules.ldap.starttls_needs_host_name")},
+	{"PORT_OUT_OF_RANGE", i18n.M("rules.ldap.port_out_of_range")},
+	{"PASSWORD_WITHOUT_USER", i18n.M("rules.ldap.password_without_user")},
+	{"BASE_DN_EMPTY", i18n.M("rules.ldap.base_dn_empty")},
+	{"MAX_RESULTS_OUT_OF_RANGE", i18n.M("rules.ldap.max_results_out_of_range", "max", MaxResults)},
+	{"NAME_ATTRIBUTES_EMPTY", i18n.M("rules.ldap.name_attributes_empty")},
+	{"NUMBER_ATTRIBUTES_EMPTY", i18n.M("rules.ldap.number_attributes_empty")},
+	{"NAME_FILTER_NO_PLACEHOLDER", i18n.M("rules.ldap.name_filter_no_placeholder")},
+	{"NUMBER_FILTER_NO_PLACEHOLDER", i18n.M("rules.ldap.number_filter_no_placeholder")},
+	{"MANAGED", ManagedNotice},
 }
 
 // Name is the name of the Kotlin enum value, e.g. "HOST_LDAPS".
 func (e LdapError) Name() string { return ldapErrors[e].name }
 
-// Subject is what the error is about.
-func (e LdapError) Subject() string { return ldapErrors[e].subject }
+// Msg is the error's text where no field stands next to it, translated where it is
+// shown. Port of LdapRules.Error.full.
+func (e LdapError) Msg() i18n.Msg { return ldapErrors[e].msg }
 
-// Message is what is wrong, as shown right under that field.
-func (e LdapError) Message() string { return ldapErrors[e].message }
-
-// Full is the error where no field stands next to it. Port of LdapRules.Error.full.
-func (e LdapError) Full() string { return ldapErrors[e].full() }
-
-// Error returns Full, so that an LdapError is an error.
-func (e LdapError) Error() string { return e.Full() }
+// Error is the English text, so that an LdapError is an error.
+func (e LdapError) Error() string { return i18n.For(i18n.English).Msg(e.Msg()) }
 
 // String returns Name.
 func (e LdapError) String() string { return e.Name() }

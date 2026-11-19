@@ -5,72 +5,72 @@
 {{with $d.Errors}}<div class="flash error" role="alert"><ul class="errors">{{range .}}<li>{{.}}</li>{{end}}</ul></div>{{end}}
 {{if $d.New}}
 <form method="get" action="/config-templates/{{$d.T.ID}}/directories/new" class="card scope-bar">
-  <label>通讯录<select name="source" class="compact" data-autosubmit><option value="">请选择</option>
-    {{with $d.Books}}<optgroup label="内部">{{range .}}<option value="{{.Value}}"{{if eq .Value $d.Source}} selected{{end}}>{{.Name}}{{if .Global}}（全局）{{end}}</option>{{end}}</optgroup>{{end}}
-    {{with $d.Externals}}<optgroup label="外部">{{range .}}<option value="{{.Value}}"{{if eq .Value $d.Source}} selected{{end}}>{{.Name}}{{if .Global}}（全局）{{end}}</option>{{end}}</optgroup>{{end}}
+  <label>{{t "config.directory.source"}}<select name="source" class="compact" data-autosubmit><option value="">{{t "config.choose"}}</option>
+    {{with $d.Books}}<optgroup label="{{t "books.kind.hosted"}}">{{range .}}<option value="{{.Value}}"{{if eq .Value $d.Source}} selected{{end}}>{{if .Global}}{{t "config.global_name" "name" .Name}}{{else}}{{.Name}}{{end}}</option>{{end}}</optgroup>{{end}}
+    {{with $d.Externals}}<optgroup label="{{t "books.kind.external"}}">{{range .}}<option value="{{.Value}}"{{if eq .Value $d.Source}} selected{{end}}>{{if .Global}}{{t "config.global_name" "name" .Name}}{{else}}{{.Name}}{{end}}</option>{{end}}</optgroup>{{end}}
   </select></label>
-  <button type="submit" class="btn small" data-js-hide>选择</button>
+  <button type="submit" class="btn small" data-js-hide>{{t "config.directory.choose_button"}}</button>
 </form>
 {{end}}
 {{with $d.D}}
 <form method="post" action="/config-templates/{{$d.T.ID}}/directories{{if not $d.New}}/{{.ID}}{{end}}" class="form-stack"
-  {{if gt $d.Clients 0}}data-confirm="此模板已被 {{$d.Clients}} 个客户端使用，保存后将于下次同步时生效。确认保存？"{{end}}>
+  {{if gt $d.Clients 0}}data-confirm="{{t "config.save_confirm" "n" $d.Clients}}"{{end}}>
   {{if $d.New}}<input type="hidden" name="source" value="{{$d.Source}}">{{end}}
   {{if $d.HostedNote}}<div class="flash warn">{{$d.HostedNote}}</div>{{end}}
-  {{if $d.Plain}}<div class="flash warn">平台 LDAP 地址为 IP 且未要求 TLS，此通讯录将不加密下发。</div>{{end}}
+  {{if $d.Plain}}<div class="flash warn">{{t "config.directory.plain_warn"}}</div>{{end}}
   <section class="card">
     <div class="card-body form">
-      {{if not $d.New}}<label>通讯录<input value="{{.Source}}（{{if eq .Kind "hosted"}}内部{{else}}外部{{end}}）" disabled></label>{{end}}
-      <label>显示名称<input name="name" value="{{.Name}}" maxlength="40" placeholder="{{.Source}}"></label>
+      {{if not $d.New}}{{$kind := t "books.kind.external"}}{{if eq .Kind "hosted"}}{{$kind = t "books.kind.hosted"}}{{end}}<label>{{t "config.directory.source"}}<input value="{{t "config.directory.source_kind" "name" .Source "kind" $kind}}" disabled></label>{{end}}
+      <label>{{t "config.directory.display_name"}}<input name="name" value="{{.Name}}" maxlength="40" placeholder="{{.Source}}"></label>
       <div class="grid2">
-        {{if eq .Kind "hosted"}}<label>最大结果数<input type="number" name="maxResults" value="{{.MaxResults}}" min="1" max="1000" required></label>{{end}}
-        <label>线路
-          <select name="line"><option value="0">不限</option>
+        {{if eq .Kind "hosted"}}<label>{{t "config.directory.max_results"}}<input type="number" name="maxResults" value="{{.MaxResults}}" min="1" max="1000" required dir="ltr"></label>{{end}}
+        <label>{{t "config.directory.line"}}
+          <select name="line"><option value="0">{{t "config.directory.any_line"}}</option>
             {{range $d.Profiles}}<option value="{{.ID}}"{{if eq .ID (deref $d.D.LineProfileID)}} selected{{end}}>{{.Name}}</option>{{end}}
           </select>
         </label>
       </div>
       <div class="settings">
-        <label class="setting toggle"><span class="setting-text"><span class="setting-name">来电时查询姓名</span></span>
+        <label class="setting toggle"><span class="setting-text"><span class="setting-name">{{t "config.directory.lookup_incoming"}}</span></span>
           <span class="switch"><input type="checkbox" role="switch" name="lookupIncoming" value="1"{{if .LookupIncoming}} checked{{end}}><span></span></span></label>
-        <label class="setting toggle"><span class="setting-text"><span class="setting-name">去电时查询姓名</span></span>
+        <label class="setting toggle"><span class="setting-text"><span class="setting-name">{{t "config.directory.lookup_outgoing"}}</span></span>
           <span class="switch"><input type="checkbox" role="switch" name="lookupOutgoing" value="1"{{if .LookupOutgoing}} checked{{end}}><span></span></span></label>
-        <label class="setting toggle"><span class="setting-text"><span class="setting-name">启用</span></span>
+        <label class="setting toggle"><span class="setting-text"><span class="setting-name">{{t "config.toggle.enabled"}}</span></span>
           <span class="switch"><input type="checkbox" role="switch" name="enabled" value="1"{{if .Enabled}} checked{{end}}><span></span></span></label>
       </div>
     </div>
   </section>
   {{if eq .Kind "hosted"}}
   <section class="card">
-    <div class="card-head"><h2>凭据</h2></div>
+    <div class="card-head"><h2>{{t "config.directory.credentials"}}</h2></div>
     <div class="card-body form">
-      <div class="option-cards" role="radiogroup" aria-label="凭据">
-        <label class="option-card"><input type="radio" name="credentials" value="auto"{{if not $d.Manual}} checked{{end}}><span><strong>自动</strong></span></label>
-        <label class="option-card"><input type="radio" name="credentials" value="manual"{{if $d.Manual}} checked{{end}}><span><strong>手动指定</strong></span></label>
+      <div class="option-cards" role="radiogroup" aria-label="{{t "config.directory.credentials"}}">
+        <label class="option-card"><input type="radio" name="credentials" value="auto"{{if not $d.Manual}} checked{{end}}><span><strong>{{t "config.directory.credentials_auto"}}</strong></span></label>
+        <label class="option-card"><input type="radio" name="credentials" value="manual"{{if $d.Manual}} checked{{end}}><span><strong>{{t "config.directory.credentials_manual"}}</strong></span></label>
       </div>
       <fieldset class="plain manual" data-manual>
-      <label>LDAP 账号
-        <select name="account"><option value="0">请选择</option>
-          {{range $d.Accounts}}<option value="{{.ID}}"{{if eq .ID (deref $d.D.LDAPAccountID)}} selected{{end}}>{{.Name}}{{if not .RegionID}}（全局）{{end}}</option>{{end}}
+      <label>{{t "config.directory.account"}}
+        <select name="account"><option value="0">{{t "config.choose"}}</option>
+          {{range $d.Accounts}}<option value="{{.ID}}"{{if eq .ID (deref $d.D.LDAPAccountID)}} selected{{end}}>{{if .RegionID}}{{.Name}}{{else}}{{t "config.global_name" "name" .Name}}{{end}}</option>{{end}}
         </select>
       </label>
       <div class="grid2">
-        <label>密码
+        <label>{{t "common.password"}}
           <select name="passwordMode">
-            <option value="template"{{if or (eq .PasswordMode "template") (not $d.Manual)}} selected{{end}}>模板统一设置</option>
-            <option value="client"{{if and $d.Manual (eq .PasswordMode "client")}} selected{{end}}>按客户端设置</option>
+            <option value="template"{{if or (eq .PasswordMode "template") (not $d.Manual)}} selected{{end}}>{{t "config.directory.password_template"}}</option>
+            <option value="client"{{if and $d.Manual (eq .PasswordMode "client")}} selected{{end}}>{{t "config.directory.password_client"}}</option>
           </select>
         </label>
-        {{if and $d.Manual $d.HasPass}}<div class="field shared-password"><span class="label-line"><label for="f-pass">LDAP 账号密码</label>{{tip "f-pass-tip" "留空保持不变"}}</span><input id="f-pass" aria-describedby="f-pass-tip" type="password" name="password" autocomplete="new-password" placeholder="已设置"></div>{{else}}<label class="shared-password">LDAP 账号密码<input type="password" name="password" autocomplete="new-password"></label>{{end}}
+        {{if and $d.Manual $d.HasPass}}<div class="field shared-password"><span class="label-line"><label for="f-pass">{{t "config.directory.account_password"}}</label>{{tip "f-pass-tip" (t "config.keep_empty")}}</span><input id="f-pass" aria-describedby="f-pass-tip" type="password" name="password" autocomplete="new-password" placeholder="{{t "common.set"}}"></div>{{else}}<label class="shared-password">{{t "config.directory.account_password"}}<input type="password" name="password" autocomplete="new-password"></label>{{end}}
       </div>
       </fieldset>
     </div>
   </section>
   {{end}}
-  <div class="savebar"><a class="btn" href="/config-templates/{{$d.T.ID}}?tab=directories">取消</a><button type="submit" class="btn primary">{{icon "check"}}保存</button></div>
+  <div class="savebar"><a class="btn" href="/config-templates/{{$d.T.ID}}?tab=directories">{{t "common.cancel"}}</a><button type="submit" class="btn primary">{{icon "check"}}{{t "common.save"}}</button></div>
 </form>
 {{else}}
-<div class="card"><div class="empty-state compact">{{icon "book-user"}}<p>{{if or $d.Books $d.Externals}}请选择通讯录{{else}}暂无可用的通讯录{{end}}</p>{{if not (or $d.Books $d.Externals)}}<div class="actions"><a class="btn small primary" href="/books/new">{{icon "plus"}}新建通讯录</a></div>{{end}}</div></div>
+<div class="card"><div class="empty-state compact">{{icon "book-user"}}<p>{{if or $d.Books $d.Externals}}{{t "config.directory.choose_prompt"}}{{else}}{{t "config.directory.none_available"}}{{end}}</p>{{if not (or $d.Books $d.Externals)}}<div class="actions"><a class="btn small primary" href="/books/new">{{icon "plus"}}{{t "config.directory.new_book"}}</a></div>{{end}}</div></div>
 {{end}}
 </div>
 {{end}}

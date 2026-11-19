@@ -4,13 +4,15 @@ package qr
 
 import (
 	"fmt"
+	"html"
 	"strings"
 
 	qrcode "github.com/skip2/go-qrcode"
 )
 
-// SVG returns an SVG image of the QR code of text, scaled by the viewer (no fixed size).
-func SVG(text string) (string, error) {
+// SVG returns an SVG image of the QR code of text, scaled by the viewer (no fixed size);
+// label names it for screen readers.
+func SVG(text, label string) (string, error) {
 	q, err := qrcode.New(text, qrcode.Medium)
 	if err != nil {
 		return "", err
@@ -18,7 +20,7 @@ func SVG(text string) (string, error) {
 	bits := q.Bitmap() // includes the quiet zone
 	n := len(bits)
 	var b strings.Builder
-	fmt.Fprintf(&b, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 %d %d" shape-rendering="crispEdges" role="img" aria-label="二维码">`, n, n)
+	fmt.Fprintf(&b, `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 %d %d" shape-rendering="crispEdges" role="img" aria-label="%s">`, n, n, html.EscapeString(label))
 	fmt.Fprintf(&b, `<rect width="%d" height="%d" fill="#fff"/><path fill="#000" d="`, n, n)
 	for y, row := range bits {
 		for x := 0; x < len(row); {

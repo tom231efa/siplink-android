@@ -78,14 +78,14 @@ func (s *Server) directoryList(w http.ResponseWriter, r *http.Request) {
 		}
 		d.Rows = append(d.Rows, directoryListRow{DirectoryListRow: row, Region: regionLabel(names, row.RegionID), Link: link})
 	}
-	s.ok(w, r, "books", &Page{Title: "通讯录", Nav: "books", Data: d})
+	s.ok(w, r, "books", &Page{Title: tr(r).T("nav.books"), Nav: "books", Data: d})
 }
 
 // kindRefused answers 400 when a form names another kind than the object has: the kind
 // is chosen when a directory is made and never changes.
 func (s *Server) kindRefused(w http.ResponseWriter, r *http.Request, kind string) bool {
 	if v := r.FormValue("kind"); v != "" && v != kind {
-		s.fail(w, r, http.StatusBadRequest, "通讯录的类型创建后不可修改。")
+		s.fail(w, r, http.StatusBadRequest, tr(r).T("dirs.kind_fixed"))
 		return true
 	}
 	return false
@@ -99,11 +99,11 @@ func (s *Server) directoryMoveProblem(r *http.Request, kind string, id int64, to
 	}
 	regions, err := s.St.DirectoryTemplateRegions(r.Context(), kind, id)
 	if err != nil {
-		return "内部错误，请稍后重试。"
+		return tr(r).T("error.internal_retry")
 	}
 	for _, reg := range regions {
 		if reg == nil || *reg != *to {
-			return "其他区域或全局的配置模板正在使用此通讯录，无法移至该区域。"
+			return tr(r).T("dirs.move_used_by_templates")
 		}
 	}
 	return ""
@@ -130,7 +130,7 @@ func (s *Server) externalFormPage(w http.ResponseWriter, r *http.Request, status
 	ctx := r.Context()
 	f.Regions, _ = s.St.ListRegions(ctx, a.RegionIDs, a.Role == store.RoleSuper)
 	f.Global, f.Kind, f.HasPass = a.Role == store.RoleSuper, store.KindExternal, f.E.PasswordEnc != ""
-	title := "新建通讯录"
+	title := tr(r).T("dirs.new")
 	if !f.New {
 		names, _ := s.allRegionNames(r)
 		f.Region = regionLabel(names, f.E.RegionID)
@@ -167,7 +167,7 @@ func (s *Server) loadExternal(w http.ResponseWriter, r *http.Request, edit bool)
 		return nil
 	}
 	if edit && !act.Can(auth.BookEdit, e.RegionID) {
-		s.fail(w, r, http.StatusForbidden, "全局通讯录仅可由超级管理员修改。")
+		s.fail(w, r, http.StatusForbidden, tr(r).T("dirs.global_super_only"))
 		return nil
 	}
 	return e
@@ -187,14 +187,14 @@ func readExternal(r *http.Request, e *store.ExternalDirectory) {
 // saveExternal checks and stores a directory read from the form; problems go back to
 // the form. The password is write-only: an empty field keeps the stored one.
 func (s *Server) saveExternal(r *http.Request, e *store.ExternalDirectory) (sealed bool, problems []string, err error) {
-	problems = catalog.ExternalProblems(e)
+	problems = tr(r).Msgs(catalog.ExternalProblems(e))
 	password := r.FormValue("password")
 	if e.PasswordMode == catalog.PasswordTemplate && password == "" && e.PasswordEnc == "" {
-		problems = append(problems, "请填写 LDAP 密码")
+		problems = append(problems, tr(r).T("dirs.external.password_required"))
 	}
 	if e.RegionID != nil {
 		if _, err := s.St.RegionByID(r.Context(), *e.RegionID); err != nil {
-			problems = append(problems, "所选区域不存在。")
+			problems = append(problems, tr(r).T("dirs.region_missing"))
 		}
 	}
 	if len(problems) > 0 {
@@ -208,7 +208,7 @@ func (s *Server) saveExternal(r *http.Request, e *store.ExternalDirectory) (seal
 	}
 	err = s.St.SaveExternalDirectory(r.Context(), e, seal)
 	if errors.Is(err, store.ErrConflict) {
-		return false, []string{"同一区域已有名为「" + e.Name + "」的外部通讯录。"}, nil
+		return false, []string{tr(r).T("dirs.external.name_taken", "name", e.Name)}, nil
 	}
 	return seal != nil, nil, err
 }
@@ -218,7 +218,7 @@ func (s *Server) externalCreate(w http.ResponseWriter, r *http.Request) {
 	readExternal(r, e)
 	if !actor(r).Can(auth.BookEdit, e.RegionID) {
 		s.externalFormPage(w, r, http.StatusBadRequest, externalForm{E: e, New: true, CanEdit: true,
-			Errors: []string{"您无权在所选区域创建通讯录。"}})
+			Errors: []string{tr(r).T("dirs.create_forbidden")}})
 		return
 	}
 	sealed, problems, err := s.saveExternal(r, e)
@@ -232,10 +232,10 @@ func (s *Server) externalCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	detail := map[string]any{"name": e.Name, "host": e.Host, "password_mode": e.PasswordMode}
 	if sealed {
-		detail["password"] = "已修改"
+		detail["password"] = auditChanged
 	}
 	s.audit(r, "directory.create", "directory", e.ID, e.Name, e.RegionID, detail)
-	s.redirect(w, r, "/directories/"+itoa(e.ID), "ok", "通讯录「"+e.Name+"」已创建。")
+	s.redirect(w, r, "/directories/"+itoa(e.ID), "ok", tr(r).T("dirs.created", "name", e.Name))
 }
 
 func (s *Server) externalShow(w http.ResponseWriter, r *http.Request) {
@@ -280,10 +280,10 @@ func (s *Server) externalUpdate(w http.ResponseWriter, r *http.Request) {
 		field{"number_attributes", old.NumberAttributes, e.NumberAttributes}, field{"name_filter", old.NameFilter, e.NameFilter},
 		field{"number_filter", old.NumberFilter, e.NumberFilter})
 	if sealed {
-		detail["password"] = "已修改"
+		detail["password"] = auditChanged
 	}
 	s.audit(r, "directory.update", "directory", e.ID, e.Name, e.RegionID, detail)
-	s.redirect(w, r, "/directories/"+itoa(e.ID), "ok", "通讯录已保存。")
+	s.redirect(w, r, "/directories/"+itoa(e.ID), "ok", tr(r).T("dirs.saved"))
 }
 
 func (s *Server) externalDelete(w http.ResponseWriter, r *http.Request) {
@@ -294,7 +294,7 @@ func (s *Server) externalDelete(w http.ResponseWriter, r *http.Request) {
 	err := s.St.DeleteExternalDirectory(r.Context(), e.ID)
 	if errors.Is(err, store.ErrInUse) {
 		users, _ := s.St.DirectoryTemplates(r.Context(), store.KindExternal, e.ID)
-		s.redirect(w, r, "/directories/"+itoa(e.ID), "error", "通讯录正在使用中，无法删除：配置模板 "+strings.Join(users, "、"))
+		s.redirect(w, r, "/directories/"+itoa(e.ID), "error", tr(r).T("dirs.external.in_use", "templates", users))
 		return
 	}
 	if err != nil {
@@ -302,5 +302,5 @@ func (s *Server) externalDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.audit(r, "directory.delete", "directory", e.ID, e.Name, e.RegionID, map[string]any{"host": e.Host})
-	s.redirect(w, r, "/books", "ok", "通讯录「"+e.Name+"」已删除。")
+	s.redirect(w, r, "/books", "ok", tr(r).T("dirs.deleted", "name", e.Name))
 }

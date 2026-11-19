@@ -13,6 +13,8 @@ import (
 	"unicode/utf8"
 
 	"golang.org/x/crypto/argon2"
+
+	"siplink/internal/i18n"
 )
 
 // Argon2Params are the argon2id cost parameters.
@@ -89,38 +91,38 @@ func VerifyDummy(password string) {
 	_, _ = VerifyPassword(dummyHash, password)
 }
 
-// PasswordProblem returns a message in Chinese when a new administrator password is
-// not acceptable, or "". With strict (the switch "密码强度检测" on the system page) it
+// PasswordProblem says why a new administrator password is not acceptable, nil when
+// it is. With strict (the switch "密码强度检测" on the system page) it
 // must have MinPasswordLength characters and differ from the user name; without, it
 // only has to be non-empty. It is never longer than 256 characters.
-func PasswordProblem(password, username string, strict bool) string {
+func PasswordProblem(password, username string, strict bool) error {
 	n := utf8.RuneCountInString(password)
 	switch {
 	case n > 256:
-		return "密码不得超过 256 个字符"
+		return i18n.E("auth.password.too_long", "max", 256)
 	case !strict && n == 0:
-		return "请输入新密码"
+		return i18n.E("auth.password.empty")
 	case strict && n < MinPasswordLength:
-		return fmt.Sprintf("密码至少为 %d 个字符", MinPasswordLength)
+		return i18n.E("auth.password.too_short", "min", MinPasswordLength)
 	case strict && strings.EqualFold(password, username):
-		return "密码不得与用户名相同"
+		return i18n.E("auth.password.is_username")
 	}
-	return ""
+	return nil
 }
 
-// PassphraseProblem returns a message in Chinese when the passphrase of an encrypted
-// backup download is not acceptable, or "": the same lengths as PasswordProblem.
-func PassphraseProblem(passphrase string, strict bool) string {
+// PassphraseProblem says why the passphrase of an encrypted backup download is not
+// acceptable, nil when it is: the same lengths as PasswordProblem.
+func PassphraseProblem(passphrase string, strict bool) error {
 	n := utf8.RuneCountInString(passphrase)
 	switch {
 	case n > 256:
-		return "加密口令不得超过 256 个字符"
+		return i18n.E("auth.passphrase.too_long", "max", 256)
 	case n == 0:
-		return "请输入加密口令"
+		return i18n.E("auth.passphrase.empty")
 	case strict && n < MinPasswordLength:
-		return fmt.Sprintf("加密口令至少为 %d 个字符", MinPasswordLength)
+		return i18n.E("auth.passphrase.too_short", "min", MinPasswordLength)
 	}
-	return ""
+	return nil
 }
 
 // ValidUsername accepts 2-32 characters of ASCII letters, digits, '.', '_' and '-'.

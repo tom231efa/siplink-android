@@ -120,7 +120,7 @@ func (s *Server) renderClient(w http.ResponseWriter, r *http.Request, status int
 		if d.Show && k.PasswordEnc != "" {
 			pw, err := s.Ext.Box.Open(k.PasswordEnc, store.CredentialAAD(c.ID, p.ID))
 			if err == nil {
-				d.Secrets = append(d.Secrets, secretRow{"SIP 密码（" + p.Name + "）", string(pw)})
+				d.Secrets = append(d.Secrets, secretRow{tr(r).T("clients.detail.secret_sip", "name", p.Name), string(pw)})
 			}
 		}
 	}
@@ -128,14 +128,14 @@ func (s *Server) renderClient(w http.ResponseWriter, r *http.Request, status int
 		d.Dirs = append(d.Dirs, dirPassRow{D: dir, HasPassword: dirPass[dir.ID] != ""})
 		if d.Show && dirPass[dir.ID] != "" {
 			if pw, err := s.Ext.Box.Open(dirPass[dir.ID], store.DirectoryPasswordAAD(c.ID, dir.ID)); err == nil {
-				d.Secrets = append(d.Secrets, secretRow{"LDAP 密码（" + dir.DisplayName() + "）", string(pw)})
+				d.Secrets = append(d.Secrets, secretRow{tr(r).T("clients.detail.secret_ldap", "name", dir.DisplayName()), string(pw)})
 			}
 		}
 	}
 	if s.hasHosted(r, t.ConfigTemplateID) {
 		d.LDAPBindDN = "uid=" + c.PublicID + ",ou=clients," + s.Cfg.LDAPSuffix
 		if d.Show {
-			d.Secrets = append(d.Secrets, secretRow{"托管通讯录 LDAP 密码", secret.LDAPPassword(s.Ext.LDAPKey, c.PublicID, c.LDAPGeneration)})
+			d.Secrets = append(d.Secrets, secretRow{tr(r).T("clients.detail.secret_hosted"), secret.LDAPPassword(s.Ext.LDAPKey, c.PublicID, c.LDAPGeneration)})
 		}
 	}
 	if d.Show {
@@ -151,12 +151,12 @@ func (s *Server) renderClient(w http.ResponseWriter, r *http.Request, status int
 	}
 	if b, err := s.buildDocument(r, c); err != nil {
 		s.Log.Error("document build failed", "client", c.ID, "err", err)
-		d.Problems = []string{"内部错误，无法生成配置"}
+		d.Problems = []string{tr(r).T("clients.detail.build_failed")}
 	} else {
-		d.Problems, d.Version = b.problems, b.doc.Version
+		d.Problems, d.Version = tr(r).Msgs(b.problems), b.doc.Version
 	}
 	if d.EnrollURL = s.enrollURL(c); d.EnrollURL != "" {
-		svg, err := qr.SVG(d.EnrollURL)
+		svg, err := qr.SVG(d.EnrollURL, tr(r).T("common.qr_code"))
 		if err != nil {
 			s.internal(w, r, err)
 			return
@@ -206,7 +206,7 @@ func (s *Server) clientPreview(w http.ResponseWriter, r *http.Request) {
 		s.internal(w, r, err)
 		return
 	}
-	s.ok(w, r, "client_preview", &Page{Title: "下发内容：" + c.Name, Nav: "clients",
+	s.ok(w, r, "client_preview", &Page{Title: tr(r).T("clients.preview.title", "name", c.Name), Nav: "clients",
 		Data: map[string]any{"C": c, "JSON": string(raw), "Problems": b.problems}})
 }
 
@@ -221,7 +221,7 @@ func (s *Server) clientReveal(w http.ResponseWriter, r *http.Request) {
 		s.notFound(w, r)
 		return
 	}
-	if msg := s.recheckPassword(a, r.FormValue("password")); msg != "" {
+	if msg := s.recheckPassword(r, a, r.FormValue("password")); msg != "" {
 		s.audit(r, "secret.view_denied", "client", c.ID, c.Name, &c.RegionID, nil)
 		s.renderClient(w, r, http.StatusBadRequest, c, false, msg)
 		return
@@ -268,7 +268,7 @@ func (s *Server) clientUnbind(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.audit(r, "client.unbind", "client", c.ID, c.Name, &c.RegionID, map[string]any{"bound": wasBound})
-	s.redirect(w, r, "/clients/"+itoa(c.ID), "ok", "已重新生成二维码，原设备将在下次同步时移除远程配置。")
+	s.redirect(w, r, "/clients/"+itoa(c.ID), "ok", tr(r).T("clients.detail.regenerated"))
 }
 
 func (s *Server) clientResetLDAP(w http.ResponseWriter, r *http.Request) {
@@ -280,8 +280,8 @@ func (s *Server) clientResetLDAP(w http.ResponseWriter, r *http.Request) {
 		s.internal(w, r, err)
 		return
 	}
-	s.audit(r, "client.ldap_reset", "client", c.ID, c.Name, &c.RegionID, map[string]any{"password": "已修改"})
-	s.redirect(w, r, "/clients/"+itoa(c.ID), "ok", "LDAP 凭据已重置，客户端将于下次同步时获取新密码。")
+	s.audit(r, "client.ldap_reset", "client", c.ID, c.Name, &c.RegionID, map[string]any{"password": auditChanged})
+	s.redirect(w, r, "/clients/"+itoa(c.ID), "ok", tr(r).T("clients.detail.ldap_reset_done"))
 }
 
 func (s *Server) clientDelete(w http.ResponseWriter, r *http.Request) {
@@ -294,7 +294,7 @@ func (s *Server) clientDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.audit(r, "client.delete", "client", c.ID, c.Name, &c.RegionID, nil)
-	s.redirect(w, r, "/clients", "ok", "客户端「"+c.Name+"」已删除。")
+	s.redirect(w, r, "/clients", "ok", tr(r).T("clients.deleted", "name", c.Name))
 }
 
 // clientBulk applies one action to the selected clients the administrator may manage.
@@ -308,7 +308,7 @@ func (s *Server) clientBulk(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if len(list) == 0 {
-		s.redirect(w, r, "/clients", "error", "请先选择客户端。")
+		s.redirect(w, r, "/clients", "error", tr(r).T("clients.bulk.none_selected"))
 		return
 	}
 	switch r.FormValue("action") {
@@ -327,7 +327,7 @@ func (s *Server) clientBulk(w http.ResponseWriter, r *http.Request) {
 				ok = ok || t.ID == tid
 			}
 			if !ok {
-				s.redirect(w, r, "/clients", "error", "所选模板不适用于客户端「"+c.Name+"」所在的区域。")
+				s.redirect(w, r, "/clients", "error", tr(r).T("clients.bulk.template_unusable", "name", c.Name))
 				return
 			}
 			ids = append(ids, c.ID)
@@ -339,7 +339,7 @@ func (s *Server) clientBulk(w http.ResponseWriter, r *http.Request) {
 		for _, c := range list {
 			s.audit(r, "client.update", "client", c.ID, c.Name, &c.RegionID, changes(field{"client_template_id", c.ClientTemplateID, tid}))
 		}
-		s.redirect(w, r, "/clients", "ok", "已更换 "+itoa(int64(len(ids)))+" 个客户端的模板。")
+		s.redirect(w, r, "/clients", "ok", tr(r).T("clients.bulk.template_changed", "n", len(ids)))
 	case "delete":
 		for _, c := range list {
 			if err := s.St.DeleteClient(ctx, c); err != nil && !errors.Is(err, store.ErrNotFound) {
@@ -348,9 +348,9 @@ func (s *Server) clientBulk(w http.ResponseWriter, r *http.Request) {
 			}
 			s.audit(r, "client.delete", "client", c.ID, c.Name, &c.RegionID, nil)
 		}
-		s.redirect(w, r, "/clients", "ok", "已删除 "+itoa(int64(len(list)))+" 个客户端。")
+		s.redirect(w, r, "/clients", "ok", tr(r).T("clients.bulk.deleted", "n", len(list)))
 	default:
-		s.redirect(w, r, "/clients", "error", "无效的操作。")
+		s.redirect(w, r, "/clients", "error", tr(r).T("clients.bulk.invalid_action"))
 	}
 }
 
@@ -380,13 +380,13 @@ func (s *Server) clientPrint(w http.ResponseWriter, r *http.Request) {
 			skipped++
 			continue
 		}
-		svg, err := qr.SVG(u)
+		svg, err := qr.SVG(u, tr(r).T("common.qr_code"))
 		if err != nil {
 			s.internal(w, r, err)
 			return
 		}
 		cards = append(cards, printCard{Name: c.Name, Region: names[c.RegionID], QR: template.HTML(svg)})
 	}
-	s.render(w, r, http.StatusOK, "client_print", &Page{Title: "打印二维码", Nav: "clients", Bare: true,
+	s.render(w, r, http.StatusOK, "client_print", &Page{Title: tr(r).T("clients.print.title"), Nav: "clients", Bare: true,
 		Data: map[string]any{"Cards": cards, "Skipped": skipped}})
 }

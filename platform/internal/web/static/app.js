@@ -5,6 +5,20 @@
   var root = document.documentElement;
   root.classList.add("js");
 
+  // The page's texts for the scripts (the catalog's js.* keys, the language, its direction
+  // and date patterns), with {name} arguments filled in; strings are isolated in a
+  // right-to-left page. The other scripts use it as window.siplinkText.
+  var texts = {};
+  try { texts = JSON.parse(document.getElementById("i18n").textContent); } catch (e) { /* keys show */ }
+  function text(key, args) {
+    return (texts[key] || key).replace(/\{([a-z_]+)\}/g, function (m, name) {
+      if (!args || !(name in args)) return m;
+      var v = args[name];
+      return typeof v === "string" && texts.dir === "rtl" ? "\u2068" + v + "\u2069" : String(v);
+    });
+  }
+  window.siplinkText = text;
+
   // Confirmation dialog for forms and buttons marked data-confirm="...".
   var dialog = document.getElementById("confirm-dialog");
   document.addEventListener("submit", function (ev) {
@@ -33,7 +47,7 @@
     dialog.showModal();
   });
 
-  // Backup download (系统): the links open the dialog in place. The server opens it itself
+  // Backup download (System): the links open the dialog in place. The server opens it itself
   // (?backup=…, a refused download) as a plain dialog, made modal here. A download answers
   // with a file and the page stays, so the dialog closes once its form is sent; a refusal
   // answers with a new page that has the dialog open again with the message.
@@ -86,21 +100,25 @@
     sel.addEventListener("change", function () { sel.form.submit(); });
   });
 
-  // Times: the server writes its own zone; show them in the viewer's local time.
-  // Those marked data-rel read "3 分钟前" and keep the full time in the title.
+  // Times: the server writes its own zone; show them in the viewer's local time, in the
+  // language's date pattern. Those marked data-rel read "3 minutes ago" (the browser's own
+  // words for the language, in ASCII digits) and keep the full time in the title.
   function pad(n) { return (n < 10 ? "0" : "") + n; }
   function full(d, dateOnly) {
-    var text = d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
-    return dateOnly ? text : text + " " + pad(d.getHours()) + ":" + pad(d.getMinutes());
+    var parts = { YYYY: d.getFullYear(), MM: pad(d.getMonth() + 1), DD: pad(d.getDate()), HH: pad(d.getHours()), mm: pad(d.getMinutes()) };
+    var pattern = (dateOnly ? texts.date : texts.datetime) || (dateOnly ? "YYYY-MM-DD" : "YYYY-MM-DD HH:mm");
+    return pattern.replace(/YYYY|MM|DD|HH|mm/g, function (tok) { return parts[tok]; });
   }
+  var ago = null;
+  try { ago = new Intl.RelativeTimeFormat((texts.lang || "en") + "-u-nu-latn", { numeric: "auto" }); } catch (e) { /* absolute times */ }
   function relative(d) {
     var s = (Date.now() - d.getTime()) / 1000;
-    if (s < -60) return null;
-    if (s < 60) return "刚刚";
-    if (s < 3600) return Math.floor(s / 60) + " 分钟前";
-    if (s < 86400) return Math.floor(s / 3600) + " 小时前";
-    if (s < 86400 * 2) return "昨天 " + pad(d.getHours()) + ":" + pad(d.getMinutes());
-    if (s < 86400 * 7) return Math.floor(s / 86400) + " 天前";
+    if (s < -60 || !ago) return null;
+    if (s < 60) return text("just_now");
+    if (s < 3600) return ago.format(-Math.floor(s / 60), "minute");
+    if (s < 86400) return ago.format(-Math.floor(s / 3600), "hour");
+    if (s < 86400 * 2) return text("yesterday", { time: pad(d.getHours()) + ":" + pad(d.getMinutes()) });
+    if (s < 86400 * 7) return ago.format(-Math.floor(s / 86400), "day");
     return null;
   }
   document.querySelectorAll("time[data-local]").forEach(function (el) {
@@ -117,7 +135,7 @@
     try { input.value = Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (e) { /* keep the server's zone */ }
   });
 
-  // Hosted book credentials: the manual fields only count when "手动指定" is chosen.
+  // Hosted book credentials: the manual fields only count when "manual" is chosen.
   document.querySelectorAll("fieldset[data-manual]").forEach(function (box) {
     var form = box.form;
     if (!form) return;
@@ -190,7 +208,7 @@
       if (!el || !navigator.clipboard) return;
       navigator.clipboard.writeText(el.textContent.trim()).then(function () {
         var t = label(btn), old = t.textContent;
-        t.textContent = "已复制";
+        t.textContent = text("copied");
         setTimeout(function () { t.textContent = old; }, 1500);
       });
     });
@@ -204,7 +222,7 @@
       if (!input) return;
       var show = input.type === "password";
       input.type = show ? "text" : "password";
-      label(btn).textContent = show ? "隐藏" : "显示";
+      label(btn).textContent = text(show ? "hide" : "show");
     });
   });
 
@@ -257,9 +275,11 @@
   // Help tooltips (.help): shown on hover and focus by the stylesheet; here a tap toggles
   // them, Esc closes them, and they are kept inside the window.
   function fit(tip) {
-    tip.style.left = "0px";
-    var r = tip.getBoundingClientRect(), room = document.documentElement.clientWidth - 16;
-    if (r.right > room) tip.style.left = Math.max(16 - r.left, room - r.right) + "px";
+    tip.style.translate = "";
+    var r = tip.getBoundingClientRect(), room = document.documentElement.clientWidth - 16, dx = 0;
+    if (r.right > room) dx = Math.max(16 - r.left, room - r.right);
+    else if (r.left < 16) dx = Math.min(16 - r.left, room - r.right);
+    if (dx) tip.style.translate = dx + "px 0";
   }
   document.querySelectorAll(".help").forEach(function (help) {
     var btn = help.querySelector(".help-tip"), tip = help.querySelector(".tooltip");
@@ -288,7 +308,7 @@
   });
 
   // Bulk actions: the bar shows how many rows are chosen and floats while some are;
-  // the template choice only shows for "更换客户端模板".
+  // the template choice only shows for the action "template".
   document.querySelectorAll("[data-bulkbar]").forEach(function (bar) {
     var form = bar.form || bar.closest("form");
     var count = bar.querySelector("[data-bulk-count]");
@@ -301,7 +321,7 @@
       var n = 0;
       boxes.forEach(function (b) { if (b.checked) n++; });
       if (n) bar.removeAttribute("data-idle"); else bar.setAttribute("data-idle", "");
-      count.textContent = "已选 " + n + " 个";
+      count.textContent = text("selected", { n: n });
       if (all) { all.checked = n === boxes.length; all.indeterminate = n > 0 && n < boxes.length; }
       if (tpl && action) tpl.hidden = action.value !== "template";
     }

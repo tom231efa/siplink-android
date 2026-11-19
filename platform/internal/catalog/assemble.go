@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"siplink/internal/i18n"
 	"siplink/internal/provision"
 	"siplink/internal/rules"
 	"siplink/internal/secret"
@@ -164,10 +165,10 @@ func hostedByAccount(ctx context.Context, st *store.Store, p Platform, c *store.
 	if name == "" {
 		name = b.Name
 	}
-	if problem := HostedAccountProblem(d, b, a, cfg.RegionID); problem != "" {
-		in.Problems = append(in.Problems, "通讯录「"+name+"」："+problem)
+	if err := HostedAccountProblem(d, b, a, cfg.RegionID); err != nil {
+		in.Problems = append(in.Problems, provision.DirectoryProblem(name, i18n.MsgOf(err)))
 	} else if password != "" && secret.HashHex(password) != a.PasswordHash {
-		in.Problems = append(in.Problems, "通讯录「"+name+"」：密码与 LDAP 账号「"+a.Name+"」不符（账号的密码可能已重置）")
+		in.Problems = append(in.Problems, provision.DirectoryProblem(name, i18n.M("catalog.hosted.password_mismatch", "account", a.Name)))
 	}
 	return p.Hosted.HostedLdap(d, b, AccountBindDN(a.Name, p.Hosted.Suffix), password), nil
 }

@@ -12,6 +12,7 @@ import (
 	"unicode/utf8"
 
 	"siplink/internal/config"
+	"siplink/internal/i18n"
 	"siplink/internal/store"
 	"siplink/internal/twostep"
 
@@ -30,7 +31,7 @@ func newPasskeys(cfg *config.Config) (*webauthn.WebAuthn, error) {
 	}
 	return webauthn.New(&webauthn.Config{
 		RPID:                  strings.ToLower(cfg.PublicHost),
-		RPDisplayName:         "SipLink 管理平台",
+		RPDisplayName:         i18n.For(i18n.Source).T("app.name"), // one name for every language, as before
 		RPOrigins:             []string{twostep.Origin(cfg.PublicURL)},
 		AttestationPreference: protocol.PreferNoAttestation,
 		AuthenticatorSelection: protocol.AuthenticatorSelection{
@@ -97,27 +98,25 @@ func readPasskeyRequest(w http.ResponseWriter, r *http.Request) (*passkeyRequest
 	return &req, nil
 }
 
-const passkeyUnavailable = "当前地址不支持通行密钥。"
-
 // ---- registration (我的账号) ----
 
 func (s *Server) passkeyOptions(w http.ResponseWriter, r *http.Request) {
 	a := current(r)
 	if s.passkeys == nil {
-		jsonError(w, http.StatusNotFound, passkeyUnavailable)
+		jsonError(w, http.StatusNotFound, tr(r).T("passkey.unavailable"))
 		return
 	}
 	u, err := s.passkeyUser(r, a)
 	if err != nil {
 		s.Log.Error("passkeys unreadable", "admin", a.ID, "err", err)
-		jsonError(w, http.StatusInternalServerError, "内部错误。")
+		jsonError(w, http.StatusInternalServerError, tr(r).T("passkey.internal"))
 		return
 	}
 	creation, session, err := s.passkeys.BeginRegistration(u,
 		webauthn.WithExclusions(webauthn.Credentials(u.creds).CredentialDescriptors()))
 	if err != nil {
 		s.Log.Error("passkey registration start failed", "err", err)
-		jsonError(w, http.StatusInternalServerError, "内部错误。")
+		jsonError(w, http.StatusInternalServerError, tr(r).T("passkey.internal"))
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"token": s.ceremonies.put(s.Now(), a.ID, session), "options": creation})
@@ -126,27 +125,27 @@ func (s *Server) passkeyOptions(w http.ResponseWriter, r *http.Request) {
 func (s *Server) passkeyAdd(w http.ResponseWriter, r *http.Request) {
 	a := current(r)
 	if s.passkeys == nil {
-		jsonError(w, http.StatusNotFound, passkeyUnavailable)
+		jsonError(w, http.StatusNotFound, tr(r).T("passkey.unavailable"))
 		return
 	}
 	req, err := readPasskeyRequest(w, r)
 	if err != nil {
-		jsonError(w, http.StatusBadRequest, "请求无效。")
+		jsonError(w, http.StatusBadRequest, tr(r).T("passkey.bad_request"))
 		return
 	}
 	name := strings.TrimSpace(req.Name)
 	if name == "" || utf8.RuneCountInString(name) > 40 {
-		jsonError(w, http.StatusBadRequest, "名称须为 1-40 个字符。")
+		jsonError(w, http.StatusBadRequest, tr(r).T("passkey.name_length"))
 		return
 	}
 	session, ok := s.ceremonies.take(s.Now(), req.Token, a.ID)
 	if !ok {
-		jsonError(w, http.StatusBadRequest, "操作已超时，请重试。")
+		jsonError(w, http.StatusBadRequest, tr(r).T("passkey.expired"))
 		return
 	}
 	u, err := s.passkeyUser(r, a)
 	if err != nil {
-		jsonError(w, http.StatusInternalServerError, "内部错误。")
+		jsonError(w, http.StatusInternalServerError, tr(r).T("passkey.internal"))
 		return
 	}
 	parsed, err := protocol.ParseCredentialCreationResponseBytes(req.Credential)
@@ -156,27 +155,27 @@ func (s *Server) passkeyAdd(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		s.Log.Info("passkey registration refused", "admin", a.ID, "err", err)
-		jsonError(w, http.StatusBadRequest, "通行密钥验证失败。")
+		jsonError(w, http.StatusBadRequest, tr(r).T("passkey.failed"))
 		return
 	}
 	before, err := s.St.TwoStepState(r.Context(), a.ID)
 	if err != nil {
-		jsonError(w, http.StatusInternalServerError, "内部错误。")
+		jsonError(w, http.StatusInternalServerError, tr(r).T("passkey.internal"))
 		return
 	}
 	raw, _ := json.Marshal(cred)
 	p := &store.Passkey{AdminID: a.ID, Name: name, CredentialID: base64.RawURLEncoding.EncodeToString(cred.ID), CredentialJSON: string(raw)}
 	if err := s.St.AddPasskey(r.Context(), p); errors.Is(err, store.ErrConflict) {
-		jsonError(w, http.StatusBadRequest, "此通行密钥已添加。")
+		jsonError(w, http.StatusBadRequest, tr(r).T("passkey.exists"))
 		return
 	} else if err != nil {
-		jsonError(w, http.StatusInternalServerError, "内部错误。")
+		jsonError(w, http.StatusInternalServerError, tr(r).T("passkey.internal"))
 		return
 	}
 	s.audit(r, "passkey.create", "admin", a.ID, a.Username, nil, map[string]any{"name": name})
-	to, err := s.methodAdded(w, r, a, before, "通行密钥已添加。")
+	to, err := s.methodAdded(w, r, a, before, tr(r).T("passkey.added"))
 	if err != nil {
-		jsonError(w, http.StatusInternalServerError, "内部错误。")
+		jsonError(w, http.StatusInternalServerError, tr(r).T("passkey.internal"))
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"redirect": to})
@@ -207,7 +206,7 @@ func (s *Server) passkeyDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	password := r.FormValue("password")
 	if password != "" {
-		if msg := s.recheckPassword(a, password); msg != "" {
+		if msg := s.recheckPassword(r, a, password); msg != "" {
 			s.redirect(w, r, "/me#two-step", "error", msg)
 			return
 		}
@@ -226,17 +225,17 @@ func (s *Server) passkeyDelete(w http.ResponseWriter, r *http.Request) {
 		s.notFound(w, r)
 		return
 	case errors.Is(err, errPasswordNeeded):
-		s.redirect(w, r, "/me#two-step", "error", "请输入当前密码。")
+		s.redirect(w, r, "/me#two-step", "error", tr(r).T("passkey.password_needed"))
 		return
 	case errors.Is(err, store.ErrLastMethod):
-		s.redirect(w, r, "/me#two-step", "error", lastMethodText)
+		s.redirect(w, r, "/me#two-step", "error", tr(r).T("twostep.last_method"))
 		return
 	case err != nil:
 		s.internal(w, r, err)
 		return
 	}
 	s.audit(r, "passkey.delete", "admin", a.ID, a.Username, nil, map[string]any{"name": name})
-	s.redirect(w, r, "/me#two-step", "ok", "通行密钥已删除。")
+	s.redirect(w, r, "/me#two-step", "ok", tr(r).T("passkey.deleted"))
 }
 
 // ---- sign-in (second step) ----
@@ -244,22 +243,22 @@ func (s *Server) passkeyDelete(w http.ResponseWriter, r *http.Request) {
 func (s *Server) stepPasskeyOptions(w http.ResponseWriter, r *http.Request) {
 	a := pendingAdmin(r)
 	if s.passkeys == nil {
-		jsonError(w, http.StatusNotFound, passkeyUnavailable)
+		jsonError(w, http.StatusNotFound, tr(r).T("passkey.unavailable"))
 		return
 	}
 	if s.stepFails.Exceeded(itoa(a.ID)) {
-		jsonError(w, http.StatusTooManyRequests, tooManySteps)
+		jsonError(w, http.StatusTooManyRequests, tr(r).T("login.too_many"))
 		return
 	}
 	u, err := s.passkeyUser(r, a)
 	if err != nil || len(u.creds) == 0 {
-		jsonError(w, http.StatusBadRequest, "未添加通行密钥。")
+		jsonError(w, http.StatusBadRequest, tr(r).T("passkey.none"))
 		return
 	}
 	assertion, session, err := s.passkeys.BeginLogin(u)
 	if err != nil {
 		s.Log.Error("passkey login start failed", "err", err)
-		jsonError(w, http.StatusInternalServerError, "内部错误。")
+		jsonError(w, http.StatusInternalServerError, tr(r).T("passkey.internal"))
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"token": s.ceremonies.put(s.Now(), a.ID, session), "options": assertion})
@@ -268,22 +267,22 @@ func (s *Server) stepPasskeyOptions(w http.ResponseWriter, r *http.Request) {
 func (s *Server) stepPasskey(w http.ResponseWriter, r *http.Request) {
 	a := pendingAdmin(r)
 	if s.passkeys == nil {
-		jsonError(w, http.StatusNotFound, passkeyUnavailable)
+		jsonError(w, http.StatusNotFound, tr(r).T("passkey.unavailable"))
 		return
 	}
 	req, err := readPasskeyRequest(w, r)
 	if err != nil {
-		jsonError(w, http.StatusBadRequest, "请求无效。")
+		jsonError(w, http.StatusBadRequest, tr(r).T("passkey.bad_request"))
 		return
 	}
 	session, ok := s.ceremonies.take(s.Now(), req.Token, a.ID)
 	if !ok {
-		jsonError(w, http.StatusBadRequest, "操作已超时，请重试。")
+		jsonError(w, http.StatusBadRequest, tr(r).T("passkey.expired"))
 		return
 	}
 	u, err := s.passkeyUser(r, a)
 	if err != nil {
-		jsonError(w, http.StatusInternalServerError, "内部错误。")
+		jsonError(w, http.StatusInternalServerError, tr(r).T("passkey.internal"))
 		return
 	}
 	var cred *webauthn.Credential
@@ -301,12 +300,12 @@ func (s *Server) stepPasskey(w http.ResponseWriter, r *http.Request) {
 		return err == nil, nil
 	})
 	if limited {
-		jsonError(w, http.StatusTooManyRequests, tooManySteps)
+		jsonError(w, http.StatusTooManyRequests, tr(r).T("login.too_many"))
 		return
 	}
 	if !ok {
 		s.stepFailed(r, a, "passkey")
-		jsonError(w, http.StatusUnauthorized, "通行密钥验证失败。")
+		jsonError(w, http.StatusUnauthorized, tr(r).T("passkey.failed"))
 		return
 	}
 	for i, c := range u.creds {
@@ -319,7 +318,7 @@ func (s *Server) stepPasskey(w http.ResponseWriter, r *http.Request) {
 	}
 	to, err := s.completeStep(w, r, a, "passkey", req.Next)
 	if err != nil {
-		jsonError(w, http.StatusInternalServerError, "内部错误。")
+		jsonError(w, http.StatusInternalServerError, tr(r).T("passkey.internal"))
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"redirect": to})

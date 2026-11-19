@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/hex"
+	"siplink/internal/i18n"
 )
 
 // ThemeMode values are the Kotlin enum names.
@@ -271,7 +272,7 @@ func UploadLimit(size VideoSize, frameRate int) int {
 
 // ManagedNotice is what a change tried on the phone is answered with while the configuration
 // is managed. Port of ManagedConfig.NOTICE (app/src/main/java/com/sky/siplink/core/logic/ManagedConfig.kt).
-const ManagedNotice = "配置由远程下发，不能在本机修改"
+var ManagedNotice = i18n.M("rules.managed")
 
 // LocalUpdate is what a settings change made on the phone comes to while the configuration
 // is managed: only the user's own settings (the do not disturb switch, the appearance, the
