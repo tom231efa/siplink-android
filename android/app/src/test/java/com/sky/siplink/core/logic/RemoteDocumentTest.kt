@@ -227,6 +227,21 @@ class RemoteDocumentTest {
     }
 
     @Test
+    fun theLinesAdaptWithoutStunUnlessTheDocumentSaysOtherwise() {
+        // The fixture is from before the platform sent the two keys.
+        val older = parsed(fixture).settings
+        assertEquals(true to "", older.autoNetwork to older.stunServer)
+        val newer = parsed(with("""{"autoNetwork": false, "stunServer": "stun.example.com:3478"}""", "settings")).settings
+        assertEquals(false to "stun.example.com:3478", newer.autoNetwork to newer.stunServer)
+        assertEquals(listOf("settings.autoNetwork 格式不正确"), errors(with("\"no\"", "settings", "autoNetwork")))
+        assertEquals(listOf("settings.stunServer 格式不正确"), errors(with("3478", "settings", "stunServer")))
+        // Written as an account's server address is, or the document is refused.
+        assertEquals("[2001:db8::1]", parsed(with("\"[2001:db8::1]\"", "settings", "stunServer")).settings.stunServer)
+        assertEquals(listOf("settings.stunServer 格式不正确"), errors(with("\"stun:stun.example.com\"", "settings", "stunServer")))
+        assertEquals(listOf("settings.stunServer 格式不正确"), errors(with("\" stun.example.com\"", "settings", "stunServer")))
+    }
+
+    @Test
     fun autoAnswerIsOffUnlessSentAndItsTimeIsOneThatCanBeChosen() {
         val absent = parsed(with("""{"intercomAutoAnswer": true}""", "settings")).settings
         assertEquals(false to AutoAnswerRules.DEFAULT_SECONDS, absent.autoAnswer to absent.autoAnswerSeconds)

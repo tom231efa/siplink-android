@@ -55,6 +55,8 @@ class ManagedConfigTest {
         recordByDefault = !current.recordByDefault,
         recordingsKept = 100,
         roomLimit = 10,
+        autoNetwork = !current.autoNetwork,
+        stunServer = "stun.example.com",
         previewSide = DockSide.LEFT,
         previewPlace = 0.5f,
     )
@@ -138,6 +140,9 @@ class ManagedConfigTest {
             { it.copy(recordByDefault = !it.recordByDefault) },
             // So is how many members the PBX takes from one phone at a time.
             { it.copy(roomLimit = 10) },
+            // How the lines adapt to the networks, and the STUN server they ask.
+            { it.copy(autoNetwork = !it.autoNetwork) },
+            { it.copy(stunServer = "stun.example.com") },
         )
         locked.forEachIndexed { index, change ->
             val wanted = change(current)

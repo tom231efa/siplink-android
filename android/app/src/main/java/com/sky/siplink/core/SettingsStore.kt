@@ -99,6 +99,8 @@ class SettingsStore(private val config: Config, private val lock: ConfigLock) {
             recordByDefault = bool(KEY_RECORD_BY_DEFAULT, d.recordByDefault),
             recordingsKept = RecordingRules.keepChoice(config.getInt(SECTION, KEY_RECORDINGS_KEPT, d.recordingsKept)),
             roomLimit = RoomRules.limitOf(config.getInt(SECTION, KEY_ROOM_LIMIT, d.roomLimit)),
+            autoNetwork = bool(KEY_AUTO_NETWORK, d.autoNetwork),
+            stunServer = text(KEY_STUN_SERVER, d.stunServer),
             previewSide = enumOf(KEY_PREVIEW_SIDE, d.previewSide),
             previewPlace = PreviewDock.placeOf(config.getFloat(SECTION, KEY_PREVIEW_PLACE, d.previewPlace)),
         )
@@ -150,6 +152,8 @@ class SettingsStore(private val config: Config, private val lock: ConfigLock) {
         config.setBool(SECTION, KEY_RECORD_BY_DEFAULT, value.recordByDefault)
         config.setInt(SECTION, KEY_RECORDINGS_KEPT, value.recordingsKept)
         config.setInt(SECTION, KEY_ROOM_LIMIT, value.roomLimit)
+        config.setBool(SECTION, KEY_AUTO_NETWORK, value.autoNetwork)
+        config.setString(SECTION, KEY_STUN_SERVER, value.stunServer)
         config.setString(SECTION, KEY_PREVIEW_SIDE, value.previewSide.name)
         config.setFloat(SECTION, KEY_PREVIEW_PLACE, value.previewPlace)
         // Writing the file means writing every account in it as well, and a text field changes
@@ -228,6 +232,8 @@ class SettingsStore(private val config: Config, private val lock: ConfigLock) {
         private const val KEY_RECORD_BY_DEFAULT = "record_by_default"
         private const val KEY_RECORDINGS_KEPT = "recordings_kept"
         private const val KEY_ROOM_LIMIT = "room_limit"
+        private const val KEY_AUTO_NETWORK = "auto_network"
+        private const val KEY_STUN_SERVER = "stun_server"
         private const val KEY_PREVIEW_SIDE = "preview_side"
         private const val KEY_PREVIEW_PLACE = "preview_place"
     }

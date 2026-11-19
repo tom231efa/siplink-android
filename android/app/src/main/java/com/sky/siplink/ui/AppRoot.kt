@@ -80,6 +80,7 @@ import com.sky.siplink.engine
 import com.sky.siplink.openCallScreen
 import com.sky.siplink.ui.accounts.AccountEditScreen
 import com.sky.siplink.ui.accounts.AccountsScreen
+import com.sky.siplink.ui.accounts.LineDiagnosisScreen
 import com.sky.siplink.ui.components.FadingText
 import com.sky.siplink.ui.components.LdapRestartDialog
 import com.sky.siplink.ui.components.LocalConfigLocked
@@ -117,6 +118,7 @@ private object Routes {
     const val ACCOUNTS = "accounts"
     const val ACCOUNT_NEW = "account/new"
     const val ACCOUNT_EDIT = "account/edit/{id}"
+    const val LINE_DIAGNOSIS = "account/line/{id}"
     const val LDAP = "ldap"
     const val LDAP_NEW = "ldap/new"
     const val LDAP_EDIT = "ldap/edit/{id}"
@@ -134,6 +136,8 @@ private object Routes {
     const val SHORTCUTS = "shortcuts?account={account}"
 
     fun accountEdit(id: String) = "account/edit/${Uri.encode(id)}"
+
+    fun lineDiagnosis(id: String) = "account/line/${Uri.encode(id)}"
 
     fun ldapEdit(id: String) = "ldap/edit/${Uri.encode(id)}"
 
@@ -279,6 +283,16 @@ fun AppRoot() {
                         accountId = entry.arguments?.getString("id"),
                         onBack = { navController.popBackStack() },
                         onOpenTls = { navController.navigate(Routes.TLS) },
+                        onOpenLine = { navController.navigate(Routes.lineDiagnosis(it)) },
+                    )
+                }
+                composable(
+                    Routes.LINE_DIAGNOSIS,
+                    arguments = listOf(navArgument("id") { type = NavType.StringType }),
+                ) { entry ->
+                    LineDiagnosisScreen(
+                        accountId = entry.arguments?.getString("id").orEmpty(),
+                        onBack = { navController.popBackStack() },
                     )
                 }
                 composable(Routes.LDAP) {

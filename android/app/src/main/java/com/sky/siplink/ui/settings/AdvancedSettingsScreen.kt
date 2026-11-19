@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.Hearing
 import androidx.compose.material.icons.rounded.Lan
+import androidx.compose.material.icons.rounded.NetworkCheck
 import androidx.compose.material.icons.rounded.PhonePaused
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material3.MaterialTheme
@@ -23,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sky.siplink.core.logic.FeatureDial
 import com.sky.siplink.core.logic.IncomingPolicy
+import com.sky.siplink.core.logic.MediaAdapt
 import com.sky.siplink.core.logic.RoomRules
 import com.sky.siplink.core.logic.UserAgent
 import com.sky.siplink.core.model.DndMode
@@ -37,8 +39,8 @@ import com.sky.siplink.ui.components.SwitchRow
 
 /**
  * What most people leave as it is: who keeps do not disturb, call waiting, call forwarding, the
- * size of the conference room, and a few options of the SIP library (rate control, echo
- * cancellation, IPv6, the User-Agent name).
+ * size of the conference room, how the lines adapt to the network (with a STUN server), and a
+ * few options of the SIP library (rate control, echo cancellation, IPv6, the User-Agent name).
  */
 @Composable
 fun AdvancedSettingsScreen(onBack: () -> Unit) {
@@ -54,6 +56,7 @@ fun AdvancedSettingsScreen(onBack: () -> Unit) {
     val roomRange = RoomRules.MIN_LIMIT..RoomRules.LIMIT
     // Likewise the name, which is kept only once the rule takes it; a name set elsewhere (a remote configuration) replaces it.
     var userAgent by remember(settings.userAgent) { mutableStateOf(settings.userAgent) }
+    var stunServer by remember(settings.stunServer) { mutableStateOf(settings.stunServer) }
 
     SubScreen(title = "高级设置", onBack = onBack) {
         SectionCard(title = "来电") {
@@ -183,6 +186,26 @@ fun AdvancedSettingsScreen(onBack: () -> Unit) {
                 checked = settings.ipv6,
                 onCheckedChange = { value -> engine.updateSettings { it.copy(ipv6 = value) } },
             )
+            SwitchRow(
+                title = "自动适应网络",
+                icon = Icons.Rounded.NetworkCheck,
+                checked = settings.autoNetwork,
+                onCheckedChange = { value -> engine.updateSettings { it.copy(autoNetwork = value) } },
+            )
+            Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
+                val usable = MediaAdapt.isValidStunServer(stunServer.trim())
+                FormField(
+                    value = stunServer,
+                    onValueChange = { value ->
+                        stunServer = value
+                        if (MediaAdapt.isValidStunServer(value.trim())) engine.updateSettings { it.copy(stunServer = value.trim()) }
+                    },
+                    label = "STUN 服务器",
+                    placeholder = "主机[:端口]",
+                    error = if (usable) null else "应为 主机[:端口]",
+                    keyboardType = KeyboardType.Uri,
+                )
+            }
         }
 
         SectionCard(title = "客户端标识") {

@@ -369,6 +369,14 @@ data class Settings(
      * a PBX with fewer lines for one extension is spared the calls it would refuse.
      */
     val roomLimit: Int = com.sky.siplink.core.logic.RoomRules.LIMIT,
+    /**
+     * The lines adapt to the network they are on by themselves (core/LineDoctor.kt): another
+     * transport where UDP does not get through, a shorter registration interval where the NAT
+     * forgets them, the way by the server and symmetric RTP for a PBX behind a NAT of its own.
+     */
+    val autoNetwork: Boolean = true,
+    /** The STUN server the line checks ask, `host[:port]`; empty: none. */
+    val stunServer: String = "",
     /** Where the user put the small picture of a video call: the edge, and how far down ([com.sky.siplink.core.logic.PreviewDock]). The user's own. */
     val previewSide: DockSide = DockSide.RIGHT,
     val previewPlace: Float = 0f,

@@ -171,6 +171,9 @@ data class RemoteDocument(
                 // Clamped, not refused: a newer platform may offer a larger room than this app
                 // holds, and the rest of the document must still be taken; the app's own limit wins.
                 roomLimit = RoomRules.limitOf(fields.int("roomLimit", d.roomLimit)),
+                autoNetwork = fields.bool("autoNetwork", d.autoNetwork),
+                stunServer = fields.string("stunServer", d.stunServer).takeIf(MediaAdapt::isValidStunServer)
+                    ?: d.stunServer.also { fields.fault("stunServer") },
             )
         }
 

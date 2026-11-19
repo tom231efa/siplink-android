@@ -145,6 +145,7 @@ class SipEngine(context: Context) {
         tls = TlsManager(appContext, core, lock)
         tls.applySettings(settings.current)
         accounts = AccountManager(core, lock)
+        applyNetworkOptions(settings.current)
         recordings = RecordingStore(File(appContext.filesDir, RecordingStore.DIRECTORY)) { settings.current.recordingsKept }
         calls = CallManager(core, settings, accounts, names, recordings, RoomMonitor(appContext))
         history = HistoryManager(core, names) { settings.current.features }
@@ -195,6 +196,9 @@ class SipEngine(context: Context) {
         ) {
             applyMediaOptions(after)
         }
+        if (before.autoNetwork != after.autoNetwork || before.stunServer != after.stunServer) {
+            applyNetworkOptions(after)
+        }
         if (before.videoCalls != after.videoCalls) {
             CallVideoSupport.setEnabled(core, after.videoCalls)
             calls.onVideoAllowedChanged()
@@ -221,6 +225,12 @@ class SipEngine(context: Context) {
         core.isAdaptiveRateControlEnabled = settings.adaptiveRateControl
         core.isEchoCancellationEnabled = settings.echoCancellation
         core.isIpv6Enabled = settings.ipv6
+    }
+
+    /** Whether the lines adapt to the network, and the STUN server the line checks ask. */
+    private fun applyNetworkOptions(settings: Settings) {
+        accounts.autoAdapt = settings.autoNetwork
+        accounts.stunServer = settings.stunServer
     }
 
     private fun applyDtmfMode(mode: DtmfMode) {

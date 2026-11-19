@@ -12,7 +12,7 @@ import org.junit.Test
 
 /**
  * The golden documents of the management platform, copied unchanged from its repository
- * (`docs/examples/provisioning-document.json`, the three of `internal/provision/testdata/`): the app has
+ * (`docs/examples/provisioning-document.json`, the four of `internal/provision/testdata/`): the app has
  * to take each of them as the platform builds it. Their CAs and passwords are test data.
  */
 class PlatformDocumentsTest {
@@ -22,6 +22,10 @@ class PlatformDocumentsTest {
         assertTrue("$name refused: $result", result is RemoteDocument.Parsed.Ok)
         return (result as RemoteDocument.Parsed.Ok).document
     }
+
+    /** The room size, the adaptation to the network and the STUN server of [document]. */
+    private fun network(document: RemoteDocument): List<Any> =
+        document.settings.let { listOf(it.roomLimit, it.autoNetwork, it.stunServer) }
 
     private fun caNames(document: RemoteDocument): List<String> =
         document.caCertificates.map { CertificateTools.commonName(it.subjectX500Principal.name) }
@@ -59,6 +63,8 @@ class PlatformDocumentsTest {
         assertEquals(true, document.settings.ipv6)
         assertEquals(true, document.settings.autoAnswer)
         assertEquals(5, document.settings.autoAnswerSeconds)
+        // Left out, as they are the app's defaults.
+        assertEquals(listOf(30, true, ""), network(document))
     }
 
     @Test
@@ -104,5 +110,13 @@ class PlatformDocumentsTest {
         assertNull("No codecs: the SDK's defaults", document.codecs)
         assertEquals("700", document.settings.features.park)
         assertEquals(Settings().copy(features = document.settings.features), document.settings)
+        assertEquals(listOf(30, true, ""), network(document))
+    }
+
+    @Test
+    fun theDocumentWithRoomSizeAndNetworkSettingsIsTaken() {
+        val document = read("platform-provision-testdata-room-network.json")
+        assertEquals(listOf("p1"), document.accounts.map { it.key })
+        assertEquals(listOf(8, false, "stun.example.com:3478"), network(document))
     }
 }

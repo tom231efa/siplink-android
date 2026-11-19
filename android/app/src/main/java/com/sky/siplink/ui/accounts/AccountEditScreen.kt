@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.NetworkCheck
 import androidx.compose.material.icons.rounded.Power
 import androidx.compose.material.icons.rounded.VerifiedUser
 import androidx.compose.material.icons.rounded.Voicemail
@@ -69,7 +70,7 @@ private fun defaultPort(transport: SipTransport): String = AccountRoute.defaultP
  * makes it the default one.
  */
 @Composable
-fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> Unit) {
+fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> Unit, onOpenLine: (String) -> Unit = {}) {
     val context = LocalContext.current
     val manager = context.engine.accounts
     val messenger = LocalMessenger.current
@@ -277,6 +278,17 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
                 checked = subscribeMwi,
                 onCheckedChange = { subscribeMwi = it },
             )
+        }
+
+        if (existing != null) {
+            // Also under a managed configuration: the checks only look.
+            SectionCard(title = null) {
+                NavRow(
+                    title = "线路诊断",
+                    icon = Icons.Rounded.NetworkCheck,
+                    onClick = { onOpenLine(existing.id) },
+                )
+            }
         }
 
         SectionCard(title = null) {
