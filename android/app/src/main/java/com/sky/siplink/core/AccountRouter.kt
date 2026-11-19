@@ -25,6 +25,8 @@ import java.util.concurrent.Executors
  *
  * @param find the account with an id, [idOf] the id of an account
  * @param onChanged called after the router changed an account, so that it is shown anew
+ * @param holds whether failed registrations are to be taken as they come: the network wants a
+ *   login first, and no server would be reached
  */
 internal class AccountRouter(
     private val core: Core,
@@ -32,6 +34,7 @@ internal class AccountRouter(
     private val find: (String) -> Account?,
     private val idOf: (Account) -> String,
     private val onChanged: (Account) -> Unit,
+    private val holds: () -> Boolean = { false },
 ) {
     /** What is going on with one account. */
     private class State {
@@ -147,7 +150,7 @@ internal class AccountRouter(
                 }
             }
             RegistrationState.Failed -> {
-                if (!AccountRoute.isServerDown(account.errorInfo.protocolCode)) return
+                if (!AccountRoute.isServerDown(account.errorInfo.protocolCode) || holds()) return
                 state.failures++
                 val switch = record.backup.isNotEmpty() && AccountRoute.switchesNow(state.failures)
                 if (switch && !backup && state.returning) state.failedReturns++
@@ -236,7 +239,7 @@ internal class AccountRouter(
         val server = serverOf(account, record, backup = false)
         val (host, port) = AccountRoute.split(server)
         val lookup = needsLookup(server, record)
-        val from = account.params.identityAddress?.let { "${it.username}@${hostPortOf(it)}" }.orEmpty()
+        val from = fromOf(account.params.identityAddress)
         val userAgent = core.userAgent
         probes.ask("$server/$transport@${record.dns}", {
             val target = if (lookup) {
@@ -330,6 +333,12 @@ internal fun hostPortOf(address: Address?): String {
     val port = address?.port ?: 0
     return if (port > 0) "$literal:$port" else literal
 }
+
+/** The host the core connects to for the server [address]: the address the router pinned (maddr), else its name. */
+internal fun connectHostOf(address: Address): String = address.getUriParam("maddr")?.ifEmpty { null } ?: address.domain.orEmpty()
+
+/** `user@domain` of the account with [identity], for the From of the app's own requests. */
+internal fun fromOf(identity: Address?): String = identity?.let { "${it.username}@${hostPortOf(it)}" }.orEmpty()
 
 internal fun transportOf(address: Address?): SipTransport = when (address?.transport) {
     TransportType.Tcp -> SipTransport.TCP

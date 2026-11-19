@@ -67,6 +67,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sky.siplink.core.logic.AccountRules
+import com.sky.siplink.core.logic.LineAdapt
 import com.sky.siplink.core.model.RegState
 import com.sky.siplink.core.model.SipAccount
 import com.sky.siplink.core.model.SipTransport
@@ -89,6 +90,7 @@ fun AccountsScreen(onBack: () -> Unit, onAdd: () -> Unit, onEdit: (String) -> Un
     val context = LocalContext.current
     val manager = context.engine.accounts
     val accounts by manager.accounts.collectAsStateWithLifecycle()
+    val adapted by manager.adaptedTransports.collectAsStateWithLifecycle()
     val messenger = LocalMessenger.current
     val locked = LocalConfigLocked.current
     val focusManager = LocalFocusManager.current
@@ -208,6 +210,7 @@ fun AccountsScreen(onBack: () -> Unit, onAdd: () -> Unit, onEdit: (String) -> Un
                     items(filtered, key = { it.id }) { account ->
                         AccountRow(
                             account = account,
+                            adapted = adapted[account.id],
                             onClick = { onEdit(account.id) },
                             onToggle = { manager.setEnabled(account.id, it) },
                             canToggle = !locked,
@@ -286,9 +289,11 @@ private fun SummaryStat(color: Color, text: String) {
     }
 }
 
+/** @param adapted the transport the line runs on instead of the account's own; null: its own */
 @Composable
 private fun AccountRow(
     account: SipAccount,
+    adapted: SipTransport?,
     onClick: () -> Unit,
     onToggle: (Boolean) -> Unit,
     canToggle: Boolean,
@@ -342,7 +347,7 @@ private fun AccountRow(
                 )
                 Spacer(Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (account.transport == SipTransport.TLS) {
+                    if ((adapted ?: account.transport) == SipTransport.TLS) {
                         Icon(
                             Icons.Rounded.Lock,
                             contentDescription = null,
@@ -352,7 +357,7 @@ private fun AccountRow(
                         Spacer(Modifier.width(3.dp))
                     }
                     FadingText(
-                        "${account.transport.name} · ${account.error ?: regStateLabel(account.state)}" +
+                        "${adapted?.let(LineAdapt::label) ?: account.transport.name} · ${account.error ?: regStateLabel(account.state)}" +
                             if (account.onBackup) " · 备用服务器" else "",
                         style = MaterialTheme.typography.labelMedium,
                         color = regStateColor(account.state),

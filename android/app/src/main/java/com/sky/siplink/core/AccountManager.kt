@@ -4,8 +4,10 @@ import android.os.Handler
 import android.os.Looper
 import com.sky.siplink.core.logic.AccountRules
 import com.sky.siplink.core.model.AccountDraft
+import com.sky.siplink.core.model.CallMediaSummary
 import com.sky.siplink.core.model.RegState
 import com.sky.siplink.core.model.SipAccount
+import com.sky.siplink.core.model.SipTransport
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -44,8 +46,27 @@ class AccountManager(private val core: Core, private val lock: ConfigLock) {
     /** The removed accounts that are still unregistering, by native pointer. */
     private val retired = HashMap<Long, Parting>()
 
+    /** How the lines adapt to the network they are on. */
+    private val doctor = LineDoctor(core, handler, ::find, ::idOf, ::noteChanged)
+
+    /** How the sound of the last call of each account went, for the line checks. */
+    private val media = CallMediaWatch(core, ::idOf)
+
     /** Backup servers and DNS servers of the accounts. */
-    private val router = AccountRouter(core, handler, ::find, ::idOf, ::noteChanged)
+    private val router = AccountRouter(core, handler, ::find, ::idOf, ::noteChanged, doctor::holds)
+
+    /** Whether the lines adapt to the network by themselves ([LineDoctor]). */
+    var autoAdapt: Boolean
+        get() = doctor.enabled
+        set(value) {
+            doctor.enabled = value
+        }
+
+    /** The STUN server the line checks ask, `host[:port]`; empty: none. */
+    var stunServer: String = ""
+
+    /** The accounts whose line runs on another transport than their own just now, with that transport. */
+    val adaptedTransports: StateFlow<Map<String, SipTransport>> get() = doctor.transports
 
     /** Accounts whose registration state changed since the list was last published, by native pointer. */
     private val changed = LinkedHashMap<Long, Account>()
@@ -77,11 +98,26 @@ class AccountManager(private val core: Core, private val lock: ConfigLock) {
             return
         }
         router.onRegistration(account)
+        doctor.onRegistration(account)
         noteChanged(account)
     }
 
     /** The network is back, maybe another one: the addresses of the servers may differ there. */
-    fun onNetworkReachable() = router.refresh()
+    fun onNetworkReachable() {
+        doctor.onReachable()
+        router.refresh()
+    }
+
+    // ---------------------------------------------------------------- the line checks
+
+    /** What the line of account [id] runs on instead of its own settings; null: its own. */
+    internal fun adaptation(id: String): LineDoctor.Adaptation? = doctor.adaptation(id)
+
+    /** How the sound of the last call of account [id] went; null without one since the app started. */
+    fun lastCall(id: String): CallMediaSummary? = media.lastCall(id)
+
+    /** Puts the line of account [id] back on its own settings, everywhere, and forgets what was learned for it. */
+    fun resetAdaptation(id: String) = doctor.forget(id)
 
     /** Has [account] shown anew with the next list that is published. */
     private fun noteChanged(account: Account) {
@@ -204,9 +240,12 @@ class AccountManager(private val core: Core, private val lock: ConfigLock) {
         }
 
         val params = account.params.clone()
+        // What the line adapted to goes, and is learned anew where the way to the server changed.
+        doctor.release(id, params, forget = rerouted)
         applyParams(id, params, draft, identity, server)
         account.params = params
         if (rerouted) router.begin(id)
+        doctor.reapply(id)
         storeName(id, draft.name)
 
         if (credentialsChanged || password != savedPassword) {
@@ -242,6 +281,8 @@ class AccountManager(private val core: Core, private val lock: ConfigLock) {
         core.removeAccount(account)
         storeName(id, "")
         router.forget(id)
+        doctor.forget(id)
+        media.forget(id)
         when {
             auth == null -> Unit
             registered -> {
@@ -413,6 +454,8 @@ class AccountManager(private val core: Core, private val lock: ConfigLock) {
         val domain = hostPortOf(identity)
         val server = hostPortOf(serverAddress)
         val route = router.view(id, account)
+        // The account as the user set it up, not what its line adapted to.
+        val own = doctor.own(id)
         val waiting = route?.record?.waiting == true
         val enabled = params.isRegisterEnabled || waiting
         val registration = account.state
@@ -432,8 +475,8 @@ class AccountManager(private val core: Core, private val lock: ConfigLock) {
             authUser = account.findAuthInfo()?.userid.orEmpty(),
             // What the core holds is the server in use, which may be the backup one.
             server = route?.record?.primary ?: if (server.equals(domain, ignoreCase = true)) "" else server,
-            transport = transportOf(serverAddress),
-            expires = params.expires,
+            transport = own?.transport ?: transportOf(serverAddress),
+            expires = own?.expires ?: params.expires,
             enabled = enabled,
             state = state,
             isDefault = id == defaultId,
