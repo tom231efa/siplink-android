@@ -47,8 +47,6 @@ data class RoomMember(
     val poorLink: Boolean = false,
     /** The quality of the connection in bars, 1 to 3 ([com.sky.siplink.core.logic.RoomHealth.signalBars]); null before it was measured. */
     val signal: Int? = null,
-    /** The last measurement of a connection that is poor ([poorLink]); null otherwise. */
-    val link: LinkReadings? = null,
 ) {
     /** In the room, on its way in, or waiting to be called: it counts against the limit and is not called again. */
     val taken: Boolean get() = state != MemberState.LEFT && state != MemberState.HELD_BACK
@@ -82,11 +80,20 @@ data class RoomInfo(
     val openedAt: Long,
     /** The warnings that stand right now; empty while all is well. */
     val warnings: Set<RoomWarning> = emptySet(),
-    /** The last measurement of the phone; null before the first one. */
-    val device: DeviceReadings? = null,
     /** The user is out of the room's sound (another app took it); the members go on among themselves. */
     val away: Boolean = false,
 ) {
     /** The members that are in the room, on their way in, or waiting to be called: what the limit counts. */
     val present: Int get() = members.count { it.taken }
 }
+
+/**
+ * What the readings of the open room show, measured anew every two seconds. Apart from [RoomInfo],
+ * so that the call screen is not drawn anew for each measurement.
+ */
+data class RoomReadings(
+    /** The last measurement of the phone; null before the first one. */
+    val device: DeviceReadings? = null,
+    /** The last measurement of each connection that is poor ([RoomMember.poorLink]), by member id. */
+    val poorLinks: Map<Long, LinkReadings> = emptyMap(),
+)

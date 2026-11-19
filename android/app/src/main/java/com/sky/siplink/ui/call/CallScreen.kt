@@ -74,6 +74,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -120,7 +121,8 @@ fun CallScreen(
     val calls = context.engine.calls
     val live by calls.call.collectAsStateWithLifecycle()
     // Keep showing the last known call while the screen animates away.
-    var shown by remember { mutableStateOf(live) }
+    val last = remember { LastShown(live) }
+    val info = live?.also { last.call = it } ?: last.call
     var keypadOpen by remember { mutableStateOf(false) }
     var transferOpen by remember { mutableStateOf(false) }
     var shortcutsOpen by remember { mutableStateOf(false) }
@@ -152,7 +154,6 @@ fun CallScreen(
     val presence = remember { Animatable(0f) }
     LaunchedEffect(live) {
         if (live != null) {
-            shown = live
             presence.animateTo(1f, tween(APPEAR_MS))
         } else {
             presence.animateTo(0f, tween(DISAPPEAR_MS))
@@ -177,7 +178,6 @@ fun CallScreen(
         addMembersOpen = false
     }
 
-    val info = shown
     // A ringing call lets what is behind the window shine through where the system blurs it (CallBackground).
     val tint = animateFloatAsState(
         targetValue = if (info?.phase == CallPhase.INCOMING && glass) GLASS_TINT else 1f,
@@ -363,6 +363,13 @@ private fun CallBackground(tint: () -> Float) {
         )
     }
 }
+
+/**
+ * The last call the screen showed, which it keeps showing while it animates away once the call
+ * is gone. A plain holder rather than state: what it holds only matters once the call is gone, and
+ * state written as the call changes would draw the screen twice for each change.
+ */
+private class LastShown(var call: CallInfo?)
 
 /** How much of what is behind a ringing call its dark tint covers where the system blurs it. */
 private const val GLASS_TINT = 0.72f
@@ -686,34 +693,42 @@ private fun StatusLine(info: CallInfo) {
         },
         label = "callStatus",
     ) { phase ->
-        val text = when (phase) {
-            CallPhase.INCOMING -> when {
-                info.intercom -> "对讲呼叫"
-                info.videoOffer -> "视频来电"
-                else -> "来电"
+        val style = MaterialTheme.typography.titleMedium.copy(color = Color.White.copy(alpha = 0.88f), fontWeight = FontWeight.Medium)
+        val connectedAt = info.connectedAt
+        if (phase == CallPhase.CONNECTED && connectedAt != null) {
+            CallTimer(connectedAt, style)
+        } else {
+            val text = when (phase) {
+                CallPhase.INCOMING -> when {
+                    info.intercom -> "对讲呼叫"
+                    info.videoOffer -> "视频来电"
+                    else -> "来电"
+                }
+                CallPhase.OUTGOING -> "正在呼叫…"
+                CallPhase.CONNECTED -> "已接通"
+                CallPhase.HELD -> "通话已保留"
+                CallPhase.ENDED -> info.endReason ?: "通话结束"
             }
-            CallPhase.OUTGOING -> "正在呼叫…"
-            CallPhase.CONNECTED -> callTimer(info.connectedAt)
-            CallPhase.HELD -> "通话已保留"
-            CallPhase.ENDED -> info.endReason ?: "通话结束"
+            Text(text, style = style)
         }
-        Text(
-            text,
-            style = MaterialTheme.typography.titleMedium,
-            color = Color.White.copy(alpha = 0.88f),
-            fontWeight = FontWeight.Medium,
-        )
     }
 }
 
+/**
+ * How long a call (or the room) has been up since [since] (SystemClock.elapsedRealtime()). It
+ * counts on as each second is complete, and only this text is drawn anew for it.
+ */
 @Composable
-internal fun callTimer(connectedAt: Long?): String {
-    if (connectedAt == null) return "已接通"
-    val now by produceState(SystemClock.elapsedRealtime(), connectedAt) {
+internal fun CallTimer(since: Long, style: TextStyle) {
+    val seconds by produceState(elapsedSeconds(since), since) {
         while (true) {
-            value = SystemClock.elapsedRealtime()
-            delay(500)
+            value = elapsedSeconds(since)
+            delay(MS_PER_SECOND - (SystemClock.elapsedRealtime() - since).mod(MS_PER_SECOND))
         }
     }
-    return Formatters.duration((now - connectedAt) / 1000)
+    Text(Formatters.duration(seconds), style = style)
 }
+
+private fun elapsedSeconds(since: Long): Long = (SystemClock.elapsedRealtime() - since) / MS_PER_SECOND
+
+private const val MS_PER_SECOND = 1000L

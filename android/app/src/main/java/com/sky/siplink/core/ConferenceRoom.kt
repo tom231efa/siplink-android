@@ -13,7 +13,11 @@ import com.sky.siplink.core.model.AudioRoute
 import com.sky.siplink.core.model.MemberState
 import com.sky.siplink.core.model.RoomInfo
 import com.sky.siplink.core.model.RoomMember
+import com.sky.siplink.core.model.RoomReadings
 import com.sky.siplink.core.model.SideCall
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import org.linphone.core.Account
 import org.linphone.core.Call
 import org.linphone.core.Conference
@@ -43,6 +47,9 @@ internal class ConferenceRoom(
     private val onChanged: () -> Unit,
 ) {
     private class Member(val id: Long, var call: Call?, var side: SideCall) {
+        /** [side] is to be looked up again from the call: its state changed, or names were found ([snapshot]). */
+        var sideStale = false
+
         /** Why the call ended; set from its End or Error. */
         var endReason: String? = null
 
@@ -86,6 +93,10 @@ internal class ConferenceRoom(
     private var nextId = 1L
     private var openedAt = 0L
     private var sample: RoomMonitor.Sample? = null
+    private val readingsState = MutableStateFlow<RoomReadings?>(null)
+
+    /** The last measurements of the open room, for its readings only; null while there is none. */
+    val readings: StateFlow<RoomReadings?> = readingsState.asStateFlow()
 
     /** The user ends the room: being out of its sound from now on is no absence. */
     private var ending = false
@@ -178,7 +189,11 @@ internal class ConferenceRoom(
         created.microphoneMuted = muted
         openedAt = SystemClock.elapsedRealtime()
         calls.forEach(::add)
-        monitor.start(members = ::memberCalls) { sample = it; onChanged() }
+        monitor.start(members = ::memberCalls) {
+            sample = it
+            readingsState.value = RoomReadings(it.device, it.links.filterKeys { id -> id in it.health.poorMembers })
+            onChanged()
+        }
         return null
     }
 
@@ -304,6 +319,7 @@ internal class ConferenceRoom(
      */
     fun onStateChanged(call: Call, state: Call.State?) {
         val all = find(call) ?: return
+        all.sideStale = true
         if (state == Call.State.Connected && all.connectedAt == 0L) all.connectedAt = SystemClock.elapsedRealtime()
         if (state == Call.State.End || state == Call.State.Error) {
             // Another call took its place ([replace]): its end says nothing about the PBX.
@@ -496,6 +512,9 @@ internal class ConferenceRoom(
         if (!isEnded(old)) old.terminate()
     }
 
+    /** The directory found names: those of the members are looked up again. */
+    fun onNamesFound() = members.forEach { it.sideStale = true }
+
     /** A member's [call] ended for [reason]. */
     fun onEnded(call: Call, reason: String?) {
         find(call)?.endReason = reason
@@ -537,15 +556,22 @@ internal class ConferenceRoom(
         return true
     }
 
-    /** What the call screen shows of the room; null while there is none. */
+    /**
+     * What the call screen shows of the room; null while there is none. The other side of a
+     * member's call is looked up only after its state changed or names were found: with many
+     * members that takes the SDK most of the time of a snapshot, taken every two seconds.
+     */
     fun snapshot(): RoomInfo? {
         if (conference == null) return null
         val health = sample?.health
         val poor = health?.poorMembers.orEmpty()
         return RoomInfo(
             members = members.map { member ->
-                member.call?.let { member.side = party(it) }
                 val call = member.call
+                if (call != null && member.sideStale) {
+                    member.side = party(call)
+                    member.sideStale = false
+                }
                 RoomMember(
                     id = member.id,
                     name = member.side.name,
@@ -559,15 +585,12 @@ internal class ConferenceRoom(
                     endReason = member.heldBack ?: member.endReason,
                     poorLink = member.id in poor,
                     signal = RoomHealth.signalBars(sample?.links?.get(member.id)?.quality),
-                    // Only what the readings show: the rows stay as they are while the values move.
-                    link = sample?.links?.get(member.id)?.takeIf { member.id in poor },
                 )
             },
             limit = limit(),
             openedAt = openedAt,
             away = !ending && conference?.isIn == false,
             warnings = health?.warnings.orEmpty(),
-            device = sample?.device,
         )
     }
 
@@ -582,6 +605,7 @@ internal class ConferenceRoom(
     private fun close() {
         monitor.stop()
         sample = null
+        readingsState.value = null
         ending = false
         // The SDK ends a conference by itself once its last participant is gone.
         conference = null

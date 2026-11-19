@@ -196,7 +196,7 @@ private fun ColumnScope.RoomHead(info: CallInfo, room: RoomInfo, calls: CallMana
                     color = Color.White.copy(alpha = 0.7f),
                 )
             }
-            Text(callTimer(room.openedAt), style = MaterialTheme.typography.bodyLarge, color = Color.White.copy(alpha = 0.7f))
+            CallTimer(room.openedAt, MaterialTheme.typography.bodyLarge.copy(color = Color.White.copy(alpha = 0.7f)))
         }
         // Each warning keeps its chip while that fades out, also when no warning stands any more.
         AnimatedContent(
@@ -212,7 +212,7 @@ private fun ColumnScope.RoomHead(info: CallInfo, room: RoomInfo, calls: CallMana
         enter = expandVertically() + fadeIn(),
         exit = shrinkVertically() + fadeOut(),
     ) {
-        Readings(room)
+        Readings(room, calls)
     }
     AnimatedVisibility(
         visible = room.away,
@@ -260,10 +260,11 @@ private fun warningText(warning: RoomWarning): String = when (warning) {
     RoomWarning.NETWORK -> "网络质量差"
 }
 
-/** What was measured last: of the phone, and of the members whose connection is poor. */
+/** What was measured last: of the phone, and of the members whose connection is poor. Only this follows the measurements. */
 @Composable
-private fun Readings(room: RoomInfo) {
-    val device = room.device
+private fun Readings(room: RoomInfo, calls: CallManager) {
+    val readings by calls.roomReadings.collectAsStateWithLifecycle()
+    val device = readings?.device
     Column(
         Modifier
             .padding(top = 10.dp)
@@ -278,7 +279,7 @@ private fun Readings(room: RoomInfo) {
         Reading("设备温度", device?.let { thermalText(it.thermalStatus) }, device != null && RoomHealth.hot(device))
         Reading("内存", device?.let { if (it.lowMemory) "不足" else "正常" }, device?.lowMemory == true)
         room.members.filter { it.poorLink }.take(MAX_POOR_SHOWN).forEach { member ->
-            Reading(member.name, member.link?.let(::linkText), highlighted = true)
+            Reading(member.name, readings?.poorLinks?.get(member.id)?.let(::linkText), highlighted = true)
         }
     }
 }

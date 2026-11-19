@@ -144,7 +144,7 @@ class ConferenceLoadTest : RoomTestBase("conference-load") {
             onMain { }
             mainLag += SystemClock.uptimeMillis() - asked
             val room = room() ?: break
-            room.device?.let {
+            engine.calls.roomReadings.value?.device?.let {
                 cpu += it.cpuPercent
                 thread += it.busiestThreadPercent
                 thermal += it.thermalStatus

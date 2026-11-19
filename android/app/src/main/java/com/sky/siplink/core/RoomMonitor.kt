@@ -76,7 +76,8 @@ class RoomMonitor(context: Context) {
         val token = round
         val calls = members()
         val links = calls.mapNotNull { (member, call) -> linkOf(call)?.let { member to it } }.toMap()
-        val codec = calls.values.firstNotNullOfOrNull { it.currentParams.usedAudioPayloadType }
+        // For the log only: not asked of the SDK in a release build.
+        val codec = calls.values.takeIf { BuildConfig.DEBUG }?.firstNotNullOfOrNull { it.currentParams.usedAudioPayloadType }
             ?.let { "${it.mimeType}/${it.clockRate}" }
         worker.execute {
             val device = sampleDevice()

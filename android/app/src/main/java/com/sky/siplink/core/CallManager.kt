@@ -19,6 +19,7 @@ import com.sky.siplink.core.model.AudioRoute
 import com.sky.siplink.core.model.CallInfo
 import com.sky.siplink.core.model.CallPhase
 import com.sky.siplink.core.model.RoomInfo
+import com.sky.siplink.core.model.RoomReadings
 import com.sky.siplink.core.model.SideCall
 import com.sky.siplink.core.model.SupervisionMode
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -70,6 +71,9 @@ class CallManager(
 
     private val state = MutableStateFlow<CallInfo?>(null)
     val call: StateFlow<CallInfo?> = state.asStateFlow()
+
+    /** The last measurements of the open conference room, for its readings only; null while there is none. */
+    val roomReadings: StateFlow<RoomReadings?> get() = room.readings
 
     init {
         names.addListener(::onNamesFound)
@@ -686,6 +690,7 @@ class CallManager(
 
     /** The directory found a name: show it on the call that is up, and where that call is being announced. */
     private fun onNamesFound() {
+        room.onNamesFound()
         val info = publish() ?: return
         val call = current ?: return
         if (isRinging(call) && call.dir == Call.Dir.Incoming) host?.updateIncomingCall(info)
