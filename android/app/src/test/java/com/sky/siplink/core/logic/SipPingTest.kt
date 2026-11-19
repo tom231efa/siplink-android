@@ -37,4 +37,47 @@ class SipPingTest {
         assertFalse(SipPing.isAnswer(request, "abc123"))
         assertFalse(SipPing.isAnswer("", "abc123"))
     }
+
+    @Test
+    fun `a padded request has the size asked for and stays a request`() {
+        val large = SipPing.options("pbx.example.com", "1001@example.com", "192.0.2.7:40000", "abc123", "UA", size = 1400)
+        assertEquals(1400, large.length)
+        assertTrue(large.startsWith("OPTIONS sip:pbx.example.com SIP/2.0\r\n"))
+        assertTrue(large.endsWith("Content-Length: 0\r\n\r\n"))
+        // Asked for less than the plain request, it stays as it is.
+        assertEquals(request, SipPing.options("pbx.example.com:5080", "1001@example.com", "192.0.2.7:40000", "abc123", "LinphoneSDK/5.5.39 SipLink/0.1.1", size = 100))
+    }
+
+    @Test
+    fun `the answer tells where the server saw the request`() {
+        val packet = "SIP/2.0 200 OK\r\nVia: SIP/2.0/UDP 192.0.2.7:40000;branch=z9hG4bKabc123;received=203.0.113.7;rport=51234\r\n" +
+            "Call-ID: abc123\r\nContent-Length: 0\r\n\r\n"
+        val answer = SipPing.answer(packet, "abc123", "192.0.2.7:40000", 12)!!
+        assertEquals(200, answer.status)
+        assertEquals("203.0.113.7", answer.received)
+        assertEquals(51234, answer.rport)
+        assertTrue(answer.sentByIntact)
+        assertTrue(answer.lengthIntact)
+        assertEquals(12L, answer.rttMs)
+    }
+
+    @Test
+    fun `a rewritten via and a wrong length are noticed`() {
+        val packet = "SIP/2.0 404 Not Found\r\nv: SIP/2.0/UDP 203.0.113.7:51234;rport=51234;branch=z9hG4bKabc123\r\n" +
+            "Call-ID: abc123\r\nl: 5\r\n\r\nab"
+        val answer = SipPing.answer(packet, "abc123", "192.0.2.7:40000", 3)!!
+        assertEquals(404, answer.status)
+        assertEquals(null, answer.received)
+        assertEquals(51234, answer.rport)
+        assertFalse(answer.sentByIntact)
+        assertFalse(answer.lengthIntact)
+        assertEquals(null, SipPing.answer("SIP/2.0 200 OK\r\nCall-ID: other\r\n\r\n", "abc123", "x", 1))
+    }
+
+    @Test
+    fun `the top via of several is read`() {
+        val via = SipPing.topVia("SIP/2.0 200 OK\r\nVia: SIP/2.0/UDP a:1;rport=2, SIP/2.0/UDP b:3\r\nVia: SIP/2.0/UDP c:4\r\n\r\n")!!
+        assertEquals("a:1", via.sentBy)
+        assertEquals("2", via.params["rport"])
+    }
 }
