@@ -63,7 +63,7 @@
 - 免打扰、外观和通话记录仍由用户自己设置；可另建最多 50 个快捷键
 - 下发的密码可由查看口令保护
 
-管理平台以 Docker 镜像发布，带网页控制台和 LDAP 通讯录服务，见[管理平台](platform.md)。配置文档格式见[远程配置](remote-configuration.md)。
+管理平台以 Docker 镜像发布，带网页控制台（八种语言）和 LDAP 通讯录服务，见[管理平台](platform.md)。配置文档格式见[远程配置](remote-configuration.md)。
 
 <br clear="left">
 

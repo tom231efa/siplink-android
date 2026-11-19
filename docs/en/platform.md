@@ -40,7 +40,7 @@ Image: `ghcr.io/tom231efa/siplink` (linux/amd64, linux/arm64), tagged with the v
 
 3. Start: `docker compose up -d`. HTTPS is on port 443, LDAP on port 389.
 
-4. Create the first super administrator (the one-time password is printed only in the terminal and must be changed at the first sign-in):
+4. Create the first super administrator (the one-time password is printed only in the terminal and must be changed at the first sign-in; the command prints English unless a language is set, see [Languages](#languages)):
 
    ```sh
    docker compose exec siplink siplink admin create --super {user-name}
@@ -243,3 +243,20 @@ Replace `data/` with the directory mounted at `/data` in the container in Compos
 - Names are sorted by Unicode code point, **not by pinyin**; homophones and common characters may sort differently from what you expect.
 - The client page shows the SipLink version, version code and User-Agent reported by the phone. The platform provisions the same configuration to all versions; older versions ignore fields they do not know.
 - Administrators must re-enter their own password before viewing a password stored for a client, and every view is recorded in the audit log.
+
+## Languages
+
+The web console and the command line come in eight languages, each listed by its own name: 中文（简体）, English, 日本語, العربية (right to left), Français, 中文（繁體）, Русский, Español.
+
+- **Switching**: "Language" under "Appearance" in the user menu; a drop-down at the foot of the sign-in page and the two-step verification page.
+- **Order**: the administrator's saved language → the browser's earlier choice (cookie) → the browser's language (`Accept-Language`) → English when none matches. A choice made in the menu is saved for the administrator and follows them to other browsers; a language chosen before signing in becomes the administrator's language at sign-in if they have none saved.
+- **Mail**: code mails use the language of the administrator they go to; the test mail uses the sender's language.
+- **Client CSV import**: still accepts the Chinese column names, and also the English ones `name`, `region`, `client_template`, `note`, `{profile} username`, `{profile} password`, `{profile} auth user`, `{profile} display name`, `{directory} LDAP password` (`{profile}` and `{directory}` are the accounts and directories of the configuration template). The downloaded template has Chinese column names when the console is in Simplified or Traditional Chinese, English ones otherwise; the same applies to the CSV exported from an internal directory.
+- **Command line** (`siplink` inside the container): English by default; the language comes from `LC_ALL`, then `LC_MESSAGES`, then `LANG`. For Chinese output:
+
+  ```sh
+  docker compose exec -e LANG=zh_CN.UTF-8 siplink siplink admin create --super {user-name}
+  ```
+
+- **Audit log**: entries written before this version keep their original Chinese text; new entries are shown in the viewer's language.
+- The configuration documents provisioned to phones and the SipLink app are not affected by the console language.

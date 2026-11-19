@@ -63,7 +63,7 @@
 - Do not disturb, appearance and call history stay with the user; up to 50 shortcut keys of the user's own can be added
 - Provisioned passwords can be protected by a configuration password
 
-The management platform is published as a Docker image with a web console and an LDAP directory service, see [Management platform](platform.md). For the configuration document format, see [Remote configuration](remote-configuration.md).
+The management platform is published as a Docker image with a web console (eight languages) and an LDAP directory service, see [Management platform](platform.md). For the configuration document format, see [Remote configuration](remote-configuration.md).
 
 <br clear="left">
 

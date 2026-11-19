@@ -40,10 +40,10 @@ SipLink 管理平台为 SipLink 安卓客户端集中下发配置：账号、通
 
 3. 启动：`docker compose up -d`。HTTPS 在 443 端口，LDAP 在 389 端口。
 
-4. 建第一个超级管理员（一次性密码只打印在终端，首次登录必须修改）：
+4. 建第一个超级管理员（一次性密码只打印在终端，首次登录必须修改；`-e LANG=zh_CN.UTF-8` 使命令输出中文，见[语言](#语言)）：
 
    ```sh
-   docker compose exec siplink siplink admin create --super {用户名}
+   docker compose exec -e LANG=zh_CN.UTF-8 siplink siplink admin create --super {用户名}
    ```
 
 平台没有初始化网页：在建好管理员之前，网页上没有任何可以抢先占用的入口。
@@ -112,7 +112,7 @@ docker build -t ghcr.io/tom231efa/siplink:dev platform
 ```sh
 docker compose exec -T siplink sh -c 'cat > /tmp/chain.pem' < chain.pem
 docker compose exec -T siplink sh -c 'umask 077; cat > /tmp/key.pem' < key.pem
-docker compose exec siplink siplink pki import /tmp/chain.pem /tmp/key.pem
+docker compose exec -e LANG=zh_CN.UTF-8 siplink siplink pki import /tmp/chain.pem /tmp/key.pem
 docker compose exec siplink rm /tmp/key.pem /tmp/chain.pem
 ```
 
@@ -243,3 +243,20 @@ docker compose start siplink
 - 名称排序按 Unicode 码位，**不是按拼音**；同音或常用字的先后可能与习惯不同。
 - 客户端页面显示手机上报的 SipLink 版本、版本号和 User-Agent。平台向所有版本下发同一份配置，旧版本会忽略不认识的字段。
 - 管理员查看客户端保存的密码前须再次输入自己的密码，每次查看都记入审计日志。
+
+## 语言
+
+网页控制台和命令行有八种语言，各以本语言的名称列出：中文（简体）、English、日本語、العربية（从右向左显示）、Français、中文（繁體）、Русский、Español。
+
+- **切换**：用户菜单「外观」下的「语言」；登录页和两步验证页底部的下拉框。
+- **选用顺序**：管理员保存的语言 → 浏览器之前的选择（Cookie）→ 浏览器的语言（`Accept-Language`）→ 都不匹配时为 English。在菜单中的选择保存到该管理员名下，换浏览器后仍然有效；登录前选择的语言，在登录时成为该管理员的语言（该管理员尚未保存语言时）。
+- **邮件**：验证码邮件使用收件管理员的语言；测试邮件使用发送者的语言。
+- **客户端 CSV 导入**：仍接受中文列名，另外接受英文列名 `name`、`region`、`client_template`、`note`、`{profile} username`、`{profile} password`、`{profile} auth user`、`{profile} display name`、`{directory} LDAP password`（`{profile}`、`{directory}` 为配置模板中的账号和通讯录）。控制台为简体或繁体中文时，下载的模板为中文列名，其他语言时为英文列名；内部通讯录导出的 CSV 同样如此。
+- **命令行**（容器内的 `siplink`）：默认英文；语言依次取 `LC_ALL`、`LC_MESSAGES`、`LANG`。中文输出：
+
+  ```sh
+  docker compose exec -e LANG=zh_CN.UTF-8 siplink siplink admin create --super {用户名}
+  ```
+
+- **审计日志**：本版本之前写入的条目保留原来的中文；新条目按查看者的语言显示。
+- 下发给手机的配置文档和 SipLink 应用不受控制台语言影响。
