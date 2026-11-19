@@ -7,7 +7,7 @@ enum class NetType { WIFI, CELLULAR, ETHERNET, OTHER }
  * What the phone knows about the network it is on, read from the system (no permission beyond
  * the network state is needed: the name of a Wi-Fi network is not part of it).
  *
- * @param addresses the phone's own addresses on it, without the IPv6 ones the system rotates for privacy
+ * @param addresses the phone's own addresses on it, link-local ones left out
  * @param gateways the next hops of its default routes
  * @param validated the system reached the internet through it
  * @param captive the system found a login page in the way
