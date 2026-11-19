@@ -81,11 +81,6 @@ class NatMediaTest : NatLabTestBase() {
     }
 
     private companion object {
-        const val QUIET_WINDOW_MS = 8_000L
-
-        /** Five seconds without sound, and the time the statistics take to come. */
-        const val NO_SOUND_TIMEOUT_MS = 20_000L
-
         /** The SIP core's 30 seconds (nortp_timeout), and a margin for the slow emulator. */
         const val MEDIA_LOST_TIMEOUT_MS = 90_000L
 

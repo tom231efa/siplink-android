@@ -223,6 +223,9 @@ abstract class NatLabTestBase {
         const val NAT_ACCOUNT = 1001
         const val PLAIN_ACCOUNT = 3001
         const val BEHIND_ACCOUNT = 4001
+
+        /** As [PLAIN_ACCOUNT], at a PBX that does ICE. */
+        const val ICE_ACCOUNT = 5001
         const val DEFAULT_SIP_PORT = 5060
         const val ECHO = "600"
         const val TONE = "601"
@@ -235,5 +238,11 @@ abstract class NatLabTestBase {
         const val POLL_MS = 200L
         const val SILENCE_DB = -120f
         const val AUDIBLE_DB = -40f
+
+        /** How long a call runs to show that something does not happen. */
+        const val QUIET_WINDOW_MS = 8_000L
+
+        /** Five seconds without sound, and the time the statistics take to come. */
+        const val NO_SOUND_TIMEOUT_MS = 20_000L
     }
 }

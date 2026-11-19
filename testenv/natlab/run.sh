@@ -93,7 +93,7 @@ if [ $# -gt 0 ]; then
 fi
 
 failed=()
-for class in NatDiagnosisTest NatTransportTest NatMediaTest; do
+for class in NatDiagnosisTest NatTransportTest NatMediaTest NatIceTest; do
   echo "=== $class" >&2
   run -e class "$package.$class" || failed+=("$class")
 done

@@ -45,6 +45,7 @@ services:
       AMI_SECRET: ${AMI_SECRET:?run ./up.sh}
       LAB_ADDRESS: 172.31.251.2
       LAB_SIP_PORT: "5060"
+      PBX_ADDRESS: 172.31.252.10
     volumes:
       - ./pbx/entrypoint.sh:/natlab-entrypoint.sh:ro
     networks:

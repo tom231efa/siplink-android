@@ -6,6 +6,7 @@
 #   3001-3010  accounts without it, as a PBX that trusts what the phone writes
 #   4001-4010  as 1001-1010, on port 5062, where the PBX announces its own address instead of the
 #              box's: a PBX behind a NAT it does not know of
+#   5001-5010  as 3001-3010, with ICE: its candidate is the box's address (ice_host_candidates)
 #   600        answers and echoes        601  answers and sends a tone        602  answers, silent
 #
 # The PBX sits behind the NAT box and announces the box's client-side address (LAB_ADDRESS, SIP
@@ -19,6 +20,7 @@ set -eu
 : "${AMI_USER:?AMI_USER is required}"
 : "${AMI_SECRET:?AMI_SECRET is required}"
 : "${LAB_ADDRESS:?LAB_ADDRESS is required}"
+: "${PBX_ADDRESS:?PBX_ADDRESS is required}"
 LAB_SIP_PORT=${LAB_SIP_PORT:-5060}
 
 conf=/etc/asterisk
@@ -93,11 +95,15 @@ inbound_auth/password = $SIP_PASSWORD
 [behind](!,handling)
 endpoint/transport = transport-inner
 
+[ice](!,plain)
+endpoint/ice_support = yes
+
 EOF
-  for first in 1000 3000 4000; do
+  for first in 1000 3000 4000 5000; do
     template=nat
     [ "$first" = 3000 ] && template=plain
     [ "$first" = 4000 ] && template=behind
+    [ "$first" = 5000 ] && template=ice
     i=1
     while [ "$i" -le 10 ]; do
       n=$((first + i))
@@ -113,7 +119,7 @@ static = yes
 writeprotect = yes
 
 [internal]
-exten => _[134]0XX,1,Dial(PJSIP/${EXTEN},25)
+exten => _[1345]0XX,1,Dial(PJSIP/${EXTEN},25)
  same => n,Hangup()
 
 exten => 600,1,Answer()
@@ -129,10 +135,13 @@ exten => 602,1,Answer()
  same => n,Hangup()
 EOF
 
-cat > "$conf/rtp.conf" <<'EOF'
+cat > "$conf/rtp.conf" <<EOF
 [general]
 rtpstart = 22000
 rtpend = 22099
+
+[ice_host_candidates]
+$PBX_ADDRESS => $LAB_ADDRESS
 EOF
 
 cat > "$conf/manager.conf" <<EOF

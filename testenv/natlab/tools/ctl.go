@@ -11,9 +11,14 @@ package main
 //	max-udp N             UDP packets longer than N bytes (IP header included) are dropped; 0: none
 //	timeout N             UDP mappings are forgotten after N seconds without traffic; 0: the default
 //	alg on|off            on: SIP over UDP passes the ALG of alg.go
-//	rtp on|off            off: RTP between the clients and the PBX is dropped, both ways
+//	rtp on|off|half       off: RTP between the clients and the PBX is dropped, both ways; half:
+//	                      only on its way to the clients (they send and hear nothing)
 //	reset                 all of the above back to the start: cone, on, 0, 0, off, on
 //	state                 tells the settings
+//
+// Like a home router, the box drops what comes to its own address from the PBX's side unasked: a
+// packet it took (and answered with an ICMP error) would hold the box's port of a mapping that a
+// client found by STUN, and the box would map the client's next flow from there to another port.
 //
 // Every change replaces the rules at once and forgets the UDP mappings made so far, so that
 // it applies to the flows already running as well. Nothing here touches the host: the rules
@@ -37,7 +42,7 @@ type labState struct {
 	maxUDP    int
 	timeout   int
 	alg       bool
-	rtp       bool
+	rtp       string // on, off or half
 }
 
 func (s labState) String() string {
@@ -45,7 +50,7 @@ func (s labState) String() string {
 	if s.symmetric {
 		mode = "symmetric"
 	}
-	return fmt.Sprintf("mode=%s udp-sip=%s max-udp=%d timeout=%d alg=%s rtp=%s", mode, onOff(s.udpSip), s.maxUDP, s.timeout, onOff(s.alg), onOff(s.rtp))
+	return fmt.Sprintf("mode=%s udp-sip=%s max-udp=%d timeout=%d alg=%s rtp=%s", mode, onOff(s.udpSip), s.maxUDP, s.timeout, onOff(s.alg), s.rtp)
 }
 
 func onOff(b bool) string {
@@ -55,7 +60,7 @@ func onOff(b bool) string {
 	return "off"
 }
 
-var startState = labState{udpSip: true, rtp: true}
+var startState = labState{udpSip: true, rtp: "on"}
 
 // The ALG listens here, on the client side of the box; SIP over UDP is sent to it while it is on.
 const algPort = 5070
@@ -144,13 +149,12 @@ func (b *box) command(words []string) string {
 		next = startState
 	case words[0] == "mode" && len(words) == 2 && (words[1] == "cone" || words[1] == "symmetric"):
 		next.symmetric = words[1] == "symmetric"
-	case (words[0] == "udp-sip" || words[0] == "alg" || words[0] == "rtp") && len(words) == 2 && (words[1] == "on" || words[1] == "off"):
-		switch words[0] {
-		case "alg":
+	case words[0] == "rtp" && len(words) == 2 && (words[1] == "on" || words[1] == "off" || words[1] == "half"):
+		next.rtp = words[1]
+	case (words[0] == "udp-sip" || words[0] == "alg") && len(words) == 2 && (words[1] == "on" || words[1] == "off"):
+		if words[0] == "alg" {
 			next.alg = words[1] == "on"
-		case "rtp":
-			next.rtp = words[1] == "on"
-		default:
+		} else {
 			next.udpSip = words[1] == "on"
 		}
 	case (words[0] == "max-udp" || words[0] == "timeout") && len(words) == 2:
@@ -201,8 +205,14 @@ func (b *box) apply() error {
 		if s.maxUDP > 0 {
 			fmt.Fprintf(&r, "    iifname %q meta l4proto udp meta length > %d drop\n", b.client, s.maxUDP)
 		}
-		if !s.rtp && hook == "forward" {
+		if s.rtp == "off" && hook == "forward" {
 			r.WriteString("    udp dport 22000-22099 drop\n    udp sport 22000-22099 drop\n")
+		}
+		if s.rtp == "half" && hook == "forward" {
+			fmt.Fprintf(&r, "    oifname %q udp sport 22000-22099 drop\n", b.client)
+		}
+		if hook == "input" {
+			fmt.Fprintf(&r, "    iifname %q ct state new drop\n", b.inet)
 		}
 		r.WriteString("  }\n")
 	}
