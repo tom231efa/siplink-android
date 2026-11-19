@@ -9,10 +9,10 @@
     <tbody>
     {{range .Data.Admins}}
     <tr>
-      <td class="strong"><span class="who"><span class="avatar small" aria-hidden="true">{{if .DisplayName}}{{initial .DisplayName}}{{else}}{{initial .Username}}{{end}}</span>{{if $.Super}}<a class="fade" href="/admins/{{.ID}}">{{.Username}}</a>{{else}}<span class="fade">{{.Username}}</span>{{end}}</span></td>
-      <td class="hide-sm"><span class="fade">{{.DisplayName}}</span></td>
+      <td class="strong"><span class="who"><span class="avatar small" aria-hidden="true">{{if .DisplayName}}{{initial .DisplayName}}{{else}}{{initial .Username}}{{end}}</span>{{if $.Super}}<a dir="auto" class="fade" href="/admins/{{.ID}}">{{.Username}}</a>{{else}}<span dir="auto" class="fade">{{.Username}}</span>{{end}}</span></td>
+      <td class="hide-sm"><span dir="auto" class="fade">{{.DisplayName}}</span></td>
       <td class="nowrap">{{roleLabel .Role}}</td>
-      <td class="hide-sm">{{range .RegionIDs}}<span class="tag"><span class="fade">{{index $.Data.Regions .}}</span></span>{{end}}</td>
+      <td class="hide-sm">{{range .RegionIDs}}<span class="tag"><span dir="auto" class="fade">{{index $.Data.Regions .}}</span></span>{{end}}</td>
       <td>{{if .Disabled}}<span class="status">{{t "common.disabled"}}</span>{{else if .MustChangePassword}}<span class="status warn">{{t "admins.status.must_change_password"}}</span>{{else}}<span class="status ok">{{t "common.enabled"}}</span>{{end}}</td>
       <td class="hide-sm">{{if index $.Data.TwoStep .ID}}<span class="status ok">{{t "common.enabled"}}</span>{{else}}<span class="muted">—</span>{{end}}</td>
       <td class="nowrap muted hide-sm">{{since .LastLoginAt}}</td>

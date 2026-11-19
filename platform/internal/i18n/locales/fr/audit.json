@@ -207,5 +207,8 @@
   "audit.col.changes": "Modifications",
   "audit.col.source": "Source",
   "audit.empty": "Aucune entrée pour le moment.",
-  "use.item": "{kind} « {name} »"
+  "use.item": "{kind} « {name} »",
+  "audit.field.roomLimit": "Nombre maximal de participants",
+  "audit.field.autoNetwork": "S'adapter automatiquement au réseau",
+  "audit.field.stunServer": "Serveur STUN"
 }

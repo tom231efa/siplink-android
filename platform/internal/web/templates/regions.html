@@ -20,7 +20,7 @@
   {{if $.Super}}
   <details class="list-row">
     <summary>
-      <span class="strong"><span class="fade">{{.Name}}</span>{{with .Note}}<span class="sub">{{.}}</span>{{end}}</span>
+      <span class="strong"><span dir="auto" class="fade">{{.Name}}</span>{{with .Note}}<span class="sub">{{.}}</span>{{end}}</span>
       <span class="num" title="{{t "regions.col.admins"}}">{{.Usage.Admins}}</span><span class="num" title="{{t "regions.col.books"}}">{{.Usage.Books}}</span>
       <span class="num hide-sm" title="{{t "regions.col.ldap_accounts"}}">{{.Usage.LDAPAccounts}}</span><span class="num hide-sm" title="{{t "regions.col.templates"}}">{{.Usage.Templates}}</span>
       <span class="num" title="{{t "regions.col.clients"}}">{{.Usage.Clients}}</span>
@@ -39,7 +39,7 @@
   </details>
   {{else}}
   <div class="list-row"><div class="row-line">
-    <span class="strong"><span class="fade">{{.Name}}</span>{{with .Note}}<span class="sub">{{.}}</span>{{end}}</span>
+    <span class="strong"><span dir="auto" class="fade">{{.Name}}</span>{{with .Note}}<span class="sub">{{.}}</span>{{end}}</span>
     <span class="num">{{.Usage.Admins}}</span><span class="num">{{.Usage.Books}}</span>
     <span class="num hide-sm">{{.Usage.LDAPAccounts}}</span><span class="num hide-sm">{{.Usage.Templates}}</span>
     <span class="num">{{.Usage.Clients}}</span><span></span>

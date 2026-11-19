@@ -26,13 +26,13 @@
     <thead><tr><th class="check-col"><input type="checkbox" data-check-all="ids" aria-label="{{t "clients.list.select_all"}}"></th><th>{{t "common.name"}}</th><th class="hide-sm">{{t "common.region"}}</th><th class="hide-sm">{{t "groups.group"}}</th><th class="hide-sm">{{t "clients.field.template"}}</th><th>{{t "common.status"}}</th><th class="hide-sm">{{t "clients.list.col_version"}}</th><th class="hide-sm">{{t "clients.field.last_sync"}}</th><th class="hide-sm">{{t "clients.list.col_registration"}}</th></tr></thead>
     <tbody>{{range $d.Rows}}<tr>
       <td class="check-col"><input type="checkbox" name="ids" value="{{.ID}}" aria-label="{{t "clients.list.select_row" "name" .Name}}"></td>
-      <td class="strong"><a class="fade" href="/clients/{{.ID}}">{{.Name}}</a><span class="sub show-sm fade">{{.Region}}{{with .Group}} · {{.}}{{end}} · {{.Template}}</span>{{if .Tags}}<span class="chips">{{range .Tags}}{{template "chip" .}}{{end}}</span>{{end}}</td>
-      <td class="hide-sm"><span class="fade">{{.Region}}</span></td>
-      <td class="hide-sm">{{with .Group}}<span class="fade">{{.}}</span>{{else}}<span class="muted">—</span>{{end}}</td>
-      <td class="muted hide-sm"><span class="fade">{{.Template}}</span></td>
+      <td class="strong"><a dir="auto" class="fade" href="/clients/{{.ID}}">{{.Name}}</a><span dir="auto" class="sub show-sm fade">{{.Region}}{{with .Group}} · {{.}}{{end}} · {{.Template}}</span>{{if .Tags}}<span class="chips">{{range .Tags}}{{template "chip" .}}{{end}}</span>{{end}}</td>
+      <td class="hide-sm"><span dir="auto" class="fade">{{.Region}}</span></td>
+      <td class="hide-sm">{{with .Group}}<span dir="auto" class="fade">{{.}}</span>{{else}}<span class="muted">—</span>{{end}}</td>
+      <td class="muted hide-sm"><span dir="auto" class="fade">{{.Template}}</span></td>
       <td class="nowrap">{{if .Offline}}<span class="status warn">{{t "clients.status.offline"}}</span>{{else if eq .Status "active"}}<span class="status ok">{{t "clients.status.active"}}</span>{{else}}<span class="status">{{t "clients.status.pending"}}</span>{{end}}
         {{if .Report.BuildError}}<span class="status bad">{{t "clients.status.config_invalid"}}</span>{{else if .Report.ApplyError}}<span class="status warn">{{t "clients.status.apply_failed"}}</span>{{end}}</td>
-      <td class="mono muted hide-sm"><span class="fade">{{with .Report.AppVersion}}{{.}}{{else}}—{{end}}</span></td>
+      <td class="mono muted hide-sm"><span dir="auto" class="fade">{{with .Report.AppVersion}}{{.}}{{else}}—{{end}}</span></td>
       <td class="nowrap muted hide-sm">{{since .Report.LastSeenAt}}</td>
       <td class="muted nowrap hide-sm">{{regSummary .Report.RegistrationsJSON}}</td>
     </tr>{{end}}</tbody>

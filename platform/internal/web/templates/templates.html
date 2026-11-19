@@ -10,8 +10,8 @@
     <tbody>
     {{range .Data.Rows}}
     <tr>
-      <td class="strong"><a class="fade" href="{{$.Data.Base}}/{{.ID}}">{{.Name}}</a></td>
-      <td>{{if .Global}}<span class="tag">{{t "common.global"}}</span>{{else}}<span class="fade">{{.Region}}</span>{{end}}</td>
+      <td class="strong"><a dir="auto" class="fade" href="{{$.Data.Base}}/{{.ID}}">{{.Name}}</a></td>
+      <td>{{if .Global}}<span class="tag">{{t "common.global"}}</span>{{else}}<span dir="auto" class="fade">{{.Region}}</span>{{end}}</td>
       <td class="muted hide-sm"><span class="fade">{{.Extra}}</span></td>
       <td class="num">{{.Clients}}</td>
       <td class="muted hide-sm">{{.Note}}</td>

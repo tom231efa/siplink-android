@@ -192,5 +192,10 @@
   "config.directory.account_password": "LDAP account password",
   "config.directory.choose_prompt": "Select a directory",
   "config.directory.none_available": "No directories available",
-  "config.directory.new_book": "New directory"
+  "config.directory.new_book": "New directory",
+  "config.room.title": "Conference room",
+  "config.room.limit": "Maximum participants",
+  "config.client_media.auto_network": "Adapt to the network automatically",
+  "config.client_media.stun_server": "STUN server",
+  "config.client_media.stun_none": "None"
 }

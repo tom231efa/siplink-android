@@ -1,7 +1,7 @@
 {{define "content"}}
 {{$d := .Data}}
 <div class="narrow-page wide">
-<header class="page-head"><div><h1>{{t "dirs.import.title"}}</h1><p class="page-sub fade"><a href="/books/{{$d.Book.ID}}">{{$d.Book.Name}}</a><span class="dot-sep"></span>{{t "dirs.entries_of" "n" $d.Book.EntryCount "max" $d.Max}}</p></div></header>
+<header class="page-head"><div><h1>{{t "dirs.import.title"}}</h1><p class="page-sub fade"><a href="/books/{{$d.Book.ID}}" dir="auto">{{$d.Book.Name}}</a><span class="dot-sep"></span>{{t "dirs.entries_of" "n" $d.Book.EntryCount "max" $d.Max}}</p></div></header>
 {{with $d.Error}}<div class="flash error" role="alert">{{.}}</div>{{end}}
 {{with $d.Parsed}}
 <section class="card">

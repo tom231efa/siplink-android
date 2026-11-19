@@ -192,5 +192,10 @@
   "config.directory.account_password": "LDAP アカウントのパスワード",
   "config.directory.choose_prompt": "電話帳を選択してください",
   "config.directory.none_available": "使用できる電話帳はありません",
-  "config.directory.new_book": "新規電話帳"
+  "config.directory.new_book": "新規電話帳",
+  "config.room.title": "会議室",
+  "config.room.limit": "会議室の参加者上限",
+  "config.client_media.auto_network": "ネットワークに自動で適応",
+  "config.client_media.stun_server": "STUN サーバー",
+  "config.client_media.stun_none": "使用しない"
 }

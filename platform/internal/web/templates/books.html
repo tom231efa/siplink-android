@@ -19,10 +19,10 @@
     <tbody>
     {{range $d.Rows}}
     <tr>
-      <td class="strong"><a class="fade" href="{{.Link}}">{{.Name}}</a><span class="sub show-sm fade">{{.Region}} · {{if eq .Kind "hosted"}}{{t "dirs.contacts_count" "n" .EntryCount}}{{else}}{{.Host}}:{{.Port}}{{end}}</span></td>
+      <td class="strong"><a dir="auto" class="fade" href="{{.Link}}">{{.Name}}</a><span class="sub show-sm fade"><bdi>{{.Region}}</bdi> · {{if eq .Kind "hosted"}}{{t "dirs.contacts_count" "n" .EntryCount}}{{else}}{{.Host}}:{{.Port}}{{end}}</span></td>
       <td class="nowrap">{{if eq .Kind "hosted"}}{{t "books.kind.hosted"}}{{else}}{{t "books.kind.external"}}{{end}}</td>
-      <td class="hide-sm">{{if .RegionID}}<span class="fade">{{.Region}}</span>{{else}}<span class="tag">{{t "common.global"}}</span>{{end}}</td>
-      <td class="hide-sm">{{if eq .Kind "hosted"}}<span class="nowrap">{{.EntryCount}} <span class="muted">/ {{$d.Max}}</span></span>{{else}}<span class="mono fade">{{.Host}}:{{.Port}}</span>{{end}}</td>
+      <td class="hide-sm">{{if .RegionID}}<span dir="auto" class="fade">{{.Region}}</span>{{else}}<span class="tag">{{t "common.global"}}</span>{{end}}</td>
+      <td class="hide-sm">{{if eq .Kind "hosted"}}<span class="nowrap">{{.EntryCount}} <span class="muted">/ {{$d.Max}}</span></span>{{else}}<span dir="auto" class="mono fade">{{.Host}}:{{.Port}}</span>{{end}}</td>
       <td class="num nowrap hide-sm">{{if .Templates}}{{.Templates}}{{else}}<span class="muted">—</span>{{end}}</td>
     </tr>
     {{end}}

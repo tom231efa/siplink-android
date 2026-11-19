@@ -86,5 +86,7 @@
   "mail.from_refused": "发件地址被拒绝: {err}",
   "mail.to_refused": "收件地址被拒绝: {err}",
   "mail.send_failed": "发送失败: {err}",
-  "names.bidi_control": "名称不得包含文字方向控制字符"
+  "names.bidi_control": "名称不得包含文字方向控制字符",
+  "provision.settings.room_limit_range": "会议室人数上限应为 {min}–{max}",
+  "provision.settings.stun_invalid": "STUN 服务器应为主机名或 IP 地址，可带端口（1–65535）"
 }

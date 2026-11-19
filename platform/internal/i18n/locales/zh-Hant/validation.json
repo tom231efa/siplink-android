@@ -86,5 +86,7 @@
   "mail.from_refused": "寄件者地址遭拒絕: {err}",
   "mail.to_refused": "收件者地址遭拒絕: {err}",
   "mail.send_failed": "傳送失敗: {err}",
-  "names.bidi_control": "名稱不得包含文字方向控制字元"
+  "names.bidi_control": "名稱不得包含文字方向控制字元",
+  "provision.settings.room_limit_range": "會議室人數上限應為 {min}–{max}",
+  "provision.settings.stun_invalid": "STUN 伺服器應為主機名稱或 IP 位址，可帶連接埠（1–65535）"
 }

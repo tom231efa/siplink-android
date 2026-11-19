@@ -207,5 +207,8 @@
   "audit.col.changes": "التغييرات",
   "audit.col.source": "المصدر",
   "audit.empty": "لا توجد سجلات بعد.",
-  "use.item": "{kind} «{name}»"
+  "use.item": "{kind} «{name}»",
+  "audit.field.roomLimit": "الحد الأقصى للمشاركين",
+  "audit.field.autoNetwork": "التكيف مع الشبكة تلقائيًا",
+  "audit.field.stunServer": "خادم STUN"
 }

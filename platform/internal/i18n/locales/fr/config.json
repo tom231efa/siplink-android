@@ -192,5 +192,10 @@
   "config.directory.account_password": "Mot de passe du compte LDAP",
   "config.directory.choose_prompt": "Sélectionnez un annuaire",
   "config.directory.none_available": "Aucun annuaire disponible",
-  "config.directory.new_book": "Nouvel annuaire"
+  "config.directory.new_book": "Nouvel annuaire",
+  "config.room.title": "Salle de conférence",
+  "config.room.limit": "Nombre maximal de participants",
+  "config.client_media.auto_network": "S'adapter automatiquement au réseau",
+  "config.client_media.stun_server": "Serveur STUN",
+  "config.client_media.stun_none": "Aucun"
 }

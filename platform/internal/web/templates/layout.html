@@ -36,7 +36,7 @@
     <details class="user-menu">
       <summary class="user-chip">
         <span class="avatar" aria-hidden="true">{{if .Admin.DisplayName}}{{initial .Admin.DisplayName}}{{else}}{{initial .Admin.Username}}{{end}}</span>
-        <span class="user-text"><span class="user-name fade">{{if .Admin.DisplayName}}{{.Admin.DisplayName}}{{else}}{{.Admin.Username}}{{end}}</span><span class="user-role">{{roleLabel .Admin.Role}}</span></span>
+        <span class="user-text"><span dir="auto" class="user-name fade">{{if .Admin.DisplayName}}{{.Admin.DisplayName}}{{else}}{{.Admin.Username}}{{end}}</span><span class="user-role">{{roleLabel .Admin.Role}}</span></span>
         {{icon "chevrons-up-down"}}
       </summary>
       <div class="menu-body popover" role="group" aria-label="{{t "layout.account"}}">
@@ -63,7 +63,7 @@
       {{with .Crumb}}
       <nav class="crumbs" aria-label="{{t "layout.location"}}">
         {{with .Section}}<span class="crumb-section">{{t .}}</span><span class="crumb-sep" aria-hidden="true">/</span>{{end}}
-        {{if .List}}{{if .Here}}<a href="{{.List.Href}}">{{t .List.Label}}</a><span class="crumb-sep" aria-hidden="true">/</span><span class="crumb-here fade" aria-current="page">{{.Here}}</span>{{else}}<span class="crumb-here fade" aria-current="page">{{t .List.Label}}</span>{{end}}{{else}}<span class="crumb-here fade" aria-current="page">{{.Here}}</span>{{end}}
+        {{if .List}}{{if .Here}}<a href="{{.List.Href}}">{{t .List.Label}}</a><span class="crumb-sep" aria-hidden="true">/</span><span dir="auto" class="crumb-here fade" aria-current="page">{{.Here}}</span>{{else}}<span dir="auto" class="crumb-here fade" aria-current="page">{{t .List.Label}}</span>{{end}}{{else}}<span dir="auto" class="crumb-here fade" aria-current="page">{{.Here}}</span>{{end}}
       </nav>
       {{end}}
       <div class="topbar-right">
@@ -139,7 +139,7 @@
 </form>{{end}}
 
 {{/* A tag: its name on its colour (§2.6). */}}
-{{define "chip"}}<span class="chip c-{{.Color}}"><span class="fade">{{.Name}}</span></span>{{end}}
+{{define "chip"}}<span class="chip c-{{.Color}}"><span dir="auto" class="fade">{{.Name}}</span></span>{{end}}
 
 {{/* A choice of tags (tagPicker): a <details> whose summary shows the chosen ones and whose list
    chooses them; app.js keeps the summary current, narrows the list and holds the limit. */}}
@@ -163,10 +163,10 @@
   {{range .Recent}}
   <tr>
     <td class="nowrap muted">{{when .At}}</td>
-    <td class="hide-sm"><span class="fade">{{if .AdminName}}{{.AdminName}}{{else}}—{{end}}</span></td>
-    <td class="hide-sm">{{with .RegionID}}<span class="fade">{{index $.Names (deref .)}}</span>{{else}}<span class="muted">—</span>{{end}}</td>
+    <td class="hide-sm"><span dir="auto" class="fade">{{if .AdminName}}{{.AdminName}}{{else}}—{{end}}</span></td>
+    <td class="hide-sm">{{with .RegionID}}<span dir="auto" class="fade">{{index $.Names (deref .)}}</span>{{else}}<span class="muted">—</span>{{end}}</td>
     <td class="nowrap">{{actionLabel .Action}}</td>
-    <td class="strong"><span class="fade">{{objectName .ObjectType .ObjectName}}</span><span class="sub show-sm fade">{{if .AdminName}}{{.AdminName}}{{end}}</span></td>
+    <td class="strong"><span dir="auto" class="fade">{{objectName .ObjectType .ObjectName}}</span><span dir="auto" class="sub show-sm fade">{{if .AdminName}}{{.AdminName}}{{end}}</span></td>
     <td class="hide-sm">{{range $k, $v := .Detail}}<span class="tag">{{fieldLabel $k}}</span>{{end}}</td>
     <td class="muted mono nowrap hide-sm" dir="ltr">{{.IP}}</td>
   </tr>

@@ -1,7 +1,7 @@
 {{define "content"}}
 {{$d := .Data}}{{$e := $d.E}}
 <div class="narrow-page">
-<header class="page-head"><div><h1 class="fade">{{.Title}}</h1>{{if not $d.New}}<p class="page-sub fade">{{t "books.kind.external"}}<span class="dot-sep"></span>{{if $e.RegionID}}{{$d.Region}}{{else}}{{t "common.global"}}{{end}}<span class="dot-sep"></span><span class="mono">{{$e.Host}}:{{$e.Port}}</span></p>{{end}}</div></header>
+<header class="page-head"><div><h1 dir="auto" class="fade">{{.Title}}</h1>{{if not $d.New}}<p class="page-sub fade">{{t "books.kind.external"}}<span class="dot-sep"></span>{{if $e.RegionID}}<bdi>{{$d.Region}}</bdi>{{else}}{{t "common.global"}}{{end}}<span class="dot-sep"></span><span class="mono">{{$e.Host}}:{{$e.Port}}</span></p>{{end}}</div></header>
 {{if $d.New}}{{template "kind_choice" $d.Kind}}{{end}}
 {{with $d.Errors}}<div class="flash error" role="alert"><ul class="errors">{{range .}}<li>{{.}}</li>{{end}}</ul></div>{{end}}
 <form method="post" action="{{if $d.New}}/directories{{else}}/directories/{{$e.ID}}{{end}}" class="form-stack"

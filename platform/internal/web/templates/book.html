@@ -2,8 +2,8 @@
 {{$d := .Data}}{{$id := .Data.Book.ID}}
 <header class="page-head">
   <div>
-    <h1 class="fade">{{$d.Book.Name}}</h1>
-    <p class="page-sub fade">{{if $d.Book.RegionID}}{{$d.Region}}{{else}}{{t "common.global"}}{{end}}<span class="dot-sep"></span><span class="mono">{{$d.Book.Slug}}</span><span class="dot-sep"></span>{{t "dirs.entries_of" "n" $d.Book.EntryCount "max" $d.Max}}{{with $d.Book.Note}}<span class="dot-sep"></span>{{.}}{{end}}</p>
+    <h1 dir="auto" class="fade">{{$d.Book.Name}}</h1>
+    <p class="page-sub fade">{{if $d.Book.RegionID}}<bdi>{{$d.Region}}</bdi>{{else}}{{t "common.global"}}{{end}}<span class="dot-sep"></span><span class="mono">{{$d.Book.Slug}}</span><span class="dot-sep"></span>{{t "dirs.entries_of" "n" $d.Book.EntryCount "max" $d.Max}}{{with $d.Book.Note}}<span class="dot-sep"></span>{{.}}{{end}}</p>
   </div>
   <div class="page-actions">
     <details class="popover-host">
@@ -32,13 +32,13 @@
     <tbody>
     {{range $d.Entries}}
     <tr>
-      <td class="strong"><span class="fade">{{.Name}}</span></td>
-      <td><span class="fade">{{join .Phones (t "format.list_sep")}}</span></td>
-      <td class="hide-sm"><span class="fade">{{join .Mobiles (t "format.list_sep")}}</span></td>
-      <td class="hide-sm"><span class="fade">{{.Organization}}</span></td>
-      <td class="hide-sm"><span class="fade">{{.Department}}</span></td>
-      <td class="hide-sm"><span class="fade">{{.Title}}</span></td>
-      <td class="hide-sm muted"><span class="fade">{{.Email}}</span></td>
+      <td class="strong"><span dir="auto" class="fade">{{.Name}}</span></td>
+      <td><span dir="auto" class="fade">{{join .Phones (t "format.list_sep")}}</span></td>
+      <td class="hide-sm"><span dir="auto" class="fade">{{join .Mobiles (t "format.list_sep")}}</span></td>
+      <td class="hide-sm"><span dir="auto" class="fade">{{.Organization}}</span></td>
+      <td class="hide-sm"><span dir="auto" class="fade">{{.Department}}</span></td>
+      <td class="hide-sm"><span dir="auto" class="fade">{{.Title}}</span></td>
+      <td class="hide-sm muted"><span dir="auto" class="fade">{{.Email}}</span></td>
       {{if $d.CanEdit}}
       <td class="actions-col"><div class="row-actions">
         <a class="btn" href="/books/{{$id}}/entries/{{.ID}}">{{t "common.edit"}}</a>
@@ -68,8 +68,8 @@
   <div class="card-head"><h2>{{icon "server"}}{{t "dirs.book.conn"}}</h2><button type="button" class="btn small ghost" data-copy="#basedn" hidden>{{icon "copy"}}<span>{{t "dirs.book.copy_base_dn"}}</span></button></div>
   <div class="card-body">
     <dl class="kv">
-      <dt>{{t "dirs.server"}}</dt><dd class="mono fade">{{$d.Conn.Host}}:{{$d.Conn.Port}}</dd>
-      <dt>Base DN</dt><dd class="mono fade" id="basedn">{{$d.Conn.BaseDN}}</dd>
+      <dt>{{t "dirs.server"}}</dt><dd dir="auto" class="mono fade">{{$d.Conn.Host}}:{{$d.Conn.Port}}</dd>
+      <dt>Base DN</dt><dd dir="auto" class="mono fade" id="basedn">{{$d.Conn.BaseDN}}</dd>
       <dt>StartTLS</dt><dd>{{if $d.Conn.RequireTLS}}{{t "dirs.book.tls_required"}}{{else}}{{t "dirs.book.tls_supported"}}{{end}}</dd>
       {{if $d.Conn.LDAPS}}<dt>LDAPS</dt><dd>{{t "dirs.book.ldaps_on"}}</dd>{{end}}
       <dt>{{t "dirs.book.anonymous"}}</dt><dd>{{if $d.Conn.Anonymous}}{{t "dirs.book.allowed"}}{{else}}{{t "dirs.book.not_allowed"}}{{end}}</dd>

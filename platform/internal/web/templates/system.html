@@ -7,8 +7,8 @@
   <div class="card-head"><h2>{{icon "server"}}{{t "system.platform.title"}}</h2></div>
   <div class="card-body">
     <dl class="kv">
-      <dt>{{t "system.platform.public_url"}}</dt><dd class="mono fade">{{$d.PublicURL}}</dd>
-      <dt>{{t "system.platform.ldap_address"}}</dt><dd class="mono fade">{{$d.LDAPHost}}:{{$d.LDAPPort}} · {{$d.LDAPSuffix}}</dd>
+      <dt>{{t "system.platform.public_url"}}</dt><dd dir="auto" class="mono fade">{{$d.PublicURL}}</dd>
+      <dt>{{t "system.platform.ldap_address"}}</dt><dd dir="auto" class="mono fade">{{$d.LDAPHost}}:{{$d.LDAPPort}} · {{$d.LDAPSuffix}}</dd>
       <dt>{{t "system.platform.ldap_require_tls"}}</dt><dd>{{if $d.RequireTLS}}{{t "common.yes"}}{{else}}{{t "common.no"}}{{end}}</dd>
       <dt>{{t "system.platform.hosted"}}</dt><dd>{{if $d.HostedNote}}<span class="status warn">{{t "system.platform.hosted_unavailable"}}</span>{{else if $d.HostedPlain}}<span class="status warn">{{t "system.platform.hosted_plain"}}</span>{{else}}<span class="status ok">StartTLS</span>{{end}}</dd>
     </dl>
@@ -64,7 +64,7 @@
     <h3>{{t "system.cert.builtin"}} {{if $c.BuiltinUsed}}<span class="status ok">{{t "system.cert.in_use"}}</span>{{else}}<span class="status">{{t "system.cert.unused"}}</span>{{end}}</h3>
     <dl class="kv">
       {{with $d.CA}}
-      <dt>CA</dt><dd class="fade">{{.Subject}}</dd>
+      <dt>CA</dt><dd dir="auto" class="fade">{{.Subject}}</dd>
       <dt>{{t "system.cert.validity"}}</dt><dd>{{day .NotBefore}} {{t "system.cert.validity_to"}} {{day .NotAfter}}</dd>
       <dt>{{t "system.cert.fingerprint"}}</dt><dd class="mono small-text muted">{{.Fingerprint}}</dd>
       {{end}}
@@ -85,8 +85,8 @@
     {{range .}}
     <h3>{{.Title}} {{if $c.OwnUsed}}<span class="status ok">{{t "system.cert.in_use"}}</span>{{end}}</h3>
     <dl class="kv">
-      <dt>{{t "system.cert.subject"}}</dt><dd class="fade">{{.Subject}}</dd>
-      <dt>{{t "system.cert.issuer"}}</dt><dd class="fade">{{.Issuer}}</dd>
+      <dt>{{t "system.cert.subject"}}</dt><dd dir="auto" class="fade">{{.Subject}}</dd>
+      <dt>{{t "system.cert.issuer"}}</dt><dd dir="auto" class="fade">{{.Issuer}}</dd>
       <dt>{{t "system.cert.names"}}</dt><dd class="mono">{{join .Names ", "}}</dd>
       <dt>{{t "system.cert.expires"}}</dt><dd>{{day .NotAfter}} <span class="status{{if le .DaysLeft $c.ReminderDays}} warn{{end}}">{{t "system.cert.days_left" "n" .DaysLeft}}</span></dd>
       <dt>{{t "system.cert.trust"}}</dt><dd>{{.Trust}}</dd>

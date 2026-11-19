@@ -192,5 +192,10 @@
   "config.directory.account_password": "كلمة مرور حساب LDAP",
   "config.directory.choose_prompt": "اختر دليلًا",
   "config.directory.none_available": "لا توجد أدلة متاحة",
-  "config.directory.new_book": "دليل جديد"
+  "config.directory.new_book": "دليل جديد",
+  "config.room.title": "غرفة المؤتمر",
+  "config.room.limit": "الحد الأقصى للمشاركين",
+  "config.client_media.auto_network": "التكيف مع الشبكة تلقائيًا",
+  "config.client_media.stun_server": "خادم STUN",
+  "config.client_media.stun_none": "بدون"
 }

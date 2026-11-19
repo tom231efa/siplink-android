@@ -1,6 +1,6 @@
 {{define "content"}}
 <div class="narrow-page">
-<header class="page-head"><div><h1 class="fade">{{.Data.Title}}</h1></div></header>
+<header class="page-head"><div><h1 dir="auto" class="fade">{{.Data.Title}}</h1></div></header>
 {{with .Data.Error}}<div class="flash error" role="alert">{{.}}</div>{{end}}
 <form method="post" action="{{.Data.Base}}" class="card form-card">
   <div class="card-body form">

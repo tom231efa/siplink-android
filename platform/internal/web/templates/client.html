@@ -2,9 +2,9 @@
 {{$d := .Data}}{{$c := .Data.C}}
 <header class="page-head">
   <div>
-    <div class="title-row fade-line"><h1 class="fade">{{$c.Name}}</h1>{{if $d.Offline}}<span class="status warn">{{t "clients.status.offline"}}</span>{{else if eq $c.Status "active"}}<span class="status ok">{{t "clients.status.active"}}</span>{{else}}<span class="status">{{t "clients.status.pending"}}</span>{{end}}</div>
-    <p class="page-sub fade">{{$d.Region}}{{with $d.Group}}<span class="dot-sep"></span>{{t "groups.group"}} <a href="/clients?group={{.ID}}">{{.Name}}</a>{{end}}<span class="dot-sep"></span>{{t "clients.field.template"}} <a href="/client-templates/{{$d.Template.ID}}">{{$d.Template.Name}}</a>
-      {{- with $d.Config}}<span class="dot-sep"></span>{{t "clients.detail.config"}} <a href="/config-templates/{{.ID}}">{{.Name}}</a>{{end}}{{with $d.Keys}}<span class="dot-sep"></span>{{t "clients.detail.keys"}} <a href="/key-templates/{{.ID}}">{{.Name}}</a>{{end}}</p>
+    <div class="title-row fade-line"><h1 dir="auto" class="fade">{{$c.Name}}</h1>{{if $d.Offline}}<span class="status warn">{{t "clients.status.offline"}}</span>{{else if eq $c.Status "active"}}<span class="status ok">{{t "clients.status.active"}}</span>{{else}}<span class="status">{{t "clients.status.pending"}}</span>{{end}}</div>
+    <p class="page-sub fade"><bdi>{{$d.Region}}</bdi>{{with $d.Group}}<span class="dot-sep"></span>{{t "groups.group"}} <a href="/clients?group={{.ID}}" dir="auto">{{.Name}}</a>{{end}}<span class="dot-sep"></span>{{t "clients.field.template"}} <a href="/client-templates/{{$d.Template.ID}}" dir="auto">{{$d.Template.Name}}</a>
+      {{- with $d.Config}}<span class="dot-sep"></span>{{t "clients.detail.config"}} <a href="/config-templates/{{.ID}}" dir="auto">{{.Name}}</a>{{end}}{{with $d.Keys}}<span class="dot-sep"></span>{{t "clients.detail.keys"}} <a href="/key-templates/{{.ID}}" dir="auto">{{.Name}}</a>{{end}}</p>
     {{if $d.Tags}}<div class="chips page-chips" aria-label="{{t "tags.title"}}">{{range $d.Tags}}<a href="/clients?tag={{.ID}}">{{template "chip" .}}</a>{{end}}</div>{{end}}
   </div>
   <div class="page-actions"><a class="btn" href="/clients/{{$c.ID}}/preview">{{icon "eye"}}{{t "clients.detail.preview"}}</a><a class="btn" href="/clients/{{$c.ID}}/edit">{{icon "pencil"}}{{t "common.edit"}}</a></div>
@@ -25,7 +25,7 @@
         <div class="enroll-text">
           <p class="path-line">{{t "clients.app_path"}}</p>
           <dl class="kv compact"><dt>{{t "clients.detail.valid_until"}}</dt><dd>{{when $c.EnrollExpiresAt}}</dd><dt>{{t "clients.detail.uses"}}</dt><dd>{{t "clients.detail.uses_count" "n" 1}}</dd></dl>
-          <div class="url-box"><span class="mono fade" id="enroll-url">{{$d.EnrollURL}}</span><button type="button" class="btn small ghost" data-copy="#enroll-url" hidden>{{icon "copy"}}<span>{{t "clients.detail.copy_url"}}</span></button></div>
+          <div class="url-box"><span dir="auto" class="mono fade" id="enroll-url">{{$d.EnrollURL}}</span><button type="button" class="btn small ghost" data-copy="#enroll-url" hidden>{{icon "copy"}}<span>{{t "clients.detail.copy_url"}}</span></button></div>
           <div class="actions">
             <a class="btn small" href="/clients/{{$c.ID}}/qr.png">{{icon "download"}}{{t "clients.detail.download_png"}}</a>
             <a class="btn small" href="/clients/print?ids={{$c.ID}}">{{icon "printer"}}{{t "clients.print.action"}}</a>
@@ -43,9 +43,9 @@
         <dl class="kv">
           <dt>{{t "common.status"}}</dt><dd>{{if $d.Offline}}<span class="status warn">{{t "clients.status.offline"}}</span>{{else}}<span class="status ok">{{t "clients.status.active"}}</span>{{end}} <span class="muted">{{when $c.BoundAt}}</span></dd>
           <dt>{{t "clients.field.last_sync"}}</dt><dd>{{when $d.Report.LastSeenAt}}{{with $d.Report.LastIP}}<span class="dot-sep"></span><span class="mono">{{.}}</span>{{end}}</dd>
-          <dt>{{t "clients.detail.model"}}</dt><dd class="fade">{{with $d.Report.DeviceModel}}{{.}}{{else}}—{{end}}{{with $d.Report.AndroidRelease}}<span class="dot-sep"></span>Android {{.}}{{end}}</dd>
-          <dt>{{t "clients.detail.app_version"}}</dt><dd class="fade">{{with $d.Report.AppVersion}}{{.}}{{else}}—{{end}}{{with $d.Report.AppVersionCode}}<span class="dot-sep"></span><span class="muted">{{t "clients.detail.version_code"}}</span> <span class="mono">{{.}}</span>{{end}}</dd>
-          {{with $d.Report.UserAgent}}<dt>User-Agent</dt><dd class="mono fade">{{.}}</dd>{{end}}
+          <dt>{{t "clients.detail.model"}}</dt><dd dir="auto" class="fade">{{with $d.Report.DeviceModel}}{{.}}{{else}}—{{end}}{{with $d.Report.AndroidRelease}}<span class="dot-sep"></span>Android {{.}}{{end}}</dd>
+          <dt>{{t "clients.detail.app_version"}}</dt><dd dir="auto" class="fade">{{with $d.Report.AppVersion}}{{.}}{{else}}—{{end}}{{with $d.Report.AppVersionCode}}<span class="dot-sep"></span><span class="muted">{{t "clients.detail.version_code"}}</span> <span class="mono">{{.}}</span>{{end}}</dd>
+          {{with $d.Report.UserAgent}}<dt>User-Agent</dt><dd dir="auto" class="mono fade">{{.}}</dd>{{end}}
           <dt>{{t "clients.detail.applied"}}</dt><dd class="mono">{{if $d.Report.AppliedVersion}}{{printf "%.12s" $d.Report.AppliedVersion}}{{if eq $d.Report.AppliedVersion $d.Version}} <span class="badge ok">{{t "clients.detail.latest"}}</span>{{else}}{{t "clients.detail.update_pending" "version" (printf "%.12s" $d.Version)}}{{end}}{{else}}—{{end}}</dd>
           {{with $d.Report.ApplyError}}<dt>{{t "clients.detail.apply_error"}}</dt><dd class="danger-text">{{.}}</dd>{{end}}
           <dt>{{t "clients.detail.registration"}}</dt><dd>{{regSummary $d.Report.RegistrationsJSON}}</dd>
@@ -60,13 +60,13 @@
       <div class="table-wrap"><table class="table">
         <thead><tr><th>{{t "clients.detail.col_account"}}</th><th>{{t "common.username"}}</th><th>{{t "clients.field.auth_user"}}</th><th>{{t "clients.field.display_name"}}</th><th>{{t "clients.detail.col_server"}}</th><th>{{t "common.password"}}</th></tr></thead>
         <tbody>{{range $d.Creds}}<tr>
-          <td class="strong"><span class="fade">{{with .In.AccountName}}{{.}}{{else}}{{.P.Name}}{{end}}</span></td><td class="mono"><span class="fade">{{.In.Username}}</span></td><td class="mono"><span class="fade">{{.In.AuthUser}}</span></td>
-          <td><span class="fade">{{.In.DisplayName}}</span></td><td class="mono muted"><span class="fade">{{.P.Domain}}{{if .P.Port}}:{{.P.Port}}{{end}} · {{.P.Transport}}</span></td>
+          <td class="strong"><span dir="auto" class="fade">{{with .In.AccountName}}{{.}}{{else}}{{.P.Name}}{{end}}</span></td><td class="mono"><span dir="auto" class="fade">{{.In.Username}}</span></td><td class="mono"><span dir="auto" class="fade">{{.In.AuthUser}}</span></td>
+          <td><span dir="auto" class="fade">{{.In.DisplayName}}</span></td><td class="mono muted"><span dir="auto" class="fade">{{.P.Domain}}{{if .P.Port}}:{{.P.Port}}{{end}} · {{.P.Transport}}</span></td>
           <td>{{if .HasPassword}}<span class="muted">••••••</span>{{else}}<span class="status warn">{{t "common.not_set"}}</span>{{end}}</td>
         </tr>{{end}}</tbody>
       </table></div>
       {{else}}<div class="empty-state compact">{{icon "users"}}<p>{{t "clients.detail.no_accounts"}}</p></div>{{end}}
-      {{if $d.LDAPBindDN}}<div class="card-foot"><p class="hint fade-line"><span>{{t "clients.detail.hosted_bind_dn"}}</span><span class="mono fade">{{$d.LDAPBindDN}}</span></p></div>{{end}}
+      {{if $d.LDAPBindDN}}<div class="card-foot"><p class="hint fade-line"><span>{{t "clients.detail.hosted_bind_dn"}}</span><span dir="auto" class="mono fade">{{$d.LDAPBindDN}}</span></p></div>{{end}}
     </section>
 
     {{if $d.CanSecrets}}

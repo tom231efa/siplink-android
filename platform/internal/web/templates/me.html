@@ -1,7 +1,7 @@
 {{define "content"}}
 {{$d := .Data}}{{$a := $d.Admin}}{{$t := $d.TwoStep}}
 <div class="narrow-page">
-<header class="page-head"><div><h1>{{t "layout.my_account"}}</h1><p class="page-sub fade">{{$a.Username}} · {{roleLabel $a.Role}}</p></div></header>
+<header class="page-head"><div><h1>{{t "layout.my_account"}}</h1><p class="page-sub fade"><bdi>{{$a.Username}}</bdi> · {{roleLabel $a.Role}}</p></div></header>
 {{if $d.Forced}}<div class="flash warn">{{t "me.forced"}}</div>
 {{else if $d.SetUp}}<div class="flash warn">{{t "me.setup_required"}}</div>{{end}}
 
@@ -59,7 +59,7 @@
       <div class="table-wrap"><table class="table">
         <thead><tr><th>{{t "common.name"}}</th><th class="hide-sm">{{t "me.passkeys.added"}}</th><th class="hide-sm">{{t "me.passkeys.last_used"}}</th><th class="actions-col"><span class="sr-only">{{t "common.actions"}}</span></th></tr></thead>
         <tbody>{{range $d.Passkeys}}<tr>
-          <td class="strong"><span class="fade">{{.Name}}</span></td>
+          <td class="strong"><span dir="auto" class="fade">{{.Name}}</span></td>
           <td class="muted nowrap hide-sm">{{when .CreatedAt}}</td>
           <td class="muted nowrap hide-sm">{{since .LastUsedAt}}</td>
           <td class="actions-col"><form method="post" action="/me/passkeys/{{.ID}}/delete" class="inline-form" data-confirm="{{t "me.passkeys.delete_confirm" "name" .Name}}">

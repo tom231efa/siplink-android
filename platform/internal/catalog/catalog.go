@@ -84,13 +84,18 @@ func ProfileProblems(p *store.Profile, others []*store.Profile) []i18n.Msg {
 // ---- settings ----
 
 // ParseSettings reads stored settings JSON over the app's defaults; an auto answer wait that
-// cannot be chosen becomes the nearest one that can.
+// cannot be chosen becomes the nearest one that can, a room size outside the app's range the
+// nearest end of it.
 func ParseSettings(raw string) provision.Settings {
 	s := provision.DefaultSettings()
 	if raw != "" {
 		_ = json.Unmarshal([]byte(raw), &s)
 	}
 	s.AutoAnswerSeconds = rules.AutoAnswerDelay(s.AutoAnswerSeconds)
+	// A room size the app would not take is read as the app reads it; the defaults of the
+	// fields that are left out at their default are left out (provision.Settings).
+	s.SetRoomLimit(rules.RoomLimitOf(s.RoomSize()))
+	s.SetAutoNetwork(s.AutoNetworkOn())
 	return s
 }
 

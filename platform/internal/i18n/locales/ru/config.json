@@ -192,5 +192,10 @@
   "config.directory.account_password": "Пароль учётной записи LDAP",
   "config.directory.choose_prompt": "Выберите справочник",
   "config.directory.none_available": "Нет доступных справочников",
-  "config.directory.new_book": "Новый справочник"
+  "config.directory.new_book": "Новый справочник",
+  "config.room.title": "Конференц-комната",
+  "config.room.limit": "Максимум участников",
+  "config.client_media.auto_network": "Автоматически адаптироваться к сети",
+  "config.client_media.stun_server": "STUN-сервер",
+  "config.client_media.stun_none": "Не используется"
 }

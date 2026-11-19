@@ -74,6 +74,42 @@ type Settings struct {
 	// intercomAutoAnswer; AutoAnswerSeconds is one of rules.AutoAnswerDelays.
 	AutoAnswer        bool `json:"autoAnswer"`
 	AutoAnswerSeconds int  `json:"autoAnswerSeconds"`
+	// The conference room and the adaptation to the network (agreed with the app on
+	// 2026-11-20). Each is left out while it keeps the app's default, so that the document of a
+	// template that does not set it stays as it was, with the same version: the app reads an
+	// absent field as its default. Read them with RoomSize and AutoNetworkOn, set them with
+	// SetRoomLimit and SetAutoNetwork.
+	RoomLimit   *int   `json:"roomLimit,omitempty"`   // members besides the user, rules.MinRoomLimit–rules.RoomLimit
+	AutoNetwork *bool  `json:"autoNetwork,omitempty"` // the lines adapt to the network by themselves
+	StunServer  string `json:"stunServer,omitempty"`  // host[:port] the line checks ask; "" = none
+}
+
+// RoomSize is the size of the conference room: RoomLimit, or the app's default.
+func (s Settings) RoomSize() int {
+	if s.RoomLimit == nil {
+		return rules.RoomLimit
+	}
+	return *s.RoomLimit
+}
+
+// SetRoomLimit sets the size of the conference room; the app's default leaves the field out.
+func (s *Settings) SetRoomLimit(n int) {
+	s.RoomLimit = nil
+	if n != rules.RoomLimit {
+		s.RoomLimit = &n
+	}
+}
+
+// AutoNetworkOn is AutoNetwork, or the app's default (on).
+func (s Settings) AutoNetworkOn() bool { return s.AutoNetwork == nil || *s.AutoNetwork }
+
+// SetAutoNetwork sets whether the lines adapt to the network; the app's default (on) leaves
+// the field out.
+func (s *Settings) SetAutoNetwork(on bool) {
+	s.AutoNetwork = nil
+	if !on {
+		s.AutoNetwork = &on
+	}
 }
 
 // DefaultSettings are the app's defaults (Settings()) for the locked fields. Stored
@@ -91,6 +127,7 @@ func DefaultSettings() Settings {
 		UserAgent:       "", AdaptiveRateControl: false, EchoCancellation: true, IPv6: true,
 		CallRecording: true, RecordByDefault: false,
 		AutoAnswer: false, AutoAnswerSeconds: 3,
+		// RoomLimit, AutoNetwork and StunServer: absent, the app's defaults.
 	}
 }
 

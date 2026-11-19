@@ -162,7 +162,9 @@
 /* ---- right-to-left pages (§5.5): what the logical properties do not turn by themselves ---- */
 [dir="rtl"] :is(.icon.dir, .crumb-sep, .switch, .stackbar) { scale: -1 1; }
 [dir="rtl"] select { background-position: left 8px center; }
-[dir="rtl"] .fade.overflowing:not(.mono) {
+/* a value fades at the end of its own direction: names carry dir="auto", so a Chinese or Latin
+   name on a right-to-left page is laid out, cut and faded left to right */
+.fade.overflowing:dir(rtl):not(.mono) {
   -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 2.5em), transparent);
   mask-image: linear-gradient(to left, #000 calc(100% - 2.5em), transparent);
 }

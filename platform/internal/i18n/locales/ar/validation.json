@@ -86,5 +86,7 @@
   "mail.from_refused": "رُفض عنوان المرسل: {err}",
   "mail.to_refused": "رُفض عنوان المستلم: {err}",
   "mail.send_failed": "فشل الإرسال: {err}",
-  "names.bidi_control": "يجب ألا يحتوي الاسم على محارف التحكم في اتجاه النص"
+  "names.bidi_control": "يجب ألا يحتوي الاسم على محارف التحكم في اتجاه النص",
+  "provision.settings.room_limit_range": "الحد الأقصى للمشاركين: يجب أن يتراوح بين {min} و{max}",
+  "provision.settings.stun_invalid": "يجب أن يكون خادم STUN اسم مضيف أو عنوان IP، مع منفذ اختياري (1–65535)"
 }

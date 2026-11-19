@@ -256,11 +256,13 @@ type settingOptions struct {
 	FrameRates    []int
 	Transports    []rules.SipTransport
 	AutoAnswer    []int
+	RoomMin       int
+	RoomMax       int
 }
 
 func options() settingOptions {
 	return settingOptions{rules.MediaSecurities, rules.DndModes, rules.DtmfModes, rules.VideoSizes, rules.FrameRates, rules.SipTransports,
-		rules.AutoAnswerDelays}
+		rules.AutoAnswerDelays, rules.MinRoomLimit, rules.RoomLimit}
 }
 
 func (s *Server) configShow(w http.ResponseWriter, r *http.Request) {
@@ -451,6 +453,9 @@ func (s *Server) configSettings(w http.ResponseWriter, r *http.Request) {
 		set.UserAgent = r.FormValue("userAgent")
 		set.AdaptiveRateControl, set.EchoCancellation = checkbox(r, "adaptiveRateControl"), checkbox(r, "echoCancellation")
 		set.IPv6 = checkbox(r, "ipv6")
+		set.SetRoomLimit(intValue(r, "roomLimit", -1))
+		set.SetAutoNetwork(checkbox(r, "autoNetwork"))
+		set.StunServer = trimmed(r, "stunServer")
 	case "features":
 		f := &set.Features
 		for _, p := range []struct {
@@ -529,15 +534,23 @@ func (s *Server) configSettings(w http.ResponseWriter, r *http.Request) {
 // settingsChanges lists the changed settings fields by their JSON names.
 func settingsChanges(a, b provision.Settings) map[string]any {
 	out := map[string]any{}
-	var ma, mb map[string]any
-	_ = json.Unmarshal([]byte(catalog.SettingsJSON(a)), &ma)
-	_ = json.Unmarshal([]byte(catalog.SettingsJSON(b)), &mb)
+	ma, mb := settingsFields(a), settingsFields(b)
 	for k, v := range mb {
 		if !reflect.DeepEqual(ma[k], v) {
 			out[k] = map[string]any{"old": ma[k], "new": v}
 		}
 	}
 	return out
+}
+
+// settingsFields are the settings by their JSON names, those left out at their default
+// (provision.Settings) with that default.
+func settingsFields(s provision.Settings) map[string]any {
+	room, network := s.RoomSize(), s.AutoNetworkOn()
+	s.RoomLimit, s.AutoNetwork = &room, &network
+	m := map[string]any{"stunServer": ""}
+	_ = json.Unmarshal([]byte(catalog.SettingsJSON(s)), &m)
+	return m
 }
 
 // readCodecs reads the codec table of the media tab; mode "default" = SDK defaults.

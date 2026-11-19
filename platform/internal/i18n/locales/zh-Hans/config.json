@@ -192,5 +192,10 @@
   "config.directory.account_password": "LDAP 账号密码",
   "config.directory.choose_prompt": "请选择通讯录",
   "config.directory.none_available": "暂无可用的通讯录",
-  "config.directory.new_book": "新建通讯录"
+  "config.directory.new_book": "新建通讯录",
+  "config.room.title": "会议室",
+  "config.room.limit": "会议室人数上限",
+  "config.client_media.auto_network": "自动适应网络",
+  "config.client_media.stun_server": "STUN 服务器",
+  "config.client_media.stun_none": "不使用"
 }

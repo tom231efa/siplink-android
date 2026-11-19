@@ -151,7 +151,7 @@ func TestAdvancedSettings(t *testing.T) {
 		}
 	}
 	form := url.Values{"tab": {"calls"}, "dndMode": {"SOFTWARE"}, "dtmfMode": {"RFC2833"}, "forwardNoAnswerSeconds": {"20"},
-		"userAgent": {" Acme/1.0"}, "echoCancellation": {"1"}, "ipv6": {"1"}}
+		"userAgent": {" Acme/1.0"}, "echoCancellation": {"1"}, "ipv6": {"1"}, "roomLimit": {"30"}, "autoNetwork": {"1"}}
 	if r := root.post(base+"/settings", form); r.code != http.StatusBadRequest || !strings.Contains(r.body, "首尾不得包含空格") {
 		t.Errorf("leading space accepted: %d", r.code)
 	}

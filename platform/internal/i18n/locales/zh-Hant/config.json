@@ -192,5 +192,10 @@
   "config.directory.account_password": "LDAP 帳號密碼",
   "config.directory.choose_prompt": "請選擇通訊錄",
   "config.directory.none_available": "尚無可用的通訊錄",
-  "config.directory.new_book": "新增通訊錄"
+  "config.directory.new_book": "新增通訊錄",
+  "config.room.title": "會議室",
+  "config.room.limit": "會議室人數上限",
+  "config.client_media.auto_network": "自動適應網路",
+  "config.client_media.stun_server": "STUN 伺服器",
+  "config.client_media.stun_none": "不使用"
 }

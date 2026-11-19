@@ -207,5 +207,8 @@
   "audit.col.changes": "Изменения",
   "audit.col.source": "Источник",
   "audit.empty": "Записей пока нет.",
-  "use.item": "{kind} «{name}»"
+  "use.item": "{kind} «{name}»",
+  "audit.field.roomLimit": "Максимум участников",
+  "audit.field.autoNetwork": "Автоматически адаптироваться к сети",
+  "audit.field.stunServer": "STUN-сервер"
 }

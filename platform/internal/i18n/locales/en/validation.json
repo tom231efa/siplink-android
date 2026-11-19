@@ -86,5 +86,7 @@
   "mail.from_refused": "Sender address refused: {err}",
   "mail.to_refused": "Recipient address refused: {err}",
   "mail.send_failed": "Sending failed: {err}",
-  "names.bidi_control": "The name must not contain text direction control characters"
+  "names.bidi_control": "The name must not contain text direction control characters",
+  "provision.settings.room_limit_range": "Maximum participants must be {min}–{max}",
+  "provision.settings.stun_invalid": "STUN server must be a host name or IP address, optionally with a port (1–65535)"
 }

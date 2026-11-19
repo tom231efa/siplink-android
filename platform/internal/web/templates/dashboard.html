@@ -41,9 +41,9 @@
     {{if $n}}
     <ul class="attention-list">
       {{range $d.Cert}}<li><span class="dot {{if eq .Level "error"}}bad{{else}}warn{{end}}"></span><div><a href="/system">{{t "dashboard.attention.cert"}}</a><span class="sub">{{msg .Text}}</span></div></li>{{end}}
-      {{range $d.Trouble}}<li><span class="dot bad"></span><div><a class="fade" href="/clients/{{.ID}}">{{.Name}}</a><span class="sub">{{.Reason}}</span></div></li>{{end}}
-      {{range $d.Offline}}<li><span class="dot warn"></span><div><a class="fade" href="/clients/{{.ID}}">{{.Name}}</a><span class="sub">{{t "dashboard.attention.offline_since"}} {{since .LastSeen}}</span></div></li>{{end}}
-      {{range $d.Full}}<li><span class="dot warn"></span><div><a class="fade" href="/books/{{.ID}}">{{.Name}}</a><span class="sub">{{t "dashboard.attention.book_full" "n" .EntryCount "max" $d.Max}}</span></div></li>{{end}}
+      {{range $d.Trouble}}<li><span class="dot bad"></span><div><a dir="auto" class="fade" href="/clients/{{.ID}}">{{.Name}}</a><span class="sub">{{.Reason}}</span></div></li>{{end}}
+      {{range $d.Offline}}<li><span class="dot warn"></span><div><a dir="auto" class="fade" href="/clients/{{.ID}}">{{.Name}}</a><span class="sub">{{t "dashboard.attention.offline_since"}} {{since .LastSeen}}</span></div></li>{{end}}
+      {{range $d.Full}}<li><span class="dot warn"></span><div><a dir="auto" class="fade" href="/books/{{.ID}}">{{.Name}}</a><span class="sub">{{t "dashboard.attention.book_full" "n" .EntryCount "max" $d.Max}}</span></div></li>{{end}}
     </ul>
     {{else}}
     <div class="empty-state compact">{{icon "circle-check"}}<p>{{t "dashboard.attention.empty"}}</p></div>
@@ -58,8 +58,8 @@
       <li>
         <span class="avatar small" aria-hidden="true">{{if .AdminName}}{{initial .AdminName}}{{else}}·{{end}}</span>
         <div class="activity-text">
-          <p class="fade"><strong>{{if .AdminName}}{{.AdminName}}{{else}}{{t "dashboard.activity.system"}}{{end}}</strong> <span class="activity-action">{{actionLabel .Action}}</span>{{if .ObjectName}} <strong>{{objectName .ObjectType .ObjectName}}</strong>{{end}}</p>
-          <p class="sub fade">{{since .At}}{{with .RegionID}}<span class="dot-sep"></span>{{index $d.Names (deref .)}}{{end}}{{with .IP}}<span class="dot-sep"></span><span class="mono">{{.}}</span>{{end}}</p>
+          <p class="fade"><strong dir="auto">{{if .AdminName}}{{.AdminName}}{{else}}{{t "dashboard.activity.system"}}{{end}}</strong> <span class="activity-action">{{actionLabel .Action}}</span>{{if .ObjectName}} <strong dir="auto">{{objectName .ObjectType .ObjectName}}</strong>{{end}}</p>
+          <p class="sub fade">{{since .At}}{{with .RegionID}}<span class="dot-sep"></span><bdi>{{index $d.Names (deref .)}}</bdi>{{end}}{{with .IP}}<span class="dot-sep"></span><span class="mono">{{.}}</span>{{end}}</p>
         </div>
       </li>
       {{end}}

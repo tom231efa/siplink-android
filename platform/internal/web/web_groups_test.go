@@ -393,7 +393,7 @@ func TestTagPermissions(t *testing.T) {
 	}
 }
 
-var clientRowLink = regexp.MustCompile(`<a class="fade" href="/clients/\d+">([^<]+)</a>`)
+var clientRowLink = regexp.MustCompile(`<a dir="auto" class="fade" href="/clients/\d+">([^<]+)</a>`)
 
 // listed are the names of the clients a list page shows.
 func listed(body string) []string {

@@ -1,7 +1,7 @@
 {{define "content"}}
 {{$d := .Data}}
 <div class="narrow-page">
-<header class="page-head"><div><h1 class="fade">{{.Title}}</h1></div></header>
+<header class="page-head"><div><h1 dir="auto" class="fade">{{.Title}}</h1></div></header>
 {{with $d.Error}}<div class="flash error" role="alert">{{.}}</div>{{end}}
 <form method="post" action="{{if $d.New}}/admins{{else}}/admins/{{$d.Admin.ID}}{{end}}" class="card form-card">
   <div class="card-body form">
@@ -26,7 +26,7 @@
     <fieldset class="plain">
       <legend class="field-label">{{t "common.region"}}</legend>
       {{if $d.Regions}}<div class="check-grid">
-      {{range $d.Regions}}<label class="check-chip"><input type="checkbox" name="regions" value="{{.ID}}"{{if hasID $d.Admin.RegionIDs .ID}} checked{{end}}><span>{{.Name}}</span></label>{{end}}
+      {{range $d.Regions}}<label class="check-chip"><input type="checkbox" name="regions" value="{{.ID}}"{{if hasID $d.Admin.RegionIDs .ID}} checked{{end}}><span dir="auto">{{.Name}}</span></label>{{end}}
       </div>{{else}}<p class="muted">{{t "admins.form.no_regions"}}</p>{{end}}
     </fieldset>
     {{if not $d.New}}

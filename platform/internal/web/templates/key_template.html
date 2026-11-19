@@ -2,8 +2,8 @@
 {{$d := .Data}}{{$id := .Data.T.ID}}{{$ro := not .Data.CanEdit}}
 <header class="page-head">
   <div>
-    <div class="title-row fade-line"><h1 class="fade">{{$d.T.Name}}</h1>{{if $ro}}<span class="badge">{{t "templates.read_only"}}</span>{{end}}</div>
-    <p class="page-sub fade">{{if $d.T.RegionID}}{{$d.Region}}{{else}}{{t "common.global"}}{{end}}<span class="dot-sep"></span>{{t "keys.detail.count" "n" (len $d.Keys) "max" $d.Max}}{{if $d.Users}}<span class="dot-sep"></span>{{t "keys.detail.used_by" "names" $d.Users}}{{end}}</p>
+    <div class="title-row fade-line"><h1 dir="auto" class="fade">{{$d.T.Name}}</h1>{{if $ro}}<span class="badge">{{t "templates.read_only"}}</span>{{end}}</div>
+    <p class="page-sub fade">{{if $d.T.RegionID}}<bdi>{{$d.Region}}</bdi>{{else}}{{t "common.global"}}{{end}}<span class="dot-sep"></span>{{t "keys.detail.count" "n" (len $d.Keys) "max" $d.Max}}{{if $d.Users}}<span class="dot-sep"></span>{{t "keys.detail.used_by" "names" $d.Users}}{{end}}</p>
   </div>
   <div class="page-actions"><a class="btn" href="/key-templates/{{$id}}/export.csv">{{icon "download"}}{{t "keys.detail.export"}}</a>
     {{if not $ro}}<a class="btn primary" href="#key-form">{{icon "plus"}}{{t "keys.detail.add"}}</a>{{end}}</div>
@@ -24,9 +24,9 @@
   <div class="table-wrap scroll-list" id="key-list"><table class="table">
     <thead><tr>{{if not $ro}}<th class="grip-col"><span class="sr-only">{{t "keys.list.col_order"}}</span></th>{{end}}<th>{{t "common.name"}}</th><th>{{t "keys.field.number"}}</th><th>{{t "common.type"}}</th><th class="hide-sm">{{t "keys.field.category"}}</th><th class="hide-sm">{{t "keys.field.line"}}</th><th class="hide-sm">{{t "keys.field.icon"}}</th><th class="actions-col"><span class="sr-only">{{t "common.actions"}}</span></th></tr></thead>
     <tbody id="key-rows"{{if not $ro}} data-sortable data-sort-url="/key-templates/{{$id}}/keys/order"{{end}}>{{range $d.Keys}}{{$k := .}}{{$type := ""}}{{range $d.Actions}}{{if eq .Word $k.Action}}{{$type = .Label}}{{end}}{{end}}<tr data-sort-id="{{.ID}}" data-filter="{{.Label}} {{.Number}} {{$type}} {{.Category}} {{.Line}}">
-      {{if not $ro}}<td class="grip-col">{{template "grip" .Label}}</td>{{end}}<td class="strong"><span class="fade">{{.Label}}</span></td><td class="mono"><span class="fade">{{.Number}}</span></td>
+      {{if not $ro}}<td class="grip-col">{{template "grip" .Label}}</td>{{end}}<td class="strong"><span dir="auto" class="fade">{{.Label}}</span></td><td class="mono"><span dir="auto" class="fade">{{.Number}}</span></td>
       <td class="nowrap">{{$type}}</td>
-      <td class="hide-sm"><span class="fade">{{.Category}}</span></td><td class="hide-sm"><span class="fade">{{.Line}}</span></td><td class="hide-sm mono muted">{{.Icon}}</td>
+      <td class="hide-sm"><span dir="auto" class="fade">{{.Category}}</span></td><td class="hide-sm"><span dir="auto" class="fade">{{.Line}}</span></td><td class="hide-sm mono muted">{{.Icon}}</td>
       <td class="actions-col">{{if not $ro}}<div class="row-actions">
         <a class="btn" href="/key-templates/{{$id}}?edit={{.ID}}#key-form">{{t "common.edit"}}</a>
         <form method="post" action="/key-templates/{{$id}}/keys/{{.ID}}/delete" class="inline" data-confirm="{{t "keys.list.delete_confirm" "name" .Label}}"><button class="btn danger" title="{{t "common.delete"}}" aria-label="{{t "common.delete"}}">{{icon "trash"}}</button></form>

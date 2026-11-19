@@ -85,7 +85,7 @@ func TestNavigation(t *testing.T) {
 	id := created(t, root.post("/config-templates", url.Values{"name": {"标准"}, "region": {"0"}}), "/config-templates/")
 	r := root.get("/config-templates/" + itoa(id) + "?tab=media")
 	if !strings.Contains(r.body, `<a href="/config-templates" aria-current="page">`) || !strings.Contains(r.body, `<a href="/config-templates">配置模板</a>`) ||
-		!strings.Contains(r.body, `<span class="crumb-here fade" aria-current="page">标准</span>`) ||
+		!strings.Contains(r.body, `<span dir="auto" class="crumb-here fade" aria-current="page">标准</span>`) ||
 		!strings.Contains(r.body, `?tab=media" aria-current="page">`) {
 		t.Error("template page: sidebar, breadcrumb or section list")
 	}

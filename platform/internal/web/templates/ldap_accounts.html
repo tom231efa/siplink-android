@@ -10,9 +10,9 @@
     <tbody>
     {{range .Data.Accounts}}
     <tr>
-      <td class="strong mono"><a class="fade" href="/ldap-accounts/{{.ID}}">{{.Name}}</a></td>
-      <td>{{with .RegionID}}<span class="fade">{{index $.Data.Regions (deref .)}}</span>{{else}}<span class="tag">{{t "common.global"}}</span>{{end}}</td>
-      <td class="hide-sm">{{range .BookIDs}}<span class="tag"><span class="fade">{{index $.Data.Books .}}</span></span>{{else}}<span class="muted">{{t "common.none"}}</span>{{end}}</td>
+      <td class="strong mono"><a dir="auto" class="fade" href="/ldap-accounts/{{.ID}}">{{.Name}}</a></td>
+      <td>{{with .RegionID}}<span dir="auto" class="fade">{{index $.Data.Regions (deref .)}}</span>{{else}}<span class="tag">{{t "common.global"}}</span>{{end}}</td>
+      <td class="hide-sm">{{range .BookIDs}}<span class="tag"><span dir="auto" class="fade">{{index $.Data.Books .}}</span></span>{{else}}<span class="muted">{{t "common.none"}}</span>{{end}}</td>
       <td>{{if .Disabled}}<span class="status">{{t "common.disabled"}}</span>{{else}}<span class="status ok">{{t "common.enabled"}}</span>{{end}}</td>
       <td class="muted hide-sm">{{.Note}}</td>
       <td class="actions-col"><div class="row-actions"><a class="btn" href="/ldap-accounts/{{.ID}}">{{t "common.edit"}}</a></div></td>

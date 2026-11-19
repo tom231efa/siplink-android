@@ -1,6 +1,6 @@
 {{define "content"}}
 {{$d := .Data}}
-<header class="page-head"><div><h1 class="fade">{{.Title}}</h1></div>
+<header class="page-head"><div><h1 dir="auto" class="fade">{{.Title}}</h1></div>
   {{if and (not $d.Rows) $d.Templates}}<div class="page-actions">
   <form method="get" action="/clients/import/template.csv" class="inline-fields">
     <select name="template" aria-label="{{t "clients.field.template"}}" class="compact">{{range $d.Templates}}<option value="{{.ID}}">{{.Name}}</option>{{end}}</select>
@@ -14,8 +14,8 @@
   {{if not $d.Key}}<div class="card-body"><div class="flash error">{{t "clients.import.has_errors"}}</div></div>{{end}}
   <div class="table-wrap"><table class="table">
     <thead><tr><th class="num">{{t "clients.import.col_line"}}</th><th>{{t "common.name"}}</th><th>{{t "common.region"}}</th><th>{{t "clients.field.template"}}</th><th>{{t "groups.group"}}</th><th>{{t "tags.title"}}</th><th>{{t "clients.import.col_result"}}</th></tr></thead>
-    <tbody>{{range $d.Rows}}<tr><td class="num">{{.Line}}</td><td class="strong"><span class="fade">{{with .C}}{{.Name}}{{end}}</span></td><td><span class="fade">{{.Region}}</span></td><td><span class="fade">{{.Template}}</span></td>
-      <td><span class="fade">{{.Group}}</span></td><td>{{range .Tags}}<span class="tag"><span class="fade">{{.}}</span></span>{{end}}</td>
+    <tbody>{{range $d.Rows}}<tr><td class="num">{{.Line}}</td><td class="strong"><span dir="auto" class="fade">{{with .C}}{{.Name}}{{end}}</span></td><td><span dir="auto" class="fade">{{.Region}}</span></td><td><span dir="auto" class="fade">{{.Template}}</span></td>
+      <td><span dir="auto" class="fade">{{.Group}}</span></td><td>{{range .Tags}}<span class="tag"><span dir="auto" class="fade">{{.}}</span></span>{{end}}</td>
       <td>{{if .Problems}}<ul class="errors danger-text">{{range .Problems}}<li>{{.}}</li>{{end}}</ul>{{else}}<span class="status ok">{{t "clients.import.row_ok"}}</span>{{end}}</td></tr>{{end}}</tbody>
   </table></div>
   <div class="card-foot form-actions"><a class="btn" href="/clients/import">{{if $d.Key}}{{t "common.cancel"}}{{else}}{{t "clients.import.upload_again"}}{{end}}</a>

@@ -1,7 +1,7 @@
 {{define "content"}}
 {{$d := .Data}}
 <div class="narrow-page">
-<header class="page-head"><div><h1 class="fade">{{.Title}}</h1></div></header>
+<header class="page-head"><div><h1 dir="auto" class="fade">{{.Title}}</h1></div></header>
 {{with $d.Error}}<div class="flash error" role="alert">{{.}}</div>{{end}}
 <form method="post" action="{{if $d.New}}/ldap-accounts{{else}}/ldap-accounts/{{$d.Account.ID}}{{end}}" class="card form-card">
   <div class="card-body form">
@@ -22,7 +22,7 @@
       <legend class="field-label">{{t "dirs.ldap.books"}}</legend>
       {{if $d.Books}}<div class="check-list">
       {{range $d.Books}}<label class="check-row"><input type="checkbox" name="books" value="{{.ID}}"{{if hasID $d.Account.BookIDs .ID}} checked{{end}}>
-        <span class="fade">{{.Name}}</span><span class="muted fade">{{with .RegionID}}{{index $d.RegionOf (deref .)}}{{else}}{{t "common.global"}}{{end}} · <span class="mono">{{.Slug}}</span></span></label>{{end}}
+        <span dir="auto" class="fade">{{.Name}}</span><span dir="auto" class="muted fade">{{with .RegionID}}{{index $d.RegionOf (deref .)}}{{else}}{{t "common.global"}}{{end}} · <span class="mono">{{.Slug}}</span></span></label>{{end}}
       </div>{{else}}<p class="muted">{{t "dirs.ldap.no_books"}}</p>{{end}}
     </fieldset>
     <label>{{t "common.note"}}<input name="note" value="{{$d.Account.Note}}" maxlength="200"></label>

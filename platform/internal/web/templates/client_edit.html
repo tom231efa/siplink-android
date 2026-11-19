@@ -1,7 +1,7 @@
 {{define "content"}}
 {{$d := .Data}}
 <div class="narrow-page wide">
-<header class="page-head"><div><h1 class="fade">{{.Title}}</h1></div></header>
+<header class="page-head"><div><h1 dir="auto" class="fade">{{.Title}}</h1></div></header>
 {{if $d.Errors}}<div class="flash error" role="alert"><ul class="errors">{{range $d.Errors}}<li>{{.}}</li>{{end}}</ul></div>{{end}}
 <form method="get" action="{{if $d.New}}/clients/new{{else}}/clients/{{$d.C.ID}}/edit{{end}}" class="card scope-bar">
   <label>{{t "common.region"}}<select name="region" class="compact" data-autosubmit>{{range $d.Regions}}<option value="{{.ID}}"{{if eq .ID $d.C.RegionID}} selected{{end}}>{{.Name}}</option>{{end}}</select></label>
@@ -26,7 +26,7 @@
   </section>
   {{range $d.Creds}}{{$id := .P.ID}}
   <section class="card">
-    <div class="card-head"><h2>{{icon "users"}}<span class="fade">{{t "clients.form.account_title" "name" .P.Name}}</span></h2><span class="mono muted small-text fade">{{.P.Domain}}{{if .P.Port}}:{{.P.Port}}{{end}} · {{.P.Transport}}</span></div>
+    <div class="card-head"><h2>{{icon "users"}}<span class="fade">{{t "clients.form.account_title" "name" .P.Name}}</span></h2><span dir="auto" class="mono muted small-text fade">{{.P.Domain}}{{if .P.Port}}:{{.P.Port}}{{end}} · {{.P.Transport}}</span></div>
     <div class="card-body form wide">
       <div class="grid2">
         <div class="field"><span class="label-line"><label for="f-user-{{$id}}">{{t "common.username"}}</label>{{tip (printf "f-user-%d-tip" $id) (t "clients.form.user_tip")}}</span><input id="f-user-{{$id}}" aria-describedby="f-user-{{$id}}-tip" name="user_{{$id}}" value="{{.In.Username}}" autocomplete="off" dir="ltr"></div>

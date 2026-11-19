@@ -52,7 +52,7 @@ func TestOffline(t *testing.T) {
 	if !strings.Contains(all, ">安静</a>") || !strings.Contains(all, ">活跃</a>") || strings.Count(all, `<span class="status warn">离线</span>`) != 1 {
 		t.Error("bound clients: both listed, only the quiet one offline")
 	}
-	if !strings.Contains(root.get("/clients/"+itoa(quiet)).body, `<h1 class="fade">安静</h1><span class="status warn">离线</span>`) {
+	if !strings.Contains(root.get("/clients/"+itoa(quiet)).body, `<h1 dir="auto" class="fade">安静</h1><span class="status warn">离线</span>`) {
 		t.Error("client page does not say offline")
 	}
 }

@@ -192,5 +192,10 @@
   "config.directory.account_password": "Contraseña de la cuenta LDAP",
   "config.directory.choose_prompt": "Seleccione un directorio",
   "config.directory.none_available": "No hay directorios disponibles",
-  "config.directory.new_book": "Nuevo directorio"
+  "config.directory.new_book": "Nuevo directorio",
+  "config.room.title": "Sala de conferencias",
+  "config.room.limit": "Máximo de participantes",
+  "config.client_media.auto_network": "Adaptarse a la red automáticamente",
+  "config.client_media.stun_server": "Servidor STUN",
+  "config.client_media.stun_none": "Ninguno"
 }

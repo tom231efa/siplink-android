@@ -1,7 +1,7 @@
 {{define "content"}}
 {{$d := .Data}}
 <div class="narrow-page">
-<header class="page-head"><div><h1 class="fade">{{.Title}}</h1><p class="page-sub fade"><a href="/config-templates/{{$d.T.ID}}?tab=directories">{{$d.T.Name}}</a></p></div></header>
+<header class="page-head"><div><h1 dir="auto" class="fade">{{.Title}}</h1><p class="page-sub fade"><a href="/config-templates/{{$d.T.ID}}?tab=directories" dir="auto">{{$d.T.Name}}</a></p></div></header>
 {{with $d.Errors}}<div class="flash error" role="alert"><ul class="errors">{{range .}}<li>{{.}}</li>{{end}}</ul></div>{{end}}
 {{if $d.New}}
 <form method="get" action="/config-templates/{{$d.T.ID}}/directories/new" class="card scope-bar">

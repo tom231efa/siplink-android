@@ -146,6 +146,12 @@ func SettingsProblems(s Settings) []i18n.Msg {
 	if err := UserAgentProblem(s.UserAgent); err != nil {
 		out = append(out, i18n.MsgOf(err))
 	}
+	if n := s.RoomSize(); n < rules.MinRoomLimit || n > rules.RoomLimit {
+		out = append(out, i18n.M("provision.settings.room_limit_range", "min", rules.MinRoomLimit, "max", rules.RoomLimit))
+	}
+	if !rules.IsValidStunServer(s.StunServer) {
+		out = append(out, i18n.M("provision.settings.stun_invalid"))
+	}
 	return out
 }
 

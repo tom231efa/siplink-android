@@ -207,5 +207,8 @@
   "audit.col.changes": "変更項目",
   "audit.col.source": "接続元",
   "audit.empty": "記録はまだありません。",
-  "use.item": "{kind}「{name}」"
+  "use.item": "{kind}「{name}」",
+  "audit.field.roomLimit": "会議室の参加者上限",
+  "audit.field.autoNetwork": "ネットワークに自動で適応",
+  "audit.field.stunServer": "STUN サーバー"
 }

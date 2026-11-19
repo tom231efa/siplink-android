@@ -86,5 +86,7 @@
   "mail.from_refused": "Adresse de l'expéditeur refusée : {err}",
   "mail.to_refused": "Adresse du destinataire refusée : {err}",
   "mail.send_failed": "Échec de l'envoi : {err}",
-  "names.bidi_control": "Le nom ne doit pas contenir de caractères de contrôle de direction du texte"
+  "names.bidi_control": "Le nom ne doit pas contenir de caractères de contrôle de direction du texte",
+  "provision.settings.room_limit_range": "Le nombre maximal de participants doit être compris entre {min} et {max}",
+  "provision.settings.stun_invalid": "Le serveur STUN doit être un nom d'hôte ou une adresse IP, éventuellement avec un port (1–65535)"
 }

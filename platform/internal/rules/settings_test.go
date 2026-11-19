@@ -286,3 +286,26 @@ func TestCoerceSettings(t *testing.T) {
 		t.Error("video size data")
 	}
 }
+
+// RoomRules.limitOf: the app clamps a room size into MIN_LIMIT..LIMIT.
+func TestRoomLimitOf(t *testing.T) {
+	if RoomLimit != 30 || MinRoomLimit != 2 {
+		t.Errorf("bounds %d–%d", MinRoomLimit, RoomLimit)
+	}
+	for in, want := range map[int]int{-5: 2, 0: 2, 1: 2, 2: 2, 17: 17, 30: 30, 31: 30, 1000: 30} {
+		if got := RoomLimitOf(in); got != want {
+			t.Errorf("RoomLimitOf(%d) = %d, want %d", in, got, want)
+		}
+	}
+}
+
+// Not a Kotlin rule yet: the STUN server takes the address rule of an account's server.
+func TestStunServer(t *testing.T) {
+	for v, ok := range map[string]bool{"": true, "stun.example.com": true, "stun.example.com:3478": true, "192.0.2.1": true,
+		"[::1]:3478": true, " stun.example.com": false, "stun:stun.example.com": false, "stun.example.com:0": false,
+		"stun.example.com:99999": false, "[::1": false, "stun example.com": false} {
+		if IsValidStunServer(v) != ok {
+			t.Errorf("IsValidStunServer(%q) != %v", v, ok)
+		}
+	}
+}

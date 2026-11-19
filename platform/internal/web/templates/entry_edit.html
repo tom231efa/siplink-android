@@ -1,7 +1,7 @@
 {{define "content"}}
 {{$d := .Data}}
 <div class="narrow-page">
-<header class="page-head"><div><h1 class="fade">{{.Title}}</h1><p class="page-sub fade"><a href="/books/{{$d.Book.ID}}">{{$d.Book.Name}}</a></p></div></header>
+<header class="page-head"><div><h1 dir="auto" class="fade">{{.Title}}</h1><p class="page-sub fade"><a href="/books/{{$d.Book.ID}}" dir="auto">{{$d.Book.Name}}</a></p></div></header>
 {{with $d.Errors}}<div class="flash error" role="alert"><ul class="errors">{{range .}}<li>{{.}}</li>{{end}}</ul></div>{{end}}
 <form method="post" action="{{if $d.New}}/books/{{$d.Book.ID}}/entries{{else}}/books/{{$d.Book.ID}}/entries/{{$d.Entry.ID}}{{end}}" class="card form-card">
   <div class="card-body form">

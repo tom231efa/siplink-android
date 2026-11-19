@@ -86,5 +86,7 @@
   "mail.from_refused": "Dirección del remitente rechazada: {err}",
   "mail.to_refused": "Dirección del destinatario rechazada: {err}",
   "mail.send_failed": "Error al enviar: {err}",
-  "names.bidi_control": "El nombre no puede contener caracteres de control de dirección del texto"
+  "names.bidi_control": "El nombre no puede contener caracteres de control de dirección del texto",
+  "provision.settings.room_limit_range": "El máximo de participantes debe estar entre {min} y {max}",
+  "provision.settings.stun_invalid": "El servidor STUN debe ser un nombre de host o una dirección IP, con un puerto opcional (1–65535)"
 }

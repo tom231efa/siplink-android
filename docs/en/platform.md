@@ -253,6 +253,7 @@ Replace `data/` with the directory mounted at `/data` in the container in Compos
 - Names are sorted by Unicode code point, **not by pinyin**; homophones and common characters may sort differently from what you expect.
 - The client page shows the SipLink version, version code and User-Agent reported by the phone. The platform provisions the same configuration to all versions; older versions ignore fields they do not know.
 - Administrators must re-enter their own password before viewing a password stored for a client, and every view is recorded in the audit log.
+- The "Advanced settings" of a configuration template set the maximum participants of the conference room (2–30, default 30), whether the lines adapt to the network automatically (on by default) and a STUN server (a host name or IP address, optionally with a port; empty for none). A template that keeps the defaults provisions exactly the configuration it did before; older app versions ignore these settings.
 
 ## Languages
 
@@ -269,4 +270,5 @@ The web console and the command line come in eight languages, each listed by its
   ```
 
 - **Audit log**: entries written before this version keep their original Chinese text; new entries are shown in the viewer's language.
+- **Right-to-left pages** (العربية): names of clients, groups, tags, templates and the like are shown in their own direction; a Chinese or Latin name runs left to right and, when too long, fades out at its end.
 - The configuration documents provisioned to phones and the SipLink app are not affected by the console language.

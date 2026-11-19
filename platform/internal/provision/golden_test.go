@@ -440,7 +440,7 @@ func TestFieldNames(t *testing.T) {
 			"dndMode", "callWaiting", "rejectAnonymous", "dtmfMode", "forwardAlways", "forwardBusy", "forwardNoAnswer",
 			"forwardNoAnswerSeconds", "features", "videoCalls", "videoSize", "videoFrameRate", "autoUpdateCheck",
 			"userAgent", "adaptiveRateControl", "echoCancellation", "ipv6", "callRecording", "recordByDefault",
-			"autoAnswer", "autoAnswerSeconds"},
+			"autoAnswer", "autoAnswerSeconds", "roomLimit", "autoNetwork", "stunServer"},
 		"account": {"key", "name", "username", "password", "authUser", "displayName", "domain", "port", "server", "backupServer",
 			"dnsServer", "transport", "expires", "subscribeMwi", "enabled"},
 		"directory": {"key", "name", "enabled", "host", "port", "security", "bindDn", "password", "baseDn", "line", "lookupIncoming",

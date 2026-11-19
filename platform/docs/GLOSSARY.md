@@ -5,7 +5,7 @@ buttons and sentences alike (inflected where the grammar needs it: Russian cases
 definite article and number, French and Spanish plural). Simplified Chinese is the source. Terms
 not listed keep their usual technical meaning; the standard ones stay untranslated: SIP, TLS,
 LDAP, StartTLS / STARTTLS, SRTP, DTMF, CSV, LDIF, QR, CA, DNS, URL, PEM, TOTP, SMTP, HTTPS,
-User-Agent, IPv6, UDP, TCP, Base DN, Bind DN.
+User-Agent, IPv6, UDP, TCP, Base DN, Bind DN, STUN.
 
 ## Style per language
 
@@ -52,6 +52,7 @@ Counts are never inflected: a label followed by the number ("Clients: 15"), neve
 | 联系人 | Contact | 連絡先 | جهة اتصال | Contact | 聯絡人 | Контакт | Contacto |
 | LDAP 账号 | LDAP account | LDAP アカウント | حساب LDAP | Compte LDAP | LDAP 帳號 | Учётная запись LDAP | Cuenta LDAP |
 | 账号（SIP） | Account | アカウント | حساب | Compte | 帳號 | Учётная запись | Cuenta |
+| 会议室 | Conference room | 会議室 | غرفة المؤتمر | Salle de conférence | 會議室 | Конференц-комната | Sala de conferencias |
 | 线路 | Line | 回線 | خط | Ligne | 線路 | Линия | Línea |
 | 管理员 | Administrator | 管理者 | مسؤول | Administrateur | 管理員 | Администратор | Administrador |
 | 超级管理员 | Super administrator | スーパー管理者 | مسؤول أعلى | Super-administrateur | 超級管理員 | Суперадминистратор | Superadministrador |

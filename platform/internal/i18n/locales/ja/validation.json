@@ -86,5 +86,7 @@
   "mail.from_refused": "送信元アドレスが拒否されました：{err}",
   "mail.to_refused": "宛先アドレスが拒否されました：{err}",
   "mail.send_failed": "送信に失敗しました：{err}",
-  "names.bidi_control": "名前に文字方向の制御文字は使用できません"
+  "names.bidi_control": "名前に文字方向の制御文字は使用できません",
+  "provision.settings.room_limit_range": "会議室の参加者上限は {min}～{max} にしてください",
+  "provision.settings.stun_invalid": "STUN サーバーはホスト名または IP アドレス（ポート 1～65535 を付けても可）にしてください"
 }

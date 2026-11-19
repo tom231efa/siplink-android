@@ -2,8 +2,8 @@
 {{$d := .Data}}{{$id := .Data.T.ID}}{{$ro := not .Data.CanEdit}}
 <header class="page-head">
   <div>
-    <div class="title-row fade-line"><h1 class="fade">{{$d.T.Name}}</h1>{{if $ro}}<span class="badge">{{t "config.read_only"}}</span>{{end}}</div>
-    <p class="page-sub fade">{{if $d.T.RegionID}}{{$d.Region}}{{else}}{{t "common.global"}}{{end}}<span class="dot-sep"></span>{{if $d.Users}}{{t "config.used_by_names" "n" $d.Clients "names" $d.Users}}{{else}}{{t "config.used_by" "n" $d.Clients}}{{end}}</p>
+    <div class="title-row fade-line"><h1 dir="auto" class="fade">{{$d.T.Name}}</h1>{{if $ro}}<span class="badge">{{t "config.read_only"}}</span>{{end}}</div>
+    <p class="page-sub fade">{{if $d.T.RegionID}}<bdi>{{$d.Region}}</bdi>{{else}}{{t "common.global"}}{{end}}<span class="dot-sep"></span>{{if $d.Users}}{{t "config.used_by_names" "n" $d.Clients "names" $d.Users}}{{else}}{{t "config.used_by" "n" $d.Clients}}{{end}}</p>
   </div>
 </header>
 {{$confirm := ""}}{{if gt $d.Clients 0}}{{$confirm = t "config.save_confirm" "n" $d.Clients}}{{end}}
@@ -24,8 +24,8 @@
     <div class="table-wrap"><table class="table">
       <thead><tr>{{if not $ro}}<th class="grip-col"><span class="sr-only">{{t "config.col.order"}}</span></th>{{end}}<th>{{t "common.name"}}</th><th>{{t "config.accounts.col.domain"}}</th><th>{{t "config.accounts.col.transport"}}</th><th>{{t "config.accounts.col.proxy"}}</th><th>{{t "config.accounts.col.expires"}}</th><th>{{t "config.accounts.col.default"}}</th><th class="actions-col"><span class="sr-only">{{t "common.actions"}}</span></th></tr></thead>
       <tbody{{if not $ro}} data-sortable data-sort-url="/config-templates/{{$id}}/profiles/order"{{end}}>{{range $d.Profiles}}<tr data-sort-id="{{.ID}}">
-        {{if not $ro}}<td class="grip-col">{{template "grip" .Name}}</td>{{end}}<td class="strong"><span class="fade-line"><span class="fade">{{.Name}}</span>{{if not .Enabled}}<span class="tag">{{t "config.tag.disabled"}}</span>{{end}}</span></td>
-        <td class="mono"><span class="fade">{{.Domain}}{{if .Port}}:{{.Port}}{{end}}</span></td><td class="nowrap">{{.Transport}}</td><td class="mono muted"><span class="fade">{{.Server}}</span></td><td class="num">{{.Expires}}</td>
+        {{if not $ro}}<td class="grip-col">{{template "grip" .Name}}</td>{{end}}<td class="strong"><span class="fade-line"><span dir="auto" class="fade">{{.Name}}</span>{{if not .Enabled}}<span class="tag">{{t "config.tag.disabled"}}</span>{{end}}</span></td>
+        <td class="mono"><span dir="auto" class="fade">{{.Domain}}{{if .Port}}:{{.Port}}{{end}}</span></td><td class="nowrap">{{.Transport}}</td><td class="mono muted"><span dir="auto" class="fade">{{.Server}}</span></td><td class="num">{{.Expires}}</td>
         <td>{{if .IsDefault}}<span class="status blue">{{t "config.accounts.is_default"}}</span>{{end}}</td>
         <td class="actions-col">{{if not $ro}}<div class="row-actions">
           <a class="btn" href="/config-templates/{{$id}}/profiles/{{.ID}}">{{t "common.edit"}}</a>
@@ -68,6 +68,13 @@
       </div>
     </section>
     <section class="card">
+      <div class="card-head"><h2>{{t "config.room.title"}}</h2></div>
+      <div class="card-body settings">
+        <label class="setting"><span class="setting-text"><span class="setting-name">{{t "config.room.limit"}}</span></span>
+          <span class="setting-control"><input type="number" name="roomLimit" value="{{$d.Settings.RoomSize}}" min="{{$d.Options.RoomMin}}" max="{{$d.Options.RoomMax}}" required class="short" dir="ltr"></span></label>
+      </div>
+    </section>
+    <section class="card">
       <div class="card-head"><h2>{{t "config.client_media.title"}}</h2></div>
       <div class="card-body settings">
         <label class="setting"><span class="setting-text"><span class="setting-name">{{t "config.client_media.user_agent"}}</span></span>
@@ -78,6 +85,10 @@
           <span class="switch"><input type="checkbox" role="switch" name="echoCancellation" value="1"{{if $d.Settings.EchoCancellation}} checked{{end}}><span></span></span></label>
         <label class="setting toggle"><span class="setting-text"><span class="setting-name">{{t "config.client_media.ipv6"}}</span></span>
           <span class="switch"><input type="checkbox" role="switch" name="ipv6" value="1"{{if $d.Settings.IPv6}} checked{{end}}><span></span></span></label>
+        <label class="setting toggle"><span class="setting-text"><span class="setting-name">{{t "config.client_media.auto_network"}}</span></span>
+          <span class="switch"><input type="checkbox" role="switch" name="autoNetwork" value="1"{{if $d.Settings.AutoNetworkOn}} checked{{end}}><span></span></span></label>
+        <label class="setting"><span class="setting-text"><span class="setting-name">{{t "config.client_media.stun_server"}}</span></span>
+          <span class="setting-control"><input name="stunServer" value="{{$d.Settings.StunServer}}" maxlength="259" class="mono" dir="ltr" autocomplete="off" spellcheck="false" placeholder="{{t "config.client_media.stun_none"}}"></span></label>
       </div>
     </section>
     {{template "savebar" $ro}}
@@ -181,7 +192,7 @@
         {{range $d.CodecGroups}}<tbody class="group-head"><tr><th colspan="3">{{t .Label}}</th></tr></tbody>
         <tbody{{if not $ro}} data-sortable{{end}}>{{range .Rows}}<tr data-sort-id="{{.Kind}}|{{.Key}}">
           {{if not $ro}}<td class="grip-col">{{template "grip" .Key}}</td>{{end}}
-          <td class="mono strong"><span class="fade">{{.Key}}</span><input type="hidden" name="codecKind" value="{{.Kind}}"><input type="hidden" name="codecKey" value="{{.Key}}"><input type="hidden" name="codecOrder" value="{{.Order}}" data-sort-pos></td>
+          <td class="mono strong"><span dir="auto" class="fade">{{.Key}}</span><input type="hidden" name="codecKind" value="{{.Kind}}"><input type="hidden" name="codecKey" value="{{.Key}}"><input type="hidden" name="codecOrder" value="{{.Order}}" data-sort-pos></td>
           <td><select name="codecOn" class="compact" aria-label="{{t "config.media.codec_on_aria" "codec" .Key}}"><option value="1"{{if .Enabled}} selected{{end}}>{{t "config.media.codec_on"}}</option><option value="0"{{if not .Enabled}} selected{{end}}>{{t "config.media.codec_off"}}</option></select></td>
         </tr>{{end}}</tbody>{{end}}
       </table></div>
@@ -219,8 +230,8 @@
     <div class="table-wrap"><table class="table">
       <thead><tr><th>{{t "config.ca.col.subject"}}</th><th>{{t "config.ca.col.expires"}}</th><th>{{t "config.ca.col.fingerprint"}}</th><th class="actions-col"><span class="sr-only">{{t "common.actions"}}</span></th></tr></thead>
       <tbody>
-      {{range $d.PlatformCAs}}<tr><td class="strong">{{t "config.ca.platform"}}<span class="sub fade">{{.Subject}}</span></td><td class="nowrap">{{day .NotAfter}}</td><td class="mono small-text muted"><span class="fade">{{.Fingerprint}}</span></td><td></td></tr>{{end}}
-      {{range $d.CAs}}<tr><td class="strong"><span class="fade">{{.Subject}}</span></td><td class="nowrap">{{day .NotAfter}}</td><td class="mono small-text muted"><span class="fade">{{.Fingerprint}}</span></td>
+      {{range $d.PlatformCAs}}<tr><td class="strong">{{t "config.ca.platform"}}<span dir="auto" class="sub fade">{{.Subject}}</span></td><td class="nowrap">{{day .NotAfter}}</td><td class="mono small-text muted"><span dir="auto" class="fade">{{.Fingerprint}}</span></td><td></td></tr>{{end}}
+      {{range $d.CAs}}<tr><td class="strong"><span dir="auto" class="fade">{{.Subject}}</span></td><td class="nowrap">{{day .NotAfter}}</td><td class="mono small-text muted"><span dir="auto" class="fade">{{.Fingerprint}}</span></td>
         <td class="actions-col">{{if not $ro}}<form method="post" action="/config-templates/{{$id}}/cas/remove" data-confirm="{{t "config.ca.remove_confirm"}}" class="row-actions"><input type="hidden" name="fingerprint" value="{{.Fingerprint}}"><button class="btn danger">{{t "common.remove"}}</button></form>{{end}}</td></tr>{{end}}
       </tbody>
     </table></div>
@@ -244,12 +255,12 @@
     <div class="table-wrap"><table class="table fit-sm">
       <thead><tr>{{if not $ro}}<th class="grip-col"><span class="sr-only">{{t "config.col.order"}}</span></th>{{end}}<th>{{t "common.name"}}</th><th>{{t "common.type"}}</th><th class="hide-sm">{{t "config.directories.col.directory"}}</th><th class="hide-sm">{{t "config.directories.col.encryption"}}</th><th class="hide-sm">{{t "common.password"}}</th><th class="hide-sm">{{t "config.directories.col.line"}}</th><th class="actions-col"><span class="sr-only">{{t "common.actions"}}</span></th></tr></thead>
       <tbody{{if not $ro}} data-sortable data-sort-url="/config-templates/{{$id}}/directories/order"{{end}}>{{range $d.Directories}}<tr data-sort-id="{{.ID}}">
-        {{if not $ro}}<td class="grip-col">{{template "grip" .DisplayName}}</td>{{end}}<td class="strong"><span class="fade-line"><span class="fade">{{.DisplayName}}</span>{{if not .Enabled}}<span class="tag">{{t "config.tag.disabled"}}</span>{{end}}</span>{{if or .Name .External}}<span class="sub show-sm fade">{{if .Name}}{{.Source}} {{end}}{{with .External}}{{.Host}}:{{.Port}}{{end}}</span>{{end}}</td>
+        {{if not $ro}}<td class="grip-col">{{template "grip" .DisplayName}}</td>{{end}}<td class="strong"><span class="fade-line"><span dir="auto" class="fade">{{.DisplayName}}</span>{{if not .Enabled}}<span class="tag">{{t "config.tag.disabled"}}</span>{{end}}</span>{{if or .Name .External}}<span dir="auto" class="sub show-sm fade">{{if .Name}}{{.Source}} {{end}}{{with .External}}{{.Host}}:{{.Port}}{{end}}</span>{{end}}</td>
         <td class="nowrap">{{if eq .Kind "hosted"}}{{t "books.kind.hosted"}}{{else}}{{t "books.kind.external"}}{{end}}</td>
-        <td class="hide-sm"><a class="fade" href="{{if eq .Kind "hosted"}}/books/{{.BookID | deref}}{{else}}/directories/{{.ExternalID | deref}}{{end}}">{{.Source}}</a>{{with .External}}<span class="sub mono fade">{{.Host}}:{{.Port}}</span>{{end}}</td>
+        <td class="hide-sm"><a dir="auto" class="fade" href="{{if eq .Kind "hosted"}}/books/{{.BookID | deref}}{{else}}/directories/{{.ExternalID | deref}}{{end}}">{{.Source}}</a>{{with .External}}<span dir="auto" class="sub mono fade">{{.Host}}:{{.Port}}</span>{{end}}</td>
         <td class="nowrap hide-sm">{{if eq .Kind "hosted"}}{{if $d.HostedPlain}}<span class="status warn">{{t "config.directories.unencrypted"}}</span>{{else}}StartTLS{{end}}{{else}}{{if eq .External.Security "START_TLS"}}StartTLS{{else}}<span class="status warn">{{t "config.directories.unencrypted"}}</span>{{end}}{{end}}</td>
         <td class="nowrap hide-sm">{{if and (eq .Kind "hosted") (not .LDAPAccountID)}}{{t "config.directories.password_auto"}}{{else}}{{$mode := t "config.directories.password_anonymous"}}{{if eq .Mode "template"}}{{$mode = t "config.directories.password_template"}}{{else if eq .Mode "client"}}{{$mode = t "config.directories.password_client"}}{{end}}{{if .LDAPAccountID}}{{t "config.directories.password_manual" "mode" $mode}}{{else}}{{$mode}}{{end}}{{end}}</td>
-        <td class="hide-sm"><span class="fade">{{.Line}}</span></td>
+        <td class="hide-sm"><span dir="auto" class="fade">{{.Line}}</span></td>
         <td class="actions-col">{{if not $ro}}<div class="row-actions">
           <a class="btn" href="/config-templates/{{$id}}/directories/{{.ID}}">{{t "common.edit"}}</a>
           <form method="post" action="/config-templates/{{$id}}/directories/{{.ID}}/delete" class="inline" data-confirm="{{t "config.directories.remove_confirm" "name" .DisplayName}}"><button class="btn danger" title="{{t "common.remove"}}" aria-label="{{t "common.remove"}}">{{icon "trash"}}</button></form>

@@ -17,8 +17,8 @@
   <div class="table-wrap"><table class="table fit-sm">
     <thead><tr><th>{{t "common.name"}}</th><th class="hide-sm">{{t "common.region"}}</th><th class="num">{{t "nav.clients"}}</th><th class="actions-col"><span class="sr-only">{{t "common.actions"}}</span></th></tr></thead>
     <tbody>{{range $d.Groups}}<tr>
-      <td class="strong"><span class="fade">{{.Name}}</span><span class="sub show-sm fade">{{.Region}}</span></td>
-      <td class="hide-sm"><span class="fade">{{.Region}}</span></td>
+      <td class="strong"><span dir="auto" class="fade">{{.Name}}</span><span dir="auto" class="sub show-sm fade">{{.Region}}</span></td>
+      <td class="hide-sm"><span dir="auto" class="fade">{{.Region}}</span></td>
       <td class="num">{{if .Clients}}<a href="/clients?group={{.ID}}">{{.Clients}}</a>{{else}}<span class="muted">0</span>{{end}}</td>
       <td class="actions-col"><div class="row-actions">
         <a class="btn small" href="/groups?edit={{.ID}}" data-dialog="group-edit" data-action="/groups/{{.ID}}" data-set-name="{{.Name}}" data-set-region="{{.Region}}" aria-label="{{t "groups.edit_aria" "name" .Name}}">{{icon "pencil"}}</a>
@@ -47,7 +47,7 @@
     <h2 id="group-edit-title">{{t "groups.edit"}}</h2>
     {{if eq $d.Dialog "edit"}}{{with $d.Error}}<div class="flash error" role="alert">{{.}}</div>{{end}}{{end}}
     <label>{{t "common.name"}}<input name="name" value="{{if eq $d.Dialog "edit"}}{{$d.Form.Name}}{{end}}" required maxlength="40"></label>
-    <div class="field"><span class="field-label">{{t "common.region"}}</span><span data-show="region">{{range $d.Regions}}{{if eq .ID $d.Form.Region}}{{.Name}}{{end}}{{end}}</span></div>
+    <div class="field"><span class="field-label">{{t "common.region"}}</span><span data-show="region" dir="auto">{{range $d.Regions}}{{if eq .ID $d.Form.Region}}{{.Name}}{{end}}{{end}}</span></div>
     <div class="actions"><a class="btn" href="/groups" data-dialog-close>{{t "common.cancel"}}</a><button type="submit" class="btn primary">{{t "common.save"}}</button></div>
   </form>
 </dialog>

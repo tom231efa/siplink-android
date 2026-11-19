@@ -1,7 +1,7 @@
 {{define "content"}}
 {{$d := .Data}}
 <div class="narrow-page">
-<header class="page-head"><div><h1 class="fade">{{.Title}}</h1>{{if not $d.New}}<p class="page-sub">{{t "clienttpl.form.used_by" "n" $d.Clients}}</p>{{end}}</div></header>
+<header class="page-head"><div><h1 dir="auto" class="fade">{{.Title}}</h1>{{if not $d.New}}<p class="page-sub">{{t "clienttpl.form.used_by" "n" $d.Clients}}</p>{{end}}</div></header>
 {{with $d.Error}}<div class="flash error" role="alert">{{.}}</div>{{end}}
 <form method="post" action="{{if $d.New}}/client-templates{{else}}/client-templates/{{$d.T.ID}}{{end}}" class="card form-card"
   {{if gt $d.Clients 0}}data-confirm="{{t "clienttpl.form.save_confirm" "n" $d.Clients}}"{{end}}>
