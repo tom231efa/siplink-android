@@ -79,6 +79,11 @@ android {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
+        // The native libraries are stored compressed and unpacked on installation: the APK that
+        // GitHub Releases and the in-app update download shrinks from about 45 MB to about 19 MB.
+        jniLibs {
+            useLegacyPackaging = true
+        }
     }
 
     androidResources {
