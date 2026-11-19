@@ -42,11 +42,11 @@ func TestClientCSVLanguages(t *testing.T) {
 
 	path := root.h.ts.URL + "/clients/import/template.csv?template=" + itoa(f.tpl.ID)
 	for lang, want := range map[string]string{
-		"zh-CN": "名称,区域,客户端模板,备注,总部用户名,总部密码,总部认证用户,总部显示名,分部用户名,分部密码,分部认证用户,分部显示名,公司LDAP密码",
-		"zh-TW": "名称,区域,客户端模板,备注,总部用户名,总部密码,总部认证用户,总部显示名,分部用户名,分部密码,分部认证用户,分部显示名,公司LDAP密码",
-		"en": "name,region,client_template,note,总部 username,总部 password,总部 auth user,总部 display name," +
+		"zh-CN": "名称,区域,客户端模板,备注,分组,标签,总部用户名,总部密码,总部认证用户,总部显示名,分部用户名,分部密码,分部认证用户,分部显示名,公司LDAP密码",
+		"zh-TW": "名称,区域,客户端模板,备注,分组,标签,总部用户名,总部密码,总部认证用户,总部显示名,分部用户名,分部密码,分部认证用户,分部显示名,公司LDAP密码",
+		"en": "name,region,client_template,note,group,tags,总部 username,总部 password,总部 auth user,总部 display name," +
 			"分部 username,分部 password,分部 auth user,分部 display name,公司 LDAP password",
-		"fr": "name,region,client_template,note,总部 username,总部 password,总部 auth user,总部 display name," +
+		"fr": "name,region,client_template,note,group,tags,总部 username,总部 password,总部 auth user,总部 display name," +
 			"分部 username,分部 password,分部 auth user,分部 display name,公司 LDAP password",
 	} {
 		req, _ := http.NewRequest("GET", path, nil)

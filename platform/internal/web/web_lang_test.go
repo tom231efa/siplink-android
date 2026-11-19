@@ -88,20 +88,28 @@ func newLangWorld(t *testing.T) *langWorld {
 	pendingStep := h.client()
 	signInPending(t, pendingStep, "setup")
 
+	group := &store.Group{Name: "Front", RegionID: east}
+	must(h.st.SaveGroup(ctx, group, 100))
+	tag := &store.Tag{Name: "VIP", Color: "sand"}
+	must(h.st.CreateTag(ctx, tag, 500))
+	must(h.st.SetClientsGroup(ctx, []int64{bound}, &group.ID))
+	must(h.st.AddClientsTag(ctx, []int64{bound}, tag.ID, 10))
+
 	entries, _, err := h.st.AllEntries(ctx, book.ID)
 	must(err)
 	return &langWorld{root: root, east: setupAgain, step: pendingStep, setup: stepper, ids: map[string]string{
 		"cfg": itoa(cfg.ID), "prof": itoa(prof.ID), "ext": itoa(ext.ID), "extUse": itoa(extUse.ID), "hostedUse": itoa(hostedUse.ID),
 		"book": itoa(book.ID), "entry": itoa(entries[0].ID), "keys": itoa(keys.ID), "tpl": itoa(tpl.ID), "acct": itoa(acct.ID),
 		"pending": itoa(pending), "bound": itoa(bound), "token": pendingToken, "east": itoa(localAdmin.ID),
-		"recovery": confirm.location,
+		"recovery": confirm.location, "group": itoa(group.ID), "tag": itoa(tag.ID),
 	}}
 }
 
 // rootPages are the pages a super administrator can open, with the ids of langWorld.
 var rootPages = []string{
 	"/", "/clients", "/clients?status=pending", "/clients/new", "/clients/{pending}", "/clients/{pending}/edit", "/clients/{bound}",
-	"/clients/import", "/clients/print?ids={pending}", "/clients/{bound}/preview",
+	"/clients/import", "/clients/print?ids={pending}", "/clients/{bound}/preview", "/clients?group={group}&tag={tag}", "/clients?group=none",
+	"/groups", "/groups?new=1", "/groups?edit={group}", "/tags", "/tags?new=1", "/tags?edit={tag}",
 	"/client-templates", "/client-templates/new", "/client-templates/{tpl}",
 	"/config-templates", "/config-templates/new", "/config-templates/{cfg}",
 	"/config-templates/{cfg}?tab=accounts", "/config-templates/{cfg}?tab=calls", "/config-templates/{cfg}?tab=features",
@@ -120,7 +128,7 @@ var rootPages = []string{
 // eastPages are pages of the region administrator (whose session also has a TOTP
 // set-up waiting).
 var eastPages = []string{
-	"/", "/clients", "/clients/{pending}", "/client-templates/{tpl}", "/config-templates/{cfg}", "/key-templates/{keys}",
+	"/", "/clients", "/clients/{pending}", "/clients/{bound}/edit", "/groups", "/tags", "/client-templates/{tpl}", "/config-templates/{cfg}", "/key-templates/{keys}",
 	"/books", "/books/{book}", "/directories/{ext}", "/ldap-accounts", "/regions", "/admins", "/audit", "/me", "/me/totp",
 }
 

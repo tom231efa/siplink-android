@@ -3,6 +3,7 @@
   "app.brand_sub": "Management",
   "nav.dashboard": "Overview",
   "nav.clients": "Clients",
+  "nav.groups": "Groups and tags",
   "nav.client_templates": "Client templates",
   "nav.config_templates": "Configuration templates",
   "nav.key_templates": "Key templates",

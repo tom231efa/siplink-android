@@ -37,7 +37,7 @@ func labelOr(t *i18n.Tr, key, fallback string) string {
 
 // objectTypes are the object types of the audit filter.
 var objectTypes = []string{"admin", "region", "book", "entry", "directory", "ldap_account",
-	"config_template", "key_template", "client_template", "client", "backup", "system"}
+	"config_template", "key_template", "client_template", "client", "group", "tag", "backup", "system"}
 
 // objectLabels names the object types of the audit filter.
 func objectLabels(t *i18n.Tr) map[string]string {

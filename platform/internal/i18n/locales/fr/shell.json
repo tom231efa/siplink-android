@@ -3,6 +3,7 @@
   "app.brand_sub": "Gestion",
   "nav.dashboard": "Vue d'ensemble",
   "nav.clients": "Clients",
+  "nav.groups": "Groupes et étiquettes",
   "nav.client_templates": "Modèles de client",
   "nav.config_templates": "Modèles de configuration",
   "nav.key_templates": "Modèles de touches",

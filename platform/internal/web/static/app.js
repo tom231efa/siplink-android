@@ -47,52 +47,120 @@
     dialog.showModal();
   });
 
-  // Backup download (System): the links open the dialog in place. The server opens it itself
-  // (?backup=…, a refused download) as a plain dialog, made modal here. A download answers
-  // with a file and the page stays, so the dialog closes once its form is sent; a refusal
-  // answers with a new page that has the dialog open again with the message.
-  var dl = document.getElementById("download");
-  if (dl && dl.showModal) {
-    var dlForm = dl.querySelector("form"), opener = null, reopening = false;
-    var openFor = function (name, from) {
+  // Form dialogs (the backup download, the dialogs of groups and tags): a link marked
+  // data-dialog="<id>" opens that <dialog data-form-dialog> in place. The form is reset and
+  // filled from the link: data-action is its action, data-set-<name> the value of its field
+  // <name> (a checkbox is on for "1", a radio is chosen by value) and the text of the
+  // elements marked data-show="<name>". Without JavaScript the link's address asks the
+  // server, which renders the page with the dialog open (a plain dialog over a scrim, made
+  // modal here); a refusal comes back the same way with its message inside. Closing the
+  // dialog clears its password fields and sets the address back to data-return. A dialog
+  // marked data-close-on-submit closes once its form is sent (a download keeps the page).
+  document.querySelectorAll("dialog[data-form-dialog]").forEach(function (dlg) {
+    if (!dlg.showModal) return;
+    var form = dlg.querySelector("form"), opener = null, reopening = false;
+    var links = document.querySelectorAll('[data-dialog="' + dlg.id + '"]');
+    function show(from) {
       opener = from;
-      dlForm.elements.name.value = name;
-      dl.querySelector("[data-download-name]").textContent = name;
-      if (dl.open) { reopening = true; dl.close(); }
-      dl.showModal();
-      dlForm.elements.password.focus();
-    };
-    document.querySelectorAll("a[data-download]").forEach(function (a) {
+      if (dlg.open) { reopening = true; dlg.close(); }
+      dlg.showModal();
+      var first = form.querySelector('input:not([type="hidden"]):not([type="radio"]):not([disabled]), select');
+      if (first) first.focus();
+    }
+    links.forEach(function (a) {
       a.addEventListener("click", function (ev) {
         ev.preventDefault();
-        var refusal = dl.querySelector(".flash.error");
+        var refusal = dlg.querySelector(".flash.error");
         if (refusal) refusal.remove();
-        dlForm.elements.encrypt.checked = true;
-        openFor(a.getAttribute("data-download"), a);
+        form.reset();
+        if (a.hasAttribute("data-action")) form.action = a.getAttribute("data-action");
+        Object.keys(a.dataset).forEach(function (key) {
+          if (!/^set[A-Z]/.test(key)) return;
+          var name = key.charAt(3).toLowerCase() + key.slice(4), v = a.dataset[key];
+          form.querySelectorAll('[name="' + name + '"]').forEach(function (el) {
+            if (el.type === "radio") el.checked = el.value === v;
+            else if (el.type === "checkbox") el.checked = v === "1";
+            else el.value = v;
+          });
+          dlg.querySelectorAll('[data-show="' + name + '"]').forEach(function (el) { el.textContent = v; });
+        });
+        show(a);
       });
     });
-    if (dl.open) {
+    if (dlg.open) {
       var scrim = document.querySelector(".dialog-scrim");
       if (scrim) scrim.remove();
-      var shown = dlForm.elements.name.value;
-      openFor(shown, document.querySelector('a[data-download="' + CSS.escape(shown) + '"]'));
+      var here = location.pathname + location.search;
+      show(Array.prototype.find.call(links, function (a) { return a.getAttribute("href") === here; }) || null);
     }
-    dl.querySelector("[data-dialog-close]").addEventListener("click", function (ev) { ev.preventDefault(); dl.close(); });
-    dl.addEventListener("click", function (ev) {
-      var r = dl.getBoundingClientRect();
-      if (ev.target === dl && (ev.clientX < r.left || ev.clientX > r.right || ev.clientY < r.top || ev.clientY > r.bottom)) dl.close();
+    dlg.querySelectorAll("[data-dialog-close]").forEach(function (c) {
+      c.addEventListener("click", function (ev) { ev.preventDefault(); dlg.close(); });
     });
-    dl.addEventListener("close", function () {
+    dlg.addEventListener("click", function (ev) {
+      var r = dlg.getBoundingClientRect();
+      if (ev.target === dlg && (ev.clientX < r.left || ev.clientX > r.right || ev.clientY < r.top || ev.clientY > r.bottom)) dlg.close();
+    });
+    dlg.addEventListener("close", function () {
       if (reopening) { reopening = false; return; }
-      dlForm.querySelectorAll('input[type="password"]').forEach(function (i) { i.value = ""; });
-      if (location.pathname !== "/system" || location.search) history.replaceState(null, "", "/system");
+      form.querySelectorAll('input[type="password"]').forEach(function (i) { i.value = ""; });
+      var back = dlg.getAttribute("data-return");
+      if (back && location.pathname + location.search !== back) history.replaceState(null, "", back);
       if (opener) opener.focus();
     });
-    dlForm.addEventListener("submit", function (ev) {
-      setTimeout(function () { if (!ev.defaultPrevented) dl.close(); }, 0);
+    if (dlg.hasAttribute("data-close-on-submit")) {
+      form.addEventListener("submit", function (ev) {
+        setTimeout(function () { if (!ev.defaultPrevented) dlg.close(); }, 0);
+      });
+      form.addEventListener("confirmed", function () { dlg.close(); });
+    }
+  });
+
+  // Tag pickers (<details data-tag-picker>): the summary shows the chosen tags as chips, a
+  // search field narrows the list, and with data-max no more than that many can be on. In
+  // a filter row (GET form) the form is sent when the list closes after a change.
+  document.querySelectorAll("[data-tag-picker]").forEach(function (pick) {
+    var boxes = pick.querySelectorAll('input[type="checkbox"]');
+    var shown = pick.querySelector("[data-picked]");
+    var search = pick.querySelector("[data-pick-search]");
+    var max = parseInt(pick.getAttribute("data-max"), 10) || 0;
+    var changed = false;
+    function sync() {
+      var n = 0;
+      shown.textContent = "";
+      boxes.forEach(function (b) {
+        if (!b.checked) return;
+        n++;
+        shown.appendChild(b.parentNode.querySelector(".chip").cloneNode(true));
+      });
+      if (!n) {
+        var empty = document.createElement("span");
+        empty.className = "picker-empty";
+        empty.textContent = shown.getAttribute("data-empty");
+        shown.appendChild(empty);
+      }
+      if (max) boxes.forEach(function (b) { b.disabled = !b.checked && n >= max; });
+    }
+    pick.addEventListener("change", function (ev) {
+      if (ev.target.type !== "checkbox") return;
+      changed = true;
+      sync();
     });
-    dlForm.addEventListener("confirmed", function () { dl.close(); });
-  }
+    if (search) {
+      search.hidden = false;
+      search.addEventListener("input", function () {
+        var q = search.value.trim().toLowerCase();
+        boxes.forEach(function (b) {
+          b.parentNode.hidden = q !== "" && b.parentNode.textContent.toLowerCase().indexOf(q) < 0;
+        });
+      });
+      search.addEventListener("keydown", function (ev) { if (ev.key === "Enter") ev.preventDefault(); });
+    }
+    pick.addEventListener("toggle", function () {
+      if (pick.open && search) search.focus();
+      if (!pick.open && changed && pick.classList.contains("filter") && pick.closest("form")) pick.closest("form").submit();
+    });
+    sync();
+  });
 
   // Selects marked data-autosubmit submit their form when changed; the form's
   // fallback button (data-js-hide) is hidden by the stylesheet.
@@ -307,13 +375,13 @@
     });
   });
 
-  // Bulk actions: the bar shows how many rows are chosen and floats while some are;
-  // the template choice only shows for the action "template".
+  // Bulk actions: the bar shows how many rows are chosen and floats while some are; a
+  // choice marked data-bulk-for="<actions>" only shows for those actions.
   document.querySelectorAll("[data-bulkbar]").forEach(function (bar) {
     var form = bar.form || bar.closest("form");
     var count = bar.querySelector("[data-bulk-count]");
     var action = bar.querySelector("[data-bulk-action]");
-    var tpl = bar.querySelector("[data-bulk-template]");
+    var choices = bar.querySelectorAll("[data-bulk-for]");
     var clear = bar.querySelector("[data-bulk-clear]");
     var boxes = form.querySelectorAll('input[type=checkbox][name="ids"]');
     var all = document.querySelector('[data-check-all="ids"]');
@@ -323,7 +391,9 @@
       if (n) bar.removeAttribute("data-idle"); else bar.setAttribute("data-idle", "");
       count.textContent = text("selected", { n: n });
       if (all) { all.checked = n === boxes.length; all.indeterminate = n > 0 && n < boxes.length; }
-      if (tpl && action) tpl.hidden = action.value !== "template";
+      choices.forEach(function (c) {
+        c.hidden = !action || c.getAttribute("data-bulk-for").split(" ").indexOf(action.value) < 0;
+      });
     }
     form.addEventListener("change", sync);
     document.addEventListener("selection", sync);

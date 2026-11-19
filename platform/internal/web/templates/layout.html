@@ -138,6 +138,21 @@
   <button type="submit" class="btn small" data-js-hide>{{t "common.switch"}}</button>
 </form>{{end}}
 
+{{/* A tag: its name on its colour (§2.6). */}}
+{{define "chip"}}<span class="chip c-{{.Color}}"><span class="fade">{{.Name}}</span></span>{{end}}
+
+{{/* A choice of tags (tagPicker): a <details> whose summary shows the chosen ones and whose list
+   chooses them; app.js keeps the summary current, narrows the list and holds the limit. */}}
+{{define "tag-picker"}}{{$p := .}}<details class="popover-host picker{{if .Filter}} filter{{end}}" data-tag-picker{{if .Max}} data-max="{{.Max}}"{{end}}>
+  <summary class="picker-box" aria-label="{{t "tags.title"}}">{{if .Filter}}{{icon "tag"}}{{end}}<span class="picked" data-picked data-empty="{{.Label}}">{{range .ChosenTags}}{{template "chip" .}}{{else}}<span class="picker-empty">{{$p.Label}}</span>{{end}}</span></summary>
+  <div class="popover picker-pop">
+    <input type="search" class="picker-search" placeholder="{{t "common.search"}}" aria-label="{{t "common.search"}}" data-pick-search hidden>
+    <div class="pick-list" role="group" aria-label="{{t "tags.title"}}">
+      {{range .Tags}}<label class="pick-row"><input type="checkbox" name="{{$p.Name}}" value="{{.ID}}"{{if hasID $p.Chosen .ID}} checked{{end}}>{{template "chip" .}}</label>{{else}}<p class="picker-none muted">{{t "tags.empty"}}</p>{{end}}
+    </div>
+  </div>
+</details>{{end}}
+
 {{define "grip"}}<button type="button" class="grip" data-sort-handle aria-label="{{t "layout.reorder" "name" .}}" title="{{t "layout.drag_to_sort"}}">{{icon "grip-vertical"}}</button>{{end}}
 
 {{define "audit-table"}}

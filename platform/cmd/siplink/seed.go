@@ -187,7 +187,7 @@ func (sd *seeder) run(spec *seedSpec) (string, error) {
 	c.EnrollExpiresAt = expires.UTC().Format(store.TimeFormat)
 	isNew := c.ID == 0
 	token := secret.Token(32)
-	if err := st.SaveClient(ctx, c, []store.CredentialInput{in}, nil, sd.e.box, token); err != nil {
+	if err := st.SaveClient(ctx, c, []store.CredentialInput{in}, nil, nil, sd.e.box, token); err != nil {
 		return "", i18n.Wrap(err, "cli.seed.client")
 	}
 	if !isNew { // an existing client gets a fresh QR code (its phone, if any, is unbound)

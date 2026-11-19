@@ -57,6 +57,8 @@ region ──< client >── client template ──> configuration template ─
    ├──< external directories (or global)
    └──< LDAP service accounts (or global)
 client ──< client credentials (one per account profile), client directory passwords
+region ──< client group ──< client (at most one group, of the client's region)
+tag (shared) >──< client (at most ten tags per client)
 ```
 
 - A **directory** (通讯录) is either an **address book** hosted by the platform (内部, table
@@ -110,7 +112,10 @@ every change and feed the document version.
 | `key_templates` | `region_id` NULL, `name`, `note`, `revision` | UNIQUE(`region_id`,`name`) |
 | `template_keys` | `key_template_id`, `position`, `label`, `number`, `action`, `category`, `line`, `icon` | ≤2000 per template |
 | `client_templates` | `region_id` NULL, `name`, `note`, `config_template_id`, `key_template_id` NULL | UNIQUE(`region_id`,`name`) |
-| `clients` | `region_id`, `client_template_id`, `name`, `note`, `public_id` UNIQUE (10 chars base32, used in LDAP DN), `status` (`pending`/`active`), `enroll_token_hash` UNIQUE, `enroll_token_enc`, `enroll_expires_at`, `device_key_hash` UNIQUE NULL, `bound_at`, `install_id`, `ldap_generation` (int), `forward_always` NULL, `forward_busy` NULL, `forward_no_answer` NULL, `revision` | NULL forward fields = template value |
+| `clients` | `region_id`, `client_template_id`, `name`, `note`, `public_id` UNIQUE (10 chars base32, used in LDAP DN), `status` (`pending`/`active`), `enroll_token_hash` UNIQUE, `enroll_token_enc`, `enroll_expires_at`, `device_key_hash` UNIQUE NULL, `bound_at`, `install_id`, `ldap_generation` (int), `forward_always` NULL, `forward_busy` NULL, `forward_no_answer` NULL, `group_id` NULL (0011, `ON DELETE SET NULL`, INDEX), `revision` | NULL forward fields = template value; triggers refuse a group of another region (§2.6) |
+| `client_groups` | `region_id` (`ON DELETE CASCADE`), `name` (≤40), `name_key` (case-folded name) | 0011; UNIQUE(`region_id`,`name_key`); ≤100 per region |
+| `tags` | `name` (≤24, no `;` or `；`), `name_key` UNIQUE (case-folded), `color` (palette name, default `gray`) | 0011; ≤500 in total |
+| `client_tags` | `client_id`, `tag_id` (PK both, both `ON DELETE CASCADE`) | 0011; WITHOUT ROWID; INDEX(`tag_id`,`client_id`); ≤10 per client; no timestamps |
 | `client_reports` | `client_id` PK, `last_seen_at`, `last_ip`, `app_version`, `app_version_code`, `user_agent` (0008), `android_release`, `android_sdk`, `device_model`, `sent_version`, `applied_version`, `applied_at`, `apply_error`, `registrations_json` | overwritten on every sync |
 | `client_credentials` | `client_id`, `profile_id` (PK both), `username`, `auth_user`, `password_enc`, `display_name`, `account_name` NULL | |
 | `client_directory_passwords` | `client_id`, `directory_id` (PK both; `directory_id` = `template_directories.id`), `password_enc` | only for `password_mode=client` (of the external directory, or of a hosted book bound by hand); per use in a template, so one external directory used by two templates asks twice |
@@ -163,6 +168,9 @@ of these rules (for a directory: a template of another region, or a global one, 
 | Reset another administrator's two-step sign-in | region administrators only (super ones by CLI) | no |
 | Mail settings, two-step policy | yes | no |
 | Clients: list / view / create / edit / delete / regenerate QR / unbind / bulk import / print QR | all regions | own regions |
+| Client groups: list / create / rename / delete / put clients in them | all regions | own regions |
+| Tags: list / create / put on and take off clients (that one may edit) | yes | yes |
+| Tags: rename / recolour / delete | yes | only when no client outside own regions carries the tag |
 | Client: move to another region | yes | only between own regions |
 | Client: view stored passwords (SIP, directory) | yes (re-enter own password first) | own regions (re-enter own password first) |
 | Configuration / key / client templates: view | all | own + global |
@@ -205,6 +213,42 @@ Up to schema 7 an external LDAP server was typed into each configuration templat
 
 The document a phone gets is the same before and after (same fields, keys and values, so the same
 `version`); the template revisions are not bumped by the migration.
+
+### 2.6 Client groups and tags (migration 0011; 2026-11-20)
+
+Both are for managing clients in the console only: the provisioning document, the LDAP service
+and the client's `revision` do not change when they do (so a phone's sync stays 204).
+
+- A **group** (分组) belongs to one region; a client is in at most one group, of its own region.
+  Names (≤40) are unique per region ignoring case in any script (`name_key` = Unicode case
+  folding, `golang.org/x/text/cases`), with the name rules of §5.5 (no control or bidi
+  characters). At most 100 groups per region. Two triggers (`clients_group_region_insert`,
+  `clients_group_region_update`) refuse a client whose group is of another region, as a second
+  line behind the handlers. Moving a client to another region: the client form of the new region
+  offers that region's groups only, so the client is saved without a group; a request that keeps
+  the old group is refused. Deleting a group leaves its clients without one (the confirmation
+  names how many); deleting a region (only when empty of clients) deletes its groups.
+- A **tag** (标签) is one shared list for all regions: names ≤24, unique ignoring case, without
+  `;` or `；` (they separate tags in the CSV); a colour from a fixed palette of muted tints that
+  read in light and dark mode (`gray` default, `sand`, `clay`, `olive`, `sage`, `teal`, `steel`;
+  stylesheet `.chip.c-*`). At most 500 tags and 10 per client.
+- Permissions (§2.4): region administrators manage the groups of their regions only (another
+  region's group answers 404 and is not listed or accepted anywhere); everyone creates tags and
+  puts them on clients they may edit; a region administrator may rename, recolour or delete a tag
+  only when no client outside their regions carries it (the page shows its buttons disabled; the
+  store checks it again inside the write's transaction, `ErrInUse`).
+- The client list filters by group (one, or 无分组) and by tags (every chosen tag), in the URL
+  (`group=ID|none`, repeated `tag=ID`); unknown or invisible ids are ignored. The bulk bar sets a
+  group (one of the clients' region, or none), adds a tag or removes one. A bulk request is
+  refused whole, with nothing applied, when any selected id is not a client the administrator
+  may edit, the group is not theirs or not of every selected client's region, the tag does not
+  exist, or a client would carry more than 10 tags.
+- Audit: `group.create`/`update`/`delete` and `tag.create`/`update`/`delete` (the delete entries
+  carry the number of clients affected); a change of a client's group or tags — in the form, by
+  CSV import (`client.create` with `group` and `tags`) or in bulk — is a `client.update` entry
+  with the fields `group` / `tags` (old and new names), **one entry per client whose value
+  actually changed**, like the bulk change of template. The removal of a group or tag from its
+  clients by deleting it is recorded only in the delete entry.
 
 ---
 
@@ -775,7 +819,7 @@ it.
 Left sidebar (collapses to a top bar on narrow screens; on the right side in a right-to-left
 language, §5.5), items shown by role:
 
-概览 · 客户端 · 客户端模板 · 配置模板 · 功能键模板 · 通讯录 · LDAP 账号 · 区域 (super) ·
+概览 · 客户端 · 分组与标签 · 客户端模板 · 配置模板 · 功能键模板 · 通讯录 · LDAP 账号 · 区域 (super) ·
 管理员 (super) · 邮件 (super) · 审计日志 · 系统 (super). Top right: region filter (for administrators with several
 regions; "全部区域" for super), the administrator's name → 外观 / 语言 / 我的账号 / 退出.
 
@@ -789,10 +833,11 @@ languages show their translations of them (§5.5).
 | 登录 `/login` | user name + password; rate-limited; then 两步验证 when the administrator has a method; after `must_change_password` goes to 我的账号; the language choice at its foot (§5.5) |
 | 两步验证 `/login/step` | the administrator's methods (passkey, TOTP code, e-mail code, recovery code), §6.8; the language choice at its foot |
 | 概览 `/` | counts (clients active / pending / 离线 = bound and not seen for more than 3× the refresh interval, the same rule as the 离线 status and filter of the client list), clients with apply errors or failed registrations, for super administrators the expiry notice of an operator's certificate (§6.7), books near the limit, last 20 audit entries of visible regions |
-| 客户端 `/clients` | table: name, region, client template, status, app version, last seen, registration summary; filter by region/template/status, search by name or SIP user; bulk actions: change template, print QR, delete |
-| 新建客户端 `/clients/new` | region (first load: the region filter of the top bar, else the administrator's first region), client template (only those usable in the selected region; a template in the query that does not fit the region is dropped, so the template shown, the form below and its hidden fields always agree; the same for 编辑客户端), name, credentials for each account profile of the template, directory passwords where the template asks for them, optional forwarding overrides |
-| 客户端详情 `/clients/{id}` | QR + URL (copy) while pending; device report (§3.4), registration states, applied version vs. current, apply error; buttons: 编辑, 重新生成二维码 (unbind), 重置 LDAP 凭据, 删除; "预览下发内容" shows the document with passwords masked |
-| 批量导入客户端 `/clients/import` | CSV: `名称,区域,客户端模板,{profile}用户名,{profile}密码,…`; template download per client template; dry run → confirm |
+| 客户端 `/clients` | table: name (with the client's tags as small chips), region, group, client template, status, app version, last seen, registration summary; one filter row: search by name or SIP user, template, group (全部分组 / 无分组 / a group, by region when several), tags (a picker; every chosen tag), status — all in the URL; region from the top bar; bulk actions: change template, set group, add tag, remove tag, print QR, delete (§2.6) |
+| 分组与标签 `/groups`, `/tags` | two tabs. 分组: name, region, number of clients (a link to the filtered list); the top bar's region filter applies. 标签: the chip, number of clients in the administrator's regions; edit and delete disabled for a region administrator when clients outside their regions carry it. Create and edit in dialogs (`?new=1`, `?edit={id}` open them without JavaScript), delete with "确认删除…？" naming the clients affected |
+| 新建客户端 `/clients/new` | region (first load: the region filter of the top bar, else the administrator's first region), client template (only those usable in the selected region; a template in the query that does not fit the region is dropped, so the template shown, the form below and its hidden fields always agree; the same for 编辑客户端), name, note, group (only groups of the selected region), tags (≤10), credentials for each account profile of the template, directory passwords where the template asks for them, optional forwarding overrides |
+| 客户端详情 `/clients/{id}` | group (a link to the list filtered by it) and tags under the name; QR + URL (copy) while pending; device report (§3.4), registration states, applied version vs. current, apply error; buttons: 编辑, 重新生成二维码 (unbind), 重置 LDAP 凭据, 删除; "预览下发内容" shows the document with passwords masked |
+| 批量导入客户端 `/clients/import` | CSV: `名称,区域,客户端模板,备注,分组,标签,{profile}用户名,{profile}密码,…` (分组 and 标签 optional, §5.5); template download per client template; dry run → confirm |
 | 打印二维码 `/clients/print?ids=…` | print-only page: grid of cards (name, region, QR, short instruction), A4, no navigation |
 | 客户端模板 | list; edit = name, region/global, configuration template, key template; shows how many clients use it |
 | 配置模板 `/config-templates/{id}` | tabs: 账号 (profiles, order, default), 呼叫处理 (DND mode, call waiting, anonymous, DTMF, forwarding), 功能码, 接听与保活 (regular call auto answer and its wait, intercom, keep-alive), 音视频 (codecs order/on-off, video on, size, frame rate), 安全 (TLS verification, SRTP, CA certificates upload/list with subject and expiry; fixed first row "平台 CA（自动下发）" that cannot be removed, §3.5.2), 通讯录 (the directories used: one "添加通讯录" whose page first picks one of the usable directories, then the use's own fields; §3.5.5), 高级 (configuration password set/clear, refresh interval, update check); "已被 N 个客户端使用" with a confirmation when saving a template in use |
@@ -885,7 +930,8 @@ U+2066–U+2069), in every language; in a right-to-left language it is then wrap
 FSI … U+2069 PDI, so a name or an address in Latin letters keeps its order inside Arabic text
 (also in flash messages, confirmations and mail, where no markup can do it) and cannot reorder
 the text around it. New names (clients, regions, configuration, key and client templates,
-account profiles, directories, internal directories, administrators' display names) may not
+account profiles, directories, internal directories, administrators' display names, client
+groups, tags) may not
 contain those characters (`names.bidi_control`); names stored before stay as they are. LDAP
 account names already allow only `a-z`, `0-9` and `-`. A flash message is at most 500 bytes;
 a longer one gives way to a short message of the same outcome (`flash.done`,
@@ -966,7 +1012,7 @@ lines. Audit entries written from now on store codes, not text (`"changed"` in p
 shows what older entries stored as it is.
 
 **CSV.** The client import (§5.2) reads either the Chinese column names, as before, or the
-English ones: `name`, `region`, `client_template`, `note`, and `{profile} username`, `{profile}
+English ones: `name`, `region`, `client_template`, `note`, `group`, `tags`, and `{profile} username`, `{profile}
 password`, `{profile} auth user`, `{profile} display name`, `{directory} LDAP password` (in any
 case). One file uses one language: a header with a `名称` column is a Chinese one, whose
 English names are extra columns and ignored (an older file with its own "Name" column imports
@@ -978,6 +1024,15 @@ download refuses such a template the same way, so that the profile or directory 
 first. The address book import already reads both languages (§4.7). The client template
 download and the address book export write the Chinese names in `zh-Hans` and `zh-Hant`, the
 English ones in every other language.
+
+The columns 分组 / `group` and 标签 / `tags` (2026-11-20, §2.6) are optional; a file without
+them imports as before. 分组 names a group of the line's region (ignoring case), else the line
+is refused naming it. 标签 holds tag names separated by `;` or `；`; a known tag is reused
+(ignoring case), an unknown one is made at the confirmation with the default colour; a name the
+tag rules refuse, or more than 10 tags, refuses the line, and a file that would take the tags
+beyond 500 is refused as a whole; a group deleted between the dry run and the confirmation
+voids the dry run (`clients.import.expired`) before anything is written. There is no export of clients; the header download is the
+starting point of a file.
 
 **CLI.** `siplink admin …`, `pki …`, `backup`, `migrate` speak the language of the POSIX locale
 (`LC_ALL`, else `LC_MESSAGES`, else `LANG`; `zh_CN.UTF-8` → `zh-Hans`, `zh_TW.UTF-8` →
@@ -1070,7 +1125,9 @@ Audit trail (`audit_log`): every create/update/delete of every object, logins (s
 password resets, secret views, QR regeneration, unbinds, device enroll/leave, imports (counts),
 backups, certificate re-issue, upload and removal of an own certificate (subject, issuer, names,
 expiry, fingerprint — never the key) and the reminder setting. `detail_json` lists changed field names and old/new values **except** secrets (stored as
-`"changed"`; entries written before the languages of §5.5 hold "已修改").
+`"changed"`; entries written before the languages of §5.5 hold "已修改"). Groups and tags:
+their own create/update/delete entries, and one `client.update` entry per client whose group or
+tags changed (§2.6).
 
 Backups: daily at `SIPLINK_BACKUP_TIME` (default 03:30 local) `VACUUM INTO
 {data}/backups/siplink-{date}.db`, keep `SIPLINK_BACKUP_KEEP` (default 14); "立即备份" on the
@@ -1434,7 +1491,7 @@ siplink/
   internal/config/        config.go           environment variables → Config, validation
   internal/pki/           built-in CA (§6.7): CA, server certificates, renewal, choice of certificate per listener, pin
   internal/store/         db.go, migrate.go, migrations/0001_init.sql …,
-                          admins.go, regions.go, clients.go, templates.go, keys.go, books.go,
+                          admins.go, regions.go, clients.go, groups.go, templates.go, keys.go, books.go,
                           ldapaccounts.go, audit.go           (one file per area, plain SQL)
   internal/secret/        keyfile.go, aead.go, derive.go       key file, AES-GCM, HMAC LDAP passwords
   internal/auth/          password.go (argon2id), session.go, ratelimit.go, perm.go (the §2.4 matrix in one place)
@@ -1450,7 +1507,7 @@ siplink/
   internal/mail/          mail.go                        SMTP settings and sending (§6.8)
   internal/i18n/          i18n.go, catalog.go, locales/{code}/*.json   languages, catalogs, Msg (§5.5)
   internal/web/           server.go (routes, middleware), render.go, flash.go,
-                          h_login.go, h_dashboard.go, h_clients.go, h_client_import.go, h_templates_config.go,
+                          h_login.go, h_dashboard.go, h_clients.go, h_client_bulk.go, h_client_import.go, h_groups.go, h_templates_config.go,
                           h_templates_key.go, h_templates_client.go, h_books.go, h_ldapaccounts.go,
                           h_regions.go, h_admins.go, h_audit.go, h_system.go
                           templates/*.html, static/app.css, static/app.js
@@ -1570,6 +1627,13 @@ docker build -t ghcr.io/tom231efa/siplink:dev .
   directories in each password mode (two identical rows sharing an entry, a name taken in the
   region, a global template) is migrated with the key; entries, names, re-sealed passwords,
   per-client passwords and the document are checked; without the key it refuses and stays at 7.
+- `store` groups and tags (§2.6, `groups_test.go`): a database at schema 10 with a client
+  migrates to 11 (no group, no tags, same revision); names unique ignoring case (Cyrillic too),
+  the limits, the triggers refusing a group of another region on insert and on a move, deletes
+  (group, tag, region) and their counts, the filters (group, none, every tag), the rule of tags
+  used outside a region administrator's regions, a refused bulk addition writing nothing.
+  `BenchmarkClientList`: a page of 5,000 clients with 100 groups and 200 tags, unfiltered and
+  filtered.
 
 - `i18n` (§5.5): every catalog has the same files and keys as `zh-Hans`, no key twice, the same
   arguments in every translation, no empty text, the patterns of `format.*` valid; matching of
@@ -1599,6 +1663,15 @@ docker build -t ghcr.io/tom231efa/siplink:dev .
   reminder setting, the notices on 系统, 概览 and `/healthz`.
 - Region admin cannot read/modify another region's clients/templates/books (404, not 403, to
   avoid leaking existence), can use but not modify global templates.
+- Groups and tags (`web_groups_test.go`, `web_groups_csv_test.go`): a region administrator's
+  groups only (list, dialogs, 404 for another region's, the client form and the filter); a group
+  of another region refused in the form and in bulk; a move leaving the group behind; every bulk
+  refusal (foreign or unparseable ids, another region's group, clients of two regions, unknown
+  tag, more than 10 tags) changing nothing; tag rules (names, colours, the lock for region
+  administrators, 500 tags); the filters in the URL and through paging; the audit entries; the
+  document unchanged (sync 204) after group and tag changes; the CSV with 分组/标签 in Chinese and
+  `group`/`tags` in English, its line refusals and doubled columns; 5,000 clients with 100 groups
+  and 200 tags answering each list, filter and page within a second.
 - Directories (`web_directories_test.go`): the list with search, type filter and paging; creating
   each type; the type staying fixed; the external page and its validation; the stored password
   write-only and never in the audit log or the log; region rules for use and moves; delete

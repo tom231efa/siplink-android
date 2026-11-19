@@ -32,12 +32,14 @@ var allowed = map[string][]string{
 	// the Chinese column names of the address book CSV, and the separator people type
 	"internal/books/csv.go":   {"姓名", "办公电话", "手机", "单位", "部门", "职务", "邮箱", "姓", "名"},
 	"internal/books/entry.go": {"；"},
+	// the separators of several tags in one cell of the client CSV (§2.6)
+	"internal/catalog/groups.go": {";；"},
 	// the suffix migration 0008 gives a name that is taken (data, §2.5)
 	"internal/store/migrate_0008.go": {"（%d）"},
 	// platform.name of the provisioning document (§3.5.2)
 	"internal/web/h_device.go": {"SipLink 管理平台"},
 	// the Chinese column names of the client CSV (§5.2)
-	"internal/web/h_client_import.go": {"名称", "区域", "客户端模板", "备注", "用户名", "密码", "认证用户", "显示名", "LDAP密码"},
+	"internal/web/h_client_import.go": {"名称", "区域", "客户端模板", "备注", "分组", "标签", "用户名", "密码", "认证用户", "显示名", "LDAP密码"},
 }
 
 // TestNoChineseOutsideCatalogs: templates, scripts and Go code (tests aside) hold no

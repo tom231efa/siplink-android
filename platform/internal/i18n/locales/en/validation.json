@@ -36,6 +36,7 @@
   "catalog.key.line_unknown": "Line “{line}” is not an account of the configuration template in use (available: {names})",
   "catalog.client.name_too_long": "Name: at most {max} characters",
   "catalog.client.name_control": "The name must not contain line breaks or tabs",
+  "catalog.tag.separator": "The tag name must not contain a semicolon",
   "auth.password.too_long": "The password may have at most {max} characters",
   "auth.password.empty": "Please enter a new password",
   "auth.password.too_short": "The password needs at least {min} characters",

@@ -46,9 +46,9 @@ func TestBackupDownload(t *testing.T) {
 	}
 
 	// the list offers it; the server opens the dialog for a listed name only
-	const opened = `id="download" aria-labelledby="download-title" open>`
-	if r := root.get("/system"); !strings.Contains(r.body, `href="/system?backup=`+name+`" data-download="`+name+`"`) ||
-		!strings.Contains(r.body, `<dialog class="dialog download-dialog" id="download"`) || strings.Contains(r.body, opened) {
+	const opened = `id="download" data-form-dialog data-return="/system" data-close-on-submit aria-labelledby="download-title" open>`
+	if r := root.get("/system"); !strings.Contains(r.body, `href="/system?backup=`+name+`" data-dialog="download" data-set-name="`+name+`"`) ||
+		!strings.Contains(r.body, `<dialog class="dialog form-dialog download-dialog" id="download"`) || strings.Contains(r.body, opened) {
 		t.Error("download link or closed dialog")
 	}
 	if r := root.get("/system?backup=" + name); !strings.Contains(r.body, opened) || !strings.Contains(r.body, `name="name" value="`+name+`"`) {

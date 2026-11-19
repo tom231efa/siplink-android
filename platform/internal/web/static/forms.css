@@ -160,18 +160,62 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
 /* A shared password (external directory, hosted book use) shows only while the template-wide mode is chosen. */
 .form:not(:has(select[name="passwordMode"] option[value="template"]:checked)) .shared-password { display: none; }
 
+/* form dialogs (app.js): the backup download, the dialogs of groups and tags */
+.form-dialog { width: min(440px, calc(100vw - 32px)); }
+.form-dialog h2 { margin: 0; font-size: 15px; }
+.form-dialog .actions { margin-top: 4px; }
+.form-dialog .flash { margin: 0; }
 /* the backup download dialog; its passphrase fields show only while 加密 is on */
-.download-dialog { width: min(440px, calc(100vw - 32px)); }
-.download-dialog h2 { display: grid; gap: 2px; margin: 0; font-size: 15px; }
+.download-dialog h2 { display: grid; gap: 2px; }
 .download-dialog h2 .mono { font-size: 12.5px; font-weight: 400; color: var(--muted); overflow-wrap: anywhere; }
-.download-dialog .actions { margin-top: 4px; }
-.download-dialog .flash { margin: 0; }
 .download-dialog .setting { padding-bottom: 0; }
 .download-dialog .passphrase { display: grid; gap: 16px; }
 .form:not(:has(input[name="encrypt"]:checked)) .passphrase { display: none; }
 /* without JavaScript the server opens it as a plain dialog: centred, over a scrim */
 .dialog[open]:not(:modal) { position: fixed; inset: 0; margin: auto; z-index: 80; height: fit-content; max-height: calc(100dvh - 32px); overflow: auto; }
 .dialog-scrim { position: fixed; inset: 0; z-index: 79; background: oklch(0.2 0.01 255 / .32); animation: none; }
+/* ---- tags (§2.6): the picker of a client's tags and of the list's filter, the colour choice ---- */
+.picker > summary { cursor: pointer; }
+.picker-box {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 4px; min-height: 34px; padding-block: 4px; padding-inline: 8px 30px;
+  border: 1px solid var(--border-strong); border-radius: var(--radius-sm); box-shadow: var(--shadow-xs);
+  background: var(--input-bg) var(--chevron) no-repeat right 8px center / 16px;
+}
+[dir="rtl"] .picker-box { background-position: left 8px center; }
+.picker-box:hover { border-color: color-mix(in oklch, var(--border-strong), var(--text) 14%); }
+.picker[open] > .picker-box, .picker-box:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--focus); }
+.picked { display: contents; }
+.picker-empty { color: var(--faint); font-size: 13px; }
+.picker.filter > .picker-box {
+  flex-wrap: nowrap; height: 32px; min-height: 0; max-width: 16em; overflow: hidden; padding-inline-start: 10px; font-size: 13px;
+}
+.picker.filter > .picker-box > .icon { color: var(--muted); width: 14px; height: 14px; margin-inline-end: 2px; }
+.picker.filter .picker-empty { color: var(--text); }
+.picker.filter .chip { flex: 0 1 auto; min-width: 0; }
+.popover-host.picker > .picker-pop {
+  inset-inline: 0 auto; z-index: 45; display: grid; gap: 6px; width: min(280px, calc(100vw - 32px)); padding: 6px;
+}
+/* the list's card clips its content (rounded corners, sticky bars); not while its picker is open */
+.table-card:has(.picker[open]) { overflow: visible; }
+.picker-search { height: 30px; font-size: 13px; }
+.pick-list { display: grid; max-height: 260px; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.form label.pick-row, .pick-row {
+  display: flex; align-items: center; gap: 8px; padding: 5px 6px; border-radius: 6px; cursor: pointer; font-weight: 400;
+}
+.pick-row:hover { background: var(--surface-2); }
+.pick-row:has(input:disabled) { opacity: .5; cursor: not-allowed; }
+.picker-none { margin: 6px; font-size: 13px; }
+.swatches { display: flex; flex-wrap: wrap; gap: 10px; }
+.swatches > .swatch {
+  position: relative; display: inline-grid; width: 28px; height: 28px; border-radius: 50%; cursor: pointer;
+  background: light-dark(oklch(0.86 calc(var(--chip-c) * 2.4) var(--chip-h)), oklch(0.5 calc(var(--chip-c) * 2) var(--chip-h)));
+  box-shadow: inset 0 0 0 1px oklch(0 0 0 / .08);
+}
+.swatches > .swatch input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.swatches > .swatch:has(input:checked) { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent); }
+.swatches > .swatch:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 4px; }
+.page-chips { margin-top: 8px; }
+
 /* Arabic placeholders in technical (monospaced, left-to-right) inputs: the text font, aligned
    with the page while the input is empty */
 :lang(ar) :is(input, textarea).mono::placeholder { font-family: var(--font); }

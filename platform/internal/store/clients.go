@@ -38,6 +38,7 @@ type Client struct {
 	ForwardAlways    *string
 	ForwardBusy      *string
 	ForwardNoAnswer  *string
+	GroupID          *int64 // its group, of its own region (§2.6)
 	Revision         int64
 	CreatedAt        string
 	UpdatedAt        string
@@ -85,15 +86,17 @@ func EnrollTokenAAD(clientID int64) []byte {
 
 const clientCols = `id, region_id, client_template_id, name, note, public_id, status, COALESCE(enroll_token_enc, ''),
 	COALESCE(enroll_expires_at, ''), COALESCE(device_key_hash, ''), COALESCE(bound_at, ''), install_id, ldap_generation,
-	forward_always, forward_busy, forward_no_answer, revision, created_at, updated_at`
+	forward_always, forward_busy, forward_no_answer, group_id, revision, created_at, updated_at`
 
 func scanClient(row interface{ Scan(...any) error }) (*Client, error) {
 	c := &Client{}
 	var fa, fb, fn sql.NullString
+	var group sql.NullInt64
 	err := row.Scan(&c.ID, &c.RegionID, &c.ClientTemplateID, &c.Name, &c.Note, &c.PublicID, &c.Status, &c.EnrollTokenEnc,
-		&c.EnrollExpiresAt, &c.DeviceKeyHash, &c.BoundAt, &c.InstallID, &c.LDAPGeneration, &fa, &fb, &fn,
+		&c.EnrollExpiresAt, &c.DeviceKeyHash, &c.BoundAt, &c.InstallID, &c.LDAPGeneration, &fa, &fb, &fn, &group,
 		&c.Revision, &c.CreatedAt, &c.UpdatedAt)
 	c.ForwardAlways, c.ForwardBusy, c.ForwardNoAnswer = nullText(fa), nullText(fb), nullText(fn)
+	c.GroupID = ptrID(group)
 	return c, mapErr(err)
 }
 
@@ -130,6 +133,9 @@ type ClientFilter struct {
 	Regions  []int64
 	Region   int64
 	Template int64
+	Group    int64   // a group (0 = any)
+	NoGroup  bool    // only clients without a group
+	Tags     []int64 // only clients that carry every one of these tags
 	Status   string
 	Now      time.Time // the moment StatusOffline is judged at
 	Query    string    // name or SIP user name, substring
@@ -153,6 +159,15 @@ func (f ClientFilter) where() (string, []any) {
 	}
 	if f.Template != 0 {
 		conds, args = append(conds, "c.client_template_id = ?"), append(args, f.Template)
+	}
+	switch {
+	case f.NoGroup:
+		conds = append(conds, "c.group_id IS NULL")
+	case f.Group != 0:
+		conds, args = append(conds, "c.group_id = ?"), append(args, f.Group)
+	}
+	for _, t := range f.Tags {
+		conds, args = append(conds, "c.id IN (SELECT client_id FROM client_tags WHERE tag_id = ?)"), append(args, t)
 	}
 	switch f.Status {
 	case "":
@@ -223,20 +238,22 @@ func (s *Store) ClientByDeviceKey(ctx context.Context, hash string) (*Client, er
 	return s.clientWhere(ctx, "device_key_hash = ?", hash)
 }
 
-// SaveClient creates or updates a client with its credentials and directory passwords
-// in one transaction. creds lists every profile of the client's configuration template
-// (credentials of other profiles are removed); dirs maps directory ids of
-// password_mode=client to a new password ("" keeps the stored one). On create,
-// enrollToken is the new token, stored hashed and sealed.
-func (s *Store) SaveClient(ctx context.Context, c *Client, creds []CredentialInput, dirs map[int64]string, box Sealer, enrollToken string) error {
+// SaveClient creates or updates a client with its credentials, directory passwords and
+// tags in one transaction. creds lists every profile of the client's configuration
+// template (credentials of other profiles are removed); dirs maps directory ids of
+// password_mode=client to a new password ("" keeps the stored one); tags are the client's
+// tag ids (nil keeps the stored ones of an existing client). The caller checked that the
+// group is of the client's region. On create, enrollToken is the new token, stored hashed
+// and sealed.
+func (s *Store) SaveClient(ctx context.Context, c *Client, creds []CredentialInput, dirs map[int64]string, tags []int64, box Sealer, enrollToken string) error {
 	now := s.NowText()
 	return s.Tx(ctx, func(tx *sql.Tx) error {
 		if c.ID == 0 {
 			c.PublicID, c.Status, c.LDAPGeneration, c.Revision = NewPublicID(), StatusPending, 1, 1
 			res, err := tx.ExecContext(ctx, `INSERT INTO clients(region_id, client_template_id, name, note, public_id, status,
-				forward_always, forward_busy, forward_no_answer, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
+				forward_always, forward_busy, forward_no_answer, group_id, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`,
 				c.RegionID, c.ClientTemplateID, c.Name, c.Note, c.PublicID, c.Status,
-				textArg(c.ForwardAlways), textArg(c.ForwardBusy), textArg(c.ForwardNoAnswer), now, now)
+				textArg(c.ForwardAlways), textArg(c.ForwardBusy), textArg(c.ForwardNoAnswer), nullID(c.GroupID), now, now)
 			if err != nil {
 				return mapErr(err)
 			}
@@ -247,9 +264,10 @@ func (s *Store) SaveClient(ctx context.Context, c *Client, creds []CredentialInp
 			}
 		} else {
 			res, err := tx.ExecContext(ctx, `UPDATE clients SET region_id = ?, client_template_id = ?, name = ?, note = ?,
-				forward_always = ?, forward_busy = ?, forward_no_answer = ?, revision = revision + 1, updated_at = ? WHERE id = ?`,
+				forward_always = ?, forward_busy = ?, forward_no_answer = ?, group_id = ?, revision = revision + 1, updated_at = ?
+				WHERE id = ?`,
 				c.RegionID, c.ClientTemplateID, c.Name, c.Note, textArg(c.ForwardAlways), textArg(c.ForwardBusy),
-				textArg(c.ForwardNoAnswer), now, c.ID)
+				textArg(c.ForwardNoAnswer), nullID(c.GroupID), now, c.ID)
 			if err != nil {
 				return mapErr(err)
 			}
@@ -260,6 +278,11 @@ func (s *Store) SaveClient(ctx context.Context, c *Client, creds []CredentialInp
 		c.UpdatedAt = now
 		if err := saveCredentials(ctx, tx, c.ID, creds, box); err != nil {
 			return err
+		}
+		if tags != nil {
+			if err := setClientTags(ctx, tx, c.ID, tags); err != nil {
+				return err
+			}
 		}
 		return saveDirectoryPasswords(ctx, tx, c.ID, dirs, box)
 	})

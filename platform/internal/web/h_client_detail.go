@@ -63,6 +63,8 @@ type secretRow struct {
 type clientDetail struct {
 	C          *store.Client
 	Region     string
+	Group      *store.Group
+	Tags       []*store.Tag
 	Template   *store.ClientTemplate
 	Config     *store.ConfigTemplate
 	Keys       *store.KeyTemplate
@@ -95,6 +97,15 @@ func (s *Server) renderClient(w http.ResponseWriter, r *http.Request, status int
 	d := clientDetail{C: c, Error: errMsg, CanSecrets: actor(r).Can(auth.ClientViewSecrets, &c.RegionID)}
 	if reg, err := s.St.RegionByID(ctx, c.RegionID); err == nil {
 		d.Region = reg.Name
+	}
+	if c.GroupID != nil {
+		d.Group, _ = s.St.GroupByID(ctx, *c.GroupID)
+	}
+	tags, _ := s.allTags(ctx)
+	byTag := tagsByID(tags)
+	chosen, _ := s.St.ClientTags(ctx, []int64{c.ID})
+	for _, id := range chosen[c.ID] {
+		d.Tags = append(d.Tags, byTag[id])
 	}
 	t, profiles, dirs, err := s.clientParts(r, c.ClientTemplateID)
 	if err != nil {
@@ -295,63 +306,6 @@ func (s *Server) clientDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	s.audit(r, "client.delete", "client", c.ID, c.Name, &c.RegionID, nil)
 	s.redirect(w, r, "/clients", "ok", tr(r).T("clients.deleted", "name", c.Name))
-}
-
-// clientBulk applies one action to the selected clients the administrator may manage.
-func (s *Server) clientBulk(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	act := actor(r)
-	var list []*store.Client
-	for _, id := range formIDs(r, "ids") {
-		if c, err := s.St.ClientByID(ctx, id); err == nil && act.Can(auth.ClientManage, &c.RegionID) {
-			list = append(list, c)
-		}
-	}
-	if len(list) == 0 {
-		s.redirect(w, r, "/clients", "error", tr(r).T("clients.bulk.none_selected"))
-		return
-	}
-	switch r.FormValue("action") {
-	case "print":
-		ids := make([]string, len(list))
-		for i, c := range list {
-			ids[i] = itoa(c.ID)
-		}
-		http.Redirect(w, r, "/clients/print?ids="+strings.Join(ids, ","), http.StatusSeeOther)
-	case "template":
-		tid := formID(r, "template")
-		var ids []int64
-		for _, c := range list {
-			ok := false
-			for _, t := range s.usableClientTemplates(r, c.RegionID) {
-				ok = ok || t.ID == tid
-			}
-			if !ok {
-				s.redirect(w, r, "/clients", "error", tr(r).T("clients.bulk.template_unusable", "name", c.Name))
-				return
-			}
-			ids = append(ids, c.ID)
-		}
-		if err := s.St.SetClientTemplate(ctx, ids, tid); err != nil {
-			s.internal(w, r, err)
-			return
-		}
-		for _, c := range list {
-			s.audit(r, "client.update", "client", c.ID, c.Name, &c.RegionID, changes(field{"client_template_id", c.ClientTemplateID, tid}))
-		}
-		s.redirect(w, r, "/clients", "ok", tr(r).T("clients.bulk.template_changed", "n", len(ids)))
-	case "delete":
-		for _, c := range list {
-			if err := s.St.DeleteClient(ctx, c); err != nil && !errors.Is(err, store.ErrNotFound) {
-				s.internal(w, r, err)
-				return
-			}
-			s.audit(r, "client.delete", "client", c.ID, c.Name, &c.RegionID, nil)
-		}
-		s.redirect(w, r, "/clients", "ok", tr(r).T("clients.bulk.deleted", "n", len(list)))
-	default:
-		s.redirect(w, r, "/clients", "error", tr(r).T("clients.bulk.invalid_action"))
-	}
 }
 
 type printCard struct {

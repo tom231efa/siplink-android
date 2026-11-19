@@ -3,6 +3,7 @@
   "app.brand_sub": "Gestión",
   "nav.dashboard": "Resumen",
   "nav.clients": "Clientes",
+  "nav.groups": "Grupos y etiquetas",
   "nav.client_templates": "Plantillas de cliente",
   "nav.config_templates": "Plantillas de configuración",
   "nav.key_templates": "Plantillas de teclas",

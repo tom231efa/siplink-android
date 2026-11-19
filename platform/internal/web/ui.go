@@ -29,6 +29,7 @@ var navGroups = []navGroup{
 	{"", []navItem{{Key: "dashboard", Href: "/", Label: "nav.dashboard", Icon: "layout-dashboard"}}},
 	{"nav.group.devices", []navItem{
 		{Key: "clients", Href: "/clients", Label: "nav.clients", Icon: "smartphone"},
+		{Key: "groups", Href: "/groups", Label: "nav.groups", Icon: "tags"},
 		{Key: "clienttpl", Href: "/client-templates", Label: "nav.client_templates", Icon: "layers"},
 		{Key: "config", Href: "/config-templates", Label: "nav.config_templates", Icon: "sliders-horizontal"},
 		{Key: "keys", Href: "/key-templates", Label: "nav.key_templates", Icon: "keyboard"},

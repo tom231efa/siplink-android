@@ -36,6 +36,7 @@
   "catalog.key.line_unknown": "Линия «{line}» не является учётной записью используемого шаблона конфигурации (доступны: {names})",
   "catalog.client.name_too_long": "Название: не более {max} символов",
   "catalog.client.name_control": "Название не должно содержать переводов строки или табуляции",
+  "catalog.tag.separator": "Название метки не должно содержать точку с запятой",
   "auth.password.too_long": "Пароль может содержать не более {max} символов",
   "auth.password.empty": "Введите новый пароль",
   "auth.password.too_short": "Пароль должен содержать не менее {min} символов",

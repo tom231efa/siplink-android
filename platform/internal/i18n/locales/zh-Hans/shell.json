@@ -3,6 +3,7 @@
   "app.brand_sub": "管理平台",
   "nav.dashboard": "概览",
   "nav.clients": "客户端",
+  "nav.groups": "分组与标签",
   "nav.client_templates": "客户端模板",
   "nav.config_templates": "配置模板",
   "nav.key_templates": "功能键模板",

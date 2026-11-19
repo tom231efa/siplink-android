@@ -36,6 +36,7 @@
   "catalog.key.line_unknown": "线路「{line}」不是所用配置模板中的账号（可用：{names}）",
   "catalog.client.name_too_long": "名称最多 {max} 个字符",
   "catalog.client.name_control": "名称不得包含换行符或制表符",
+  "catalog.tag.separator": "标签名称不得包含分号",
   "auth.password.too_long": "密码不得超过 {max} 个字符",
   "auth.password.empty": "请输入新密码",
   "auth.password.too_short": "密码至少为 {min} 个字符",

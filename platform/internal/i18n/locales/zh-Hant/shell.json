@@ -3,6 +3,7 @@
   "app.brand_sub": "管理平台",
   "nav.dashboard": "概覽",
   "nav.clients": "用戶端",
+  "nav.groups": "分組與標籤",
   "nav.client_templates": "用戶端範本",
   "nav.config_templates": "設定範本",
   "nav.key_templates": "功能鍵範本",

@@ -18,6 +18,9 @@
       <div class="grid2">
         <label>{{t "common.name"}}<input name="name" value="{{$d.C.Name}}" required maxlength="64"></label>
         <label>{{t "common.note"}}<input name="note" value="{{$d.C.Note}}" maxlength="200"></label>
+        <label>{{t "groups.group"}}<select name="group"><option value="0">{{t "clients.list.no_group"}}</option>
+          {{range $d.Groups}}<option value="{{.ID}}"{{if and $d.C.GroupID (eq .ID (deref $d.C.GroupID))}} selected{{end}}>{{.Name}}</option>{{end}}</select></label>
+        <div class="field"><span class="field-label" id="l-tags">{{t "tags.title"}}</span>{{template "tag-picker" $d.Tags}}</div>
       </div>
     </div>
   </section>

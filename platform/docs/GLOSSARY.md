@@ -36,6 +36,10 @@ Counts are never inflected: a label followed by the number ("Clients: 15"), neve
 | 全部区域 | All regions | すべてのリージョン | كل المناطق | Toutes les régions | 全部區域 | Все регионы | Todas las regiones |
 | 全局 | Global | グローバル | عام | Global | 全域 | Глобальный | Global |
 | 客户端 | Client | クライアント | عميل | Client | 用戶端 | Клиент | Cliente |
+| 分组（客户端） | Group | グループ | مجموعة | Groupe | 分組 | Группа | Grupo |
+| 标签（客户端） | Tag | タグ | وسم | Étiquette | 標籤 | Метка | Etiqueta |
+| 分组与标签 (page) | Groups and tags | グループとタグ | المجموعات والوسوم | Groupes et étiquettes | 分組與標籤 | Группы и метки | Grupos y etiquetas |
+| 颜色（标签） | Color | 色 | اللون | Couleur | 顏色 | Цвет | Color |
 | 客户端模板 | Client template | クライアントテンプレート | قالب العميل | Modèle de client | 用戶端範本 | Шаблон клиента | Plantilla de cliente |
 | 配置模板 | Configuration template | 設定テンプレート | قالب الإعدادات | Modèle de configuration | 設定範本 | Шаблон конфигурации | Plantilla de configuración |
 | 功能键模板 | Key template | キーテンプレート | قالب المفاتيح | Modèle de touches | 功能鍵範本 | Шаблон клавиш | Plantilla de teclas |

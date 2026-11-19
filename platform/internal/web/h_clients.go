@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -46,6 +47,8 @@ type clientRow struct {
 	*store.Client
 	Region   string
 	Template string
+	Group    string
+	Tags     []*store.Tag
 	Report   *store.Report
 	Offline  bool // store.Offline
 }
@@ -58,9 +61,28 @@ type clientsData struct {
 	Q         string
 	Status    string
 	Template  int64
+	Group     int64 // the group filter (0 = any)
+	NoGroup   bool  // the filter "no group"
 	Templates []*store.ClientTemplate
+	Groups    []groupSet // the groups of the filter and of the bulk bar
+	Tags      []*store.Tag
+	TagFilter tagPicker
 	Query     template.URL // the filter as a query string, for paging links
 }
+
+// Filtered tells whether any filter of the row is set.
+func (d clientsData) Filtered() bool {
+	return d.Q != "" || d.Status != "" || d.Template != 0 || d.Group != 0 || d.NoGroup || len(d.TagFilter.Chosen) > 0
+}
+
+// groupChoice is what a group <select> offers: the groups by region, one of them chosen.
+type groupChoice struct {
+	Sets     []groupSet
+	Selected int64
+}
+
+// GroupOptions are the list's groups for a <select> with selected chosen.
+func (d clientsData) GroupOptions(selected int64) groupChoice { return groupChoice{d.Groups, selected} }
 
 func (s *Server) clientList(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -72,6 +94,31 @@ func (s *Server) clientList(w http.ResponseWriter, r *http.Request) {
 	}
 	f.Now = s.Now()
 	f.Template, _ = parseInt64(q.Get("template"))
+	a := current(r)
+	regions, _ := s.St.ListRegions(ctx, a.RegionIDs, a.Role == store.RoleSuper)
+	groups, err := s.groupsOf(r)
+	if err != nil {
+		s.internal(w, r, err)
+		return
+	}
+	groupNames := map[int64]string{}
+	for _, g := range groups {
+		groupNames[g.ID] = g.Name
+	}
+	d := clientsData{Q: f.Query, Status: f.Status, Template: f.Template, Groups: groupSets(groups, regions)}
+	group := ""
+	if g := q.Get("group"); g == "none" {
+		f.NoGroup, d.NoGroup, group = true, true, g
+	} else if id, ok := parseInt64(g); ok && groupNames[id] != "" {
+		f.Group, d.Group, group = id, id, g
+	}
+	if d.Tags, err = s.allTags(ctx); err != nil {
+		s.internal(w, r, err)
+		return
+	}
+	byTag := tagsByID(d.Tags)
+	f.Tags = readTags(q["tag"], byTag)
+	d.TagFilter = tagPicker{Name: "tag", Label: tr(r).T("clients.tags.all"), Tags: d.Tags, Chosen: f.Tags, Filter: true}
 	page, _ := strconv.Atoi(q.Get("page"))
 	page = max(page, 1)
 	f.Limit, f.Offset = clientsPerPage, (page-1)*clientsPerPage
@@ -80,10 +127,13 @@ func (s *Server) clientList(w http.ResponseWriter, r *http.Request) {
 		s.internal(w, r, err)
 		return
 	}
-	d := clientsData{Total: total, Page: page, Pages: (total + clientsPerPage - 1) / clientsPerPage, Q: f.Query,
-		Status: f.Status, Template: f.Template}
+	d.Total, d.Page, d.Pages = total, page, (total+clientsPerPage-1)/clientsPerPage
 	d.Templates, _ = s.St.ListClientTemplates(ctx, s.templateScope(r))
-	d.Query = pageQuery(url.Values{"q": {f.Query}, "status": {f.Status}, "template": {itoa(f.Template)}})
+	query := url.Values{"q": {f.Query}, "status": {f.Status}, "template": {itoa(f.Template)}, "group": {group}}
+	for _, t := range f.Tags {
+		query.Add("tag", itoa(t))
+	}
+	d.Query = pageQuery(query)
 	names, _ := s.allRegionNames(r)
 	tplNames := map[int64]string{}
 	all, _ := s.St.ListClientTemplates(ctx, store.BookScope{All: true})
@@ -96,13 +146,21 @@ func (s *Server) clientList(w http.ResponseWriter, r *http.Request) {
 	}
 	reports, _ := s.St.ClientReports(ctx, ids)
 	refresh, _ := s.St.RefreshMinutes(ctx, ids)
+	tagsOf, _ := s.St.ClientTags(ctx, ids)
 	for _, c := range list {
 		rep := reports[c.ID]
 		if rep == nil {
 			rep = &store.Report{}
 		}
-		d.Rows = append(d.Rows, clientRow{Client: c, Region: names[c.RegionID], Template: tplNames[c.ClientTemplateID], Report: rep,
-			Offline: c.Status == store.StatusActive && store.Offline(rep.LastSeenAt, refresh[c.ID], f.Now)})
+		row := clientRow{Client: c, Region: names[c.RegionID], Template: tplNames[c.ClientTemplateID], Report: rep,
+			Offline: c.Status == store.StatusActive && store.Offline(rep.LastSeenAt, refresh[c.ID], f.Now)}
+		if c.GroupID != nil {
+			row.Group = groupNames[*c.GroupID]
+		}
+		for _, id := range tagsOf[c.ID] {
+			row.Tags = append(row.Tags, byTag[id])
+		}
+		d.Rows = append(d.Rows, row)
 	}
 	s.ok(w, r, "clients", &Page{Title: tr(r).T("nav.clients"), Nav: "clients", Data: d})
 }
@@ -141,6 +199,8 @@ type clientFormData struct {
 	Regions   []store.Region
 	Templates []*store.ClientTemplate
 	Template  *store.ClientTemplate
+	Groups    []*store.Group // of the client's region
+	Tags      tagPicker
 	Creds     []credRow
 	Dirs      []dirPassRow
 	Fwd       struct{ Always, Busy, NoAnswer string }
@@ -214,6 +274,20 @@ func (s *Server) clientFormPage(w http.ResponseWriter, r *http.Request, status i
 	a := current(r)
 	d.Regions, _ = s.St.ListRegions(ctx, a.RegionIDs, a.Role == store.RoleSuper)
 	d.C.RegionID, d.C.ClientTemplateID, d.Templates = s.clientScopeChoice(r, d.Regions, d.C.RegionID, d.C.ClientTemplateID)
+	// The groups of the client's region: a group of another one (the region was just
+	// changed above the form) is dropped, so moving a client leaves it without a group.
+	if d.C.RegionID != 0 {
+		d.Groups, _ = s.St.ListGroups(ctx, store.BookScope{All: true, Region: d.C.RegionID})
+	}
+	if d.C.GroupID != nil && !slices.ContainsFunc(d.Groups, func(g *store.Group) bool { return g.ID == *d.C.GroupID }) {
+		d.C.GroupID = nil
+	}
+	tags, _ := s.allTags(ctx)
+	if d.Tags.Chosen == nil && !d.New {
+		chosen, _ := s.St.ClientTags(ctx, []int64{d.C.ID})
+		d.Tags.Chosen = chosen[d.C.ID]
+	}
+	d.Tags = tagPicker{Name: "tags", Label: tr(r).T("common.not_set"), Tags: tags, Chosen: d.Tags.Chosen, Max: catalog.MaxTagsPerClient}
 	var stored map[int64]*store.Credential
 	var dirPass map[int64]string
 	if !d.New {
@@ -306,6 +380,24 @@ func (s *Server) clientSave(w http.ResponseWriter, r *http.Request) {
 	if p := errText(r, catalog.ClientNameProblem(c.Name)); p != "" {
 		problems = append(problems, p)
 	}
+	c.GroupID = nil
+	if id := formID(r, "group"); id != 0 {
+		if g, err := s.St.GroupByID(ctx, id); err == nil && g.RegionID == c.RegionID {
+			c.GroupID = &g.ID
+		} else {
+			problems = append(problems, tr(r).T("clients.form.group_invalid"))
+		}
+	}
+	allTags, err := s.allTags(ctx)
+	if err != nil {
+		s.internal(w, r, err)
+		return
+	}
+	byTag := tagsByID(allTags)
+	tags := readTags(r.Form["tags"], byTag)
+	if p := tooManyTags(tr(r), len(tags)); p != "" {
+		problems = append(problems, p)
+	}
 	if !act.Can(auth.ClientManage, &c.RegionID) || !isNew && !act.CanMoveClient(old.RegionID, c.RegionID) {
 		problems = append(problems, tr(r).T("clients.form.region_forbidden"))
 	} else if _, err := s.St.RegionByID(ctx, c.RegionID); err != nil {
@@ -349,13 +441,17 @@ func (s *Server) clientSave(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	oldTags := map[int64][]int64{}
+	if !isNew {
+		oldTags, _ = s.St.ClientTags(ctx, []int64{c.ID})
+	}
 	if len(problems) == 0 {
 		var token string
 		if isNew {
 			token = secret.Token(32)
 			c.EnrollExpiresAt = s.Now().Add(time.Duration(s.Cfg.EnrollDays) * 24 * time.Hour).UTC().Format(store.TimeFormat)
 		}
-		err := s.St.SaveClient(ctx, c, creds, dirs, s.Ext.Box, token)
+		err := s.St.SaveClient(ctx, c, creds, dirs, tags, s.Ext.Box, token)
 		if errors.Is(err, store.ErrConflict) {
 			problems = append(problems, tr(r).T("clients.form.name_taken"))
 		} else if err != nil {
@@ -364,10 +460,11 @@ func (s *Server) clientSave(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if len(problems) > 0 {
-		s.clientFormPage(w, r, http.StatusBadRequest, clientFormData{C: c, New: isNew, Errors: problems}, inputs)
+		s.clientFormPage(w, r, http.StatusBadRequest, clientFormData{C: c, New: isNew, Errors: problems, Tags: tagPicker{Chosen: tags}}, inputs)
 		return
 	}
-	s.auditClientSave(r, isNew, &old, c, creds, dirs)
+	s.auditClientSave(r, isNew, &old, c, creds, dirs, field{"group", s.groupName(ctx, old.GroupID), s.groupName(ctx, c.GroupID)},
+		field{"tags", tagNames(byTag, oldTags[c.ID]), tagNames(byTag, tags)})
 	s.redirect(w, r, "/clients/"+itoa(c.ID), "ok", tr(r).T("clients.saved", "name", c.Name))
 }
 
@@ -393,12 +490,14 @@ func readCredentials(r *http.Request, profiles []*store.Profile, problems []stri
 	return creds, problems
 }
 
-func (s *Server) auditClientSave(r *http.Request, isNew bool, old, c *store.Client, creds []store.CredentialInput, dirs map[int64]string) {
-	detail := changes(field{"name", old.Name, c.Name}, field{"note", old.Note, c.Note}, field{"region_id", old.RegionID, c.RegionID},
-		field{"client_template_id", old.ClientTemplateID, c.ClientTemplateID},
-		field{"forward_always", derefText(old.ForwardAlways), derefText(c.ForwardAlways)},
-		field{"forward_busy", derefText(old.ForwardBusy), derefText(c.ForwardBusy)},
-		field{"forward_no_answer", derefText(old.ForwardNoAnswer), derefText(c.ForwardNoAnswer)})
+// auditClientSave writes the entry of a saved client; extra are further changed fields
+// (its group and tags).
+func (s *Server) auditClientSave(r *http.Request, isNew bool, old, c *store.Client, creds []store.CredentialInput, dirs map[int64]string, extra ...field) {
+	detail := changes(append([]field{{"name", old.Name, c.Name}, {"note", old.Note, c.Note}, {"region_id", old.RegionID, c.RegionID},
+		{"client_template_id", old.ClientTemplateID, c.ClientTemplateID},
+		{"forward_always", derefText(old.ForwardAlways), derefText(c.ForwardAlways)},
+		{"forward_busy", derefText(old.ForwardBusy), derefText(c.ForwardBusy)},
+		{"forward_no_answer", derefText(old.ForwardNoAnswer), derefText(c.ForwardNoAnswer)}}, extra...)...)
 	for _, in := range creds {
 		if in.Password != "" {
 			detail["password"] = auditChanged

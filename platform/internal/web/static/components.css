@@ -362,6 +362,30 @@ fieldset:disabled .segmented { opacity: .6; }
   white-space: nowrap; vertical-align: middle; max-width: 100%;
 }
 
+/* ---- tags of clients (§2.6): the name on a muted tint of the tag's colour, readable in both
+   themes. The palette (.c-*) keeps to low chroma, away from the accent's blue and from the
+   saturated red and green of the status colours. ---- */
+.chip {
+  display: inline-flex; align-items: center; height: 20px; max-width: 12em; padding: 0 7px; border-radius: 999px;
+  font-size: 11.5px; font-weight: 500; line-height: 1; white-space: nowrap; vertical-align: middle;
+  color: light-dark(oklch(0.42 calc(var(--chip-c) * 2) var(--chip-h)), oklch(0.86 calc(var(--chip-c) * 1.4) var(--chip-h)));
+  background: light-dark(oklch(0.955 var(--chip-c) var(--chip-h)), oklch(0.36 calc(var(--chip-c) * 1.4) var(--chip-h) / .5));
+  box-shadow: inset 0 0 0 1px light-dark(oklch(0.89 calc(var(--chip-c) * 1.4) var(--chip-h)), oklch(0.62 var(--chip-c) var(--chip-h) / .3));
+}
+.chip > .fade { min-width: 0; }
+.c-gray { --chip-h: 255; --chip-c: 0.006; }
+.c-sand { --chip-h: 80; --chip-c: 0.032; }
+.c-clay { --chip-h: 45; --chip-c: 0.032; }
+.c-olive { --chip-h: 115; --chip-c: 0.032; }
+.c-sage { --chip-h: 155; --chip-c: 0.028; }
+.c-teal { --chip-h: 200; --chip-c: 0.028; }
+.c-steel { --chip-h: 235; --chip-c: 0.028; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; }
+.table .chips { margin-top: 4px; }
+.table .chip .fade { min-width: 0; }
+.chips > a:hover { text-decoration: none; }
+.chips > a:hover .chip { box-shadow: inset 0 0 0 1px var(--border-strong); }
+
 /* ---- empty states ---- */
 .empty { color: var(--muted); padding: 16px 0; margin: 0; }
 .empty-state { display: grid; justify-items: center; gap: 10px; padding: 48px 24px; text-align: center; color: var(--muted); }

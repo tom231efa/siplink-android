@@ -1,0 +1,93 @@
+{{define "content"}}
+{{$d := .Data}}{{$groups := eq $d.Tab "groups"}}
+<header class="page-head">
+  <div><h1>{{t "nav.groups"}}</h1></div>
+  <div class="page-actions">
+    {{if $groups}}{{if $d.Regions}}<a class="btn primary" href="/groups?new=1" data-dialog="group-new">{{icon "plus"}}{{t "groups.new"}}</a>{{end}}
+    {{else}}<a class="btn primary" href="/tags?new=1" data-dialog="tag-new">{{icon "plus"}}{{t "tags.new"}}</a>{{end}}
+  </div>
+</header>
+<nav class="tabs" aria-label="{{t "nav.groups"}}">
+  <a href="/groups"{{if $groups}} aria-current="page"{{end}}>{{t "groups.title"}}</a>
+  <a href="/tags"{{if not $groups}} aria-current="page"{{end}}>{{t "tags.title"}}</a>
+</nav>
+{{if $groups}}
+<div class="card table-card">
+  {{if $d.Groups}}
+  <div class="table-wrap"><table class="table fit-sm">
+    <thead><tr><th>{{t "common.name"}}</th><th class="hide-sm">{{t "common.region"}}</th><th class="num">{{t "nav.clients"}}</th><th class="actions-col"><span class="sr-only">{{t "common.actions"}}</span></th></tr></thead>
+    <tbody>{{range $d.Groups}}<tr>
+      <td class="strong"><span class="fade">{{.Name}}</span><span class="sub show-sm fade">{{.Region}}</span></td>
+      <td class="hide-sm"><span class="fade">{{.Region}}</span></td>
+      <td class="num">{{if .Clients}}<a href="/clients?group={{.ID}}">{{.Clients}}</a>{{else}}<span class="muted">0</span>{{end}}</td>
+      <td class="actions-col"><div class="row-actions">
+        <a class="btn small" href="/groups?edit={{.ID}}" data-dialog="group-edit" data-action="/groups/{{.ID}}" data-set-name="{{.Name}}" data-set-region="{{.Region}}" aria-label="{{t "groups.edit_aria" "name" .Name}}">{{icon "pencil"}}</a>
+        <form method="post" action="/groups/{{.ID}}/delete" class="inline" data-confirm="{{if .Clients}}{{t "groups.delete_confirm_used" "name" .Name "n" .Clients}}{{else}}{{t "groups.delete_confirm" "name" .Name}}{{end}}">
+          <button type="submit" class="btn small danger" aria-label="{{t "groups.delete_aria" "name" .Name}}">{{icon "trash"}}</button></form>
+      </div></td>
+    </tr>{{end}}</tbody>
+  </table></div>
+  <div class="card-foot"><span class="muted">{{t "groups.count" "n" (len $d.Groups)}}</span></div>
+  {{else}}
+  <div class="empty-state">{{icon "folder"}}<p>{{t "groups.empty"}}</p>{{if $d.Regions}}<div class="actions"><a class="btn small primary" href="/groups?new=1" data-dialog="group-new">{{icon "plus"}}{{t "groups.new"}}</a></div>{{end}}</div>
+  {{end}}
+</div>
+{{if $d.Dialog}}<a class="dialog-scrim" href="/groups" tabindex="-1" aria-hidden="true"></a>{{end}}
+<dialog class="dialog form-dialog" id="group-new" data-form-dialog data-return="/groups" aria-labelledby="group-new-title"{{if eq $d.Dialog "new"}} open{{end}}>
+  <form method="post" action="/groups" class="form">
+    <h2 id="group-new-title">{{t "groups.new"}}</h2>
+    {{if eq $d.Dialog "new"}}{{with $d.Error}}<div class="flash error" role="alert">{{.}}</div>{{end}}{{end}}
+    <label>{{t "common.name"}}<input name="name" value="{{if eq $d.Dialog "new"}}{{$d.Form.Name}}{{end}}" required maxlength="40"></label>
+    <label>{{t "common.region"}}<select name="region">{{range $d.Regions}}<option value="{{.ID}}"{{if eq .ID $d.Form.Region}} selected{{end}}>{{.Name}}</option>{{end}}</select></label>
+    <div class="actions"><a class="btn" href="/groups" data-dialog-close>{{t "common.cancel"}}</a><button type="submit" class="btn primary">{{t "common.create"}}</button></div>
+  </form>
+</dialog>
+<dialog class="dialog form-dialog" id="group-edit" data-form-dialog data-return="/groups" aria-labelledby="group-edit-title"{{if eq $d.Dialog "edit"}} open{{end}}>
+  <form method="post" action="/groups/{{$d.Form.ID}}" class="form">
+    <h2 id="group-edit-title">{{t "groups.edit"}}</h2>
+    {{if eq $d.Dialog "edit"}}{{with $d.Error}}<div class="flash error" role="alert">{{.}}</div>{{end}}{{end}}
+    <label>{{t "common.name"}}<input name="name" value="{{if eq $d.Dialog "edit"}}{{$d.Form.Name}}{{end}}" required maxlength="40"></label>
+    <div class="field"><span class="field-label">{{t "common.region"}}</span><span data-show="region">{{range $d.Regions}}{{if eq .ID $d.Form.Region}}{{.Name}}{{end}}{{end}}</span></div>
+    <div class="actions"><a class="btn" href="/groups" data-dialog-close>{{t "common.cancel"}}</a><button type="submit" class="btn primary">{{t "common.save"}}</button></div>
+  </form>
+</dialog>
+{{else}}
+<div class="card table-card">
+  {{if $d.Tags}}
+  <div class="table-wrap"><table class="table fit-sm">
+    <thead><tr><th>{{t "tags.tag"}}</th><th class="num">{{t "nav.clients"}}</th><th class="actions-col"><span class="sr-only">{{t "common.actions"}}</span></th></tr></thead>
+    <tbody>{{range $d.Tags}}<tr>
+      <td>{{template "chip" .Tag}}</td>
+      <td class="num">{{if .Clients}}<a href="/clients?tag={{.ID}}">{{.Clients}}</a>{{else}}<span class="muted">0</span>{{end}}</td>
+      <td class="actions-col"><div class="row-actions">
+        {{if .Locked}}<button type="button" class="btn small" disabled title="{{t "tags.locked" "name" .Name}}" aria-label="{{t "tags.edit_aria" "name" .Name}}">{{icon "pencil"}}</button>
+        <button type="button" class="btn small danger" disabled title="{{t "tags.locked" "name" .Name}}" aria-label="{{t "tags.delete_aria" "name" .Name}}">{{icon "trash"}}</button>
+        {{else}}<a class="btn small" href="/tags?edit={{.ID}}" data-dialog="tag-edit" data-action="/tags/{{.ID}}" data-set-name="{{.Name}}" data-set-color="{{.Color}}" aria-label="{{t "tags.edit_aria" "name" .Name}}">{{icon "pencil"}}</a>
+        <form method="post" action="/tags/{{.ID}}/delete" class="inline" data-confirm="{{if .Clients}}{{t "tags.delete_confirm_used" "name" .Name "n" .Clients}}{{else}}{{t "tags.delete_confirm" "name" .Name}}{{end}}">
+          <button type="submit" class="btn small danger" aria-label="{{t "tags.delete_aria" "name" .Name}}">{{icon "trash"}}</button></form>{{end}}
+      </div></td>
+    </tr>{{end}}</tbody>
+  </table></div>
+  <div class="card-foot"><span class="muted">{{t "tags.count" "n" (len $d.Tags)}}</span></div>
+  {{else}}
+  <div class="empty-state">{{icon "tag"}}<p>{{t "tags.empty"}}</p><div class="actions"><a class="btn small primary" href="/tags?new=1" data-dialog="tag-new">{{icon "plus"}}{{t "tags.new"}}</a></div></div>
+  {{end}}
+</div>
+{{if $d.Dialog}}<a class="dialog-scrim" href="/tags" tabindex="-1" aria-hidden="true"></a>{{end}}
+{{template "tag-dialog" ($d.TagDialog "new")}}
+{{template "tag-dialog" ($d.TagDialog "edit")}}
+{{end}}
+{{end}}
+
+{{/* The dialog that makes a tag ("new") or changes one ("edit"). */}}
+{{define "tag-dialog"}}<dialog class="dialog form-dialog" id="tag-{{.Kind}}" data-form-dialog data-return="/tags" aria-labelledby="tag-{{.Kind}}-title"{{if .Open}} open{{end}}>
+  <form method="post" action="{{if eq .Kind "new"}}/tags{{else}}/tags/{{.Form.ID}}{{end}}" class="form">
+    <h2 id="tag-{{.Kind}}-title">{{if eq .Kind "new"}}{{t "tags.new"}}{{else}}{{t "tags.edit"}}{{end}}</h2>
+    {{if .Open}}{{with .Error}}<div class="flash error" role="alert">{{.}}</div>{{end}}{{end}}
+    <label>{{t "common.name"}}<input name="name" value="{{if .Open}}{{.Form.Name}}{{end}}" required maxlength="24"></label>
+    <fieldset class="plain"><legend class="field-label">{{t "tags.color"}}</legend>
+      <div class="swatches">{{$color := .Form.Color}}{{range .Colors}}<label class="swatch c-{{.}}" title="{{t (printf "tags.color.%s" .)}}"><input type="radio" name="color" value="{{.}}"{{if eq . $color}} checked{{end}}><span class="sr-only">{{t (printf "tags.color.%s" .)}}</span></label>{{end}}</div>
+    </fieldset>
+    <div class="actions"><a class="btn" href="/tags" data-dialog-close>{{t "common.cancel"}}</a><button type="submit" class="btn primary">{{if eq .Kind "new"}}{{t "common.create"}}{{else}}{{t "common.save"}}{{end}}</button></div>
+  </form>
+</dialog>{{end}}

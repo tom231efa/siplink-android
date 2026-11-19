@@ -92,8 +92,8 @@ func TestMigrateExternalDirectories(t *testing.T) {
 
 	tpl := &store.ClientTemplate{Name: "一", RegionID: &east.ID, ConfigTemplateID: t1.ID}
 	w.must(old.CreateClientTemplate(ctx, tpl))
-	c := &store.Client{Name: "前台", RegionID: east.ID, ClientTemplateID: tpl.ID, EnrollExpiresAt: "2099-01-01T00:00:00Z"}
-	w.must(old.SaveClient(ctx, c, nil, map[int64]string{personal: "personal-secret"}, w.box, "token"))
+	c := &store.Client{Name: "前台", RegionID: east.ID, ClientTemplateID: tpl.ID}
+	testutil.OldClient(t, old, w.box, c, nil, map[int64]string{personal: "personal-secret"})
 	w.must(old.Close())
 
 	st, err := store.Open(ctx, path, w.box)

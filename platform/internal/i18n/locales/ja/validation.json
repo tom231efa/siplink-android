@@ -36,6 +36,7 @@
   "catalog.key.line_unknown": "回線「{line}」は使用中の設定テンプレートのアカウントではありません（使用可能：{names}）",
   "catalog.client.name_too_long": "名前は {max} 文字以内にしてください",
   "catalog.client.name_control": "名前に改行やタブは使用できません",
+  "catalog.tag.separator": "タグ名にセミコロンは使えません",
   "auth.password.too_long": "パスワードは {max} 文字以内にしてください",
   "auth.password.empty": "新しいパスワードを入力してください",
   "auth.password.too_short": "パスワードは {min} 文字以上にしてください",

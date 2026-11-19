@@ -3,8 +3,9 @@
 <header class="page-head">
   <div>
     <div class="title-row fade-line"><h1 class="fade">{{$c.Name}}</h1>{{if $d.Offline}}<span class="status warn">{{t "clients.status.offline"}}</span>{{else if eq $c.Status "active"}}<span class="status ok">{{t "clients.status.active"}}</span>{{else}}<span class="status">{{t "clients.status.pending"}}</span>{{end}}</div>
-    <p class="page-sub fade">{{$d.Region}}<span class="dot-sep"></span>{{t "clients.field.template"}} <a href="/client-templates/{{$d.Template.ID}}">{{$d.Template.Name}}</a>
+    <p class="page-sub fade">{{$d.Region}}{{with $d.Group}}<span class="dot-sep"></span>{{t "groups.group"}} <a href="/clients?group={{.ID}}">{{.Name}}</a>{{end}}<span class="dot-sep"></span>{{t "clients.field.template"}} <a href="/client-templates/{{$d.Template.ID}}">{{$d.Template.Name}}</a>
       {{- with $d.Config}}<span class="dot-sep"></span>{{t "clients.detail.config"}} <a href="/config-templates/{{.ID}}">{{.Name}}</a>{{end}}{{with $d.Keys}}<span class="dot-sep"></span>{{t "clients.detail.keys"}} <a href="/key-templates/{{.ID}}">{{.Name}}</a>{{end}}</p>
+    {{if $d.Tags}}<div class="chips page-chips" aria-label="{{t "tags.title"}}">{{range $d.Tags}}<a href="/clients?tag={{.ID}}">{{template "chip" .}}</a>{{end}}</div>{{end}}
   </div>
   <div class="page-actions"><a class="btn" href="/clients/{{$c.ID}}/preview">{{icon "eye"}}{{t "clients.detail.preview"}}</a><a class="btn" href="/clients/{{$c.ID}}/edit">{{icon "pencil"}}{{t "common.edit"}}</a></div>
 </header>

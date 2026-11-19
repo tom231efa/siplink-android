@@ -31,6 +31,7 @@ func TestPermissionMatrix(t *testing.T) {
 		{BookUse, want{true, true, true}, want{true, false, true}},
 		{LDAPAccountManage, want{true, true, true}, want{true, false, false}},
 		{System, want{true, true, true}, want{false, false, false}},
+		{GroupManage, want{true, true, false}, want{true, false, false}},
 	}
 	for _, row := range rows {
 		for _, c := range []struct {
@@ -52,6 +53,9 @@ func TestPermissionMatrix(t *testing.T) {
 	two := ActorOf(&store.Admin{ID: 3, Role: store.RoleRegion, RegionIDs: []int64{1, 2}})
 	if !super.CanMoveClient(1, 3) || !two.CanMoveClient(1, 2) || region.CanMoveClient(1, 2) || two.CanMoveClient(2, 3) {
 		t.Error("client move rule")
+	}
+	if !super.CanChangeTag(true) || !region.CanChangeTag(false) || region.CanChangeTag(true) {
+		t.Error("tag change rule")
 	}
 	a2, a9 := int64(2), int64(9)
 	if !region.CanSeeAudit(&own, &a9) || region.CanSeeAudit(&other, &a9) || !region.CanSeeAudit(&other, &a2) ||

@@ -117,9 +117,18 @@ func (w *world) client(name string, tpl *store.ClientTemplate, creds []store.Cre
 	if edit != nil {
 		edit(c)
 	}
-	w.must(w.st.SaveClient(ctx, c, creds, dirs, w.box, "token-"+name))
-	_, err := w.st.DB.ExecContext(ctx, `UPDATE clients SET public_id = ? WHERE id = ?`, "pub"+strings.Repeat("x", 7-len(name))+name, c.ID)
+	old, err := w.st.SchemaVersion(ctx)
 	w.must(err)
+	if old < groupsSchema {
+		testutil.OldClient(w.t, w.st, w.box, c, creds, dirs)
+	} else {
+		w.must(w.st.SaveClient(ctx, c, creds, dirs, nil, w.box, "token-"+name))
+	}
+	_, err = w.st.DB.ExecContext(ctx, `UPDATE clients SET public_id = ? WHERE id = ?`, "pub"+strings.Repeat("x", 7-len(name))+name, c.ID)
+	w.must(err)
+	if old < groupsSchema {
+		return c // read again once the database is migrated
+	}
 	c, err = w.st.ClientByID(ctx, c.ID)
 	w.must(err)
 	return c

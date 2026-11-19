@@ -39,11 +39,12 @@ const (
 	BookUse                         // refer to a book from a template or grant it to an LDAP account
 	LDAPAccountManage               // manage LDAP service accounts
 	System                          // system page: backup, instance settings
+	GroupManage                     // see, create, rename, delete and assign the client groups of a region
 )
 
 var actionNames = [...]string{"RegionList", "RegionManage", "AdminManage", "OwnPassword", "ClientManage",
 	"ClientViewSecrets", "TemplateView", "TemplateEdit", "TemplateUse", "BookView", "BookEdit", "BookUse",
-	"LDAPAccountManage", "System"}
+	"LDAPAccountManage", "System", "GroupManage"}
 
 func (a Action) String() string {
 	if int(a) < len(actionNames) {
@@ -64,14 +65,14 @@ func (a Actor) Can(act Action, region *int64) bool {
 		return a.Super
 	}
 	if a.Super {
-		// Clients always belong to a region; a global client does not exist.
-		if (act == ClientManage || act == ClientViewSecrets || act == RegionList) && region == nil {
+		// Clients and groups always belong to a region; a global one does not exist.
+		if (act == ClientManage || act == ClientViewSecrets || act == RegionList || act == GroupManage) && region == nil {
 			return false
 		}
 		return true
 	}
 	switch act {
-	case RegionList, ClientManage, ClientViewSecrets, TemplateEdit, BookEdit, LDAPAccountManage:
+	case RegionList, ClientManage, ClientViewSecrets, TemplateEdit, BookEdit, LDAPAccountManage, GroupManage:
 		return a.own(region)
 	case TemplateView, TemplateUse, BookView, BookUse:
 		return region == nil || a.own(region)
@@ -84,6 +85,12 @@ func (a Actor) Can(act Action, region *int64) bool {
 func (a Actor) CanMoveClient(from, to int64) bool {
 	return a.Super || a.Regions[from] && a.Regions[to]
 }
+
+// CanChangeTag: tags are one list of every region; any administrator creates them and
+// puts them on the clients they manage, but renaming, recolouring or deleting one is for
+// super administrators, and for a region administrator only while no client outside
+// their regions carries it (usedOutside).
+func (a Actor) CanChangeTag(usedOutside bool) bool { return a.Super || !usedOutside }
 
 // CanSeeAudit reports whether an audit entry is visible: super administrators see
 // all, region administrators entries of their regions plus their own actions.

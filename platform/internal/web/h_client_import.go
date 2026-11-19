@@ -17,11 +17,12 @@ import (
 	"siplink/internal/store"
 )
 
-// Client CSV (design §5.2, §5.5): 名称,区域,客户端模板[,备注], then per account profile of
-// the template {profile}用户名, {profile}密码, {profile}认证用户, {profile}显示名, and per
-// directory with per-client passwords {directory}LDAP密码. The English names are an
-// alternative (name, region, client_template, note, "{profile} username", …, in any case);
-// one file uses one language. Extra columns are ignored.
+// Client CSV (design §5.2, §5.5, §2.6): 名称,区域,客户端模板[,备注][,分组][,标签], then per
+// account profile of the template {profile}用户名, {profile}密码, {profile}认证用户,
+// {profile}显示名, and per directory with per-client passwords {directory}LDAP密码. The
+// English names are an alternative (name, region, client_template, note, group, tags,
+// "{profile} username", …, in any case); one file uses one language. Extra columns are
+// ignored. Several tags in one cell are separated by ";" or "；".
 const maxClientCSV = 4 << 20
 
 // csvColumn is a column of the client CSV by its Chinese and its English name; the
@@ -33,6 +34,8 @@ var (
 	colRegion   = csvColumn{"区域", "region"}
 	colTemplate = csvColumn{"客户端模板", "client_template"}
 	colNote     = csvColumn{"备注", "note"}
+	colGroup    = csvColumn{"分组", "group"}
+	colTags     = csvColumn{"标签", "tags"}
 	sufUser     = csvColumn{"用户名", " username"}
 	sufPass     = csvColumn{"密码", " password"}
 	sufAuth     = csvColumn{"认证用户", " auth user"}
@@ -64,7 +67,7 @@ type csvField struct {
 	col    csvColumn
 }
 
-var fixedFields = []csvField{{"", colName}, {"", colRegion}, {"", colTemplate}, {"", colNote}}
+var fixedFields = []csvField{{"", colName}, {"", colRegion}, {"", colTemplate}, {"", colNote}, {"", colGroup}, {"", colTags}}
 
 // templateFields are the fields of a client template's profiles and directories.
 func templateFields(profiles []*store.Profile, dirs []*store.Directory) []csvField {
@@ -164,12 +167,13 @@ func clientCSVFormat(r *http.Request) []string {
 	account, directory := t.T("clients.import.account_word"), t.T("clients.import.directory_word")
 	lines := []string{t.T("clients.import.format_columns", "name", colName.name(chinese, ""),
 		"region", colRegion.name(chinese, ""), "client_template", colTemplate.name(chinese, ""), "note", colNote.name(chinese, ""),
+		"group", colGroup.name(chinese, ""), "tags", colTags.name(chinese, ""),
 		"username", sufUser.name(chinese, account), "password", sufPass.name(chinese, account),
 		"auth_user", sufAuth.name(chinese, account), "display_name", sufDisp.name(chinese, account),
 		"ldap_password", sufDir.name(chinese, directory))}
 	if chinese {
 		lines = append(lines, t.T("clients.import.format_english", "columns", []string{colName.en, colRegion.en, colTemplate.en,
-			colNote.en, account + sufUser.en, account + sufPass.en, account + sufAuth.en, account + sufDisp.en, directory + sufDir.en}))
+			colNote.en, colGroup.en, colTags.en, account + sufUser.en, account + sufPass.en, account + sufAuth.en, account + sufDisp.en, directory + sufDir.en}))
 	}
 	return append(lines, t.T("clients.import.format_size", "mb", maxClientCSV>>20))
 }
@@ -187,9 +191,25 @@ type importedClient struct {
 	C        *store.Client
 	Region   string
 	Template string
+	Group    string
+	Tags     []string // as the file names them; made at the confirmation when new
 	creds    []store.CredentialInput
 	dirs     map[int64]string
 	Problems []string
+}
+
+// importGroups looks up the groups of a region by folded name, once per region and file.
+type importGroups map[int64]map[string]*store.Group
+
+func (m importGroups) find(r *http.Request, s *Server, region int64, name string) *store.Group {
+	if m[region] == nil {
+		m[region] = map[string]*store.Group{}
+		groups, _ := s.St.ListGroups(r.Context(), store.BookScope{All: true, Region: region})
+		for _, g := range groups {
+			m[region][store.NameKey(g.Name)] = g
+		}
+	}
+	return m[region][store.NameKey(name)]
 }
 
 type clientImportData struct {
@@ -280,9 +300,18 @@ func (s *Server) clientImportDryRun(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	seen := map[string]bool{}
+	seen, groups, newTags := map[string]bool{}, importGroups{}, map[string]bool{}
+	known, err := s.allTags(r.Context())
+	if err != nil {
+		s.internal(w, r, err)
+		return
+	}
+	knownKeys := map[string]bool{}
+	for _, t := range known {
+		knownKeys[store.NameKey(t.Name)] = true
+	}
 	for _, row := range rows[1:] {
-		ic, err := s.importRow(r, row, col)
+		ic, err := s.importRow(r, row, col, groups)
 		if err != nil {
 			fail(errText(r, err))
 			return
@@ -297,7 +326,16 @@ func (s *Server) clientImportDryRun(w http.ResponseWriter, r *http.Request) {
 		if len(ic.Problems) == 0 {
 			d.OK++
 		}
+		for _, name := range ic.Tags {
+			if key := store.NameKey(name); !knownKeys[key] {
+				newTags[key] = true
+			}
+		}
 		d.Rows = append(d.Rows, ic)
+	}
+	if len(known)+len(newTags) > catalog.MaxTags {
+		fail(tr(r).T("tags.limit", "max", catalog.MaxTags))
+		return
 	}
 	if d.OK == len(d.Rows) {
 		d.Key = s.imports.put(s.Now(), &pendingImport{adminID: current(r).ID, clients: d.Rows})
@@ -307,7 +345,7 @@ func (s *Server) clientImportDryRun(w http.ResponseWriter, r *http.Request) {
 
 // importRow reads and checks one line; nothing is written. The error is a header that
 // does not fit the line's client template, which refuses the whole file.
-func (s *Server) importRow(r *http.Request, row rules.CsvRow, col *csvHeader) (*importedClient, error) {
+func (s *Server) importRow(r *http.Request, row rules.CsvRow, col *csvHeader, groups importGroups) (*importedClient, error) {
 	ic := &importedClient{Line: row.Line}
 	if row.Fields == nil {
 		ic.Problems = []string{tr(r).T("rules.csv.unclosed_quote")}
@@ -335,6 +373,22 @@ func (s *Server) importRow(r *http.Request, row rules.CsvRow, col *csvHeader) (*
 	if c.RegionID == 0 {
 		ic.Problems = append(ic.Problems, tr(r).T("clients.import.region_unknown", "name", ic.Region))
 		return ic, nil
+	}
+	ic.Group, ic.Tags = get("", colGroup), catalog.SplitTags(get("", colTags))
+	if ic.Group != "" {
+		if g := groups.find(r, s, c.RegionID, ic.Group); g != nil {
+			c.GroupID, ic.Group = &g.ID, g.Name
+		} else {
+			ic.Problems = append(ic.Problems, tr(r).T("clients.import.group_unknown", "name", ic.Group))
+		}
+	}
+	for _, name := range ic.Tags {
+		if p := errText(r, catalog.TagNameProblem(name)); p != "" {
+			ic.Problems = append(ic.Problems, tr(r).T("clients.import.tag_invalid", "name", name, "problem", p))
+		}
+	}
+	if p := tooManyTags(tr(r), len(ic.Tags)); p != "" {
+		ic.Problems = append(ic.Problems, p)
 	}
 	// A template of the client's own region wins over a global one of the same name.
 	for _, t := range s.usableClientTemplates(r, c.RegionID) {
@@ -398,10 +452,35 @@ func (s *Server) clientImportConfirm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	expires := s.Now().Add(time.Duration(s.Cfg.EnrollDays) * 24 * time.Hour).UTC().Format(store.TimeFormat)
+	var names []string
+	for _, ic := range p.clients {
+		names = append(names, ic.Tags...)
+		// A group deleted since the dry run voids it, before anything is written.
+		if ic.C.GroupID != nil {
+			if g, err := s.St.GroupByID(r.Context(), *ic.C.GroupID); err != nil || g.RegionID != ic.C.RegionID {
+				s.redirect(w, r, "/clients/import", "error", tr(r).T("clients.import.expired"))
+				return
+			}
+		}
+	}
+	tags, err := s.St.EnsureTags(r.Context(), names, catalog.TagColors[0], catalog.MaxTags)
+	if errors.Is(err, store.ErrLimit) {
+		s.redirect(w, r, "/clients/import", "error", tr(r).T("tags.limit", "max", catalog.MaxTags))
+		return
+	}
+	if err != nil {
+		s.internal(w, r, err)
+		return
+	}
 	var ids []string
 	for _, ic := range p.clients {
 		ic.C.EnrollExpiresAt = expires
-		err := s.St.SaveClient(r.Context(), ic.C, ic.creds, ic.dirs, s.Ext.Box, secret.Token(32))
+		tagIDs, named := []int64{}, []string{}
+		for _, name := range ic.Tags {
+			t := tags[store.NameKey(name)]
+			tagIDs, named = append(tagIDs, t.ID), append(named, t.Name)
+		}
+		err := s.St.SaveClient(r.Context(), ic.C, ic.creds, ic.dirs, tagIDs, s.Ext.Box, secret.Token(32))
 		if errors.Is(err, store.ErrConflict) {
 			s.redirect(w, r, "/clients", "error", tr(r).T("clients.import.conflict", "line", ic.Line, "name", ic.C.Name, "n", len(ids)))
 			return
@@ -411,7 +490,14 @@ func (s *Server) clientImportConfirm(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		ids = append(ids, itoa(ic.C.ID))
-		s.audit(r, "client.create", "client", ic.C.ID, ic.C.Name, &ic.C.RegionID, map[string]any{"import": true})
+		detail := map[string]any{"import": true}
+		if ic.Group != "" {
+			detail["group"] = ic.Group
+		}
+		if len(named) > 0 {
+			detail["tags"] = named
+		}
+		s.audit(r, "client.create", "client", ic.C.ID, ic.C.Name, &ic.C.RegionID, detail)
 	}
 	s.audit(r, "client.import", "client", 0, "", nil, map[string]any{"count": len(ids)})
 	s.redirect(w, r, "/clients/print?ids="+strings.Join(ids, ","), "ok", tr(r).T("clients.import.done", "n", len(ids)))

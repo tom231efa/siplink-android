@@ -182,16 +182,16 @@ func TestClientImport(t *testing.T) {
 	root, _ := h.loggedIn("root", store.RoleSuper)
 
 	r := root.get("/clients/import/template.csv?template=" + itoa(f.tpl.ID))
-	head := "\xef\xbb\xbf名称,区域,客户端模板,备注,总部用户名,总部密码,总部认证用户,总部显示名,分部用户名,分部密码,分部认证用户,分部显示名,公司LDAP密码"
+	head := "\xef\xbb\xbf名称,区域,客户端模板,备注,分组,标签,总部用户名,总部密码,总部认证用户,总部显示名,分部用户名,分部密码,分部认证用户,分部显示名,公司LDAP密码"
 	if r.code != 200 || strings.TrimSpace(r.body) != head {
 		t.Fatalf("template: %q", r.body)
 	}
-	bad := strings.TrimPrefix(head, "\xef\xbb\xbf") + "\n甲,华东,标准,,2001,pw,,,,,,,x\n乙,无此区域,标准,,2002,pw,,,,,,,\n"
+	bad := strings.TrimPrefix(head, "\xef\xbb\xbf") + "\n甲,华东,标准,,,,2001,pw,,,,,,,x\n乙,无此区域,标准,,,,2002,pw,,,,,,,\n"
 	r = root.uploadCSV("/clients/import", []byte(bad))
 	if r.code != 200 || strings.Contains(r.body, `name="key"`) || !strings.Contains(r.body, "无此区域") {
 		t.Fatalf("dry run with an error: %d", r.code)
 	}
-	good := strings.TrimPrefix(head, "\xef\xbb\xbf") + "\n甲,华东,标准,,2001,pw1,,,3001,pw2,,,x\n乙,华东,标准,备注,2002,pw,,,,,,,\n"
+	good := strings.TrimPrefix(head, "\xef\xbb\xbf") + "\n甲,华东,标准,,,,2001,pw1,,,3001,pw2,,,x\n乙,华东,标准,备注,,,2002,pw,,,,,,,\n"
 	r = root.uploadCSV("/clients/import", []byte(good))
 	key := importKey.FindStringSubmatch(r.body)
 	if key == nil {

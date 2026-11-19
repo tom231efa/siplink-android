@@ -36,6 +36,7 @@
   "catalog.key.line_unknown": "La ligne « {line} » n'est pas un compte du modèle de configuration utilisé (disponibles : {names})",
   "catalog.client.name_too_long": "Nom : {max} caractères au maximum",
   "catalog.client.name_control": "Le nom ne doit contenir ni sauts de ligne ni tabulations",
+  "catalog.tag.separator": "Le nom de l'étiquette ne doit pas contenir de point-virgule",
   "auth.password.too_long": "Le mot de passe ne doit pas dépasser {max} caractères",
   "auth.password.empty": "Veuillez saisir un nouveau mot de passe",
   "auth.password.too_short": "Le mot de passe doit comporter au moins {min} caractères",

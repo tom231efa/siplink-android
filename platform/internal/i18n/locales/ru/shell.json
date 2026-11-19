@@ -3,6 +3,7 @@
   "app.brand_sub": "Управление",
   "nav.dashboard": "Обзор",
   "nav.clients": "Клиенты",
+  "nav.groups": "Группы и метки",
   "nav.client_templates": "Шаблоны клиентов",
   "nav.config_templates": "Шаблоны конфигурации",
   "nav.key_templates": "Шаблоны клавиш",

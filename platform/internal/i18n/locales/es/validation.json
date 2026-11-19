@@ -36,6 +36,7 @@
   "catalog.key.line_unknown": "La línea «{line}» no es una cuenta de la plantilla de configuración en uso (disponibles: {names})",
   "catalog.client.name_too_long": "Nombre: máximo {max} caracteres",
   "catalog.client.name_control": "El nombre no puede contener saltos de línea ni tabulaciones",
+  "catalog.tag.separator": "El nombre de la etiqueta no debe contener punto y coma",
   "auth.password.too_long": "La contraseña puede tener como máximo {max} caracteres",
   "auth.password.empty": "Escriba una nueva contraseña",
   "auth.password.too_short": "La contraseña necesita al menos {min} caracteres",

@@ -32,7 +32,7 @@ func (e *env) client(name, slug string, bound bool) *store.Client {
 	c := &store.Client{Name: name, RegionID: r.ID, ClientTemplateID: tpl.ID,
 		EnrollExpiresAt: time.Now().Add(time.Hour).UTC().Format(store.TimeFormat)}
 	token := secret.Token(32)
-	must(e.t, e.st.SaveClient(ctx, c, nil, nil, testutil.Box(e.t), token))
+	must(e.t, e.st.SaveClient(ctx, c, nil, nil, nil, testutil.Box(e.t), token))
 	if bound {
 		var err error
 		c, err = e.st.Enroll(ctx, secret.HashHex(token), secret.HashHex("device-"+name), "install")

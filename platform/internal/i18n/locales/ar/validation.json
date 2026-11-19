@@ -36,6 +36,7 @@
   "catalog.key.line_unknown": "الخط «{line}» ليس حسابًا في قالب الإعدادات المستخدم (المتاح: {names})",
   "catalog.client.name_too_long": "الحد الأقصى لعدد أحرف الاسم: {max}",
   "catalog.client.name_control": "يجب ألا يحتوي الاسم على فواصل أسطر أو علامات جدولة",
+  "catalog.tag.separator": "يجب ألا يحتوي اسم الوسم على فاصلة منقوطة",
   "auth.password.too_long": "الحد الأقصى لعدد أحرف كلمة المرور: {max}",
   "auth.password.empty": "يُرجى إدخال كلمة مرور جديدة",
   "auth.password.too_short": "الحد الأدنى لعدد أحرف كلمة المرور: {min}",

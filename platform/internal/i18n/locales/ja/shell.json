@@ -3,6 +3,7 @@
   "app.brand_sub": "管理",
   "nav.dashboard": "概要",
   "nav.clients": "クライアント",
+  "nav.groups": "グループとタグ",
   "nav.client_templates": "クライアントテンプレート",
   "nav.config_templates": "設定テンプレート",
   "nav.key_templates": "キーテンプレート",

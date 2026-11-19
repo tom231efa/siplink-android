@@ -132,17 +132,17 @@
   <div class="table-wrap codec-table"><table class="table">
     <thead><tr><th>{{t "system.backup.col.file"}}</th><th>{{t "system.backup.col.time"}}</th><th class="num">{{t "system.backup.col.size"}}</th><th class="actions-col"><span class="sr-only">{{t "common.actions"}}</span></th></tr></thead>
     <tbody>{{range $d.Backups}}<tr><td class="mono">{{.Name}}</td><td class="muted">{{at .ModTime}}</td><td class="num">{{printf "%.1f" (mb .Size)}} MB</td>
-      <td class="actions-col"><a class="btn small ghost" href="/system?backup={{.Name}}" data-download="{{.Name}}">{{icon "download"}}{{t "common.download"}}</a></td></tr>{{end}}</tbody>
+      <td class="actions-col"><a class="btn small ghost" href="/system?backup={{.Name}}" data-dialog="download" data-set-name="{{.Name}}" data-set-encrypt="1">{{icon "download"}}{{t "common.download"}}</a></td></tr>{{end}}</tbody>
   </table></div>
   {{else}}<div class="empty-state compact">{{icon "inbox"}}<p>{{t "system.backup.empty"}}</p></div>{{end}}
 </section>
 {{if $d.Backups}}
 {{if $d.Download}}<a class="dialog-scrim" href="/system#backups" tabindex="-1" aria-hidden="true"></a>{{end}}
-  <dialog class="dialog download-dialog" id="download" aria-labelledby="download-title"{{if $d.Download}} open{{end}}>
+  <dialog class="dialog form-dialog download-dialog" id="download" data-form-dialog data-return="/system" data-close-on-submit aria-labelledby="download-title"{{if $d.Download}} open{{end}}>
     <form method="post" action="/system/backups/download" class="form"
       data-confirm="{{t "system.backup.plain_confirm"}}" data-confirm-unless="encrypt">
       <input type="hidden" name="name" value="{{$d.Download}}">
-      <h2 id="download-title">{{t "system.backup.download_title"}}<span class="mono" data-download-name>{{$d.Download}}</span></h2>
+      <h2 id="download-title">{{t "system.backup.download_title"}}<span class="mono" data-show="name">{{$d.Download}}</span></h2>
       {{with $d.DownloadError}}<div class="flash error" role="alert">{{.}}</div>{{end}}
       <label>{{t "system.backup.current_password"}}<input type="password" name="password" autocomplete="current-password" required></label>
       <label class="setting toggle"><span class="setting-text"><span class="setting-name">{{t "system.backup.encrypt"}}</span></span>

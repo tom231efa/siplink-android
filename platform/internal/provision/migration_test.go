@@ -40,6 +40,11 @@ func (w *world) inlineDirectories(cfg *store.ConfigTemplate, hq *store.Profile, 
 	return personal
 }
 
+// groupsSchema is the schema that gave clients their group (migration 0011): the store's
+// code reads and writes that column, so an older database gets its clients through
+// testutil.OldClient.
+const groupsSchema = 11
+
 // TestGoldenAfterMigration: the full example stored at schema 7, with an external
 // directory in each password mode and a per-client password, gives the same document
 // after migrations 0008 and 0009 as the golden file.

@@ -148,6 +148,7 @@ func (s *Server) routes() {
 	s.routesLDAPAccounts()
 	s.routesTemplates()
 	s.routesClients()
+	s.routesGroups()
 	s.routesDevice()
 	s.routesSystem()
 	s.routesAccount()
