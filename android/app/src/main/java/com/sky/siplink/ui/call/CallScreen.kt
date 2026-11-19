@@ -59,6 +59,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -99,6 +100,10 @@ internal enum class Controls { INCOMING, ACTIVE, ENDED }
  *   may let it shine through; without the blur it covers it whole
  * @param activityNotice a notice of the activity (why answering from the notification did not
  *   work), shown like the screen's own; [onActivityNoticeShown] once it is
+ * @param onSolid whether the screen covers what is behind the window whole, and goes on doing so
+ *   until this changes: true once a call that is dialled, up or on hold is shown in full and its
+ *   glass has turned solid; false while it rings, fades in or out, and once it has ended (it
+ *   fades out next)
  */
 @Composable
 fun CallScreen(
@@ -109,6 +114,7 @@ fun CallScreen(
     onEndRoomAsked: () -> Unit = {},
     activityNotice: String? = null,
     onActivityNoticeShown: () -> Unit = {},
+    onSolid: (Boolean) -> Unit = {},
 ) {
     val context = LocalContext.current
     val calls = context.engine.calls
@@ -172,6 +178,16 @@ fun CallScreen(
     }
 
     val info = shown
+    // A ringing call lets what is behind the window shine through where the system blurs it (CallBackground).
+    val tint = animateFloatAsState(
+        targetValue = if (info?.phase == CallPhase.INCOMING && glass) GLASS_TINT else 1f,
+        animationSpec = tween(SOLIDIFY_MS, easing = FastOutSlowInEasing),
+        label = "callTint",
+    )
+    val solidPhase = live?.phase.let { it == CallPhase.OUTGOING || it == CallPhase.CONNECTED || it == CallPhase.HELD }
+    LaunchedEffect(solidPhase) {
+        if (solidPhase) snapshotFlow { presence.value == 1f && tint.value == 1f }.collect { onSolid(it) } else onSolid(false)
+    }
     val video = info?.video?.takeIf { info.phase == CallPhase.CONNECTED }
     val established = info != null && (info.phase == CallPhase.CONNECTED || info.phase == CallPhase.HELD)
     // The record button stands in the top end corner, ahead of the buttons of a video call.
@@ -209,7 +225,7 @@ fun CallScreen(
             .graphicsLayer { alpha = presence.value }
             .pictureTaps(controls, enabled = video != null),
     ) {
-        CallBackground(ringingIn = info?.phase == CallPhase.INCOMING, glass = glass)
+        CallBackground(tint = { tint.value })
         if (video != null) VideoStage(video = video, stage = stage, chrome = !controls.hidden)
         if (info != null) {
             val mode = when (info.phase) {
@@ -331,16 +347,13 @@ fun CallScreen(
  *
  * It does not move otherwise: a call can last for hours, and a background that animates would
  * redraw the whole screen all that time.
+ *
+ * @param tint how much of what is behind the dark colour covers (1: all of it), read while drawing
  */
 @Composable
-private fun CallBackground(ringingIn: Boolean, glass: Boolean) {
-    val tint by animateFloatAsState(
-        targetValue = if (ringingIn && glass) GLASS_TINT else 1f,
-        animationSpec = tween(SOLIDIFY_MS, easing = FastOutSlowInEasing),
-        label = "callTint",
-    )
+private fun CallBackground(tint: () -> Float) {
     Canvas(Modifier.fillMaxSize()) {
-        drawRect(Brand.CallSurface.copy(alpha = tint))
+        drawRect(Brand.CallSurface.copy(alpha = tint()))
         val radius = size.minDimension * 0.9f
         val center = Offset(size.width * 0.5f, size.height * 0.18f)
         drawCircle(

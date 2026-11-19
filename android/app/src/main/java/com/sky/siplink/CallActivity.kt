@@ -33,10 +33,14 @@ import kotlinx.coroutines.launch
 /**
  * Full-screen call UI, also shown over the lock screen for incoming calls. Its window is see
  * through: where the system blurs what is behind it, a ringing call lets what was on screen
- * before show through, like frosted glass.
+ * before show through, like frosted glass. While the screen is solid the window is opaque
+ * ([coverBehind]).
  */
 class CallActivity : ComponentActivity() {
     private var proximityLock: PowerManager.WakeLock? = null
+
+    /** The window was made opaque ([coverBehind]); it starts see through, as its theme has it. */
+    private var opaque = false
 
     /**
      * Whether the system blurs what is behind this window right now. It cannot on Android 11 and
@@ -88,6 +92,7 @@ class CallActivity : ComponentActivity() {
                     onEndRoomAsked = { endRoomAsked = false },
                     activityNotice = answerNotice,
                     onActivityNoticeShown = { answerNotice = null },
+                    onSolid = ::coverBehind,
                 )
             }
         }
@@ -132,6 +137,26 @@ class CallActivity : ComponentActivity() {
 
             override fun onViewDetachedFromWindow(view: View) = windowManager.removeCrossWindowBlurEnabledListener(onBlurChanged)
         })
+    }
+
+    /**
+     * While the call screen covers everything behind the window ([solid]), the window is opaque:
+     * the system then neither blurs what is behind it on every frame nor keeps the activity
+     * behind it started. It is see through again before the screen can let anything show
+     * through: ringing, ended (it fades out next). Android 9 and 10 cannot switch; there the
+     * window stays see through.
+     */
+    private fun coverBehind(solid: Boolean) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R || solid == opaque) return
+        opaque = solid
+        val blurs = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+        if (solid) {
+            setTranslucent(false)
+            if (blurs) window.clearFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
+        } else {
+            if (blurs) window.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
+            setTranslucent(true)
+        }
     }
 
     private fun handleIntent(intent: Intent?) {
