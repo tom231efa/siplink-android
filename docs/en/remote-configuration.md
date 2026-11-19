@@ -208,6 +208,8 @@ A missing or `null` field gets the app default (not the phone's current value); 
 | `callRecording` | Boolean: whether calls may be recorded; when `false`, the record button is hidden, a recording in progress at the sync ends, and existing files are kept | `true` |
 | `recordByDefault` | Boolean: every call is recorded once connected | `false` |
 | `roomLimit` | Integer: maximum members of a conference room, 2–30; values outside are clamped | `30` |
+| `autoNetwork` | Boolean: [adapt to network automatically](user-guide.md#advanced-settings) | `true` |
+| `stunServer` | String: `host[:port]` (same rules as an account's proxy server, port 3478 by default), empty for none; an invalid value rejects the whole configuration | `""` |
 
 The do not disturb switch, theme, dynamic color, call banner position, number of recordings to keep and video window place are not in the document; they are always up to the user.
 

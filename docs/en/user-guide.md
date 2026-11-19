@@ -59,6 +59,8 @@ While typing: a `sip:` / `sips:` prefix is removed; `user@domain` typed as the u
 
 The account editor offers **Set as default** and **Delete account**. After an account is deleted, shortcut keys set to that line ask for a line when used.
 
+**Line diagnosis** in the account editor (also available when the configuration is managed remotely) checks the line on the current network: network type, local and public address, NAT type, battery optimization; what the server name resolves to, the UDP response time, large outgoing packets, TCP and TLS connections, a suspected SIP ALG; the registration; the direction of the sound of the last call, its loss, jitter and round trip; and what [automatic network adaptation](#advanced-settings) currently changes. **Restore defaults** clears the account's adaptations. The diagnosis only sends check requests and changes no settings.
+
 ### TLS and SRTP
 
 With TLS as the transport, the server certificate must be issued by a trusted CA. The root certificate of a private CA is imported in **Settings → TLS and CA certificates**, see [Settings](#tls-and-ca-certificates). Media encryption (SRTP) is set on the same page.
@@ -421,9 +423,18 @@ See [Intercom](#intercom) and [Auto answer](#auto-answer).
 | Media and network | Adaptive rate control | Off | See below |
 | | Echo cancellation | On | The SIP stack's echo cancellation |
 | | Allow IPv6 | On | |
+| | Adapt to network automatically | On | See below |
+| | STUN server | Empty | `host[:port]`, port 3478 by default; the line diagnosis uses it to tell the NAT type and the public address; empty for none |
 | Client identity | Client name (User-Agent) | Empty | See below |
 
 **Adaptive rate control** is off by default. When on, the SIP stack adapts the bit rate and packet time to the network. PBXs usually do not offer RTCP feedback (AVPF); the SDK then uses its basic controller, which lengthens the audio packet time step by step up to 100 ms when it detects packet loss or a doubled round-trip time, and behind Asterisk the other side has been reported to go silent at that point. See [FAQ](faq.md#no-sound-after-a-while-in-a-call).
+
+**Adapt to network automatically**: when a line (an account on one network) runs into trouble, it is adjusted, and the adjustment is remembered for that network (up to 20 networks, forgotten after 30 days unused). The account's own settings stay as they are.
+- When UDP registrations get no answer, or large UDP packets are dropped (calls out get no answer), the line moves to TCP, and to TLS when TCP does not get through either and the current certificate settings accept the server. The account list shows "TCP（自动）". The line is retested regularly and goes back to UDP when idle once UDP works again
+- When the NAT forgets the line between registrations, the registration interval is shortened to 300 seconds; if that does not help, the line moves to TCP
+- When the PBX announces an address of its own internal network in calls, the account's calls send their requests by way of the server (outbound proxy) with symmetric RTP; this is lifted after 3 calls in a row without the need
+- Networks that require a web login are not adjusted until the login
+Turning it off puts all lines back on their own settings and clears what was remembered.
 
 **Client name (User-Agent)**: up to 120 printable ASCII characters, with no space at the start or end. When empty, `LinphoneSDK/{sdk-version} SipLink/{app-version}` is sent: the SDK name comes first because some services accept only User-Agents that start with a known client name. Accounts re-register after a change.
 
