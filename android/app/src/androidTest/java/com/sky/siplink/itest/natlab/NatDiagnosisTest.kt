@@ -43,7 +43,7 @@ class NatDiagnosisTest : NatLabTestBase() {
     @Test
     fun aSymmetricNatIsToldWithAStunServer() {
         box("mode symmetric")
-        onMain { engine.accounts.stunServer = lab.stunServer }
+        onMain { engine.updateSettings { it.copy(stunServer = lab.stunServer) } }
         addAccount(NAT_ACCOUNT)
         awaitRegistered(NAT_ACCOUNT)
         val report = check(NAT_ACCOUNT)

@@ -17,7 +17,7 @@ import org.junit.runner.RunWith
 class NatTransportTest : NatLabTestBase() {
     @Test
     fun withoutAdaptationBlockedUdpLeavesTheLineUnregistered() {
-        onMain { engine.accounts.autoAdapt = false }
+        onMain { engine.updateSettings { it.copy(autoNetwork = false) } }
         box("udp-sip off")
         addAccount(NAT_ACCOUNT)
         never("a registration over blocked UDP", BLOCKED_WINDOW_MS) { account(NAT_ACCOUNT)?.state == RegState.OK }
@@ -46,14 +46,14 @@ class NatTransportTest : NatLabTestBase() {
         await("the call to be gone") { call() == null || call()?.phase == CallPhase.ENDED }
 
         // Switched off, the line goes back to its own transport, where it does not get through.
-        onMain { engine.accounts.autoAdapt = false }
+        onMain { engine.updateSettings { it.copy(autoNetwork = false) } }
         await("the line back on UDP") { adapted(NAT_ACCOUNT) == null }
         await("the registration over blocked UDP to fail", CALL_FAIL_MS) { account(NAT_ACCOUNT)?.state == RegState.FAILED }
     }
 
     @Test
     fun withoutAdaptationLargeUdpPacketsLoseTheCall() {
-        onMain { engine.accounts.autoAdapt = false }
+        onMain { engine.updateSettings { it.copy(autoNetwork = false) } }
         addAccount(NAT_ACCOUNT)
         awaitRegistered(NAT_ACCOUNT)
         box("max-udp $MAX_UDP")

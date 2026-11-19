@@ -1,0 +1,21 @@
+# The NAT lab published on an address of this host for a phone on the local network:
+#
+#   LAN_ADDRESS=192.0.2.10 ./up.sh
+#
+# Bound to that address only. The PBX announces it, with SIP on 5080, so that the phone reaches
+# the PBX through the NAT box as an emulator on this host does (see run.sh for the ports).
+services:
+  natc:
+    ports:
+      - "${LAN_ADDRESS:?set LAN_ADDRESS}:5080:5060/udp"
+      - "${LAN_ADDRESS}:5080:5060/tcp"
+      - "${LAN_ADDRESS}:5081:5038/tcp"
+      - "${LAN_ADDRESS}:5082:5062/udp"
+      - "${LAN_ADDRESS}:5083:7000/tcp"
+      - "${LAN_ADDRESS}:3478:3478/udp"
+      - "${LAN_ADDRESS}:22000-22099:22000-22099/udp"
+
+  pbx:
+    environment:
+      LAB_ADDRESS: ${LAN_ADDRESS}
+      LAB_SIP_PORT: "5080"

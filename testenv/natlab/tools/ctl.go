@@ -11,7 +11,8 @@ package main
 //	max-udp N             UDP packets longer than N bytes (IP header included) are dropped; 0: none
 //	timeout N             UDP mappings are forgotten after N seconds without traffic; 0: the default
 //	alg on|off            on: SIP over UDP passes the ALG of alg.go
-//	reset                 all of the above back to the start: cone, on, 0, 0, off
+//	rtp on|off            off: RTP between the clients and the PBX is dropped, both ways
+//	reset                 all of the above back to the start: cone, on, 0, 0, off, on
 //	state                 tells the settings
 //
 // Every change replaces the rules at once and forgets the UDP mappings made so far, so that
@@ -36,6 +37,7 @@ type labState struct {
 	maxUDP    int
 	timeout   int
 	alg       bool
+	rtp       bool
 }
 
 func (s labState) String() string {
@@ -43,7 +45,7 @@ func (s labState) String() string {
 	if s.symmetric {
 		mode = "symmetric"
 	}
-	return fmt.Sprintf("mode=%s udp-sip=%s max-udp=%d timeout=%d alg=%s", mode, onOff(s.udpSip), s.maxUDP, s.timeout, onOff(s.alg))
+	return fmt.Sprintf("mode=%s udp-sip=%s max-udp=%d timeout=%d alg=%s rtp=%s", mode, onOff(s.udpSip), s.maxUDP, s.timeout, onOff(s.alg), onOff(s.rtp))
 }
 
 func onOff(b bool) string {
@@ -53,7 +55,7 @@ func onOff(b bool) string {
 	return "off"
 }
 
-var startState = labState{udpSip: true}
+var startState = labState{udpSip: true, rtp: true}
 
 // The ALG listens here, on the client side of the box; SIP over UDP is sent to it while it is on.
 const algPort = 5070
@@ -142,10 +144,13 @@ func (b *box) command(words []string) string {
 		next = startState
 	case words[0] == "mode" && len(words) == 2 && (words[1] == "cone" || words[1] == "symmetric"):
 		next.symmetric = words[1] == "symmetric"
-	case (words[0] == "udp-sip" || words[0] == "alg") && len(words) == 2 && (words[1] == "on" || words[1] == "off"):
-		if words[0] == "alg" {
+	case (words[0] == "udp-sip" || words[0] == "alg" || words[0] == "rtp") && len(words) == 2 && (words[1] == "on" || words[1] == "off"):
+		switch words[0] {
+		case "alg":
 			next.alg = words[1] == "on"
-		} else {
+		case "rtp":
+			next.rtp = words[1] == "on"
+		default:
 			next.udpSip = words[1] == "on"
 		}
 	case (words[0] == "max-udp" || words[0] == "timeout") && len(words) == 2:
@@ -183,7 +188,7 @@ func (b *box) apply() error {
 	if s.alg {
 		fmt.Fprintf(&r, "    iifname %q udp dport 5060 dnat to %s:%d\n", b.client, b.clientAddress, algPort)
 	}
-	fmt.Fprintf(&r, "    iifname %q udp dport { 5060, 22000-22099 } dnat to %s\n", b.client, b.pbx)
+	fmt.Fprintf(&r, "    iifname %q udp dport { 5060, 5062, 22000-22099 } dnat to %s\n", b.client, b.pbx)
 	fmt.Fprintf(&r, "    iifname %q tcp dport { 5060, 5038 } dnat to %s\n", b.client, b.pbx)
 	fmt.Fprintf(&r, "    iifname %q udp dport 3478 dnat to %s\n", b.client, b.stun)
 	r.WriteString("  }\n")
@@ -195,6 +200,9 @@ func (b *box) apply() error {
 		}
 		if s.maxUDP > 0 {
 			fmt.Fprintf(&r, "    iifname %q meta l4proto udp meta length > %d drop\n", b.client, s.maxUDP)
+		}
+		if !s.rtp && hook == "forward" {
+			r.WriteString("    udp dport 22000-22099 drop\n    udp sport 22000-22099 drop\n")
 		}
 		r.WriteString("  }\n")
 	}

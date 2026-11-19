@@ -14,19 +14,15 @@ import com.sky.siplink.core.model.Settings
 import com.sky.siplink.core.model.SipAccount
 import com.sky.siplink.core.model.SipTransport
 import com.sky.siplink.itest.Ami
+import com.sky.siplink.itest.ToneFile
 import org.junit.After
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Before
-import java.io.File
 import java.net.InetSocketAddress
 import java.net.Socket
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
-import kotlin.math.PI
-import kotlin.math.sin
 
 /**
  * Base of the tests against the NAT lab (testenv/natlab): the app's SIP engine, in the app
@@ -48,6 +44,11 @@ abstract class NatLabTestBase {
     class Lab(private val values: Map<String, String>) {
         /** The NAT box's address on the client side: the PBX, its AMI and the STUN server are reached there. */
         val host: String get() = value("labHost")
+        val sipPort: Int get() = value("sipPort").toInt()
+
+        /** Where the PBX announces its own address instead of the box's (accounts [BEHIND_ACCOUNT]...). */
+        val innerPort: Int get() = value("innerPort").toInt()
+        val amiPort: Int get() = value("amiPort").toInt()
         val ctlPort: Int get() = value("ctlPort").toInt()
         val sipPassword: String get() = value("sipPassword")
         val amiUser: String get() = value("amiUser")
@@ -73,13 +74,11 @@ abstract class NatLabTestBase {
         listOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.POST_NOTIFICATIONS)
             .forEach { instrumentation.uiAutomation.grantRuntimePermission(packageName, it) }
         box("reset")
-        pbx = Ami(lab.host, lab.amiUser, lab.amiSecret)
+        pbx = Ami(lab.host, lab.amiUser, lab.amiSecret, lab.amiPort)
         release()
-        val tone = toneFile()
+        val tone = ToneFile.of(instrumentation.targetContext)
         onMain {
             engine.updateSettings { Settings() }
-            engine.accounts.autoAdapt = true
-            engine.accounts.stunServer = ""
             engine.core.useFiles = true
             engine.core.playFile = tone.absolutePath
             engine.core.isEchoCancellationEnabled = false
@@ -95,10 +94,7 @@ abstract class NatLabTestBase {
         }
         if (::lab.isInitialized) {
             runCatching { box("reset") }
-            onMain {
-                engine.accounts.autoAdapt = true
-                engine.accounts.stunServer = ""
-            }
+            onMain { engine.updateSettings { Settings() } }
         }
     }
 
@@ -151,8 +147,16 @@ abstract class NatLabTestBase {
 
     protected fun account(extension: Int): SipAccount? = engine.accounts.accounts.value.firstOrNull { it.username == "$extension" }
 
-    protected fun addAccount(extension: Int, transport: SipTransport = SipTransport.UDP, expires: Int = 3600) {
-        val draft = AccountDraft(username = "$extension", password = lab.sipPassword, domain = lab.host, transport = transport, expires = expires)
+    /** Adds the account of [extension] on the PBX at [port] (the lab's SIP port unless told). */
+    protected fun addAccount(extension: Int, transport: SipTransport = SipTransport.UDP, expires: Int = 3600, port: Int = lab.sipPort) {
+        val draft = AccountDraft(
+            username = "$extension",
+            password = lab.sipPassword,
+            domain = lab.host,
+            port = if (port == DEFAULT_SIP_PORT) "" else "$port",
+            transport = transport,
+            expires = expires,
+        )
         val errors = onMain { engine.accounts.add(draft) }
         assertTrue("Account rejected: $errors", errors.isEmpty())
     }
@@ -212,30 +216,14 @@ abstract class NatLabTestBase {
         assertTrue("Originate refused: $response", response["Response"] == "Success")
     }
 
-    private fun toneFile(): File {
-        val file = File(instrumentation.targetContext.cacheDir, "natlab-tone.wav")
-        if (file.length() > 0) return file
-        val second = ByteBuffer.allocate(TONE_RATE * 2).order(ByteOrder.LITTLE_ENDIAN)
-        for (i in 0 until TONE_RATE) second.putShort((sin(2 * PI * TONE_HZ * i / TONE_RATE) * TONE_AMPLITUDE).toInt().toShort())
-        val dataSize = TONE_SECONDS * TONE_RATE * 2
-        val header = ByteBuffer.allocate(WAV_HEADER).order(ByteOrder.LITTLE_ENDIAN)
-        header.put("RIFF".toByteArray(Charsets.US_ASCII)).putInt(WAV_HEADER - 8 + dataSize)
-        header.put("WAVEfmt ".toByteArray(Charsets.US_ASCII)).putInt(16)
-        header.putShort(1).putShort(1).putInt(TONE_RATE).putInt(TONE_RATE * 2).putShort(2).putShort(16)
-        header.put("data".toByteArray(Charsets.US_ASCII)).putInt(dataSize)
-        file.outputStream().buffered().use { out ->
-            out.write(header.array())
-            repeat(TONE_SECONDS) { out.write(second.array()) }
-        }
-        return file
-    }
-
     protected companion object {
         const val ARGUMENT = "natlabEnv"
 
         /** Accounts with the PBX's NAT handling, and without it (see testenv/natlab/pbx/entrypoint.sh). */
         const val NAT_ACCOUNT = 1001
         const val PLAIN_ACCOUNT = 3001
+        const val BEHIND_ACCOUNT = 4001
+        const val DEFAULT_SIP_PORT = 5060
         const val ECHO = "600"
         const val TONE = "601"
 
@@ -247,11 +235,5 @@ abstract class NatLabTestBase {
         const val POLL_MS = 200L
         const val SILENCE_DB = -120f
         const val AUDIBLE_DB = -40f
-
-        private const val WAV_HEADER = 44
-        private const val TONE_SECONDS = 300
-        private const val TONE_RATE = 8000
-        private const val TONE_HZ = 1000.0
-        private const val TONE_AMPLITUDE = 12000
     }
 }

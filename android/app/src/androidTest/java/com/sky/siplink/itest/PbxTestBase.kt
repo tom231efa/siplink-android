@@ -28,10 +28,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import java.io.File
 import java.io.IOException
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
-import kotlin.math.PI
-import kotlin.math.sin
 
 /**
  * Base of the integration tests. They drive the real SIP engine of the app (inside the app
@@ -68,7 +64,7 @@ abstract class PbxTestBase {
         release()
         // Start from an idle, unconfigured state, whatever an earlier test left behind.
         await("the app to have no call") { call() == null }
-        val tone = toneFile()
+        val tone = ToneFile.of(instrumentation.targetContext)
         onMain {
             engine.updateSettings { Settings() }
             // The tests do not ask GitHub: a check the app makes by itself when it is shown fails, quietly.
@@ -383,27 +379,6 @@ abstract class PbxTestBase {
         }
     }
 
-    private fun toneFile(): File {
-        val file = File(instrumentation.targetContext.cacheDir, "itest-tone.wav")
-        if (file.length() > 0) return file
-        // 16 bit mono PCM; one second of tone is computed and then repeated.
-        val second = ByteBuffer.allocate(TONE_RATE * 2).order(ByteOrder.LITTLE_ENDIAN)
-        for (i in 0 until TONE_RATE) {
-            second.putShort((sin(2 * PI * TONE_HZ * i / TONE_RATE) * TONE_AMPLITUDE).toInt().toShort())
-        }
-        val dataSize = TONE_SECONDS * TONE_RATE * 2
-        val header = ByteBuffer.allocate(44).order(ByteOrder.LITTLE_ENDIAN)
-        header.put("RIFF".toByteArray(Charsets.US_ASCII)).putInt(36 + dataSize)
-        header.put("WAVEfmt ".toByteArray(Charsets.US_ASCII)).putInt(16)
-        header.putShort(1).putShort(1).putInt(TONE_RATE).putInt(TONE_RATE * 2).putShort(2).putShort(16)
-        header.put("data".toByteArray(Charsets.US_ASCII)).putInt(dataSize)
-        file.outputStream().buffered().use { out ->
-            out.write(header.array())
-            repeat(TONE_SECONDS) { out.write(second.array()) }
-        }
-        return file
-    }
-
     protected companion object {
         /** What the app is told when it asks for the latest release: nothing, as if it were offline. */
         val NO_RELEASES = ReleaseFeed { throw IOException("The tests do not ask GitHub") }
@@ -429,11 +404,6 @@ abstract class PbxTestBase {
 
         const val SILENCE_DB = -120f
         const val AUDIBLE_DB = -40f
-
-        private const val TONE_SECONDS = 300
-        private const val TONE_RATE = 8000
-        private const val TONE_HZ = 1000.0
-        private const val TONE_AMPLITUDE = 12000
 
         /** A row of "pjsip show contacts": extension and contact host. */
         private val CONTACT = Regex("""Contact:\s+(\d+)/sips?:[^@\s]+@([0-9.]+)""")

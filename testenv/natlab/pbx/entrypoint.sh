@@ -4,16 +4,22 @@
 #
 #   1001-1010  accounts with the usual NAT handling of a PBX (rport, contact rewriting, symmetric RTP)
 #   3001-3010  accounts without it, as a PBX that trusts what the phone writes
+#   4001-4010  as 1001-1010, on port 5062, where the PBX announces its own address instead of the
+#              box's: a PBX behind a NAT it does not know of
 #   600        answers and echoes        601  answers and sends a tone        602  answers, silent
 #
-# The PBX sits behind the NAT box and announces the box's client-side address (LAB_ADDRESS)
-# to everybody: that is where the clients reach it.
+# The PBX sits behind the NAT box and announces the box's client-side address (LAB_ADDRESS, SIP
+# on LAB_SIP_PORT) to everybody but the accounts on port 5062: that is where the clients reach it,
+# so that the sound passes the box as well (media_address: the transport's external media
+# address alone left the PBX's own address in the SDP, which an emulator on the host reaches
+# around the box).
 set -eu
 
 : "${SIP_PASSWORD:?SIP_PASSWORD is required}"
 : "${AMI_USER:?AMI_USER is required}"
 : "${AMI_SECRET:?AMI_SECRET is required}"
 : "${LAB_ADDRESS:?LAB_ADDRESS is required}"
+LAB_SIP_PORT=${LAB_SIP_PORT:-5060}
 
 conf=/etc/asterisk
 mkdir -p /var/run/asterisk
@@ -30,6 +36,7 @@ protocol = udp
 bind = 0.0.0.0:5060
 local_net = 127.0.0.0/8
 external_signaling_address = $LAB_ADDRESS
+external_signaling_port = $LAB_SIP_PORT
 external_media_address = $LAB_ADDRESS
 
 [transport-tcp]
@@ -38,12 +45,18 @@ protocol = tcp
 bind = 0.0.0.0:5060
 local_net = 127.0.0.0/8
 external_signaling_address = $LAB_ADDRESS
+external_signaling_port = $LAB_SIP_PORT
 external_media_address = $LAB_ADDRESS
+
+[transport-inner]
+type = transport
+protocol = udp
+bind = 0.0.0.0:5062
 EOF
 
 {
   cat <<EOF
-[nat](!)
+[handling](!)
 type = wizard
 accepts_auth = yes
 accepts_registrations = yes
@@ -58,6 +71,9 @@ aor/remove_existing = yes
 aor/qualify_frequency = 0
 inbound_auth/password = $SIP_PASSWORD
 
+[nat](!,handling)
+endpoint/media_address = $LAB_ADDRESS
+
 [plain](!)
 type = wizard
 accepts_auth = yes
@@ -68,15 +84,20 @@ endpoint/direct_media = no
 endpoint/rtp_symmetric = no
 endpoint/force_rport = no
 endpoint/rewrite_contact = no
+endpoint/media_address = $LAB_ADDRESS
 aor/max_contacts = 1
 aor/remove_existing = yes
 aor/qualify_frequency = 0
 inbound_auth/password = $SIP_PASSWORD
 
+[behind](!,handling)
+endpoint/transport = transport-inner
+
 EOF
-  for first in 1000 3000; do
+  for first in 1000 3000 4000; do
     template=nat
     [ "$first" = 3000 ] && template=plain
+    [ "$first" = 4000 ] && template=behind
     i=1
     while [ "$i" -le 10 ]; do
       n=$((first + i))
@@ -92,7 +113,7 @@ static = yes
 writeprotect = yes
 
 [internal]
-exten => _[13]0XX,1,Dial(PJSIP/${EXTEN},25)
+exten => _[134]0XX,1,Dial(PJSIP/${EXTEN},25)
  same => n,Hangup()
 
 exten => 600,1,Answer()

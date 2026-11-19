@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Builds and starts the NAT lab. Secrets are generated once into ./.env (git-ignored).
 #
+#   ./up.sh                          for an emulator on this host
+#   LAN_ADDRESS=192.0.2.10 ./up.sh   also for a phone on the local network, published on that address
+#
 # The PBX runs the image of the test PBX (testenv/asterisk) under a name of the lab's own, so
 # that rebuilding one environment does not change the other: it is taken from an image of the
 # test environment that is already there, else built from testenv/asterisk.
@@ -25,5 +28,8 @@ if ! docker image inspect siplink-natlab-asterisk:local > /dev/null 2>&1; then
   fi
 fi
 
-docker compose up -d --build "$@"
-docker compose ps
+# With LAN_ADDRESS the lab is published on that address of this host (docker-compose.lan.yml).
+files=(-f docker-compose.yml)
+[ -n "${LAN_ADDRESS:-}" ] && files+=(-f docker-compose.lan.yml)
+docker compose "${files[@]}" up -d --build "$@"
+docker compose "${files[@]}" ps
