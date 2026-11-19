@@ -83,6 +83,18 @@ data class CallMediaSummary(
 /**
  * What the line checks found for one account. A null value is a check that did not run or had
  * nothing to look at.
+ *
+ * @param publicAddress where the servers see the phone: the STUN server, else the SIP server
+ * @param server the server the account is on now, `host[:port]`
+ * @param serverAddresses what the server's name was found to stand for
+ * @param udp the SIP server's answer to an OPTIONS request over UDP; null without one
+ * @param udpLarge the same, padded to [com.sky.siplink.core.logic.LineAdapt.LARGE_PACKET]
+ *   bytes, got an answer; null: not asked (no answer to the small one)
+ * @param tcpMs time to a TCP connection to the server's SIP port; null: none was taken
+ * @param tlsMs the same to its TLS port
+ * @param transport the transport the line runs on now
+ * @param adaptedTransport the transport the line adapted to; null: its own ([transport])
+ * @param adaptedExpires the registration interval it adapted to; null: its own
  */
 data class LineReport(
     val network: NetworkFacts?,
@@ -97,10 +109,12 @@ data class LineReport(
     val tcpMs: Long?,
     val tlsMs: Long?,
     val algSuspected: Boolean?,
-    val stun: Mapped?,
-    val registration: String,
+    val registration: RegState,
+    val error: String?,
+    val transport: SipTransport,
     val contact: String?,
-    val expires: Int?,
-    val adaptation: String?,
+    val expires: Int,
+    val adaptedTransport: SipTransport?,
+    val adaptedExpires: Int?,
     val lastCall: CallMediaSummary?,
 )
