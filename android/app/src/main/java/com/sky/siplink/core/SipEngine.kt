@@ -207,6 +207,7 @@ class SipEngine(context: Context) {
         if (before.videoSize != after.videoSize || before.videoFrameRate != after.videoFrameRate) {
             CallVideoSupport.setQuality(core, after.videoSize, after.videoFrameRate)
         }
+        if (before.features != after.features) calls.onFeaturesChanged()
         return taken
     }
 

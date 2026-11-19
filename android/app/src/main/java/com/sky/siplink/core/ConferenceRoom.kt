@@ -47,7 +47,7 @@ internal class ConferenceRoom(
     private val onChanged: () -> Unit,
 ) {
     private class Member(val id: Long, var call: Call?, var side: SideCall) {
-        /** [side] is to be looked up again from the call: its state changed, or names were found ([snapshot]). */
+        /** [side] is to be looked up again from the call: its state changed, or how it is named did ([snapshot]). */
         var sideStale = false
 
         /** Why the call ended; set from its End or Error. */
@@ -512,8 +512,8 @@ internal class ConferenceRoom(
         if (!isEnded(old)) old.terminate()
     }
 
-    /** The directory found names: those of the members are looked up again. */
-    fun onNamesFound() = members.forEach { it.sideStale = true }
+    /** The members may be named otherwise now (the directory found names, the feature codes changed): looked up again. */
+    fun onSidesChanged() = members.forEach { it.sideStale = true }
 
     /** A member's [call] ended for [reason]. */
     fun onEnded(call: Call, reason: String?) {
@@ -558,8 +558,9 @@ internal class ConferenceRoom(
 
     /**
      * What the call screen shows of the room; null while there is none. The other side of a
-     * member's call is looked up only after its state changed or names were found: with many
-     * members that takes the SDK most of the time of a snapshot, taken every two seconds.
+     * member's call is looked up only after its state changed, names were found or the feature
+     * codes changed: with many members that takes the SDK most of the time of a snapshot, taken
+     * every two seconds.
      */
     fun snapshot(): RoomInfo? {
         if (conference == null) return null

@@ -690,10 +690,19 @@ class CallManager(
 
     /** The directory found a name: show it on the call that is up, and where that call is being announced. */
     private fun onNamesFound() {
-        room.onNamesFound()
+        room.onSidesChanged()
         val info = publish() ?: return
         val call = current ?: return
         if (isRinging(call) && call.dir == Call.Dir.Incoming) host?.updateIncomingCall(info)
+    }
+
+    /**
+     * The feature codes changed in the settings: they name the numbers dialled with them
+     * ("*801005" is the intercom to 1005), in the room too. An incoming call is not named by them.
+     */
+    fun onFeaturesChanged() {
+        room.onSidesChanged()
+        publish()
     }
 
     /** Snapshot of a single call, without the second-call fields. */
