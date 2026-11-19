@@ -55,6 +55,7 @@
   "format.date": "DD/MM/YYYY",
   "format.datetime": "DD/MM/YYYY HH:mm",
   "format.list_sep": ", ",
+  "format.list_more": "{list} y {n} más",
   "js.just_now": "ahora mismo",
   "js.yesterday": "ayer, {time}",
   "js.copied": "Copiado",
@@ -71,5 +72,7 @@
   "js.cancelled": "Cancelado o tiempo de espera agotado.",
   "js.failed": "No se pudo completar la operación.",
   "error.text": "{text}",
-  "format.problem_sep": "; "
+  "format.problem_sep": "; ",
+  "flash.done": "Operación completada.",
+  "flash.failed": "No se pudo completar la operación."
 }

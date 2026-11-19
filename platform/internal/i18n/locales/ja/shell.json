@@ -55,6 +55,7 @@
   "format.date": "YYYY/MM/DD",
   "format.datetime": "YYYY/MM/DD HH:mm",
   "format.list_sep": "、",
+  "format.list_more": "{list} ほか {n} 件",
   "js.just_now": "たった今",
   "js.yesterday": "昨日 {time}",
   "js.copied": "コピーしました",
@@ -71,5 +72,7 @@
   "js.cancelled": "キャンセルされたか、タイムアウトしました。",
   "js.failed": "操作に失敗しました。",
   "error.text": "{text}",
-  "format.problem_sep": "／"
+  "format.problem_sep": "／",
+  "flash.done": "完了しました。",
+  "flash.failed": "操作を完了できませんでした。"
 }

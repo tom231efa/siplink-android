@@ -84,5 +84,6 @@
   "mail.auth_failed": "Authentication failed: {err}",
   "mail.from_refused": "Sender address refused: {err}",
   "mail.to_refused": "Recipient address refused: {err}",
-  "mail.send_failed": "Sending failed: {err}"
+  "mail.send_failed": "Sending failed: {err}",
+  "names.bidi_control": "The name must not contain text direction control characters"
 }

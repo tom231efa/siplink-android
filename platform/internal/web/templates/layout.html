@@ -151,7 +151,7 @@
     <td class="hide-sm"><span class="fade">{{if .AdminName}}{{.AdminName}}{{else}}—{{end}}</span></td>
     <td class="hide-sm">{{with .RegionID}}<span class="fade">{{index $.Names (deref .)}}</span>{{else}}<span class="muted">—</span>{{end}}</td>
     <td class="nowrap">{{actionLabel .Action}}</td>
-    <td class="strong"><span class="fade">{{objectName .ObjectName}}</span><span class="sub show-sm fade">{{if .AdminName}}{{.AdminName}}{{end}}</span></td>
+    <td class="strong"><span class="fade">{{objectName .ObjectType .ObjectName}}</span><span class="sub show-sm fade">{{if .AdminName}}{{.AdminName}}{{end}}</span></td>
     <td class="hide-sm">{{range $k, $v := .Detail}}<span class="tag">{{fieldLabel $k}}</span>{{end}}</td>
     <td class="muted mono nowrap hide-sm" dir="ltr">{{.IP}}</td>
   </tr>

@@ -22,6 +22,8 @@ func ClientNameProblem(name string) error {
 		return i18n.E("catalog.client.name_too_long", "max", MaxClientName)
 	case strings.ContainsAny(name, "\r\n\t"):
 		return i18n.E("catalog.client.name_control")
+	case i18n.HasBidiControl(name):
+		return i18n.E("names.bidi_control")
 	}
 	return nil
 }

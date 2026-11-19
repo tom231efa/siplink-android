@@ -114,7 +114,7 @@ type keyData struct {
 	Lines   []string
 	Actions []actionOption
 	Icons   []string
-	Users   []string
+	Users   i18n.Names
 	Error   string
 	Errors  []rules.CsvLineError
 	Hint    string

@@ -34,6 +34,8 @@ func NameProblem(name string) error {
 		return i18n.E("catalog.name_required")
 	case n > MaxTemplateName:
 		return i18n.E("catalog.name_too_long", "max", MaxTemplateName)
+	case i18n.HasBidiControl(name):
+		return i18n.E("names.bidi_control")
 	}
 	return nil
 }
@@ -58,6 +60,9 @@ func ProfileProblems(p *store.Profile, others []*store.Profile) []i18n.Msg {
 	var out []i18n.Msg
 	if p.Name == "" {
 		out = append(out, i18n.M("catalog.profile_name_required"))
+	}
+	if i18n.HasBidiControl(p.Name) {
+		out = append(out, i18n.M("names.bidi_control"))
 	}
 	if !rules.SipTransport(p.Transport).Valid() {
 		out = append(out, i18n.M("catalog.transport_invalid"))

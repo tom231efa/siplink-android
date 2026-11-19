@@ -55,6 +55,7 @@
   "format.date": "DD.MM.YYYY",
   "format.datetime": "DD.MM.YYYY HH:mm",
   "format.list_sep": ", ",
+  "format.list_more": "{list} и ещё {n}",
   "js.just_now": "только что",
   "js.yesterday": "вчера в {time}",
   "js.copied": "Скопировано",
@@ -71,5 +72,7 @@
   "js.cancelled": "Отменено или истекло время ожидания.",
   "js.failed": "Не удалось выполнить операцию.",
   "error.text": "{text}",
-  "format.problem_sep": "; "
+  "format.problem_sep": "; ",
+  "flash.done": "Готово.",
+  "flash.failed": "Не удалось выполнить действие."
 }

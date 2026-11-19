@@ -55,6 +55,7 @@
   "format.date": "DD/MM/YYYY",
   "format.datetime": "DD/MM/YYYY HH:mm",
   "format.list_sep": "، ",
+  "format.list_more": "{list} وغيرها: {n}",
   "js.just_now": "الآن",
   "js.yesterday": "أمس {time}",
   "js.copied": "تم النسخ",
@@ -71,5 +72,7 @@
   "js.cancelled": "أُلغي أو انتهت المهلة.",
   "js.failed": "فشلت العملية.",
   "error.text": "{text}",
-  "format.problem_sep": "؛ "
+  "format.problem_sep": "؛ ",
+  "flash.done": "تمت العملية.",
+  "flash.failed": "تعذّر إتمام العملية."
 }

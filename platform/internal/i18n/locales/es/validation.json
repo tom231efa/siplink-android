@@ -84,5 +84,6 @@
   "mail.auth_failed": "Error de autenticación: {err}",
   "mail.from_refused": "Dirección del remitente rechazada: {err}",
   "mail.to_refused": "Dirección del destinatario rechazada: {err}",
-  "mail.send_failed": "Error al enviar: {err}"
+  "mail.send_failed": "Error al enviar: {err}",
+  "names.bidi_control": "El nombre no puede contener caracteres de control de dirección del texto"
 }

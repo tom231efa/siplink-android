@@ -55,6 +55,7 @@
   "format.date": "DD/MM/YYYY",
   "format.datetime": "DD/MM/YYYY HH:mm",
   "format.list_sep": ", ",
+  "format.list_more": "{list} et {n} de plus",
   "js.just_now": "à l'instant",
   "js.yesterday": "hier à {time}",
   "js.copied": "Copié",
@@ -71,5 +72,7 @@
   "js.cancelled": "Annulé ou délai dépassé.",
   "js.failed": "L'opération a échoué.",
   "error.text": "{text}",
-  "format.problem_sep": " ; "
+  "format.problem_sep": " ; ",
+  "flash.done": "Opération effectuée.",
+  "flash.failed": "L'opération n'a pas pu aboutir."
 }

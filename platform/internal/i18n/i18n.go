@@ -102,8 +102,9 @@ func Match(acceptLanguage string) *Lang {
 }
 
 // FromEnv picks the language of the POSIX locale (LC_ALL, else LC_MESSAGES, else
-// LANG) such as "zh_CN.UTF-8"; English when it is unset, "C", "POSIX" or names none
-// of the eight.
+// LANG), language[_territory][.codeset][@modifier] such as "zh_CN.UTF-8"; English when
+// it is unset, "C", "POSIX", names none of the eight, or names a codeset other than
+// UTF-8 (the output is UTF-8, which such a terminal would garble).
 func FromEnv(getenv func(string) string) *Lang {
 	v := ""
 	for _, name := range []string{"LC_ALL", "LC_MESSAGES", "LANG"} {
@@ -111,8 +112,10 @@ func FromEnv(getenv func(string) string) *Lang {
 			break
 		}
 	}
-	if i := strings.IndexAny(v, ".@"); i >= 0 {
-		v = v[:i]
+	v, _, _ = strings.Cut(v, "@")
+	v, codeset, named := strings.Cut(v, ".")
+	if named && strings.ReplaceAll(strings.ToLower(codeset), "-", "") != "utf8" {
+		return English
 	}
 	if v == "" || v == "C" || v == "POSIX" {
 		return English

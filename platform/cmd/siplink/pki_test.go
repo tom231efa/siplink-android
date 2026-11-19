@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"siplink/internal/pki"
 	"siplink/internal/store"
 	"siplink/internal/testutil"
 )
@@ -97,6 +98,52 @@ func TestPKICommands(t *testing.T) {
 	}
 	if got := strings.Join(actions, " "); !strings.Contains(got, "pki.own_import") || !strings.Contains(got, "pki.own_remove") {
 		t.Errorf("audit: %s", got)
+	}
+}
+
+// TestCopyableValuesRaw: in a right-to-left language the values people copy from the
+// terminal (pins, paths, names, fingerprints) follow their label as they are, without
+// the isolates that arguments get (§5.5).
+func TestCopyableValuesRaw(t *testing.T) {
+	t.Setenv("LANG", "ar_SA.UTF-8")
+	dir := t.TempDir()
+	t.Setenv("SIPLINK_PUBLIC_URL", "https://platform.example.com")
+	t.Setenv("SIPLINK_DATA_DIR", dir)
+	t.Setenv("SIPLINK_KEY_FILE", filepath.Join(dir, "key"))
+	t.Setenv("SIPLINK_LOG_LEVEL", "error")
+	root := testutil.MakeCert(t, testutil.CertSpec{CN: "CLI Root", CA: true}, nil)
+	leaf := testutil.MakeCert(t, testutil.CertSpec{CN: "platform.example.com", Names: []string{"platform.example.com"}}, root)
+	chain, key := filepath.Join(dir, "chain.pem"), filepath.Join(dir, "key.pem")
+	if os.WriteFile(chain, testutil.ChainPEM(leaf, root), 0o600) != nil || os.WriteFile(key, testutil.KeyPEM(t, leaf), 0o600) != nil {
+		t.Fatal("write")
+	}
+	var out bytes.Buffer
+	if err := pkiCommand([]string{"import", chain, key}, &out); err != nil {
+		t.Fatalf("import: %v\n%s", err, out.String())
+	}
+	exported, saved := filepath.Join(dir, "ca.pem"), filepath.Join(dir, "backup.db")
+	for _, run := range []func() error{
+		func() error { return pkiCommand([]string{"show"}, &out) },
+		func() error { return pkiCommand([]string{"export-ca", exported}, &out) },
+		func() error { return backupCommand([]string{saved}, &out) },
+	} {
+		if err := run(); err != nil {
+			t.Fatalf("%v\n%s", err, out.String())
+		}
+	}
+	text := out.String()
+	for _, want := range []string{"    pin: " + pki.Pin(root.Cert) + "\n", " " + exported + "\n", " " + saved + "\n",
+		" CN=CLI Root\n", " " + pki.Fingerprint(leaf.Cert) + "\n"} {
+		if !strings.Contains(text, want) {
+			t.Errorf("%q not printed as it is:\n%s", want, text)
+		}
+	}
+	for _, line := range strings.Split(text, "\n") {
+		if strings.Contains(line, pki.Pin(root.Cert)) || strings.Contains(line, exported) || strings.Contains(line, saved) {
+			if strings.ContainsAny(line, "\u2068\u2069") {
+				t.Errorf("isolates around a copyable value: %q", line)
+			}
+		}
 	}
 }
 

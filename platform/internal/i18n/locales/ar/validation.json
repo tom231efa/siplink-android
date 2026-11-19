@@ -84,5 +84,6 @@
   "mail.auth_failed": "فشلت المصادقة: {err}",
   "mail.from_refused": "رُفض عنوان المرسل: {err}",
   "mail.to_refused": "رُفض عنوان المستلم: {err}",
-  "mail.send_failed": "فشل الإرسال: {err}"
+  "mail.send_failed": "فشل الإرسال: {err}",
+  "names.bidi_control": "يجب ألا يحتوي الاسم على محارف التحكم في اتجاه النص"
 }

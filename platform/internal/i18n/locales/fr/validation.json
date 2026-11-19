@@ -84,5 +84,6 @@
   "mail.auth_failed": "Échec de l'authentification : {err}",
   "mail.from_refused": "Adresse de l'expéditeur refusée : {err}",
   "mail.to_refused": "Adresse du destinataire refusée : {err}",
-  "mail.send_failed": "Échec de l'envoi : {err}"
+  "mail.send_failed": "Échec de l'envoi : {err}",
+  "names.bidi_control": "Le nom ne doit pas contenir de caractères de contrôle de direction du texte"
 }

@@ -138,7 +138,7 @@ func langFuncs(t *i18n.Tr) template.FuncMap {
 		"actionLabel":  func(action string) string { return actionLabel(t, action) },
 		"objectLabels": func() map[string]string { return objectLabels(t) },
 		"fieldLabel":   func(key string) string { return fieldLabel(t, key) },
-		"objectName":   func(name string) string { return objectName(t, name) },
+		"objectName":   func(objectType, name string) string { return objectName(t, objectType, name) },
 		"regSummary":   func(raw string) string { return regSummary(t, raw) },
 	}
 }
@@ -253,7 +253,17 @@ func (s *Server) internal(w http.ResponseWriter, r *http.Request, err error) {
 
 const flashCookie = "siplink_flash"
 
+// maxFlash is the longest flash message in bytes. A longer one (a list of long names)
+// gives way to a short message of the same outcome, so that the cookie stays small.
+const maxFlash = 500
+
 func (s *Server) flash(w http.ResponseWriter, r *http.Request, kind, msg string) {
+	if len(msg) > maxFlash {
+		msg = tr(r).T("flash.failed")
+		if kind == "ok" {
+			msg = tr(r).T("flash.done")
+		}
+	}
 	http.SetCookie(w, &http.Cookie{Name: flashCookie, Value: kind + "." + base64.RawURLEncoding.EncodeToString([]byte(msg)),
 		Path: "/", HttpOnly: true, Secure: s.cookieSecure(r), SameSite: http.SameSiteLaxMode, MaxAge: 60})
 }
@@ -266,7 +276,7 @@ func takeFlash(w http.ResponseWriter, r *http.Request) (string, string) {
 	http.SetCookie(w, &http.Cookie{Name: flashCookie, Value: "", Path: "/", MaxAge: -1})
 	kind, enc, ok := strings.Cut(c.Value, ".")
 	msg, err := base64.RawURLEncoding.DecodeString(enc)
-	if !ok || err != nil || len(msg) > 500 {
+	if !ok || err != nil || len(msg) > maxFlash {
 		return "", ""
 	}
 	if kind != "ok" {

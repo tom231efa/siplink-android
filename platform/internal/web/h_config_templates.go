@@ -13,6 +13,7 @@ import (
 	"siplink/internal/auth"
 	"siplink/internal/books"
 	"siplink/internal/catalog"
+	"siplink/internal/i18n"
 	"siplink/internal/provision"
 	"siplink/internal/rules"
 	"siplink/internal/store"
@@ -212,7 +213,7 @@ type configData struct {
 	Region      string
 	CanEdit     bool
 	Clients     int
-	Users       []string
+	Users       i18n.Names
 	Settings    provision.Settings
 	Profiles    []*store.Profile
 	Directories []directoryRow

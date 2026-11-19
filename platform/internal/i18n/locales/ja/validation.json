@@ -84,5 +84,6 @@
   "mail.auth_failed": "認証に失敗しました：{err}",
   "mail.from_refused": "送信元アドレスが拒否されました：{err}",
   "mail.to_refused": "宛先アドレスが拒否されました：{err}",
-  "mail.send_failed": "送信に失敗しました：{err}"
+  "mail.send_failed": "送信に失敗しました：{err}",
+  "names.bidi_control": "名前に文字方向の制御文字は使用できません"
 }

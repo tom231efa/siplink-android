@@ -60,6 +60,9 @@ func adminCreate(ctx context.Context, st *store.Store, args []string, out io.Wri
 	if !auth.ValidUsername(username) {
 		return i18n.E("cli.admin.username_invalid")
 	}
+	if i18n.HasBidiControl(*display) {
+		return i18n.E("names.bidi_control")
+	}
 	a := &store.Admin{Username: username, DisplayName: *display, Role: store.RoleSuper, MustChangePassword: true}
 	if !*super {
 		if len(regions) == 0 {

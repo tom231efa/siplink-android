@@ -58,7 +58,7 @@
       <li>
         <span class="avatar small" aria-hidden="true">{{if .AdminName}}{{initial .AdminName}}{{else}}·{{end}}</span>
         <div class="activity-text">
-          <p class="fade"><strong>{{if .AdminName}}{{.AdminName}}{{else}}{{t "dashboard.activity.system"}}{{end}}</strong> <span class="activity-action">{{actionLabel .Action}}</span>{{with .ObjectName}} <strong>{{objectName .}}</strong>{{end}}</p>
+          <p class="fade"><strong>{{if .AdminName}}{{.AdminName}}{{else}}{{t "dashboard.activity.system"}}{{end}}</strong> <span class="activity-action">{{actionLabel .Action}}</span>{{if .ObjectName}} <strong>{{objectName .ObjectType .ObjectName}}</strong>{{end}}</p>
           <p class="sub fade">{{since .At}}{{with .RegionID}}<span class="dot-sep"></span>{{index $d.Names (deref .)}}{{end}}{{with .IP}}<span class="dot-sep"></span><span class="mono">{{.}}</span>{{end}}</p>
         </div>
       </li>

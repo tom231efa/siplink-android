@@ -84,5 +84,6 @@
   "mail.auth_failed": "驗證失敗: {err}",
   "mail.from_refused": "寄件者地址遭拒絕: {err}",
   "mail.to_refused": "收件者地址遭拒絕: {err}",
-  "mail.send_failed": "傳送失敗: {err}"
+  "mail.send_failed": "傳送失敗: {err}",
+  "names.bidi_control": "名稱不得包含文字方向控制字元"
 }

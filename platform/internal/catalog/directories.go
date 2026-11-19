@@ -97,6 +97,9 @@ func ExternalProblems(e *store.ExternalDirectory) []i18n.Msg {
 	if e.Name == "" {
 		out = append(out, i18n.M("catalog.name_required_short"))
 	}
+	if i18n.HasBidiControl(e.Name) {
+		out = append(out, i18n.M("names.bidi_control"))
+	}
 	switch e.PasswordMode {
 	case PasswordNone, PasswordTemplate, PasswordClient:
 	default:
@@ -123,6 +126,9 @@ func DirectoryProblems(d *store.Directory, others []*store.Directory, book *stor
 		}
 	}
 	var out []i18n.Msg
+	if i18n.HasBidiControl(d.Name) {
+		out = append(out, i18n.M("names.bidi_control"))
+	}
 	switch d.Kind {
 	case store.KindHosted:
 		if d.MaxResults < 1 || d.MaxResults > rules.MaxResults {

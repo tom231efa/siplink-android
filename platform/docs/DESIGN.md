@@ -877,10 +877,19 @@ from happening.
 **Translating.** `i18n.Tr` is one language. `Tr.T(key, name, value, …)` gives the text with its
 arguments. Values: strings as they are (names, addresses and values people typed are never
 translated), integers as plain ASCII digits, an `i18n.Msg` translated in the same language, a
-`[]string` or `[]int` joined with the language's separator (`format.list_sep`). In a
-right-to-left language every string argument is wrapped in U+2068 FSI … U+2069 PDI, so a name
-or an address in Latin letters keeps its order inside Arabic text (also in flash messages,
-confirmations and mail, where no markup can do it).
+`[]string` or `[]int` joined with the language's separator (`format.list_sep`), an
+`i18n.Names` (what uses an object, a list that may grow long) as its first five names and how
+many more there are (`format.list_more`: "a, b, c, d, e and 15 more"). Every string argument
+loses the embedding, override and isolate characters it may carry (U+202A–U+202E,
+U+2066–U+2069), in every language; in a right-to-left language it is then wrapped in U+2068
+FSI … U+2069 PDI, so a name or an address in Latin letters keeps its order inside Arabic text
+(also in flash messages, confirmations and mail, where no markup can do it) and cannot reorder
+the text around it. New names (clients, regions, configuration, key and client templates,
+account profiles, directories, internal directories, administrators' display names) may not
+contain those characters (`names.bidi_control`); names stored before stay as they are. LDAP
+account names already allow only `a-z`, `0-9` and `-`. A flash message is at most 500 bytes;
+a longer one gives way to a short message of the same outcome (`flash.done`,
+`flash.failed`).
 
 **Messages from other packages.** Packages outside `internal/web` that produce text a person
 reads (`rules`, `catalog`, `provision`, `auth`, `books`, `pki`, `mail`, the CLI) return
@@ -956,17 +965,28 @@ lines. Audit entries written from now on store codes, not text (`"changed"` in p
 "已修改" for a secret); the audit page translates actions, object types and field names, and
 shows what older entries stored as it is.
 
-**CSV.** The client import (§5.2) reads the Chinese column names as before and English ones as
-aliases: `name`, `region`, `client_template`, `note`, and `{profile} username`, `{profile}
-password`, `{profile} auth user`, `{profile} display name`, `{directory} LDAP password` (the
-English part in any case). The address book import already reads both (§4.7). The client
-template download and the address book export write the Chinese names in `zh-Hans` and
-`zh-Hant`, the English ones in every other language.
+**CSV.** The client import (§5.2) reads either the Chinese column names, as before, or the
+English ones: `name`, `region`, `client_template`, `note`, and `{profile} username`, `{profile}
+password`, `{profile} auth user`, `{profile} display name`, `{directory} LDAP password` (in any
+case). One file uses one language: a header with a `名称` column is a Chinese one, whose
+English names are extra columns and ignored (an older file with its own "Name" column imports
+as before); otherwise, with a `name` column, only the English names count. In that language
+a header with a field in two columns, or a column that fits two fields (a profile "X LDAP" and
+a directory "X" both give "X LDAP password"; "X LDAP" and "X" both give "XLDAP密码"), is
+refused with the column named, rather than a password going to the wrong place. The header
+download refuses such a template the same way, so that the profile or directory is renamed
+first. The address book import already reads both languages (§4.7). The client template
+download and the address book export write the Chinese names in `zh-Hans` and `zh-Hant`, the
+English ones in every other language.
 
 **CLI.** `siplink admin …`, `pki …`, `backup`, `migrate` speak the language of the POSIX locale
 (`LC_ALL`, else `LC_MESSAGES`, else `LANG`; `zh_CN.UTF-8` → `zh-Hans`, `zh_TW.UTF-8` →
-`zh-Hant`), matched like `Accept-Language`; unset, `C` or `POSIX` → English. In the container:
-`docker compose exec -e LANG=zh_CN.UTF-8 siplink siplink admin create --super {用户名}`.
+`zh-Hant`), matched like `Accept-Language`; unset, `C`, `POSIX` or a locale that names a
+codeset other than UTF-8 (`zh_CN.GB18030`: the output is UTF-8) → English. Values people copy
+from the terminal (one-time passwords, pins, fingerprints, paths, certificate names) follow
+their translated label as they are, never as arguments, so no isolates stick to them. In the
+container: `docker compose exec -e LANG=zh_CN.UTF-8 siplink siplink admin create --super
+{用户名}`.
 
 ---
 
@@ -1553,9 +1573,11 @@ docker build -t ghcr.io/tom231efa/siplink:dev .
 
 - `i18n` (§5.5): every catalog has the same files and keys as `zh-Hans`, no key twice, the same
   arguments in every translation, no empty text, the patterns of `format.*` valid; matching of
-  `Accept-Language` and of the POSIX locale (regional and script variants, no match → English);
-  arguments (strings isolated in Arabic only, numbers, nested messages, lists, missing ones
-  marked). A source scan fails when a template, a script or a non-test Go file outside the
+  `Accept-Language` and of the POSIX locale (regional and script variants, codesets other than
+  UTF-8, no match → English); arguments (strings isolated in Arabic only and without bidi
+  controls in every language, numbers, nested messages, lists, long name lists cut at five,
+  missing ones marked); every call with a literal key, in Go and in the templates, passes
+  exactly the arguments of its text. A source scan fails when a template, a script or a non-test Go file outside the
   catalogs still holds Chinese text, except an allow-list of what is data (language names, the
   Chinese CSV column names, the app's reserved shortcut categories, `platform.name`, sample data
   of `seed`).
@@ -1565,8 +1587,12 @@ docker build -t ghcr.io/tom231efa/siplink:dev .
   every language without a template error, a `⟦…⟧` marker or a leftover `{argument}`; `lang`
   and `dir` of the page; the choice by cookie, by `Accept-Language` and stored per administrator
   (it follows them to a new browser, a cookie is adopted at sign-in); mail in the recipient's
-  language. The existing tests send `Accept-Language: zh-CN`, so they read the texts they always
-  did.
+  language; the client CSV in one language per file (an older Chinese file with an extra
+  "Name" column, a mixed header) and its refusals of clashing or doubled columns, in the import
+  and in the header download; audit object names translated only for the type `system`; names
+  with bidi controls refused, stored ones shown without them; a flash naming 20 users in Arabic
+  and one too long for the cookie. The existing tests send `Accept-Language: zh-CN`, so they read
+  the texts they always did.
 - Login, lockout, session idle/absolute expiry, CSRF rejection of cross-site POST.
 - Own certificate: upload as super only, CSRF, each refusal shown with its reason, the
   confirmation when a bound phone would have to scan again, removal with confirmation, the

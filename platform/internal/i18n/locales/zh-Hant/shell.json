@@ -55,6 +55,7 @@
   "format.date": "YYYY/MM/DD",
   "format.datetime": "YYYY/MM/DD HH:mm",
   "format.list_sep": "、",
+  "format.list_more": "{list} 及另外 {n} 個",
   "js.just_now": "剛剛",
   "js.yesterday": "昨天 {time}",
   "js.copied": "已複製",
@@ -71,5 +72,7 @@
   "js.cancelled": "已取消或逾時。",
   "js.failed": "操作失敗。",
   "error.text": "{text}",
-  "format.problem_sep": "；"
+  "format.problem_sep": "；",
+  "flash.done": "操作已完成。",
+  "flash.failed": "操作未能完成。"
 }

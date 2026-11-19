@@ -33,7 +33,8 @@ func backupCommand(args []string, out io.Writer) error {
 		return err
 	}
 	_ = e.st.AddAudit(ctx, &store.AuditEntry{AdminName: "CLI", Action: "backup.create", ObjectType: "backup", ObjectName: args[0]})
-	fmt.Fprintln(out, cli().T("cli.backup.done", "path", args[0]))
+	fmt.Fprintln(out, cli().T("cli.backup.done"), args[0]) // after the label: no isolates around the path
+	fmt.Fprintln(out, cli().T("cli.backup.key_separate"))
 	return nil
 }
 

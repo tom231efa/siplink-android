@@ -11,6 +11,7 @@ import (
 	"siplink/internal/auth"
 	"siplink/internal/books"
 	"siplink/internal/catalog"
+	"siplink/internal/i18n"
 	"siplink/internal/rules"
 	"siplink/internal/store"
 )
@@ -120,8 +121,8 @@ type externalForm struct {
 	Global  bool // the administrator may choose "global"
 	Region  string
 	HasPass bool
-	Users   []string // configuration templates that use it
-	Clients int      // clients of those templates
+	Users   i18n.Names // configuration templates that use it
+	Clients int        // clients of those templates
 	Errors  []string
 }
 
@@ -294,7 +295,7 @@ func (s *Server) externalDelete(w http.ResponseWriter, r *http.Request) {
 	err := s.St.DeleteExternalDirectory(r.Context(), e.ID)
 	if errors.Is(err, store.ErrInUse) {
 		users, _ := s.St.DirectoryTemplates(r.Context(), store.KindExternal, e.ID)
-		s.redirect(w, r, "/directories/"+itoa(e.ID), "error", tr(r).T("dirs.external.in_use", "templates", users))
+		s.redirect(w, r, "/directories/"+itoa(e.ID), "error", tr(r).T("dirs.external.in_use", "templates", i18n.Names(users)))
 		return
 	}
 	if err != nil {

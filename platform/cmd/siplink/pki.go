@@ -53,7 +53,7 @@ func pkiCommand(args []string, out io.Writer) error {
 		if err := os.WriteFile(rest[0], ca.CAPEM(), 0o644); err != nil {
 			return err
 		}
-		fmt.Fprintln(out, cli().T("cli.pki.exported", "path", rest[0]))
+		fmt.Fprintln(out, cli().T("cli.pki.exported"), rest[0]) // after the label, never an argument: no isolates
 	case "renew":
 		if err := certs.Issue(ctx); err != nil {
 			return err
@@ -120,12 +120,14 @@ func pkiShow(ctx context.Context, certs *pki.Certs, out io.Writer) {
 }
 
 // showOwn shows an operator's certificate under its title (a label with its colon).
+// Values people copy (names, pins, fingerprints) follow their label as they are, never
+// as arguments, which a right-to-left language would wrap in isolates.
 func showOwn(out io.Writer, title string, o *pki.Own, certs *pki.Certs) {
 	t := cli()
 	leaf := o.Leaf()
-	trust := t.T("cli.pki.trust_public")
+	trust, pin := t.T("cli.pki.trust_public"), ""
 	if p := o.Private(); p != nil {
-		trust = t.T("cli.pki.trust_private", "subject", p.Subject.String(), "pin", pki.Pin(p))
+		trust, pin = t.T("cli.pki.trust_private")+" "+p.Subject.String(), pki.Pin(p)
 	} else if !o.Public {
 		trust = t.T("cli.pki.trust_none")
 	}
@@ -134,6 +136,9 @@ func showOwn(out io.Writer, title string, o *pki.Own, certs *pki.Certs) {
 	fmt.Fprintln(out, "  "+t.T("cli.pki.names"), strings.Join(o.Names(), ", "))
 	fmt.Fprintln(out, "  "+t.T("cli.pki.expires_left", "date", localDay(leaf.NotAfter), "n", certs.DaysLeft(leaf.NotAfter)))
 	fmt.Fprintln(out, "  "+t.T("cli.pki.trust"), trust)
+	if pin != "" {
+		fmt.Fprintln(out, "    pin:", pin)
+	}
 	fmt.Fprintln(out, "  "+t.T("cli.pki.fingerprint"), pki.Fingerprint(leaf))
 }
 

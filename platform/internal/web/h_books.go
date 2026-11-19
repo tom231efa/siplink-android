@@ -8,6 +8,7 @@ import (
 
 	"siplink/internal/auth"
 	"siplink/internal/books"
+	"siplink/internal/i18n"
 	"siplink/internal/store"
 )
 
@@ -92,7 +93,7 @@ type bookForm struct {
 	Regions []store.Region
 	Global  bool // the administrator may choose "global"
 	Error   string
-	Users   []string
+	Users   i18n.Names
 }
 
 func (s *Server) bookFormPage(w http.ResponseWriter, r *http.Request, status int, f bookForm) {

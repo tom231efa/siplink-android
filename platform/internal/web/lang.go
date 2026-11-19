@@ -132,9 +132,10 @@ func chineseColumns(r *http.Request) bool {
 	return code == "zh-Hans" || code == "zh-Hant"
 }
 
-// useNames puts what uses an object into words: "客户端模板 Standard".
-func useNames(t *i18n.Tr, list []store.Use) []string {
-	out := make([]string, len(list))
+// useNames puts what uses an object into words: "客户端模板 Standard"; a message shows
+// the first few of them (i18n.Names).
+func useNames(t *i18n.Tr, list []store.Use) i18n.Names {
+	out := make(i18n.Names, len(list))
 	for i, u := range list {
 		out[i] = t.T("use.item", "kind", t.T("audit.object."+u.Kind), "name", u.Name)
 	}

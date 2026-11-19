@@ -251,7 +251,7 @@ docker compose start siplink
 - **切换**：用户菜单「外观」下的「语言」；登录页和两步验证页底部的下拉框。
 - **选用顺序**：管理员保存的语言 → 浏览器之前的选择（Cookie）→ 浏览器的语言（`Accept-Language`）→ 都不匹配时为 English。在菜单中的选择保存到该管理员名下，换浏览器后仍然有效；登录前选择的语言，在登录时成为该管理员的语言（该管理员尚未保存语言时）。
 - **邮件**：验证码邮件使用收件管理员的语言；测试邮件使用发送者的语言。
-- **客户端 CSV 导入**：仍接受中文列名，另外接受英文列名 `name`、`region`、`client_template`、`note`、`{profile} username`、`{profile} password`、`{profile} auth user`、`{profile} display name`、`{directory} LDAP password`（`{profile}`、`{directory}` 为配置模板中的账号和通讯录）。控制台为简体或繁体中文时，下载的模板为中文列名，其他语言时为英文列名；内部通讯录导出的 CSV 同样如此。
+- **客户端 CSV 导入**：仍接受中文列名，也可改用英文列名 `name`、`region`、`client_template`、`note`、`{profile} username`、`{profile} password`、`{profile} auth user`、`{profile} display name`、`{directory} LDAP password`（`{profile}`、`{directory}` 为配置模板中的账号和通讯录；英文列名不区分大小写）。一个文件只用一种语言：表头含「名称」列时按中文列名读取，其中的英文列名视为多余的列而忽略；否则按英文列名读取。某一列同时对应两个字段（例如账号「X LDAP」与通讯录「X」都会生成 `X LDAP password`），或同一字段出现两列时，整个文件会被拒绝并指出该列；这样的客户端模板也无法下载表头，需先重命名账号或通讯录。控制台为简体或繁体中文时，下载的模板为中文列名，其他语言时为英文列名；内部通讯录导出的 CSV 同样如此。
 - **命令行**（容器内的 `siplink`）：默认英文；语言依次取 `LC_ALL`、`LC_MESSAGES`、`LANG`。中文输出：
 
   ```sh

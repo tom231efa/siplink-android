@@ -107,7 +107,7 @@ func New(cfg *config.Config, st *store.Store, log *slog.Logger, now func() time.
 
 // Handler returns the root handler with all middleware.
 func (s *Server) Handler() http.Handler {
-	return s.logRequests(s.language(s.recoverPanics(s.headers(s.mux))))
+	return s.logRequests(s.recoverPanics(s.language(s.headers(s.mux))))
 }
 
 // handle registers a route. Every route records its pattern for the log.

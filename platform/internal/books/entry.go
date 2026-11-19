@@ -41,6 +41,8 @@ func NameProblem(name string) error {
 		return i18n.E("books.name_required")
 	case n > MaxText:
 		return i18n.E("books.name_too_long", "max", MaxText)
+	case i18n.HasBidiControl(name):
+		return i18n.E("names.bidi_control")
 	}
 	return nil
 }

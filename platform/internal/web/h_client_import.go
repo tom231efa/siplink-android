@@ -11,6 +11,7 @@ import (
 
 	"siplink/internal/books"
 	"siplink/internal/catalog"
+	"siplink/internal/i18n"
 	"siplink/internal/rules"
 	"siplink/internal/secret"
 	"siplink/internal/store"
@@ -18,9 +19,9 @@ import (
 
 // Client CSV (design §5.2, §5.5): 名称,区域,客户端模板[,备注], then per account profile of
 // the template {profile}用户名, {profile}密码, {profile}认证用户, {profile}显示名, and per
-// directory with per-client passwords {directory}LDAP密码. The English names are aliases
-// (name, region, client_template, note, "{profile} username", …), their English part in
-// any case. Extra columns are ignored.
+// directory with per-client passwords {directory}LDAP密码. The English names are an
+// alternative (name, region, client_template, note, "{profile} username", …, in any case);
+// one file uses one language. Extra columns are ignored.
 const maxClientCSV = 4 << 20
 
 // csvColumn is a column of the client CSV by its Chinese and its English name; the
@@ -47,35 +48,113 @@ func (c csvColumn) name(chinese bool, prefix string) string {
 	return prefix + c.en
 }
 
-// csvHeader finds the columns of a client CSV by either name.
+// sameColumn tells whether a header cell is the column name: the Chinese names exactly,
+// the English ones in any case.
+func sameColumn(chinese bool, cell, name string) bool {
+	if chinese {
+		return cell == name
+	}
+	return strings.EqualFold(cell, name)
+}
+
+// csvField is a field a client CSV can fill: a column after the name of a profile or
+// directory, or after nothing (name, region, client template, note).
+type csvField struct {
+	prefix string
+	col    csvColumn
+}
+
+var fixedFields = []csvField{{"", colName}, {"", colRegion}, {"", colTemplate}, {"", colNote}}
+
+// templateFields are the fields of a client template's profiles and directories.
+func templateFields(profiles []*store.Profile, dirs []*store.Directory) []csvField {
+	var out []csvField
+	for _, p := range profiles {
+		out = append(out, csvField{p.Name, sufUser}, csvField{p.Name, sufPass}, csvField{p.Name, sufAuth}, csvField{p.Name, sufDisp})
+	}
+	for _, d := range dirs {
+		out = append(out, csvField{d.DisplayName(), sufDir})
+	}
+	return out
+}
+
+// csvHeader is the header of a client CSV in its one language: a file with a 名称 column
+// is a Chinese one, where only the Chinese names count and English names are extra
+// columns (as before the console had other languages); a file with a name column but no
+// 名称 counts only the English names; with neither, the page's language names what is
+// missing.
 type csvHeader struct {
-	fields []string // trimmed
-	found  map[string]int
+	cells   []string // trimmed
+	chinese bool
+	fixed   map[csvField]int
+	bound   map[int64]*csvBinding // by client template
 }
 
-func newCSVHeader(fields []string) *csvHeader {
-	h := &csvHeader{found: map[string]int{}}
+type csvBinding struct {
+	at  map[csvField]int
+	err error
+}
+
+func newCSVHeader(cells []string, pageChinese bool) (*csvHeader, error) {
+	h := &csvHeader{bound: map[int64]*csvBinding{}}
+	hasName := false
+	for _, c := range cells {
+		c = strings.TrimSpace(c)
+		h.cells = append(h.cells, c)
+		h.chinese = h.chinese || c == colName.zh
+		hasName = hasName || strings.EqualFold(c, colName.en)
+	}
+	h.chinese = h.chinese || !hasName && pageChinese
+	var err error
+	h.fixed, err = h.bind(fixedFields)
+	return h, err
+}
+
+// bind finds the column of each field (-1 when there is none). A field with two columns
+// or a column that fits two fields (a profile "X LDAP" and a directory "X" both give "X
+// LDAP password") is refused: the value would go to the wrong place without a word.
+func (h *csvHeader) bind(fields []csvField) (map[csvField]int, error) {
+	at := make(map[csvField]int, len(fields))
+	taken := make([]bool, len(h.cells))
 	for _, f := range fields {
-		h.fields = append(h.fields, strings.TrimSpace(f))
-	}
-	return h
-}
-
-// index is the column of c after prefix, -1 when there is none; of two columns with
-// the name, the last one counts.
-func (h *csvHeader) index(prefix string, c csvColumn) int {
-	key := prefix + "\x00" + c.zh
-	if i, ok := h.found[key]; ok {
-		return i
-	}
-	i := -1
-	for j, f := range h.fields {
-		if rest, ok := strings.CutPrefix(f, prefix); ok && (rest == c.zh || strings.EqualFold(rest, c.en)) {
-			i = j
+		name := f.col.name(h.chinese, f.prefix)
+		at[f] = -1
+		for i, cell := range h.cells {
+			switch {
+			case !sameColumn(h.chinese, cell, name):
+			case at[f] >= 0:
+				return nil, i18n.E("clients.import.duplicate_column", "column", cell)
+			case taken[i]:
+				return nil, i18n.E("clients.import.ambiguous_column", "column", cell)
+			default:
+				at[f], taken[i] = i, true
+			}
 		}
 	}
-	h.found[key] = i
-	return i
+	return at, nil
+}
+
+// forTemplate binds the fields of one client template, once per template.
+func (h *csvHeader) forTemplate(id int64, profiles []*store.Profile, dirs []*store.Directory) (map[csvField]int, error) {
+	if b, ok := h.bound[id]; ok {
+		return b.at, b.err
+	}
+	at, err := h.bind(append(append([]csvField(nil), fixedFields...), templateFields(profiles, dirs)...))
+	h.bound[id] = &csvBinding{at, err}
+	return at, err
+}
+
+// columnClash is a column name that the header of a client template would hold twice,
+// "" when there is none.
+func columnClash(head []string, chinese bool) string {
+	for i, a := range head {
+		for _, b := range head[i+1:] {
+			if sameColumn(chinese, a, b) {
+				return b
+			}
+		}
+	}
+	return ""
 }
 
 // clientCSVFormat is the format help of the import page: the columns by the names the
@@ -147,12 +226,13 @@ func (s *Server) clientImportTemplate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	chinese := chineseColumns(r)
-	head := []string{colName.name(chinese, ""), colRegion.name(chinese, ""), colTemplate.name(chinese, ""), colNote.name(chinese, "")}
-	for _, p := range profiles {
-		head = append(head, sufUser.name(chinese, p.Name), sufPass.name(chinese, p.Name), sufAuth.name(chinese, p.Name), sufDisp.name(chinese, p.Name))
+	var head []string
+	for _, f := range append(append([]csvField(nil), fixedFields...), templateFields(profiles, dirs)...) {
+		head = append(head, f.col.name(chinese, f.prefix))
 	}
-	for _, d := range dirs {
-		head = append(head, sufDir.name(chinese, d.DisplayName()))
+	if c := columnClash(head, chinese); c != "" {
+		s.redirect(w, r, "/clients/import", "error", tr(r).T("clients.import.header_clash", "column", c))
+		return
 	}
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="clients-%d.csv"`, t.ID))
@@ -189,16 +269,24 @@ func (s *Server) clientImportDryRun(w http.ResponseWriter, r *http.Request) {
 		fail(tr(r).T("clients.import.need_header"))
 		return
 	}
-	col := newCSVHeader(rows[0].Fields)
-	for _, need := range []csvColumn{colName, colRegion, colTemplate} {
-		if col.index("", need) < 0 {
-			fail(tr(r).T("clients.import.missing_column", "column", need.name(chineseColumns(r), "")))
+	col, err := newCSVHeader(rows[0].Fields, chineseColumns(r))
+	if err != nil {
+		fail(errText(r, err))
+		return
+	}
+	for _, need := range fixedFields[:3] {
+		if col.fixed[need] < 0 {
+			fail(tr(r).T("clients.import.missing_column", "column", need.col.name(col.chinese, "")))
 			return
 		}
 	}
 	seen := map[string]bool{}
 	for _, row := range rows[1:] {
-		ic := s.importRow(r, row, col)
+		ic, err := s.importRow(r, row, col)
+		if err != nil {
+			fail(errText(r, err))
+			return
+		}
 		if ic.C != nil && len(ic.Problems) == 0 {
 			key := itoa(ic.C.RegionID) + "\x00" + strings.ToLower(ic.C.Name)
 			if seen[key] {
@@ -217,15 +305,17 @@ func (s *Server) clientImportDryRun(w http.ResponseWriter, r *http.Request) {
 	s.ok(w, r, "client_import", &Page{Title: tr(r).T("clients.import.title_results"), Nav: "clients", Data: d})
 }
 
-// importRow reads and checks one line; nothing is written.
-func (s *Server) importRow(r *http.Request, row rules.CsvRow, col *csvHeader) *importedClient {
+// importRow reads and checks one line; nothing is written. The error is a header that
+// does not fit the line's client template, which refuses the whole file.
+func (s *Server) importRow(r *http.Request, row rules.CsvRow, col *csvHeader) (*importedClient, error) {
 	ic := &importedClient{Line: row.Line}
 	if row.Fields == nil {
 		ic.Problems = []string{tr(r).T("rules.csv.unclosed_quote")}
-		return ic
+		return ic, nil
 	}
+	at := col.fixed
 	get := func(prefix string, c csvColumn) string {
-		if i := col.index(prefix, c); i >= 0 && i < len(row.Fields) {
+		if i, ok := at[csvField{prefix, c}]; ok && i >= 0 && i < len(row.Fields) {
 			return strings.TrimSpace(row.Fields[i])
 		}
 		return ""
@@ -244,7 +334,7 @@ func (s *Server) importRow(r *http.Request, row rules.CsvRow, col *csvHeader) *i
 	}
 	if c.RegionID == 0 {
 		ic.Problems = append(ic.Problems, tr(r).T("clients.import.region_unknown", "name", ic.Region))
-		return ic
+		return ic, nil
 	}
 	// A template of the client's own region wins over a global one of the same name.
 	for _, t := range s.usableClientTemplates(r, c.RegionID) {
@@ -254,12 +344,15 @@ func (s *Server) importRow(r *http.Request, row rules.CsvRow, col *csvHeader) *i
 	}
 	if c.ClientTemplateID == 0 {
 		ic.Problems = append(ic.Problems, tr(r).T("clients.import.template_unknown", "name", ic.Template))
-		return ic
+		return ic, nil
 	}
 	_, profiles, dirs, err := s.clientParts(r, c.ClientTemplateID)
 	if err != nil {
 		ic.Problems = append(ic.Problems, tr(r).T("error.internal"))
-		return ic
+		return ic, nil
+	}
+	if at, err = col.forTemplate(c.ClientTemplateID, profiles, dirs); err != nil {
+		return nil, err
 	}
 	var taken []string
 	for _, p := range profiles {
@@ -285,7 +378,7 @@ func (s *Server) importRow(r *http.Request, row rules.CsvRow, col *csvHeader) *i
 	if n, _ := s.clientNameTaken(r, c.RegionID, c.Name); n {
 		ic.Problems = append(ic.Problems, tr(r).T("clients.import.name_taken"))
 	}
-	return ic
+	return ic, nil
 }
 
 func (s *Server) clientNameTaken(r *http.Request, region int64, name string) (bool, error) {

@@ -100,6 +100,27 @@ const (
 	pdi = "\u2069"
 )
 
+// bidiControls are the embedding, override and isolate characters (U+202A–U+202E,
+// U+2066–U+2069). A value that carries its own could reorder the text around it or end
+// the isolate early, so string arguments lose them (§5.5) and new names may not hold them.
+const bidiControls = "\u202a\u202b\u202c\u202d\u202e\u2066\u2067\u2068\u2069"
+
+var stripBidi = strings.NewReplacer("\u202a", "", "\u202b", "", "\u202c", "", "\u202d", "", "\u202e", "",
+	"\u2066", "", "\u2067", "", "\u2068", "", "\u2069", "")
+
+// HasBidiControl reports whether s holds an embedding, override or isolate character.
+func HasBidiControl(s string) bool { return strings.ContainsAny(s, bidiControls) }
+
+// Names is a list of names that may grow long (what uses an object): a message shows the
+// first MaxNames of them and then how many more there are (format.list_more).
+type Names []string
+
+// MaxNames is the number of names a message shows of a Names list.
+const MaxNames = 5
+
+// joined is a list already put together in the language: an argument taken as it is.
+type joined string
+
 // Raw is the text of key as the catalog holds it, its arguments not filled in (for
 // the scripts, which fill them themselves). A key that the language lacks comes from
 // English, else it shows as ⟦key⟧.
@@ -160,11 +181,14 @@ func (t *Tr) value(v any) string {
 	case []Msg:
 		return strings.Join(t.Msgs(x), t.T("format.list_sep"))
 	case []string:
-		parts := make([]string, len(x))
-		for i, s := range x {
-			parts[i] = t.isolate(s)
+		return t.list(x)
+	case Names:
+		if len(x) <= MaxNames {
+			return t.list(x)
 		}
-		return strings.Join(parts, t.T("format.list_sep"))
+		return t.T("format.list_more", "list", joined(t.list(x[:MaxNames])), "n", len(x)-MaxNames)
+	case joined:
+		return string(x)
 	case []int:
 		parts := make([]string, len(x))
 		for i, n := range x {
@@ -185,7 +209,19 @@ func (t *Tr) value(v any) string {
 	return t.isolate(fmt.Sprint(v))
 }
 
+// list joins strings with the language's separator, each isolated.
+func (t *Tr) list(items []string) string {
+	parts := make([]string, len(items))
+	for i, s := range items {
+		parts[i] = t.isolate(s)
+	}
+	return strings.Join(parts, t.T("format.list_sep"))
+}
+
+// isolate is a string argument: without bidi controls of its own, and in a
+// right-to-left language between FSI and PDI.
 func (t *Tr) isolate(s string) string {
+	s = stripBidi.Replace(s)
 	if t.Lang.RTL && s != "" {
 		return fsi + s + pdi
 	}

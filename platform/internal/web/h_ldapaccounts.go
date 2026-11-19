@@ -8,6 +8,7 @@ import (
 
 	"siplink/internal/auth"
 	"siplink/internal/books"
+	"siplink/internal/i18n"
 	"siplink/internal/secret"
 	"siplink/internal/store"
 )
@@ -223,7 +224,7 @@ func (s *Server) ldapAccountDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := s.St.DeleteLDAPAccount(r.Context(), a.ID); errors.Is(err, store.ErrInUse) {
 		users, _ := s.St.LDAPAccountUsers(r.Context(), a.ID)
-		s.redirect(w, r, "/ldap-accounts", "error", tr(r).T("dirs.ldap.in_use", "name", a.Name, "templates", users))
+		s.redirect(w, r, "/ldap-accounts", "error", tr(r).T("dirs.ldap.in_use", "name", a.Name, "templates", i18n.Names(users)))
 		return
 	} else if err != nil {
 		s.internal(w, r, err)

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"siplink/internal/auth"
+	"siplink/internal/i18n"
 	"siplink/internal/mail"
 	"siplink/internal/secret"
 	"siplink/internal/store"
@@ -83,6 +84,9 @@ func (s *Server) adminNew(w http.ResponseWriter, r *http.Request) {
 // every region exists. The problem it returns is in the request's language.
 func (s *Server) readAdminForm(r *http.Request, a *store.Admin) string {
 	a.DisplayName = truncate(trimmed(r, "display_name"), 64)
+	if i18n.HasBidiControl(a.DisplayName) {
+		return tr(r).T("names.bidi_control")
+	}
 	a.Email = trimmed(r, "email")
 	if a.Email != "" && mail.ValidAddress(a.Email) != nil {
 		return tr(r).T("admins.error.email_invalid")

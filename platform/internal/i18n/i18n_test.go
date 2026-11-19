@@ -107,7 +107,15 @@ func TestMatch(t *testing.T) {
 		{"", "", "POSIX"}:                  "en",
 		{"", "", "C.UTF-8"}:                "en",
 		{"", "", "zh_CN.UTF-8"}:            "zh-Hans",
-		{"", "", "zh_SG.GB18030"}:          "zh-Hans",
+		{"", "", "zh_SG.GB18030"}:          "en", // a codeset other than UTF-8: English (§5.5)
+		{"", "", "zh_CN.gb2312"}:           "en",
+		{"", "", "ru_RU.KOI8-R"}:           "en",
+		{"", "", "ja_JP.eucJP"}:            "en",
+		{"", "", "fr_FR.ISO-8859-15@euro"}: "en",
+		{"", "", "ar_SA.utf8"}:             "ar",
+		{"", "", "fr_FR.UTF-8@euro"}:       "fr",
+		{"", "", "zh_CN"}:                  "zh-Hans",
+		{"", "", "zh_TW.Utf-8"}:            "zh-Hant",
 		{"", "", "zh_TW.UTF-8"}:            "zh-Hant",
 		{"", "", "zh_HK"}:                  "zh-Hant",
 		{"", "", "es_ES@euro"}:             "es",
@@ -154,6 +162,29 @@ func TestArguments(t *testing.T) {
 	}
 	if got := M("no.such.key").String(); got != "⟦no.such.key⟧" {
 		t.Errorf("printed message: %q", got)
+	}
+	// A value's own embedding, override and isolate characters are removed in every
+	// language, so it cannot end the isolate early or reorder the text around it.
+	evil := "x\u2069\u202eevil\u202a\u2066"
+	if got := ar.T("provision.account_problem", "name", evil, "problem", "p"); strings.Count(got, "\u2069") != strings.Count(got, "\u2068") || strings.ContainsAny(got, "\u202a\u202e\u2066") || !strings.Contains(got, "\u2068xevil\u2069") {
+		t.Errorf("ar bidi: %q", got)
+	}
+	if got := en.T("provision.account_problem", "name", evil, "problem", "p"); strings.ContainsAny(got, bidiControls) || !strings.Contains(got, "xevil") {
+		t.Errorf("en bidi: %q", got)
+	}
+	if !HasBidiControl("a\u202eb") || !HasBidiControl("\u2067") || HasBidiControl("abc 中文 عربي") {
+		t.Error("HasBidiControl")
+	}
+	// A list of names that may grow long shows five and then how many more.
+	names := Names{"a", "b", "c", "d", "e", "f", "g"}
+	if got := en.T("dirs.in_use", "users", names); !strings.HasSuffix(got, "a, b, c, d, e and 2 more") {
+		t.Errorf("en names: %q", got)
+	}
+	if got := zh.T("dirs.in_use", "users", names[:5]); !strings.HasSuffix(got, "a、b、c、d、e") {
+		t.Errorf("zh five names: %q", got)
+	}
+	if got := ar.T("dirs.in_use", "users", names); strings.Count(got, "\u2068") != 5 || !strings.Contains(got, "2") {
+		t.Errorf("ar names: %q", got)
 	}
 	err := Wrap(E("mail.no_starttls"), "mail.send_failed")
 	if m, ok := AsMsg(err); !ok || m.Key != "mail.send_failed" || zh.Err(err) != "发送失败: 服务器不支持 STARTTLS" {

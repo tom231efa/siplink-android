@@ -18,9 +18,15 @@ func actionLabel(t *i18n.Tr, action string) string { return labelOr(t, "audit.ac
 // they are. Settings keys are the document's JSON names.
 func fieldLabel(t *i18n.Tr, key string) string { return labelOr(t, "audit.field."+key, key) }
 
-// objectName is the object name of an audit entry: a fixed name of the platform's
-// own (a setting, such as "password_check") in words, any other name as it is stored.
-func objectName(t *i18n.Tr, name string) string { return labelOr(t, "audit.name."+name, name) }
+// objectName is the object name of an audit entry: for the type "system" a fixed name
+// of the platform's own (a setting, such as "password_check") in words; any other name,
+// such as a client's that happens to read "password_check", as it is stored.
+func objectName(t *i18n.Tr, objectType, name string) string {
+	if objectType != "system" {
+		return name
+	}
+	return labelOr(t, "audit.name."+name, name)
+}
 
 func labelOr(t *i18n.Tr, key, fallback string) string {
 	if i18n.Has(t.Lang, key) {

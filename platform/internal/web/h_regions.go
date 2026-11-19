@@ -72,6 +72,8 @@ func regionNameProblem(t *i18n.Tr, name string) string {
 		return t.T("regions.name_missing")
 	case n > maxRegionName:
 		return t.T("regions.name_too_long", "max", maxRegionName)
+	case i18n.HasBidiControl(name):
+		return t.T("names.bidi_control")
 	}
 	return ""
 }
