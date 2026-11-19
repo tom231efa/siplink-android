@@ -2,6 +2,7 @@ package com.sky.siplink.core
 
 import android.os.Handler
 import android.os.SystemClock
+import android.util.Log
 import com.sky.siplink.core.logic.LineAdapt
 import com.sky.siplink.core.logic.NetworkKey
 import com.sky.siplink.core.model.NetworkFacts
@@ -43,8 +44,8 @@ internal class LineDoctor(
 
     /** What is going on with one account on the current network. */
     private class State {
-        /** Registrations in a row that failed for want of an answer. */
-        var failures = 0
+        /** Looks again whether a registration that failed for want of an answer still fails ([LineAdapt.CONFIRM_MS]). */
+        var confirm: Runnable? = null
 
         /** The transport the line was just moved to, until a registration shows whether it works. */
         var trial: SipTransport? = null
@@ -65,7 +66,7 @@ internal class LineDoctor(
         set(value) {
             if (field == value) return
             field = value
-            states.clear()
+            dropStates()
             if (!value) {
                 core.accountList.forEach(::apply)
                 core.config.cleanSection(SECTION)
@@ -86,6 +87,7 @@ internal class LineDoctor(
     private var networkChangedAt = SystemClock.elapsedRealtime()
     private val lookAgain = Runnable {
         // As the SDK does itself when the kind of network changes: connections anew, registrations anew.
+        Log.i(TAG, "Another network of the same kind: the SIP core looks again")
         core.isNetworkReachable = false
         core.isNetworkReachable = true
     }
@@ -144,7 +146,7 @@ internal class LineDoctor(
             storeOwn(id, null)
         }
         if (forget) forgetRecords(id)
-        states.remove(id)
+        states.remove(id)?.let(::cancelConfirm)
     }
 
     fun reapply(id: String) {
@@ -155,7 +157,7 @@ internal class LineDoctor(
     /** Account [id] is gone, or the user wants it on its own settings everywhere ("restore defaults"). */
     fun forget(id: String) {
         forgetRecords(id)
-        states.remove(id)
+        states.remove(id)?.let(::cancelConfirm)
         find(id)?.let(::apply)
         storeOwn(id, null)
         publish()
@@ -194,7 +196,7 @@ internal class LineDoctor(
     }
 
     private fun registered(account: Account, id: String, state: State) {
-        state.failures = 0
+        cancelConfirm(state)
         state.trial = null
         val now = System.currentTimeMillis()
         val stored = record(id)
@@ -233,23 +235,49 @@ internal class LineDoctor(
         return LineAdapt.bindingLost(record, own(id)?.expires ?: params.expires, now)
     }
 
+    /**
+     * A registration failed. One that got no answer is looked at again after a while
+     * ([LineAdapt.CONFIRM_MS]); [stillFailing] follows if it has not recovered by then.
+     */
     private fun failed(account: Account, id: String, state: State) {
-        if (holds()) return
-        if (!LineAdapt.isTransportFailure(account.errorInfo.protocolCode)) {
-            state.failures = 0
+        if (holds() || !LineAdapt.isTransportFailure(account.errorInfo.protocolCode)) {
+            cancelConfirm(state)
             return
         }
-        if (++state.failures < LineAdapt.FAILURES_BEFORE_PROBE) return
+        if (state.confirm != null) return
+        val task = Runnable {
+            state.confirm = null
+            val current = find(id)
+            // Dropped states (another network, another setting) have nothing to confirm.
+            if (current != null && enabled && states[id] === state && current.state == RegistrationState.Failed && !holds()) {
+                stillFailing(current, id, state)
+            }
+        }
+        state.confirm = task
+        handler.postDelayed(task, LineAdapt.CONFIRM_MS)
+    }
+
+    private fun cancelConfirm(state: State) {
+        state.confirm?.let(handler::removeCallbacks)
+        state.confirm = null
+    }
+
+    /** Starts over with every account: another network, or the adaptation switched. */
+    private fun dropStates() {
+        states.values.forEach(::cancelConfirm)
+        states.clear()
+    }
+
+    private fun stillFailing(account: Account, id: String, state: State) {
         val now = System.currentTimeMillis()
         val revertTo = state.revertTo
         if (revertTo != null) {
             // Back on its own transport for a test, the line did not hold: back to what worked, and a longer wait.
             state.revertTo = null
-            state.failures = 0
             val record = record(id) ?: LineAdapt.Record()
             val reverts = record.reverts + 1
             store(id, record.copy(transport = revertTo, reverts = reverts, retestAt = now + LineAdapt.retestDelay(reverts), usedAt = now))
-            handler.post { reapply(id) }
+            reapply(id)
             return
         }
         val own = own(id)?.transport ?: transportOf(account.params.serverAddress)
@@ -257,6 +285,7 @@ internal class LineDoctor(
         // A line found on another transport (as after a start) is on trial as well.
         val trial = state.trial ?: transportOf(account.params.serverAddress).takeIf { it != own }
         probe(account, id, state) { probe ->
+            Log.i(TAG, "Line $id fails on ${account.params.serverAddress?.asStringUriOnly()}: $probe")
             val current = find(id)?.params?.serverAddress ?: return@probe
             val record = record(id) ?: LineAdapt.Record()
             // A transport that is open but did not register is not tried here again; one that is
@@ -269,7 +298,6 @@ internal class LineDoctor(
             if (!probe.udp && !probe.tcp && probe.tls != true) return@probe
             val failed = if (trial != null && stillOpen) record.failed + trial else record.failed
             val next = LineAdapt.nextTransport(own, transportOf(current), failed, probe, largeLost = probe.udp && probe.udpLarge == false)
-            state.failures = 0
             state.trial = next
             when {
                 next != null -> store(id, record.copy(transport = next, failed = failed, retestAt = now + LineAdapt.retestDelay(record.reverts), usedAt = now))
@@ -361,7 +389,7 @@ internal class LineDoctor(
         network = key
         if (moved) {
             networkChangedAt = SystemClock.elapsedRealtime()
-            states.clear()
+            dropStates()
         }
         if (!enabled) return
         if (moved) {
@@ -421,6 +449,7 @@ internal class LineDoctor(
             account.params = next
             states[id]?.contact = null
             onChanged(account)
+            Log.i(TAG, "Line $id on $network: $transport, ${expires}s (own: ${own.transport}, ${own.expires}s)")
         }
         storeOwn(id, if (transport == own.transport && expires == own.expires) null else own)
     }
@@ -442,8 +471,12 @@ internal class LineDoctor(
         const val APPLIED = "siplink_line_applied"
         const val SEPARATOR = "|"
 
-        /** A server is asked again for one account after this long at the earliest: PBXs block who asks too often. */
-        const val MIN_PROBE_GAP_MS = 60_000L
+        /**
+         * A server is asked again for one account after this long at the earliest: PBXs block who
+         * asks too often. Shorter than [LineAdapt.CONFIRM_MS], so that a confirmed failure is
+         * always looked into.
+         */
+        const val MIN_PROBE_GAP_MS = 30_000L
 
         /** A change of address settles for this long before the core looks at the network again. */
         const val SETTLE_MS = 2_000L
@@ -453,6 +486,8 @@ internal class LineDoctor(
 
         /** What the SIP core reports for a request nobody answered. */
         const val TIMEOUT = 408
+
+        const val TAG = "SipLink.Line"
 
         fun typeOf(transport: SipTransport): TransportType = when (transport) {
             SipTransport.UDP -> TransportType.Udp

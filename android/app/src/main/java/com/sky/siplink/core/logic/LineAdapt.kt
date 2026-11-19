@@ -70,8 +70,12 @@ object LineAdapt {
      */
     fun isTransportFailure(code: Int): Boolean = code <= 0 || code == 408 || code == 503
 
-    /** Failed registrations in a row after which the network is looked at: one alone can be a moment's loss. */
-    const val FAILURES_BEFORE_PROBE = 2
+    /**
+     * How long a registration that failed for want of an answer is given to recover by itself
+     * before the network is looked at: one failure alone can be a moment's loss. (The SIP core
+     * reports a failure once and then retries without a word, about every half minute.)
+     */
+    const val CONFIRM_MS = 40_000L
 
     /**
      * What the probes found on the way to the server of an account.

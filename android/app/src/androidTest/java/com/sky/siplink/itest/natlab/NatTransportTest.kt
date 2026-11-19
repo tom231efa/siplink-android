@@ -48,7 +48,7 @@ class NatTransportTest : NatLabTestBase() {
         // Switched off, the line goes back to its own transport, where it does not get through.
         onMain { engine.accounts.autoAdapt = false }
         await("the line back on UDP") { adapted(NAT_ACCOUNT) == null }
-        never("a registration over blocked UDP", SHORT_WINDOW_MS) { account(NAT_ACCOUNT)?.state == RegState.OK }
+        await("the registration over blocked UDP to fail", CALL_FAIL_MS) { account(NAT_ACCOUNT)?.state == RegState.FAILED }
     }
 
     @Test
@@ -82,9 +82,8 @@ class NatTransportTest : NatLabTestBase() {
     private companion object {
         /** About two failed registrations over UDP and the time between them. */
         const val BLOCKED_WINDOW_MS = 150_000L
-        const val SHORT_WINDOW_MS = 40_000L
 
-        /** UDP requests of the SIP core waits for its answer (64 × T1) and a margin. */
+        /** How long a UDP request of the SIP core waits for its answer (64 × T1), with a margin. */
         const val CALL_FAIL_MS = 90_000L
 
         /** IP packets longer than this are dropped: a REGISTER gets through, an INVITE does not. */
