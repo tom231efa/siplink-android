@@ -7,7 +7,7 @@ import (
 )
 
 // CsvLineError is a line of CSV text that could not be read, and why.
-// Port of Csv.LineError (app/src/main/java/com/sky/siplink/core/logic/Csv.kt).
+// Port of Csv.LineError (android/app/src/main/java/com/sky/siplink/core/logic/Csv.kt).
 type CsvLineError struct {
 	Line   int      `json:"line"`
 	Reason i18n.Msg `json:"reason"`
@@ -22,7 +22,7 @@ type CsvRow struct {
 
 // CsvRows returns the rows of a text. Blank lines and lines starting with `#` are skipped,
 // as is a byte order mark.
-// Port of Csv.rows (app/src/main/java/com/sky/siplink/core/logic/Csv.kt).
+// Port of Csv.rows (android/app/src/main/java/com/sky/siplink/core/logic/Csv.kt).
 func CsvRows(text string) []CsvRow {
 	var rows []CsvRow
 	for index, raw := range lineSequence(text) {
@@ -60,7 +60,7 @@ func lineSequence(text string) []string {
 }
 
 // CsvSplit splits one CSV line; ok is false when a quoted field is not closed.
-// Port of Csv.split (app/src/main/java/com/sky/siplink/core/logic/Csv.kt).
+// Port of Csv.split (android/app/src/main/java/com/sky/siplink/core/logic/Csv.kt).
 func CsvSplit(line string) (fields []string, ok bool) {
 	fields = []string{}
 	var current strings.Builder
@@ -99,7 +99,7 @@ func CsvSplit(line string) (fields []string, ok bool) {
 
 // CsvJoin is the opposite of CsvSplit: it quotes a field when it holds a comma, a quote or
 // outer spaces.
-// Port of Csv.join (app/src/main/java/com/sky/siplink/core/logic/Csv.kt).
+// Port of Csv.join (android/app/src/main/java/com/sky/siplink/core/logic/Csv.kt).
 func CsvJoin(fields []string) string {
 	out := make([]string, len(fields))
 	for i, field := range fields {

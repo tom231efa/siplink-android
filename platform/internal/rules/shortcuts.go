@@ -6,7 +6,7 @@ import (
 )
 
 // ShortcutAction is what a shortcut key does; its values are the Kotlin enum names.
-// Port of enum ShortcutAction (app/src/main/java/com/sky/siplink/core/model/Shortcut.kt).
+// Port of enum ShortcutAction (android/app/src/main/java/com/sky/siplink/core/model/Shortcut.kt).
 type ShortcutAction string
 
 // The values of ShortcutAction, in the order of the Kotlin enum.
@@ -50,7 +50,7 @@ func (a ShortcutAction) HasNumber() bool { return a != ShortcutDND }
 
 // ShortcutIcon is a picture a key can carry instead of the one of its type; its values are
 // the Kotlin enum names, "" stands for no icon (Kotlin: null).
-// Port of enum ShortcutIcon (app/src/main/java/com/sky/siplink/core/model/Shortcut.kt).
+// Port of enum ShortcutIcon (android/app/src/main/java/com/sky/siplink/core/model/Shortcut.kt).
 type ShortcutIcon string
 
 // ShortcutIcons lists every ShortcutIcon in the order of the Kotlin enum.
@@ -91,7 +91,7 @@ func (i ShortcutIcon) Text() i18n.Msg {
 }
 
 // Shortcut is a programmable key.
-// Port of data class Shortcut (app/src/main/java/com/sky/siplink/core/model/Shortcut.kt).
+// Port of data class Shortcut (android/app/src/main/java/com/sky/siplink/core/model/Shortcut.kt).
 // The Kotlin defaults are Action SPEED_DIAL and no icon; a Go zero Action is no valid type.
 type Shortcut struct {
 	ID       int64          `json:"id"`
@@ -104,7 +104,7 @@ type Shortcut struct {
 	Own      bool           `json:"own"`
 }
 
-// Limits of ShortcutRules (app/src/main/java/com/sky/siplink/core/logic/ShortcutRules.kt):
+// Limits of ShortcutRules (android/app/src/main/java/com/sky/siplink/core/logic/ShortcutRules.kt):
 // MAX_SHORTCUTS, MAX_OWN, MAX_LABEL_LENGTH, MAX_NUMBER_LENGTH, MAX_CATEGORY_LENGTH,
 // MAX_LINE_LENGTH, FORMAT_HINT.
 const (
@@ -120,7 +120,7 @@ const (
 var FormatHint = i18n.M("rules.shortcut.format_hint")
 
 // ShortcutError is what is wrong with a shortcut key.
-// Port of enum ShortcutRules.Error (app/src/main/java/com/sky/siplink/core/logic/ShortcutRules.kt).
+// Port of enum ShortcutRules.Error (android/app/src/main/java/com/sky/siplink/core/logic/ShortcutRules.kt).
 type ShortcutError int
 
 // The values of ShortcutError, in the order of the Kotlin enum; Name gives the Kotlin name.
@@ -168,7 +168,7 @@ func (e ShortcutError) Error() string { return i18n.For(i18n.English).Msg(e.Msg(
 func (e ShortcutError) String() string { return e.Name() }
 
 // TypeWord is the word of the CSV format for a type.
-// Port of ShortcutRules.typeWord (app/src/main/java/com/sky/siplink/core/logic/ShortcutRules.kt).
+// Port of ShortcutRules.typeWord (android/app/src/main/java/com/sky/siplink/core/logic/ShortcutRules.kt).
 func TypeWord(action ShortcutAction) string {
 	switch action {
 	case ShortcutSpeedDial:
@@ -188,7 +188,7 @@ func TypeWord(action ShortcutAction) string {
 }
 
 // TypeWords are the words of the CSV format, one per type, in the order of the types.
-// Port of ShortcutRules.typeWords (app/src/main/java/com/sky/siplink/core/logic/ShortcutRules.kt).
+// Port of ShortcutRules.typeWords (android/app/src/main/java/com/sky/siplink/core/logic/ShortcutRules.kt).
 func TypeWords() []string {
 	out := make([]string, len(ShortcutActions))
 	for i, action := range ShortcutActions {
@@ -198,7 +198,7 @@ func TypeWords() []string {
 }
 
 // IconWords are the icons of the CSV format, in the order of ShortcutIcons.
-// Port of ShortcutRules.iconWords (app/src/main/java/com/sky/siplink/core/logic/ShortcutRules.kt).
+// Port of ShortcutRules.iconWords (android/app/src/main/java/com/sky/siplink/core/logic/ShortcutRules.kt).
 func IconWords() []string {
 	out := make([]string, len(ShortcutIcons))
 	for i, icon := range ShortcutIcons {
@@ -208,12 +208,12 @@ func IconWords() []string {
 }
 
 // CanAddShortcut reports whether one more key fits.
-// Port of ShortcutRules.canAdd (app/src/main/java/com/sky/siplink/core/logic/ShortcutRules.kt).
+// Port of ShortcutRules.canAdd (android/app/src/main/java/com/sky/siplink/core/logic/ShortcutRules.kt).
 func CanAddShortcut(count int) bool { return count < MaxShortcuts }
 
 // CanAddOwn reports whether the user may make one more key of their own next to a managed
 // configuration.
-// Port of ShortcutRules.canAddOwn (app/src/main/java/com/sky/siplink/core/logic/ShortcutRules.kt).
+// Port of ShortcutRules.canAddOwn (android/app/src/main/java/com/sky/siplink/core/logic/ShortcutRules.kt).
 func CanAddOwn(all []Shortcut) bool {
 	own := 0
 	for _, shortcut := range all {
@@ -225,7 +225,7 @@ func CanAddOwn(all []Shortcut) bool {
 }
 
 // OwnsCategory reports whether every key of category is the user's own.
-// Port of ShortcutRules.ownsCategory (app/src/main/java/com/sky/siplink/core/logic/ShortcutRules.kt).
+// Port of ShortcutRules.ownsCategory (android/app/src/main/java/com/sky/siplink/core/logic/ShortcutRules.kt).
 func OwnsCategory(all []Shortcut, category string) bool {
 	for _, shortcut := range all {
 		if shortcut.Category == category && !shortcut.Own {
@@ -237,7 +237,7 @@ func OwnsCategory(all []Shortcut, category string) bool {
 
 // UsesLine reports whether keys of this type ever call out, and so have a line to choose.
 // serverDnd: do not disturb is kept by the PBX, so a do not disturb key calls out as well.
-// Port of ShortcutRules.usesLine (app/src/main/java/com/sky/siplink/core/logic/ShortcutRules.kt).
+// Port of ShortcutRules.usesLine (android/app/src/main/java/com/sky/siplink/core/logic/ShortcutRules.kt).
 func UsesLine(action ShortcutAction, serverDnd bool) bool {
 	switch action {
 	case ShortcutSpeedDial, ShortcutBlindTransfer, ShortcutAttendedTransfer:
@@ -249,7 +249,7 @@ func UsesLine(action ShortcutAction, serverDnd bool) bool {
 }
 
 // PlacesCall reports whether pressing the key now starts a call of its own.
-// Port of ShortcutRules.placesCall (app/src/main/java/com/sky/siplink/core/logic/ShortcutRules.kt).
+// Port of ShortcutRules.placesCall (android/app/src/main/java/com/sky/siplink/core/logic/ShortcutRules.kt).
 func PlacesCall(shortcut Shortcut, inCall, serverDnd bool) bool {
 	if shortcut.Action == ShortcutDND {
 		return serverDnd
@@ -259,7 +259,7 @@ func PlacesCall(shortcut Shortcut, inCall, serverDnd bool) bool {
 
 // NormalizeShortcut trims every field and drops the number of a type that has none. A key
 // without a name is called by its number, or by its type when it has no number either.
-// Port of ShortcutRules.normalize (app/src/main/java/com/sky/siplink/core/logic/ShortcutRules.kt).
+// Port of ShortcutRules.normalize (android/app/src/main/java/com/sky/siplink/core/logic/ShortcutRules.kt).
 func NormalizeShortcut(shortcut Shortcut) Shortcut {
 	number := ""
 	if shortcut.Action.HasNumber() {
@@ -285,7 +285,7 @@ func NormalizeShortcut(shortcut Shortcut) Shortcut {
 	return out
 }
 
-// isDtmf mirrors Formatters.isDtmf (app/src/main/java/com/sky/siplink/core/logic/Formatters.kt):
+// isDtmf mirrors Formatters.isDtmf (android/app/src/main/java/com/sky/siplink/core/logic/Formatters.kt):
 // Char.isDigit (any script), '*' or '#'.
 func isDtmf(r rune) bool { return isDigit(r) || r == '*' || r == '#' }
 
@@ -294,7 +294,7 @@ func isDtmf(r rune) bool { return isDigit(r) || r == '*' || r == '#' }
 var reservedCategories = []string{"全部", "未分类", "新建分类"}
 
 // ValidateShortcut checks an already normalized key.
-// Port of ShortcutRules.validate (app/src/main/java/com/sky/siplink/core/logic/ShortcutRules.kt).
+// Port of ShortcutRules.validate (android/app/src/main/java/com/sky/siplink/core/logic/ShortcutRules.kt).
 func ValidateShortcut(shortcut Shortcut) []ShortcutError {
 	errors := []ShortcutError{}
 	number := shortcut.Number
@@ -327,7 +327,7 @@ func ValidateShortcut(shortcut Shortcut) []ShortcutError {
 
 // CategoryNameError returns what keeps name from being the name of a category; ok is false
 // when nothing does (Kotlin: null). taken are the names of the other categories.
-// Port of ShortcutRules.categoryNameError (app/src/main/java/com/sky/siplink/core/logic/ShortcutRules.kt).
+// Port of ShortcutRules.categoryNameError (android/app/src/main/java/com/sky/siplink/core/logic/ShortcutRules.kt).
 func CategoryNameError(name string, taken []string) (err ShortcutError, ok bool) {
 	trimmed := trim(name)
 	switch {
@@ -345,7 +345,7 @@ func CategoryNameError(name string, taken []string) (err ShortcutError, ok bool)
 
 // JoinCategories returns added with their categories spelled the way existing and the keys
 // before them spell them: "sales" joins "Sales".
-// Port of ShortcutRules.joinCategories (app/src/main/java/com/sky/siplink/core/logic/ShortcutRules.kt).
+// Port of ShortcutRules.joinCategories (android/app/src/main/java/com/sky/siplink/core/logic/ShortcutRules.kt).
 func JoinCategories(added, existing []Shortcut) []Shortcut {
 	spelling := map[string]string{}
 	for _, shortcut := range existing {
@@ -369,7 +369,7 @@ func JoinCategories(added, existing []Shortcut) []Shortcut {
 
 // ParseAction returns the type behind a word of the CSV format (a type word, or its Chinese
 // name); empty is a speed dial. ok is false for an unknown word (Kotlin: null).
-// Port of ShortcutRules.parseAction (app/src/main/java/com/sky/siplink/core/logic/ShortcutRules.kt).
+// Port of ShortcutRules.parseAction (android/app/src/main/java/com/sky/siplink/core/logic/ShortcutRules.kt).
 func ParseAction(value string) (ShortcutAction, bool) {
 	word := trim(value)
 	if word == "" {
@@ -385,7 +385,7 @@ func ParseAction(value string) (ShortcutAction, bool) {
 
 // ParseIcon returns the icon behind a word of the CSV format (an icon word, or its Chinese
 // name). ok is false for an unknown word (Kotlin: null).
-// Port of ShortcutRules.parseIcon (app/src/main/java/com/sky/siplink/core/logic/ShortcutRules.kt).
+// Port of ShortcutRules.parseIcon (android/app/src/main/java/com/sky/siplink/core/logic/ShortcutRules.kt).
 func ParseIcon(value string) (ShortcutIcon, bool) {
 	word := trim(value)
 	for _, icon := range ShortcutIcons {
@@ -397,7 +397,7 @@ func ParseIcon(value string) (ShortcutIcon, bool) {
 }
 
 // ParsedShortcuts is what DecodeShortcuts read.
-// Port of ShortcutRules.Parsed (app/src/main/java/com/sky/siplink/core/logic/ShortcutRules.kt).
+// Port of ShortcutRules.Parsed (android/app/src/main/java/com/sky/siplink/core/logic/ShortcutRules.kt).
 type ParsedShortcuts struct {
 	Shortcuts       []Shortcut     `json:"shortcuts"`
 	Errors          []CsvLineError `json:"errors"`
@@ -413,7 +413,7 @@ func field(fields []string, i int) string {
 
 // DecodeShortcuts reads keys from CSV text (FormatHint). room is how many keys still fit
 // (Kotlin default MaxShortcuts); firstID is the id of the first key read (Kotlin default 1).
-// Port of ShortcutRules.decode (app/src/main/java/com/sky/siplink/core/logic/ShortcutRules.kt).
+// Port of ShortcutRules.decode (android/app/src/main/java/com/sky/siplink/core/logic/ShortcutRules.kt).
 func DecodeShortcuts(text string, room int, firstID int64) ParsedShortcuts {
 	parsed := ParsedShortcuts{Shortcuts: []Shortcut{}, Errors: []CsvLineError{}}
 	for _, row := range CsvRows(text) {
@@ -464,7 +464,7 @@ func DecodeShortcuts(text string, room int, firstID int64) ParsedShortcuts {
 }
 
 // EncodeShortcuts is the opposite of DecodeShortcuts; whose key it is (Own) is no part of it.
-// Port of ShortcutRules.encode (app/src/main/java/com/sky/siplink/core/logic/ShortcutRules.kt).
+// Port of ShortcutRules.encode (android/app/src/main/java/com/sky/siplink/core/logic/ShortcutRules.kt).
 func EncodeShortcuts(shortcuts []Shortcut) string {
 	var b strings.Builder
 	for _, shortcut := range shortcuts {

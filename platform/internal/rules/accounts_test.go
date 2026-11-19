@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// Tests ported from app/src/test/java/com/sky/siplink/core/logic/AccountRulesTest.kt and,
+// Tests ported from android/app/src/test/java/com/sky/siplink/core/logic/AccountRulesTest.kt and,
 // for the parts of AccountRoute the rules use, AccountRouteTest.kt.
 
 func validDraft() AccountDraft {

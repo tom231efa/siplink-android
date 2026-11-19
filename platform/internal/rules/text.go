@@ -1,5 +1,5 @@
 // Package rules holds the validation rules of the SipLink Android app, ported from Kotlin
-// (app/src/main/java/com/sky/siplink/core/logic/) so that the platform accepts and rejects
+// (android/app/src/main/java/com/sky/siplink/core/logic/) so that the platform accepts and rejects
 // exactly what the app accepts and rejects.
 //
 // This file holds the string helpers that reproduce the Kotlin/JVM string semantics the

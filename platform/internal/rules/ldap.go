@@ -9,7 +9,7 @@ import (
 
 // LdapSecurity is how the connection to an LDAP server is protected; its values are the
 // Kotlin enum names.
-// Port of enum LdapSecurity (app/src/main/java/com/sky/siplink/core/model/Models.kt).
+// Port of enum LdapSecurity (android/app/src/main/java/com/sky/siplink/core/model/Models.kt).
 type LdapSecurity string
 
 // The values of LdapSecurity, in the order of the Kotlin enum.
@@ -25,7 +25,7 @@ var LdapSecurities = []LdapSecurity{LdapSecurityNone, LdapSecurityStartTLS}
 func (s LdapSecurity) Valid() bool { return contains(LdapSecurities, s) }
 
 // Defaults of LdapDirectory (companion object of LdapDirectory in
-// app/src/main/java/com/sky/siplink/core/model/Models.kt): DEFAULT_PORT,
+// android/app/src/main/java/com/sky/siplink/core/model/Models.kt): DEFAULT_PORT,
 // DEFAULT_NAME_ATTRIBUTES, DEFAULT_NUMBER_ATTRIBUTES.
 const (
 	LdapDefaultPort             = 389
@@ -34,7 +34,7 @@ const (
 )
 
 // LdapDirectory is one LDAP directory.
-// Port of data class LdapDirectory (app/src/main/java/com/sky/siplink/core/model/Models.kt);
+// Port of data class LdapDirectory (android/app/src/main/java/com/sky/siplink/core/model/Models.kt);
 // DefaultLdapDirectory gives its defaults.
 type LdapDirectory struct {
 	ID               string       `json:"id"`
@@ -70,7 +70,7 @@ func DefaultLdapDirectory() LdapDirectory {
 	}
 }
 
-// Limits of LdapRules (app/src/main/java/com/sky/siplink/core/logic/LdapRules.kt):
+// Limits of LdapRules (android/app/src/main/java/com/sky/siplink/core/logic/LdapRules.kt):
 // MAX_DIRECTORIES, MAX_NAME_LENGTH, MAX_RESULTS, PLACEHOLDER.
 const (
 	MaxDirectories         = 50
@@ -80,7 +80,7 @@ const (
 )
 
 // LdapError is what is wrong with a directory.
-// Port of enum LdapRules.Error (app/src/main/java/com/sky/siplink/core/logic/LdapRules.kt).
+// Port of enum LdapRules.Error (android/app/src/main/java/com/sky/siplink/core/logic/LdapRules.kt).
 type LdapError int
 
 // The values of LdapError, in the order of the Kotlin enum; Name gives the Kotlin name.
@@ -153,7 +153,7 @@ func ldapScheme(host string) (int, int) {
 
 // NormalizeLdap trims every field. A server typed as an address (`ldap://host:389`) is
 // taken apart into host and port; `ldaps://` stays, for ValidateLdap to refuse.
-// Port of LdapRules.normalize (app/src/main/java/com/sky/siplink/core/logic/LdapRules.kt).
+// Port of LdapRules.normalize (android/app/src/main/java/com/sky/siplink/core/logic/LdapRules.kt).
 func NormalizeLdap(directory LdapDirectory) LdapDirectory {
 	host := strings.TrimRight(trim(directory.Host), "/")
 	port := directory.Port
@@ -182,7 +182,7 @@ func NormalizeLdap(directory LdapDirectory) LdapDirectory {
 
 // ValidateLdap checks an already normalized directory. otherNames are the names of the
 // other directories; isNew says it is about to be added rather than replacing one.
-// Port of LdapRules.validate (app/src/main/java/com/sky/siplink/core/logic/LdapRules.kt).
+// Port of LdapRules.validate (android/app/src/main/java/com/sky/siplink/core/logic/LdapRules.kt).
 func ValidateLdap(directory LdapDirectory, otherNames []string, isNew bool) []LdapError {
 	errors := []LdapError{}
 	if isNew && len(otherNames) >= MaxDirectories {
@@ -239,14 +239,14 @@ func ValidateLdap(directory LdapDirectory, otherNames []string, isNew bool) []Ld
 
 // IsLdapNameTaken reports whether another directory goes by name, ignoring case; without a
 // name directories go by their server, and several may do so.
-// Port of LdapRules.isNameTaken (app/src/main/java/com/sky/siplink/core/logic/LdapRules.kt).
+// Port of LdapRules.isNameTaken (android/app/src/main/java/com/sky/siplink/core/logic/LdapRules.kt).
 func IsLdapNameTaken(name string, otherNames []string) bool {
 	return IsAccountNameTaken(name, otherNames)
 }
 
 // LdapServerText is the server as it is typed: the host, with the port behind it when that
 // is not the usual one.
-// Port of LdapRules.serverText (app/src/main/java/com/sky/siplink/core/logic/LdapRules.kt).
+// Port of LdapRules.serverText (android/app/src/main/java/com/sky/siplink/core/logic/LdapRules.kt).
 func LdapServerText(directory LdapDirectory) string {
 	if directory.Port == LdapDefaultPort {
 		return directory.Host
@@ -255,7 +255,7 @@ func LdapServerText(directory LdapDirectory) string {
 }
 
 // LdapServerURL is the server as the SIP core wants it.
-// Port of LdapRules.serverUrl (app/src/main/java/com/sky/siplink/core/logic/LdapRules.kt).
+// Port of LdapRules.serverUrl (android/app/src/main/java/com/sky/siplink/core/logic/LdapRules.kt).
 func LdapServerURL(directory LdapDirectory) string {
 	host := directory.Host
 	if strings.Contains(host, ":") && !strings.HasPrefix(host, "[") {
@@ -266,7 +266,7 @@ func LdapServerURL(directory LdapDirectory) string {
 
 // LdapCoreFilter turns a filter with the placeholder into one for the SIP core:
 // `(cn=%)` becomes `(cn=%s*)`. A filter already written for the core (`%s`) is kept.
-// Port of LdapRules.coreFilter (app/src/main/java/com/sky/siplink/core/logic/LdapRules.kt).
+// Port of LdapRules.coreFilter (android/app/src/main/java/com/sky/siplink/core/logic/LdapRules.kt).
 func LdapCoreFilter(filter string) string {
 	if strings.Contains(filter, "%s") {
 		return filter
@@ -288,13 +288,13 @@ func LdapCoreFilter(filter string) string {
 }
 
 // LdapFromCoreFilter is what LdapCoreFilter undoes.
-// Port of LdapRules.fromCoreFilter (app/src/main/java/com/sky/siplink/core/logic/LdapRules.kt).
+// Port of LdapRules.fromCoreFilter (android/app/src/main/java/com/sky/siplink/core/logic/LdapRules.kt).
 func LdapFromCoreFilter(filter string) string {
 	return strings.ReplaceAll(strings.ReplaceAll(filter, "%s*", "%"), "%s", "%")
 }
 
 // LdapAttributes returns the attribute names of a list typed with blanks or commas.
-// Port of LdapRules.attributes (app/src/main/java/com/sky/siplink/core/logic/LdapRules.kt).
+// Port of LdapRules.attributes (android/app/src/main/java/com/sky/siplink/core/logic/LdapRules.kt).
 func LdapAttributes(list string) []string {
 	out := []string{}
 	for _, part := range ldapSeparators.Split(list, -1) {
@@ -306,7 +306,7 @@ func LdapAttributes(list string) []string {
 }
 
 // LdapNameFilter is the filter a name is searched with.
-// Port of LdapRules.nameFilter (app/src/main/java/com/sky/siplink/core/logic/LdapRules.kt).
+// Port of LdapRules.nameFilter (android/app/src/main/java/com/sky/siplink/core/logic/LdapRules.kt).
 func LdapNameFilter(directory LdapDirectory) string {
 	if directory.NameFilter != "" {
 		return directory.NameFilter
@@ -315,7 +315,7 @@ func LdapNameFilter(directory LdapDirectory) string {
 }
 
 // LdapNumberFilter is the filter a number is searched with.
-// Port of LdapRules.numberFilter (app/src/main/java/com/sky/siplink/core/logic/LdapRules.kt).
+// Port of LdapRules.numberFilter (android/app/src/main/java/com/sky/siplink/core/logic/LdapRules.kt).
 func LdapNumberFilter(directory LdapDirectory) string {
 	if directory.NumberFilter != "" {
 		return directory.NumberFilter
@@ -325,7 +325,7 @@ func LdapNumberFilter(directory LdapDirectory) string {
 
 // LdapFilterOver is a filter for entries of which one of attributes contains what is
 // searched; a name put together from several attributes (`sn+givenName`) is searched in each.
-// Port of LdapRules.filterOver (app/src/main/java/com/sky/siplink/core/logic/LdapRules.kt).
+// Port of LdapRules.filterOver (android/app/src/main/java/com/sky/siplink/core/logic/LdapRules.kt).
 func LdapFilterOver(attributes []string) string {
 	var names []string
 	for _, attribute := range attributes {

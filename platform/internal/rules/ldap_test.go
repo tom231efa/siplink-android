@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// Tests ported from app/src/test/java/com/sky/siplink/core/logic/LdapRulesTest.kt.
+// Tests ported from android/app/src/test/java/com/sky/siplink/core/logic/LdapRulesTest.kt.
 
 func validLdap() LdapDirectory {
 	d := DefaultLdapDirectory()

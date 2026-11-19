@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// Tests ported from app/src/test/java/com/sky/siplink/core/logic/CsvTest.kt.
+// Tests ported from android/app/src/test/java/com/sky/siplink/core/logic/CsvTest.kt.
 
 func split(t *testing.T, line string) []string {
 	t.Helper()

@@ -8,7 +8,7 @@ import (
 )
 
 // ThemeMode values are the Kotlin enum names.
-// Port of enum ThemeMode (app/src/main/java/com/sky/siplink/core/model/Models.kt).
+// Port of enum ThemeMode (android/app/src/main/java/com/sky/siplink/core/model/Models.kt).
 type ThemeMode string
 
 // ThemeModes lists every ThemeMode in the order of the Kotlin enum.
@@ -18,7 +18,7 @@ var ThemeModes = []ThemeMode{"SYSTEM", "LIGHT", "DARK"}
 func (m ThemeMode) Valid() bool { return contains(ThemeModes, m) }
 
 // MediaSecurity values are the Kotlin enum names.
-// Port of enum MediaSecurity (app/src/main/java/com/sky/siplink/core/model/Models.kt).
+// Port of enum MediaSecurity (android/app/src/main/java/com/sky/siplink/core/model/Models.kt).
 type MediaSecurity string
 
 // MediaSecurities lists every MediaSecurity in the order of the Kotlin enum.
@@ -28,7 +28,7 @@ var MediaSecurities = []MediaSecurity{"NONE", "SRTP_OPTIONAL", "SRTP_MANDATORY"}
 func (m MediaSecurity) Valid() bool { return contains(MediaSecurities, m) }
 
 // DndMode says who refuses the calls while do not disturb is on; values are the Kotlin enum names.
-// Port of enum DndMode (app/src/main/java/com/sky/siplink/core/model/Models.kt).
+// Port of enum DndMode (android/app/src/main/java/com/sky/siplink/core/model/Models.kt).
 type DndMode string
 
 // DndModes lists every DndMode in the order of the Kotlin enum.
@@ -39,7 +39,7 @@ func (m DndMode) Valid() bool { return contains(DndModes, m) }
 
 // DtmfMode says how the keys pressed during a call reach the other side; values are the
 // Kotlin enum names.
-// Port of enum DtmfMode (app/src/main/java/com/sky/siplink/core/model/Models.kt).
+// Port of enum DtmfMode (android/app/src/main/java/com/sky/siplink/core/model/Models.kt).
 type DtmfMode string
 
 // DtmfModes lists every DtmfMode in the order of the Kotlin enum.
@@ -50,7 +50,7 @@ func (m DtmfMode) Valid() bool { return contains(DtmfModes, m) }
 
 // BannerPosition says where the strip back to a running call sits; values are the Kotlin
 // enum names.
-// Port of enum BannerPosition (app/src/main/java/com/sky/siplink/core/model/Models.kt).
+// Port of enum BannerPosition (android/app/src/main/java/com/sky/siplink/core/model/Models.kt).
 type BannerPosition string
 
 // BannerPositions lists every BannerPosition in the order of the Kotlin enum.
@@ -61,7 +61,7 @@ func (p BannerPosition) Valid() bool { return contains(BannerPositions, p) }
 
 // VideoSize is how large the picture is that the camera is sent with; values are the Kotlin
 // enum names.
-// Port of enum VideoSize (app/src/main/java/com/sky/siplink/core/model/Models.kt).
+// Port of enum VideoSize (android/app/src/main/java/com/sky/siplink/core/model/Models.kt).
 type VideoSize string
 
 // VideoSizes lists every VideoSize in the order of the Kotlin enum.
@@ -90,7 +90,7 @@ func (s VideoSize) Width() int { return videoSizeData[s].width }
 func (s VideoSize) Height() int { return videoSizeData[s].height }
 
 // FeatureCodes are the PBX feature codes.
-// Port of data class FeatureCodes (app/src/main/java/com/sky/siplink/core/model/Models.kt);
+// Port of data class FeatureCodes (android/app/src/main/java/com/sky/siplink/core/model/Models.kt);
 // DefaultFeatureCodes gives its defaults.
 type FeatureCodes struct {
 	Park        string `json:"park"`
@@ -115,7 +115,7 @@ func DefaultFeatureCodes() FeatureCodes {
 }
 
 // Settings are the settings of the app.
-// Port of data class Settings (app/src/main/java/com/sky/siplink/core/model/Models.kt);
+// Port of data class Settings (android/app/src/main/java/com/sky/siplink/core/model/Models.kt);
 // DefaultSettings gives its defaults.
 type Settings struct {
 	KeepAlive                bool           `json:"keepAlive"`
@@ -171,7 +171,7 @@ func DefaultSettings() Settings {
 // rate that cannot be chosen becomes AutoFrameRate (VideoRules.frameRate).
 // ForwardNoAnswerSeconds is stored as it is; the app clamps it only where it is used
 // (ClampNoAnswerSeconds).
-// Port of the value handling of SettingsStore.load (app/src/main/java/com/sky/siplink/core/SettingsStore.kt).
+// Port of the value handling of SettingsStore.load (android/app/src/main/java/com/sky/siplink/core/SettingsStore.kt).
 func CoerceSettings(s Settings) Settings {
 	d := DefaultSettings()
 	if !s.ThemeMode.Valid() {
@@ -198,7 +198,7 @@ func CoerceSettings(s Settings) Settings {
 
 // The range of the delay before a call that is not answered is forwarded.
 // Port of IncomingPolicy.MIN_NO_ANSWER_SECONDS / MAX_NO_ANSWER_SECONDS
-// (app/src/main/java/com/sky/siplink/core/logic/IncomingPolicy.kt).
+// (android/app/src/main/java/com/sky/siplink/core/logic/IncomingPolicy.kt).
 const (
 	MinNoAnswerSeconds = 5
 	MaxNoAnswerSeconds = 120
@@ -206,13 +206,13 @@ const (
 
 // ClampNoAnswerSeconds is the delay the app forwards an unanswered call after.
 // Port of `forwardNoAnswerSeconds.coerceIn(MIN_NO_ANSWER_SECONDS, MAX_NO_ANSWER_SECONDS)` in
-// IncomingPolicy.decide (app/src/main/java/com/sky/siplink/core/logic/IncomingPolicy.kt).
+// IncomingPolicy.decide (android/app/src/main/java/com/sky/siplink/core/logic/IncomingPolicy.kt).
 func ClampNoAnswerSeconds(seconds int) int {
 	return min(max(seconds, MinNoAnswerSeconds), MaxNoAnswerSeconds)
 }
 
 // Frame rates. Port of VideoRules.FRAME_RATES, AUTO_FRAME_RATE and NO_UPLOAD_LIMIT
-// (app/src/main/java/com/sky/siplink/core/logic/VideoRules.kt).
+// (android/app/src/main/java/com/sky/siplink/core/logic/VideoRules.kt).
 const (
 	AutoFrameRate = 0
 	NoUploadLimit = 0
@@ -222,7 +222,7 @@ const (
 var FrameRates = []int{0, 15, 24, 30}
 
 // FrameRate is value when it is one of FrameRates, else AutoFrameRate.
-// Port of VideoRules.frameRate (app/src/main/java/com/sky/siplink/core/logic/VideoRules.kt).
+// Port of VideoRules.frameRate (android/app/src/main/java/com/sky/siplink/core/logic/VideoRules.kt).
 func FrameRate(value int) int {
 	if contains(FrameRates, value) {
 		return value
@@ -261,7 +261,7 @@ const (
 )
 
 // UploadLimit is how much the app sends at most, in kbit/s with the sound included.
-// Port of VideoRules.uploadLimit (app/src/main/java/com/sky/siplink/core/logic/VideoRules.kt).
+// Port of VideoRules.uploadLimit (android/app/src/main/java/com/sky/siplink/core/logic/VideoRules.kt).
 func UploadLimit(size VideoSize, frameRate int) int {
 	if frameRate == AutoFrameRate {
 		return NoUploadLimit
@@ -271,13 +271,13 @@ func UploadLimit(size VideoSize, frameRate int) int {
 }
 
 // ManagedNotice is what a change tried on the phone is answered with while the configuration
-// is managed. Port of ManagedConfig.NOTICE (app/src/main/java/com/sky/siplink/core/logic/ManagedConfig.kt).
+// is managed. Port of ManagedConfig.NOTICE (android/app/src/main/java/com/sky/siplink/core/logic/ManagedConfig.kt).
 var ManagedNotice = i18n.M("rules.managed")
 
 // LocalUpdate is what a settings change made on the phone comes to while the configuration
 // is managed: only the user's own settings (the do not disturb switch, the appearance, the
 // answer to the lock screen question) are taken from wanted.
-// Port of ManagedConfig.localUpdate (app/src/main/java/com/sky/siplink/core/logic/ManagedConfig.kt).
+// Port of ManagedConfig.localUpdate (android/app/src/main/java/com/sky/siplink/core/logic/ManagedConfig.kt).
 func LocalUpdate(current, wanted Settings) Settings {
 	out := current
 	out.DoNotDisturb = wanted.DoNotDisturb
@@ -291,7 +291,7 @@ func LocalUpdate(current, wanted Settings) Settings {
 // IsPassword reports whether typed is the password of a managed configuration. hash is the
 // SHA-256 of the password (as UTF-8) in hex, in either case of the letters, blanks around it
 // ignored; an empty hash stands for "no password was set", which nothing typed can be.
-// Port of ManagedConfig.isPassword (app/src/main/java/com/sky/siplink/core/logic/ManagedConfig.kt).
+// Port of ManagedConfig.isPassword (android/app/src/main/java/com/sky/siplink/core/logic/ManagedConfig.kt).
 func IsPassword(hash, typed string) bool {
 	expected := lowercase(trim(hash))
 	if expected == "" {

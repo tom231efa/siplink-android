@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// Tests ported from app/src/test/java/com/sky/siplink/core/logic/ShortcutRulesTest.kt.
+// Tests ported from android/app/src/test/java/com/sky/siplink/core/logic/ShortcutRulesTest.kt.
 
 // key mirrors the helper `key` of ShortcutRulesTest.
 func key(label, number string, action ShortcutAction, category, line string, id int64) Shortcut {

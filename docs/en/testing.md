@@ -5,22 +5,22 @@
 ## Unit tests
 
 ```bash
-./gradlew :app:testDebugUnitTest
+android/gradlew -p android :app:testDebugUnitTest
 ```
 
-Unit tests are in `app/src/test` and cover the rules in `core/logic` (account and shortcut key validation, CSV, incoming call policy, remote configuration documents and addresses, certificate pins, update version comparison, video rules and so on) and the theme. Sample remote configuration documents are in `app/src/test/resources/`.
+Unit tests are in `android/app/src/test` and cover the rules in `core/logic` (account and shortcut key validation, CSV, incoming call policy, remote configuration documents and addresses, certificate pins, update version comparison, video rules and so on) and the theme. Sample remote configuration documents are in `android/app/src/test/resources/`.
 
 ## Lint
 
 ```bash
-./gradlew :app:lintDebug
+android/gradlew -p android :app:lintDebug
 ```
 
-Lint findings do not stop the build (`abortOnError = false`); reports are in `app/build/reports/`.
+Lint findings do not stop the build (`abortOnError = false`); reports are in `android/app/build/reports/`.
 
 ## Integration tests
 
-Integration tests are in `app/src/androidTest`; they run on an emulator or a physical device and connect to the test environment started with Docker in `testenv/`.
+Integration tests are in `android/app/src/androidTest`; they run on an emulator or a physical device and connect to the test environment started with Docker in `testenv/`.
 
 > **Warning**: the integration tests take over the installed SipLink debug build. App data is cleared before each test class, and the tests delete all accounts, settings and imported CAs. Do not run them on a device whose debug build has a configuration you want to keep.
 

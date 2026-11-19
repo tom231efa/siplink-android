@@ -154,7 +154,7 @@ As soon as the bind response contains `deviceKey`, the phone counts as bound, ev
 
 ### Document
 
-A missing or `null` field gets the app default (not the phone's current value); a wrong type, a value outside the enumeration or a failed check rejects the whole document, and all errors are reported at once. Fields the app does not know are ignored, at any level. For a full example, see `app/src/test/resources/platform-provision-testdata-full.json`; for a minimal one, `platform-provision-testdata-minimal.json`.
+A missing or `null` field gets the app default (not the phone's current value); a wrong type, a value outside the enumeration or a failed check rejects the whole document, and all errors are reported at once. Fields the app does not know are ignored, at any level. For a full example, see `android/app/src/test/resources/platform-provision-testdata-full.json`; for a minimal one, `platform-provision-testdata-minimal.json`.
 
 **Top level**
 

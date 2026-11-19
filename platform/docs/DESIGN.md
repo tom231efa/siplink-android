@@ -2,7 +2,7 @@
 
 Status: accepted design, including addendum 2 (name, built-in certificate authority, TLS by
 default), 2026-11-16. Names of the app that appear in this document are quoted from the app
-code in this repository (`app/`, branch `dev`, including uncommitted work seen on 2026-11-16). Names of the platform (tables, JSON fields, environment variables, URL paths)
+code in this repository (`android/`, branch `dev`, including uncommitted work seen on 2026-11-16). Names of the platform (tables, JSON fields, environment variables, URL paths)
 are defined here; they are new.
 
 Names (final, decided by the owner, see §11): Go module, repository and binary `siplink`,
@@ -337,7 +337,7 @@ used for authorization.
 
 | Field | App source |
 |---|---|
-| `appVersion`, `appVersionCode` | `BuildConfig.VERSION_NAME` / `VERSION_CODE` (`app/build.gradle.kts`: `versionName`, `versionCode`) |
+| `appVersion`, `appVersionCode` | `BuildConfig.VERSION_NAME` / `VERSION_CODE` (`android/app/build.gradle.kts`: `versionName`, `versionCode`) |
 | `androidRelease`, `androidSdk` | `android.os.Build.VERSION.RELEASE`, `SDK_INT` |
 | `model` | `Build.MANUFACTURER + " " + Build.MODEL` |
 | `applied` | `{ "version": "...", "at": "RFC3339", "error": "" }` — the last document the loader tried, and the reason it rejected it (validation messages are the app's own `…Error.full` texts) |
@@ -488,7 +488,7 @@ for (profiles without credentials are left out and flagged on the client page).
 The platform validates every account with the rules of `AccountRules.normalize` /
 `validate` (user name pattern, host[:port], port 1–65535, backup ≠ primary, DNS server
 `IP[:port]`, expires range, duplicate `user@domain`), ported to Go in
-`internal/rules/accounts.go`, with tests taken from `app/src/test/.../AccountRulesTest.kt`.
+`internal/rules/accounts.go`, with tests taken from `android/app/src/test/.../AccountRulesTest.kt`.
 
 #### 3.5.5 `directories`
 

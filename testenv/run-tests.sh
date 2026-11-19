@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs the integration tests of app/src/androidTest on the connected emulator or device, against
+# Runs the integration tests of android/app/src/androidTest on the connected emulator or device, against
 # the test environment started by ./up.sh.
 #
 #   ./run-tests.sh                                          all tests (except PbxReferTest, see there,
@@ -73,9 +73,9 @@ EOF
 
 if [ -z "${SKIP_INSTALL:-}" ]; then
   abi=$("$adb" shell getprop ro.product.cpu.abi | tr -d '\r')
-  (cd .. && ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest -Psiplink.abi="$abi" --console=plain -q)
-  "$adb" install -r -t ../app/build/outputs/apk/debug/app-debug.apk
-  "$adb" install -r -t ../app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+  (cd ../android && ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest -Psiplink.abi="$abi" --console=plain -q)
+  "$adb" install -r -t ../android/app/build/outputs/apk/debug/app-debug.apk
+  "$adb" install -r -t ../android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 fi
 
 # A real device left alone switches its screen off, and Android then tells a process in the

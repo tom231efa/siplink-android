@@ -6,28 +6,28 @@
 
 | Item | Requirement |
 | --- | --- |
-| JDK | 21; source and bytecode compatibility level Java 17 (`app/build.gradle.kts`) |
+| JDK | 21; source and bytecode compatibility level Java 17 (`android/app/build.gradle.kts`) |
 | Android SDK | Platform 37 (`compileSdk = 37`); `targetSdk = 36`, `minSdk = 28` |
-| Gradle | The wrapper in the repository (`gradle/wrapper/gradle-wrapper.properties`) |
+| Gradle | The wrapper in the repository (`android/gradle/wrapper/gradle-wrapper.properties`) |
 | Network | The first build needs Google Maven, Maven Central and the official Linphone Maven repository `https://download.linphone.org/maven_repository` |
 
-The Android SDK path comes from `ANDROID_HOME` or from `local.properties` (`sdk.dir`) in the project root. Dependency versions are kept in `gradle/libs.versions.toml`.
+The Android SDK path comes from `ANDROID_HOME` or from `android/local.properties` (`sdk.dir`). The commands below run in the repository root; `-p android` points at the Android project. Dependency versions are kept in `android/gradle/libs.versions.toml`.
 
 ## Debug build
 
 ```bash
-./gradlew :app:assembleDebug
+android/gradlew -p android :app:assembleDebug
 ```
 
-Output: `app/build/outputs/apk/debug/app-debug.apk`. The debug build writes more detailed SIP logs and allows loading remote configuration from `http://` addresses.
+Output: `android/app/build/outputs/apk/debug/app-debug.apk`. The debug build writes more detailed SIP logs and allows loading remote configuration from `http://` addresses.
 
 ## Release build and signing
 
-In the project root (the directory with `settings.gradle.kts`), create `keystore.properties` with these four keys:
+In the Android project directory `android/` (the directory with `settings.gradle.kts`), create `keystore.properties` with these four keys:
 
 | Key | Meaning |
 | --- | --- |
-| `storeFile` | Path of the keystore file, relative to the project root |
+| `storeFile` | Path of the keystore file, relative to `android/` |
 | `storePassword` | Keystore password |
 | `keyAlias` | Key alias |
 | `keyPassword` | Key password |
@@ -35,10 +35,10 @@ In the project root (the directory with `settings.gradle.kts`), create `keystore
 `keystore.properties`, `*.jks` and `*.keystore` are ignored by `.gitignore` and must not be committed. Then:
 
 ```bash
-./gradlew :app:assembleRelease
+android/gradlew -p android :app:assembleRelease
 ```
 
-The output is in `app/build/outputs/apk/release/`. Without `keystore.properties`, the release build is unsigned. Release builds use code and resource shrinking (R8); the rules are in `app/proguard-rules.pro`.
+The output is in `android/app/build/outputs/apk/release/`. Without `keystore.properties`, the release build is unsigned. Release builds use code and resource shrinking (R8); the rules are in `android/app/proguard-rules.pro`.
 
 All versions of the app must be signed with the same key; otherwise they cannot be installed over each other.
 
@@ -48,17 +48,17 @@ The SIP stack's native libraries are packaged per ABI and are the largest part o
 
 ```bash
 # Also support 32-bit ARM devices
-./gradlew :app:assembleRelease -Psiplink.abi=arm64-v8a,armeabi-v7a
+android/gradlew -p android :app:assembleRelease -Psiplink.abi=arm64-v8a,armeabi-v7a
 
 # x86_64 emulator used by the integration tests
-./gradlew :app:assembleDebug -Psiplink.abi=x86_64
+android/gradlew -p android :app:assembleDebug -Psiplink.abi=x86_64
 ```
 
 When checking for updates, the app goes through the device's supported ABIs in order and picks the `.apk` release asset whose file name contains that ABI name. When releasing APKs for several ABIs, the file names should contain the ABI name, for example `{name}-arm64-v8a.apk`, where `{name}` is a prefix of your choice.
 
 ## Version numbers
 
-In `defaultConfig` of `app/build.gradle.kts`:
+In `defaultConfig` of `android/app/build.gradle.kts`:
 
 - `versionCode`: integer, increased with every release
 - `versionName`: dotted numbers, such as `0.1.2`
@@ -67,10 +67,10 @@ GitHub release tags are written `v{versionName}`, such as `v0.1.2`. The update c
 
 ## Project structure
 
-In the repository root, `app/` is the Android app, `testenv/` the integration test environment, `platform/` the management platform (Go; for building it, see [platform/README.md](../../platform/README.md)), and `docs/` the documentation. The app part:
+In the repository root, `android/` is the Android project (the app is in `android/app/`), `testenv/` the integration test environment, `platform/` the management platform (Go; for building it, see [platform/README.md](../../platform/README.md)), and `docs/` the documentation. The app part:
 
 ```text
-app/src/main/java/com/sky/siplink/
+android/app/src/main/java/com/sky/siplink/
 ├── SipLinkApp.kt        Application: creates SipEngine, starts the background service and remote configuration
 ├── MainActivity.kt      Main screen
 ├── CallActivity.kt      Call screen (can show on the lock screen)

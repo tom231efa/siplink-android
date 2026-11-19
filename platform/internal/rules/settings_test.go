@@ -7,7 +7,7 @@ import (
 )
 
 // Tests ported from VideoRulesTest.kt, IncomingPolicyTest.kt and ManagedConfigTest.kt
-// (app/src/test/java/com/sky/siplink/core/logic/).
+// (android/app/src/test/java/com/sky/siplink/core/logic/).
 
 // VideoRulesTest.aFrameRateThatCannotBeChosenIsLeftToTheCore
 func TestVideoFrameRate(t *testing.T) {

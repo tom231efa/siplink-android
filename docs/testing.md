@@ -5,22 +5,22 @@
 ## 单元测试
 
 ```bash
-./gradlew :app:testDebugUnitTest
+android/gradlew -p android :app:testDebugUnitTest
 ```
 
-单元测试位于 `app/src/test`，覆盖 `core/logic` 中的规则（账号与快捷键校验、CSV、来电策略、远程配置文档与地址、证书 pin、更新版本比较、视频规则等）以及主题。远程配置的示例文档在 `app/src/test/resources/`。
+单元测试位于 `android/app/src/test`，覆盖 `core/logic` 中的规则（账号与快捷键校验、CSV、来电策略、远程配置文档与地址、证书 pin、更新版本比较、视频规则等）以及主题。远程配置的示例文档在 `android/app/src/test/resources/`。
 
 ## Lint
 
 ```bash
-./gradlew :app:lintDebug
+android/gradlew -p android :app:lintDebug
 ```
 
-Lint 发现问题时不中断构建（`abortOnError = false`），报告位于 `app/build/reports/`。
+Lint 发现问题时不中断构建（`abortOnError = false`），报告位于 `android/app/build/reports/`。
 
 ## 集成测试
 
-集成测试位于 `app/src/androidTest`，在模拟器或真机上运行，连接 `testenv/` 中用 Docker 启动的测试环境。
+集成测试位于 `android/app/src/androidTest`，在模拟器或真机上运行，连接 `testenv/` 中用 Docker 启动的测试环境。
 
 > **警告**：集成测试接管已安装的 SipLink 调试版。每个测试类运行前都会清空应用数据，测试会删除全部账号、设置和导入的 CA。不要在保存有需要保留的调试版配置的设备上运行。
 

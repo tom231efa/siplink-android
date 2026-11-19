@@ -8,7 +8,7 @@ import (
 )
 
 // SipTransport is the transport of a SIP account; its values are the Kotlin enum names.
-// Port of enum SipTransport (app/src/main/java/com/sky/siplink/core/model/Models.kt).
+// Port of enum SipTransport (android/app/src/main/java/com/sky/siplink/core/model/Models.kt).
 type SipTransport string
 
 // The values of SipTransport, in the order of the Kotlin enum.
@@ -25,7 +25,7 @@ var SipTransports = []SipTransport{SipTransportUDP, SipTransportTCP, SipTranspor
 func (t SipTransport) Valid() bool { return contains(SipTransports, t) }
 
 // AccountDraft is the editable form of a SIP account.
-// Port of data class AccountDraft (app/src/main/java/com/sky/siplink/core/model/Models.kt);
+// Port of data class AccountDraft (android/app/src/main/java/com/sky/siplink/core/model/Models.kt);
 // DefaultAccountDraft gives its defaults.
 type AccountDraft struct {
 	Name         string       `json:"name"`
@@ -50,7 +50,7 @@ func DefaultAccountDraft() AccountDraft {
 }
 
 // Address is the domain with its port, where one is given: `host[:port]`.
-// Port of AccountDraft.address (app/src/main/java/com/sky/siplink/core/model/Models.kt).
+// Port of AccountDraft.address (android/app/src/main/java/com/sky/siplink/core/model/Models.kt).
 func (d AccountDraft) Address() string {
 	if d.Port == "" {
 		return d.Domain
@@ -58,7 +58,7 @@ func (d AccountDraft) Address() string {
 	return d.Domain + ":" + d.Port
 }
 
-// Limits of AccountRules (app/src/main/java/com/sky/siplink/core/logic/AccountRules.kt):
+// Limits of AccountRules (android/app/src/main/java/com/sky/siplink/core/logic/AccountRules.kt):
 // MAX_ACCOUNTS, MIN_EXPIRES, MAX_EXPIRES, MAX_NAME_LENGTH.
 const (
 	MaxAccounts          = 100
@@ -68,7 +68,7 @@ const (
 )
 
 // AccountError is what is wrong with an account.
-// Port of enum AccountRules.Error (app/src/main/java/com/sky/siplink/core/logic/AccountRules.kt).
+// Port of enum AccountRules.Error (android/app/src/main/java/com/sky/siplink/core/logic/AccountRules.kt).
 type AccountError int
 
 // The values of AccountError, in the order of the Kotlin enum; Name gives the Kotlin name.
@@ -137,12 +137,12 @@ var (
 const wideColon = "\uFF1A"
 
 // CanAddAccount reports whether one more account fits.
-// Port of AccountRules.canAdd (app/src/main/java/com/sky/siplink/core/logic/AccountRules.kt).
+// Port of AccountRules.canAdd (android/app/src/main/java/com/sky/siplink/core/logic/AccountRules.kt).
 func CanAddAccount(currentCount int) bool { return currentCount < MaxAccounts }
 
 // IdentityKey is the key used to detect duplicates: the user part is case-sensitive, the
 // host part is not.
-// Port of AccountRules.identityKey (app/src/main/java/com/sky/siplink/core/logic/AccountRules.kt).
+// Port of AccountRules.identityKey (android/app/src/main/java/com/sky/siplink/core/logic/AccountRules.kt).
 func IdentityKey(username, domain string) string { return username + "@" + lowercase(domain) }
 
 func removeSipScheme(s string) string {
@@ -152,7 +152,7 @@ func removeSipScheme(s string) string {
 // NormalizeAccount trims every field, drops a leading `sip:` / `sips:` scheme, splits
 // `user@domain` typed into the username field when the domain was left empty, and takes a
 // port typed behind the domain to the port field.
-// Port of AccountRules.normalize (app/src/main/java/com/sky/siplink/core/logic/AccountRules.kt).
+// Port of AccountRules.normalize (android/app/src/main/java/com/sky/siplink/core/logic/AccountRules.kt).
 func NormalizeAccount(draft AccountDraft) AccountDraft {
 	username := removeSipScheme(trim(draft.Username))
 	// A Chinese keyboard types the colon in front of a port in its wide form.
@@ -188,7 +188,7 @@ func NormalizeAccount(draft AccountDraft) AccountDraft {
 // identity key of the account being edited, "" when adding a new one (Kotlin: null; an
 // identity key always holds an '@', so "" never stands for an account); takenNames are the
 // names of the other accounts.
-// Port of AccountRules.validate (app/src/main/java/com/sky/siplink/core/logic/AccountRules.kt).
+// Port of AccountRules.validate (android/app/src/main/java/com/sky/siplink/core/logic/AccountRules.kt).
 func ValidateAccount(draft AccountDraft, existingKeys []string, editingKey string, takenNames []string) []AccountError {
 	errors := []AccountError{}
 	if editingKey == "" && !CanAddAccount(len(existingKeys)) {
@@ -244,7 +244,7 @@ func ValidateAccount(draft AccountDraft, existingKeys []string, editingKey strin
 
 // IsAccountNameTaken reports whether another account is already called name; upper and
 // lower case do not make two names.
-// Port of AccountRules.isNameTaken (app/src/main/java/com/sky/siplink/core/logic/AccountRules.kt).
+// Port of AccountRules.isNameTaken (android/app/src/main/java/com/sky/siplink/core/logic/AccountRules.kt).
 func IsAccountNameTaken(name string, takenNames []string) bool {
 	if name == "" {
 		return false
@@ -258,7 +258,7 @@ func IsAccountNameTaken(name string, takenNames []string) bool {
 }
 
 // IsValidHostPort accepts `host`, `host:port`, `1.2.3.4:5061`, `[::1]` and `[::1]:5061`.
-// Port of AccountRules.isValidHostPort (app/src/main/java/com/sky/siplink/core/logic/AccountRules.kt).
+// Port of AccountRules.isValidHostPort (android/app/src/main/java/com/sky/siplink/core/logic/AccountRules.kt).
 func IsValidHostPort(value string) bool {
 	if value == "" || hasWhitespace(value) {
 		return false
@@ -295,7 +295,7 @@ func IsValidHostPort(value string) bool {
 }
 
 // IsValidPort reports whether port is 1 to 5 ASCII digits making 1..65535.
-// Port of AccountRules.isValidPort (app/src/main/java/com/sky/siplink/core/logic/AccountRules.kt).
+// Port of AccountRules.isValidPort (android/app/src/main/java/com/sky/siplink/core/logic/AccountRules.kt).
 func IsValidPort(port string) bool {
 	if len(port) < 1 || len(port) > 5 {
 		return false
@@ -310,13 +310,13 @@ func IsValidPort(port string) bool {
 }
 
 // IdentityURI is the SIP address of the account.
-// Port of AccountRules.identityUri (app/src/main/java/com/sky/siplink/core/logic/AccountRules.kt).
+// Port of AccountRules.identityUri (android/app/src/main/java/com/sky/siplink/core/logic/AccountRules.kt).
 func IdentityURI(draft AccountDraft) string { return "sip:" + draft.Username + "@" + draft.Address() }
 
 // ServerURI is the URI of the registrar / proxy the account starts on, the transport carried
 // as a URI parameter.
 // Port of AccountRules.serverUri and AccountRoute.uri without a pinned address
-// (app/src/main/java/com/sky/siplink/core/logic/AccountRules.kt, AccountRoute.kt).
+// (android/app/src/main/java/com/sky/siplink/core/logic/AccountRules.kt, AccountRoute.kt).
 func ServerURI(draft AccountDraft) string {
 	server := draft.Server
 	if server == "" {
@@ -326,7 +326,7 @@ func ServerURI(draft AccountDraft) string {
 }
 
 // TransportParam is the URI parameter value of a transport.
-// Port of AccountRules.transportParam (app/src/main/java/com/sky/siplink/core/logic/AccountRules.kt).
+// Port of AccountRules.transportParam (android/app/src/main/java/com/sky/siplink/core/logic/AccountRules.kt).
 func TransportParam(transport SipTransport) string {
 	switch transport {
 	case SipTransportTCP:
@@ -340,7 +340,7 @@ func TransportParam(transport SipTransport) string {
 
 // ParseTransport reads a transport name case-insensitively; empty is UDP. ok is false for
 // anything else (Kotlin: null).
-// Port of AccountRules.parseTransport (app/src/main/java/com/sky/siplink/core/logic/AccountRules.kt).
+// Port of AccountRules.parseTransport (android/app/src/main/java/com/sky/siplink/core/logic/AccountRules.kt).
 func ParseTransport(value string) (SipTransport, bool) {
 	switch lowercase(trim(value)) {
 	case "", "udp":

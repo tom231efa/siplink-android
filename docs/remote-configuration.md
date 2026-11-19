@@ -154,7 +154,7 @@ https://{主机}[:{端口}][/{前缀}]/p/{令牌}[?pin={指纹}]
 
 ### 文档
 
-字段缺失或为 `null` 时取应用默认值（不是本机当前值）；类型不符、取值不在枚举中或未通过校验时整份文档被拒绝，所有错误一次报告。应用不认识的字段一律忽略，无论出现在哪一层。完整示例见 `app/src/test/resources/platform-provision-testdata-full.json`，最小示例见 `platform-provision-testdata-minimal.json`。
+字段缺失或为 `null` 时取应用默认值（不是本机当前值）；类型不符、取值不在枚举中或未通过校验时整份文档被拒绝，所有错误一次报告。应用不认识的字段一律忽略，无论出现在哪一层。完整示例见 `android/app/src/test/resources/platform-provision-testdata-full.json`，最小示例见 `platform-provision-testdata-minimal.json`。
 
 **顶层**
 
