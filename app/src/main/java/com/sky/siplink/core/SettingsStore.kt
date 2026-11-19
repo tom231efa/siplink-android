@@ -4,7 +4,9 @@ import android.os.Handler
 import android.os.Looper
 import com.sky.siplink.core.logic.AutoAnswerRules
 import com.sky.siplink.core.logic.ManagedConfig
+import com.sky.siplink.core.logic.PreviewDock
 import com.sky.siplink.core.logic.RecordingRules
+import com.sky.siplink.core.logic.RoomRules
 import com.sky.siplink.core.logic.VideoRules
 import com.sky.siplink.core.model.FeatureCodes
 import com.sky.siplink.core.model.Settings
@@ -36,6 +38,7 @@ class SettingsStore(private val config: Config, private val lock: ConfigLock) {
                 videoFrameRate = VideoRules.frameRate(it.videoFrameRate),
                 recordingsKept = RecordingRules.keepChoice(it.recordingsKept),
                 autoAnswerSeconds = AutoAnswerRules.seconds(it.autoAnswerSeconds),
+                roomLimit = RoomRules.limitOf(it.roomLimit),
             )
         }
         val next = if (lock.refuses) ManagedConfig.localUpdate(state.value, wanted) else wanted
@@ -95,6 +98,9 @@ class SettingsStore(private val config: Config, private val lock: ConfigLock) {
             callRecording = bool(KEY_CALL_RECORDING, d.callRecording),
             recordByDefault = bool(KEY_RECORD_BY_DEFAULT, d.recordByDefault),
             recordingsKept = RecordingRules.keepChoice(config.getInt(SECTION, KEY_RECORDINGS_KEPT, d.recordingsKept)),
+            roomLimit = RoomRules.limitOf(config.getInt(SECTION, KEY_ROOM_LIMIT, d.roomLimit)),
+            previewSide = enumOf(KEY_PREVIEW_SIDE, d.previewSide),
+            previewPlace = PreviewDock.placeOf(config.getFloat(SECTION, KEY_PREVIEW_PLACE, d.previewPlace)),
         )
     }
 
@@ -143,6 +149,9 @@ class SettingsStore(private val config: Config, private val lock: ConfigLock) {
         config.setBool(SECTION, KEY_CALL_RECORDING, value.callRecording)
         config.setBool(SECTION, KEY_RECORD_BY_DEFAULT, value.recordByDefault)
         config.setInt(SECTION, KEY_RECORDINGS_KEPT, value.recordingsKept)
+        config.setInt(SECTION, KEY_ROOM_LIMIT, value.roomLimit)
+        config.setString(SECTION, KEY_PREVIEW_SIDE, value.previewSide.name)
+        config.setFloat(SECTION, KEY_PREVIEW_PLACE, value.previewPlace)
         // Writing the file means writing every account in it as well, and a text field changes
         // the settings with each key stroke: one write once the changes have stopped coming.
         unsaved = true
@@ -218,5 +227,8 @@ class SettingsStore(private val config: Config, private val lock: ConfigLock) {
         private const val KEY_CALL_RECORDING = "call_recording"
         private const val KEY_RECORD_BY_DEFAULT = "record_by_default"
         private const val KEY_RECORDINGS_KEPT = "recordings_kept"
+        private const val KEY_ROOM_LIMIT = "room_limit"
+        private const val KEY_PREVIEW_SIDE = "preview_side"
+        private const val KEY_PREVIEW_PLACE = "preview_place"
     }
 }

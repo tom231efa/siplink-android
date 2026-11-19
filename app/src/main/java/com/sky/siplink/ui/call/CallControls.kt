@@ -91,6 +91,7 @@ internal fun IncomingControls(videoOffered: Boolean, onAnswer: (video: Boolean) 
     }
 }
 
+/** @param compact closed up, for a low screen: less room between the rows and a smaller hang up button */
 @Composable
 internal fun ActiveControls(
     info: CallInfo,
@@ -99,7 +100,9 @@ internal fun ActiveControls(
     onOpenTransfer: () -> Unit,
     onOpenShortcuts: () -> Unit,
     onToggleVideo: () -> Unit,
+    onOpenRoom: () -> Unit,
     onNotice: (String) -> Unit,
+    compact: Boolean,
 ) {
     val established = info.phase == CallPhase.CONNECTED || info.phase == CallPhase.HELD
     val twoCalls = info.heldCall != null
@@ -107,7 +110,7 @@ internal fun ActiveControls(
     Column(
         Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+        verticalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 14.dp),
     ) {
         AnimatedVisibility(info.supervision != null) {
             SupervisionSwitch(info.supervision ?: SupervisionMode.LISTEN, calls::setSupervisionMode)
@@ -136,7 +139,7 @@ internal fun ActiveControls(
                 icon = if (info.phase == CallPhase.HELD) Icons.Rounded.PlayArrow else Icons.Rounded.Pause,
                 label = if (info.phase == CallPhase.HELD) "恢复" else "保留",
                 active = info.phase == CallPhase.HELD,
-                enabled = established && !info.conference,
+                enabled = established,
                 onClick = calls::toggleHold,
             )
         }
@@ -145,7 +148,7 @@ internal fun ActiveControls(
                 Icons.AutoMirrored.Rounded.PhoneForwarded,
                 "转接",
                 active = false,
-                enabled = established && !info.conference,
+                enabled = established,
                 onClick = onOpenTransfer,
             )
             ControlToggle(
@@ -161,15 +164,16 @@ internal fun ActiveControls(
                 Icons.Rounded.SwapCalls,
                 "切换",
                 active = false,
-                enabled = twoCalls && !info.conference,
+                enabled = twoCalls,
                 onClick = calls::swap,
             )
+            // Merging the two calls opens the conference room with them.
             ControlToggle(
                 Icons.AutoMirrored.Rounded.CallMerge,
                 "合并",
-                active = info.conference,
-                enabled = twoCalls && !info.conference && info.phase == CallPhase.CONNECTED,
-                onClick = { calls.merge()?.let(onNotice) },
+                active = false,
+                enabled = twoCalls && info.phase == CallPhase.CONNECTED,
+                onClick = onOpenRoom,
             )
         }
         // The shortcut keys sit next to the hang up button, which stays in the middle.
@@ -177,7 +181,7 @@ internal fun ActiveControls(
             Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                 ControlToggle(Icons.Rounded.Apps, "快捷键", active = false, onClick = onOpenShortcuts)
             }
-            RoundAction(Brand.HangUpRed, Icons.Rounded.CallEnd, if (info.conference) "结束全部" else "挂断", calls::hangUp, size = 72.dp)
+            RoundAction(Brand.HangUpRed, Icons.Rounded.CallEnd, "挂断", calls::hangUp, size = if (compact) 64.dp else 72.dp)
             Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                 // Nothing of video is shown while video calls are switched off.
                 if (info.videoAllowed || info.video != null) {
@@ -217,8 +221,10 @@ private fun SupervisionSwitch(mode: SupervisionMode, onSelect: (SupervisionMode)
 }
 
 @Composable
-private fun RouteToggle(info: CallInfo, calls: CallManager) {
+internal fun RouteToggle(info: CallInfo, calls: CallManager) {
     var menuOpen by remember { mutableStateOf(false) }
+    // An open menu keeps the controls of a video call on screen.
+    if (menuOpen) KeepControlsShown()
     val (icon, label) = when (info.route) {
         AudioRoute.BLUETOOTH -> Icons.Rounded.Bluetooth to "蓝牙"
         AudioRoute.HEADSET -> Icons.Rounded.Headset to "耳机"

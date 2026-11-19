@@ -94,6 +94,15 @@ object VideoRules {
         return if (shape >= 1f) longSide to longSide / shape else longSide * shape to longSide
     }
 
+    /**
+     * A tap on the small picture swaps the two pictures (the own one large) once both are there:
+     * the camera sends, and a picture of the other side came.
+     */
+    fun canSwap(sending: Boolean, received: Boolean): Boolean = sending && received
+
+    /** The pictures stay swapped while the user wants it and both are there; without one of them they go back. */
+    fun swapped(chosen: Boolean, sending: Boolean, received: Boolean): Boolean = chosen && canSwap(sending, received)
+
     /** The cameras among the video devices of the SDK, in its order. */
     fun cameras(devices: List<String>): List<String> = devices.filter { it != STATIC_PICTURE }
 
@@ -140,7 +149,7 @@ object VideoRules {
      * @param allowed video calls are on in the settings
      * @param hasVideo the call has video already
      * @param offersVideo the request of the other side has video in it
-     * @param onScreen the call is the one on the call screen (not held, not in a three-way call)
+     * @param onScreen the call is the one on the call screen (not held, not in the conference room)
      */
     fun remoteUpdate(allowed: Boolean, hasVideo: Boolean, offersVideo: Boolean, onScreen: Boolean): Update = when {
         !offersVideo || hasVideo -> Update.ACCEPT

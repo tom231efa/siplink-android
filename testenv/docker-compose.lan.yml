@@ -13,7 +13,7 @@ services:
       - "${LAN_ADDRESS}:5061:5061/tcp"
       - "${LAN_ADDRESS}:5038:5038/tcp"
       # The RTP range of asterisk/config/rtp.conf.
-      - "${LAN_ADDRESS}:20000-20099:20000-20099/udp"
+      - "${LAN_ADDRESS}:20000-20199:20000-20199/udp"
 
   phones:
     ports:

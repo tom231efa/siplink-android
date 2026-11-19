@@ -15,8 +15,8 @@ import org.linphone.core.CallParams
  * file, and survives hold and resume: the core starts it again when it restarts the call's sound.
  * It ends with the call; the [RecordingStore] then finishes the file.
  *
- * A merged three-way call is not recorded: the core records no call that is part of a
- * conference. The recordings of the two calls end as they are merged.
+ * A conference room is not recorded: the core records no call that is part of a conference.
+ * The recordings of the calls end as they go into the room.
  *
  * Main thread only, like the SIP core.
  *
@@ -61,7 +61,7 @@ internal class CallRecorder(
     }
 
     /** Whether [call] can be recorded now. */
-    fun recordable(call: Call, merged: Boolean): Boolean = !merged && allowed() && call.nativePointer in takes
+    fun recordable(call: Call): Boolean = allowed() && call.nativePointer in takes
 
     /**
      * When the recording of [call] would have started had it run without a break, in
@@ -74,24 +74,28 @@ internal class CallRecorder(
     }
 
     /** Starts or stops recording [call]. */
-    fun toggle(call: Call?, merged: Boolean) {
+    fun toggle(call: Call?) {
         val take = call?.let { takes[it.nativePointer] } ?: return
-        if (take.since != null) stop(call, take) else if (recordable(call, merged)) start(call, take)
+        if (take.since != null) stop(call, take) else if (recordable(call)) start(call, take)
         onChanged()
     }
 
-    /** [call] is connected and its sound runs: it is recorded now if every call is to be. */
-    fun onStreaming(call: Call, merged: Boolean) {
+    /**
+     * [call] is connected and its sound runs: it is recorded now if every call is to be.
+     *
+     * @param inRoom the call is part of the conference room, which is not recorded
+     */
+    fun onStreaming(call: Call, inRoom: Boolean) {
         val take = takes[call.nativePointer] ?: return
         if (take.defaultApplied) return
         take.defaultApplied = true
-        if (byDefault() && recordable(call, merged) && take.since == null) {
+        if (byDefault() && !inRoom && recordable(call) && take.since == null) {
             start(call, take)
             onChanged()
         }
     }
 
-    /** The calls are about to be merged into a conference, which is not recorded. */
+    /** The calls are about to go into the conference room, which is not recorded. */
     fun onMerging(calls: List<Call>) = calls.forEach { call -> takes[call.nativePointer]?.let { if (it.since != null) stop(call, it) } }
 
     /** Recording was switched off (in the settings or by a remote configuration): running recordings end, their files stay. */
@@ -113,14 +117,13 @@ internal class CallRecorder(
         if (!take.begun) {
             take.begun = true
             val side = party(call)
-            val account = call.params.account?.params?.identityAddress
             store.begin(
                 take.path,
                 RecordingStore.CallFacts(
                     number = side.address.substringBefore('@'),
                     name = side.name,
                     incoming = call.dir == Call.Dir.Incoming,
-                    line = account?.let { "${it.username.orEmpty()}@${it.domain.orEmpty()}" }.orEmpty(),
+                    line = CallSupport.lineOf(call.params.account),
                     startedAt = System.currentTimeMillis(),
                 ),
             )

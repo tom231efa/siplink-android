@@ -2,7 +2,9 @@ package com.sky.siplink.core
 
 import com.sky.siplink.core.model.AudioRoute
 import com.sky.siplink.core.model.CallPhase
+import com.sky.siplink.core.model.MemberState
 import com.sky.siplink.core.model.SideCall
+import org.linphone.core.Account
 import org.linphone.core.Address
 import org.linphone.core.AudioDevice
 import org.linphone.core.Call
@@ -28,6 +30,23 @@ internal object CallSupport {
         Call.State.Pausing, Call.State.Paused, Call.State.PausedByRemote -> CallPhase.HELD
         Call.State.End, Call.State.Error, Call.State.Released -> CallPhase.ENDED
         else -> CallPhase.CONNECTED
+    }
+
+    /** The line of a call as the call screen names it: `user@domain`, empty without one. */
+    fun lineOf(account: Account?): String {
+        val identity = account?.params?.identityAddress ?: return ""
+        return "${identity.username.orEmpty()}@${identity.domain.orEmpty()}"
+    }
+
+    /** Where the member of a conference room whose call this is stands. */
+    fun memberStateOf(call: Call): MemberState = when (call.state) {
+        Call.State.OutgoingRinging, Call.State.OutgoingEarlyMedia -> MemberState.RINGING
+        Call.State.Idle, Call.State.OutgoingInit, Call.State.OutgoingProgress, Call.State.IncomingReceived,
+        Call.State.IncomingEarlyMedia, Call.State.PushIncomingReceived,
+        -> MemberState.CALLING
+        Call.State.PausedByRemote -> MemberState.HELD
+        Call.State.End, Call.State.Error, Call.State.Released -> MemberState.LEFT
+        else -> MemberState.CONNECTED
     }
 
     /**
@@ -77,6 +96,17 @@ internal object CallSupport {
 
     /** Routes playback (and the matching microphone) of [call]; false when no such device exists. */
     fun applyRoute(core: Core, call: Call, route: AudioRoute): Boolean {
+        val (output, input) = devicesFor(core, route) ?: return false
+        call.outputAudioDevice = output
+        input?.let { call.inputAudioDevice = it }
+        return true
+    }
+
+    /**
+     * The device that plays [route], and the microphone that goes with it (null where there is
+     * none); null when the route has no device.
+     */
+    fun devicesFor(core: Core, route: AudioRoute): Pair<AudioDevice, AudioDevice?>? {
         val types = when (route) {
             AudioRoute.EARPIECE -> listOf(AudioDevice.Type.Earpiece)
             AudioRoute.SPEAKER -> listOf(AudioDevice.Type.Speaker)
@@ -86,18 +116,17 @@ internal object CallSupport {
         val devices = core.audioDevices
         val output = devices.firstOrNull {
             it.type in types && it.hasCapability(AudioDevice.Capabilities.CapabilityPlay)
-        } ?: return false
-        call.outputAudioDevice = output
+        } ?: return null
         // Bluetooth and wired headsets bring their own microphone, otherwise use the built-in one.
         val inputTypes = if (route == AudioRoute.BLUETOOTH || route == AudioRoute.HEADSET) {
             types
         } else {
             listOf(AudioDevice.Type.Microphone)
         }
-        devices.firstOrNull {
+        val input = devices.firstOrNull {
             it.type in inputTypes && it.hasCapability(AudioDevice.Capabilities.CapabilityRecord)
-        }?.let { call.inputAudioDevice = it }
-        return true
+        }
+        return output to input
     }
 
     fun endReason(call: Call, callState: Call.State, wasConnected: Boolean, message: String): String {

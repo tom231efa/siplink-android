@@ -13,25 +13,20 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Cameraswitch
-import androidx.compose.material.icons.rounded.Fullscreen
-import androidx.compose.material.icons.rounded.FullscreenExit
 import androidx.compose.material.icons.rounded.Videocam
 import androidx.compose.material.icons.rounded.VideocamOff
 import androidx.compose.material3.Icon
@@ -39,22 +34,29 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.zIndex
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sky.siplink.core.logic.PreviewDock
 import com.sky.siplink.core.logic.VideoRules
 import com.sky.siplink.core.model.CallVideo
 import com.sky.siplink.engine
@@ -62,66 +64,122 @@ import com.sky.siplink.ui.theme.Brand
 import org.linphone.mediastream.video.capture.CaptureTextureView
 
 /**
- * The picture of the other side on the whole screen, with the own camera in a small window in
- * the corner. Tapping the picture shows or hides the controls ([chrome]).
+ * The picture of the other side on the whole screen, with the own camera in a small window. The
+ * small window stands at a side edge, wherever the user dragged it ([PreviewDock]), and keeps
+ * clear of the controls while they are shown; a tap on it swaps the two pictures. Its buttons
+ * are in the row at the top of the call screen ([VideoButtons]); the shade under the controls
+ * shows with them ([chrome]); the call screen decides when (see ControlsVisibility).
  *
- * A picture never changes its shape. Where it has another shape than the screen it is either
- * shown whole, with the rest of the screen black, or enlarged until it fills the screen, its
- * edges cut off: [VideoRules.fillsByDefault] picks, and a key in the corner changes it.
+ * A picture never changes its shape. Where the other side's has another shape than the screen it
+ * is either shown whole, with the rest of the screen black, or enlarged until it fills the
+ * screen, its edges cut off: [VideoRules.fillsByDefault] picks, and a key changes it. The own
+ * picture, large, is always shown whole.
  *
- * @param record the record button, first of the buttons in the corner; null where the call cannot be recorded
+ * The two pictures keep their views when they swap: only the places of the views change, so
+ * the SIP core goes on drawing into the same ones (core.nativeVideoWindowId and
+ * core.nativePreviewWindowId are set once, as the views come and go).
  */
 @Composable
-internal fun VideoStage(
-    video: CallVideo,
-    chrome: Boolean,
-    onTap: () -> Unit,
-    onSwitchCamera: () -> Unit,
-    onToggleCamera: () -> Unit,
-    record: (@Composable () -> Unit)? = null,
-) {
-    // What the user picked with the key; null until then.
-    var fillChosen by remember { mutableStateOf<Boolean?>(null) }
+internal fun VideoStage(video: CallVideo, stage: VideoStageState, chrome: Boolean) {
+    val engine = LocalContext.current.engine
+    val settings by engine.settings.settings.collectAsStateWithLifecycle()
+    val density = LocalDensity.current
+    val direction = LocalLayoutDirection.current
+    val insets = WindowInsets.safeDrawing
+    val scope = rememberCoroutineScope()
+    val small = remember { SmallPictureState() }
     BoxWithConstraints(
         Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .clipToBounds()
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onTap),
+            .clipToBounds(),
     ) {
         val picture = video.received
         val cut = if (picture != null) VideoRules.cutWhenFilled(picture, constraints.maxWidth, constraints.maxHeight) else 0f
-        val filled = fillChosen ?: VideoRules.fillsByDefault(cut)
+        SideEffect { stage.cut = cut }
+        val canSwap = VideoRules.canSwap(video.sending, picture != null)
+        // Back to normal without one of the pictures, and so it stays when the picture returns.
+        LaunchedEffect(canSwap) { if (!canSwap) stage.swapChosen = false }
+        val swapped = stage.swapped(video)
+
+        // The small window: the shape of the picture in it, at its place in the band it may stand in now.
+        val (smallWidth, smallHeight) = VideoRules.previewSize(if (swapped) picture else video.sent, PreviewLongSide.value)
+        val widthPx = with(density) { smallWidth.dp.toPx() }
+        val heightPx = with(density) { smallHeight.dp.toPx() }
+        val safe = Rect(
+            insets.getLeft(density, direction).toFloat(),
+            insets.getTop(density).toFloat(),
+            insets.getRight(density, direction).toFloat(),
+            insets.getBottom(density).toFloat(),
+        )
+        val (shown, hidden) = dockAreas(
+            constraints.maxWidth.toFloat(),
+            constraints.maxHeight.toFloat(),
+            safe,
+            with(density) { DockMargin.toPx() },
+            stage,
+            wide = maxWidth > maxHeight,
+        )
+        val now = if (chrome) shown else hidden
+        val place = PreviewDock.Place(settings.previewSide, settings.previewPlace)
+        FollowSpot(small, PreviewDock.spot(place, widthPx, heightPx, shown, now), controlsShown = chrome)
+        val frame = SmallPictureState.Frame(widthPx, heightPx, shown, now, place, with(density) { FlingSpeed.toPx() })
+        SideEffect { small.frame = frame }
+        val smallWindow = Modifier
+            .size(smallWidth.dp, smallHeight.dp)
+            .smallPicture(
+                small, scope, frame,
+                own = !swapped,
+                canSwap = canSwap,
+                onSwap = { stage.swapChosen = !stage.swapChosen },
+                onPlace = { chosen -> engine.updateSettings { it.copy(previewSide = chosen.side, previewPlace = chosen.fraction) } },
+            )
+
         if (video.receiving) {
             // Only the user's change is animated: the first picture and one of a new size take their place at once.
             val scale by animateFloatAsState(
-                targetValue = if (filled) VideoRules.fillScale(cut) else 1f,
-                animationSpec = if (fillChosen != null) tween(220) else snap(),
+                targetValue = if (stage.filled && !swapped) VideoRules.fillScale(cut) else 1f,
+                animationSpec = if (stage.fillChosen != null) tween(220) else snap(),
                 label = "pictureScale",
             )
-            RemoteVideo(
-                Modifier
-                    // The view has the shape of the picture, so that the SDK draws the whole of it
-                    // into the whole of the view; until a picture came, the view is the screen.
-                    .layout { measurable, constraints ->
-                        val size = picture?.let { VideoRules.fitted(it, constraints.maxWidth, constraints.maxHeight) }
-                        val width = size?.width ?: constraints.maxWidth
-                        val height = size?.height ?: constraints.maxHeight
-                        val placeable = measurable.measure(Constraints.fixed(width, height))
-                        layout(constraints.maxWidth, constraints.maxHeight) {
-                            placeable.place((constraints.maxWidth - width) / 2, (constraints.maxHeight - height) / 2)
-                        }
-                    }
-                    .graphicsLayer {
-                        scaleX = scale
-                        scaleY = scale
+            Box(
+                if (swapped) {
+                    Modifier
+                        .zIndex(SMALL)
+                        .offset { small.offset }
+                        .then(smallWindow)
+                } else {
+                    Modifier.fillMaxSize()
+                },
+            ) {
+                RemoteVideo(
+                    if (swapped) {
+                        Modifier.fillMaxSize()
+                    } else {
+                        Modifier
+                            // The view has the shape of the picture, so that the SDK draws the whole of it
+                            // into the whole of the view; until a picture came, the view is the screen.
+                            .layout { measurable, constraints ->
+                                val size = picture?.let { VideoRules.fitted(it, constraints.maxWidth, constraints.maxHeight) }
+                                val width = size?.width ?: constraints.maxWidth
+                                val height = size?.height ?: constraints.maxHeight
+                                val placeable = measurable.measure(Constraints.fixed(width, height))
+                                layout(constraints.maxWidth, constraints.maxHeight) {
+                                    placeable.place((constraints.maxWidth - width) / 2, (constraints.maxHeight - height) / 2)
+                                }
+                            }
+                            .graphicsLayer {
+                                scaleX = scale
+                                scaleY = scale
+                            }
                     },
-            )
+                )
+            }
         }
         // Shade where the name and the controls sit, so that white stays readable on a bright picture:
         // top and bottom, or, with the phone on its side, the top and the side the controls stand at.
         val wide = maxWidth > maxHeight
-        AnimatedVisibility(chrome, Modifier.fillMaxSize(), enter = fadeIn(tween(180)), exit = fadeOut(tween(140))) {
+        AnimatedVisibility(chrome, Modifier.fillMaxSize().zIndex(SHADE), enter = fadeIn(tween(180)), exit = fadeOut(tween(140))) {
             Box(
                 if (wide) {
                     Modifier
@@ -135,38 +193,15 @@ internal fun VideoStage(
                 },
             )
         }
-        Column(
-            Modifier
-                .align(Alignment.TopEnd)
-                .systemBarsPadding()
-                .padding(top = 12.dp, end = 16.dp),
-            horizontalAlignment = Alignment.End,
+        AnimatedVisibility(
+            video.sending,
+            if (swapped) Modifier.zIndex(LARGE) else Modifier.zIndex(SMALL).offset { small.offset },
+            enter = fadeIn(tween(180)) + scaleIn(tween(200), 0.85f),
+            exit = fadeOut(tween(140)) + scaleOut(tween(160), 0.85f),
         ) {
-            AnimatedVisibility(video.sending, enter = fadeIn(tween(180)) + scaleIn(tween(200), 0.85f), exit = fadeOut(tween(140)) + scaleOut(tween(160), 0.85f)) {
-                val (width, height) = VideoRules.previewSize(video.sent, PreviewLongSide.value)
-                LocalPreview(
-                    Modifier
-                        .size(width = width.dp, height = height.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Color(0xFF202328)),
-                )
-            }
-            AnimatedVisibility(chrome, enter = fadeIn(tween(180)), exit = fadeOut(tween(140))) {
-                Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    record?.invoke()
-                    if (video.receiving && picture != null && VideoRules.canFill(cut)) {
-                        CornerButton(
-                            if (filled) Icons.Rounded.FullscreenExit else Icons.Rounded.Fullscreen,
-                            if (filled) "显示完整画面" else "铺满屏幕",
-                        ) { fillChosen = !filled }
-                    }
-                    if (video.sending) CornerButton(Icons.Rounded.Cameraswitch, "切换摄像头", onSwitchCamera)
-                    CornerButton(
-                        if (video.sending) Icons.Rounded.Videocam else Icons.Rounded.VideocamOff,
-                        if (video.sending) "关闭摄像头" else "打开摄像头",
-                        onToggleCamera,
-                    )
-                }
+            // Large, the own picture fills the screen, and the SDK's view shows it whole (black bars).
+            Box(if (swapped) Modifier.fillMaxSize() else smallWindow) {
+                LocalPreview(Modifier.fillMaxSize())
             }
         }
     }
@@ -238,20 +273,6 @@ private class PreviewView(context: Context) : CaptureTextureView(context) {
     }
 }
 
-@Composable
-private fun CornerButton(icon: ImageVector, label: String, onClick: () -> Unit) {
-    Box(
-        Modifier
-            .size(40.dp)
-            .clip(CircleShape)
-            .background(Color.Black.copy(alpha = 0.42f))
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(icon, contentDescription = label, tint = Color.White, modifier = Modifier.size(22.dp))
-    }
-}
-
 /** The other side asks to add video to the call: the camera starts only if the user says so. */
 @Composable
 internal fun VideoRequestBanner(onAccept: () -> Unit, onDecline: () -> Unit) {
@@ -295,5 +316,17 @@ internal fun AnswerWithVideoToggle(on: Boolean, onChange: (Boolean) -> Unit) {
 }
 
 private val Shade = Color.Black.copy(alpha = 0.55f)
-/** The longer side of the window of the own camera. */
+
+/** The longer side of the small window. */
 private val PreviewLongSide = 148.dp
+
+/** What the small window keeps from the edges, the bars and the controls. */
+private val DockMargin = 12.dp
+
+/** From this speed on (per second), a small window let go goes to the side it was flung towards. */
+private val FlingSpeed = 400.dp
+
+/** The order the parts are drawn in: the large picture, the shade, the small window. */
+private const val LARGE = 0f
+private const val SHADE = 1f
+private const val SMALL = 2f

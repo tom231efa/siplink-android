@@ -135,9 +135,10 @@ abstract class ScreenTestBase(private val pictures: String) : PbxTestBase() {
      *
      * @param awaited the app has taken the touch when this returns; without, the next touch can reach
      *   the app together with this one, the way the touches of a real finger do
+     * @param eventTime when the touch screen saw it
      */
-    private fun touch(downTime: Long, action: Int, x: Float, y: Float, awaited: Boolean = true) {
-        val event = MotionEvent.obtain(downTime, SystemClock.uptimeMillis(), action, x, y, 0)
+    private fun touch(downTime: Long, action: Int, x: Float, y: Float, awaited: Boolean = true, eventTime: Long = SystemClock.uptimeMillis()) {
+        val event = MotionEvent.obtain(downTime, eventTime, action, x, y, 0)
         event.source = InputDevice.SOURCE_TOUCHSCREEN
         assertTrue("The touch was not taken", automation.injectInputEvent(event, awaited))
         event.recycle()
@@ -189,6 +190,52 @@ abstract class ScreenTestBase(private val pictures: String) : PbxTestBase() {
     protected fun swipe(fromX: Float, fromY: Float, toX: Float, toY: Float, liftInMotion: Boolean = false) =
         move(fromX, fromY, toX, toY, holdMs = DRAG_STEP_MS, restMs = if (liftInMotion) 0L else SWIPE_REST_MS)
 
+    /**
+     * A short quick flick of a finger from one point towards another, lifted while it still moves.
+     * As a real finger's: the touch screen reports where it is at a steady rate, stamped with when
+     * it saw it, whatever the app is busy with. (Touches the app is waited for one by one come as
+     * far apart as it takes to handle each, and the flick looks slower than it was.)
+     */
+    protected fun flick(fromX: Float, fromY: Float, toX: Float, toY: Float) {
+        val downTime = SystemClock.uptimeMillis()
+        touch(downTime, MotionEvent.ACTION_DOWN, fromX, fromY)
+        val start = SystemClock.uptimeMillis()
+        for (step in 1..FLICK_STEPS) {
+            val at = start + step * FLICK_STEP_MS
+            Thread.sleep((at - SystemClock.uptimeMillis()).coerceAtLeast(0L))
+            val fraction = step.toFloat() / FLICK_STEPS
+            touch(downTime, MotionEvent.ACTION_MOVE, fromX + (toX - fromX) * fraction, fromY + (toY - fromY) * fraction, awaited = false, eventTime = at)
+        }
+        // Lifted with the next report of the touch screen, where the finger was last.
+        touch(downTime, MotionEvent.ACTION_UP, toX, toY, awaited = false, eventTime = start + (FLICK_STEPS + 1) * FLICK_STEP_MS)
+        settle()
+    }
+
+    /**
+     * A finger that touches the screen at one point and is lifted there, as a tap is.
+     *
+     * @param settled returns once the whole screen is at rest; on a screen whose content changes
+     *   every second (a call's time) that can take as long as [SETTLE_TIMEOUT_MS]
+     */
+    protected fun tapAt(x: Float, y: Float, settled: Boolean = true) {
+        val downTime = SystemClock.uptimeMillis()
+        touch(downTime, MotionEvent.ACTION_DOWN, x, y)
+        Thread.sleep(TAP_MS)
+        touch(downTime, MotionEvent.ACTION_UP, x, y)
+        if (settled) settle()
+    }
+
+    /**
+     * A finger that touches the screen at one point and is taken away without a tap: the system
+     * cancels the touch (as it does when a gesture of its own takes the finger over).
+     */
+    protected fun touchAt(x: Float, y: Float) {
+        val downTime = SystemClock.uptimeMillis()
+        touch(downTime, MotionEvent.ACTION_DOWN, x, y)
+        Thread.sleep(TAP_MS)
+        touch(downTime, MotionEvent.ACTION_CANCEL, x, y)
+    }
+
     /** Sets the text of the field that [field] finds; a screen that is still moving may not have it at once. */
     protected fun setText(text: String, field: () -> AccessibilityNodeInfo?) {
         val arguments = Bundle().apply { putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text) }
@@ -222,7 +269,14 @@ abstract class ScreenTestBase(private val pictures: String) : PbxTestBase() {
         const val DRAG_STEP_MS = 16L
         const val DRAG_HOLD_MS = 300L
 
+        /** A flick: a few quick steps, as often as a touch screen reports a moving finger (120 times a second). */
+        const val FLICK_STEPS = 5
+        const val FLICK_STEP_MS = 8L
+
         /** A slide rests this long at its end, so that it is not taken for a flick. */
         const val SWIPE_REST_MS = 60L
+
+        /** How long the finger of a tap stays down. */
+        const val TAP_MS = 60L
     }
 }

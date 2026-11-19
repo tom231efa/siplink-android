@@ -5,20 +5,29 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -42,9 +51,9 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -57,72 +66,92 @@ import com.sky.siplink.ui.shortcuts.rememberShortcutRunner
 
 private val dtmfKeys = listOf('1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#')
 
-/** In-call keypad sliding up from the bottom of the call screen. */
+/**
+ * In-call keypad, over the controls: it slides up from the bottom of the call screen, or, with
+ * the phone on its side ([sideways]), in from the start, where the controls stand beside the
+ * name. The keys are as large as the height allows, never smaller than a finger needs; where even
+ * that does not fit, the panel scrolls.
+ */
 @Composable
-internal fun DtmfPanel(onDigit: (Char) -> Unit, onClose: () -> Unit) {
+internal fun DtmfPanel(onDigit: (Char) -> Unit, onClose: () -> Unit, sideways: Boolean) {
     val haptics = LocalHapticFeedback.current
     var typed by remember { mutableStateOf("") }
-    // With the phone on its side the screen is too low for the keys at their size, and far too
-    // wide for three in a row: they shrink, and the panel is no wider than a phone held upright.
-    val low = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() } < LowScreen
-    val keySize = if (low) 50.dp else 66.dp
-    Column(
-        (if (low) Modifier.widthIn(max = 420.dp) else Modifier)
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
-            // Solid: the controls underneath must not show between the keys.
-            .background(MaterialTheme.colorScheme.surfaceContainer)
-            // Swallow touches so they do not reach the controls underneath.
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = {})
-            .navigationBarsPadding()
-            .padding(horizontal = 28.dp, vertical = if (low) 6.dp else 16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                typed.takeLast(24),
-                modifier = Modifier.weight(1f),
-                color = Color.White,
-                fontSize = 24.sp,
-                maxLines = 1,
-                letterSpacing = 2.sp,
-            )
-            IconButton(onClick = onClose) {
-                Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = "收起键盘", tint = Color.White)
+    val density = LocalDensity.current
+    val insets = WindowInsets.safeDrawing
+    BoxWithConstraints {
+        val bars = with(density) { (insets.getTop(density) + insets.getBottom(density)).toDp() }
+        val keySize = if (sideways) sideKeySize(maxHeight - bars) else FullKey
+        Column(
+            (if (sideways) Modifier.fillMaxHeight() else Modifier.fillMaxWidth())
+                .clip(if (sideways) RoundedCornerShape(topEnd = 32.dp, bottomEnd = 32.dp) else RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
+                // Solid: the controls underneath must not show between the keys.
+                .background(MaterialTheme.colorScheme.surfaceContainer)
+                // Swallow touches so they do not reach the controls underneath.
+                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = {})
+                // On its side, as wide as the controls stand from the edge (after the system bars, as
+                // they do), the cut-out kept clear inside.
+                .then(if (sideways) Modifier.windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Start)).width(SidePaneWidth) else Modifier)
+                .windowInsetsPadding(insets.only(if (sideways) WindowInsetsSides.Vertical + WindowInsetsSides.Start else WindowInsetsSides.Bottom))
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = if (sideways) 20.dp else 28.dp, vertical = if (sideways) SidePadding else 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    typed.takeLast(24),
+                    modifier = Modifier.weight(1f),
+                    color = Color.White,
+                    fontSize = 24.sp,
+                    maxLines = 1,
+                    letterSpacing = 2.sp,
+                )
+                IconButton(onClick = onClose) {
+                    // It goes back the way it came.
+                    val icon = if (sideways) Icons.AutoMirrored.Rounded.KeyboardArrowLeft else Icons.Rounded.KeyboardArrowDown
+                    Icon(icon, contentDescription = "收起键盘", tint = Color.White)
+                }
             }
-        }
-        Spacer(Modifier.height(if (low) 0.dp else 8.dp))
-        dtmfKeys.chunked(3).forEach { row ->
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = if (low) 3.dp else 6.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-            ) {
-                row.forEach { digit ->
-                    Box(
-                        Modifier
-                            .size(keySize)
-                            .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.12f))
-                            .clickable {
-                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                typed += digit
-                                onDigit(digit)
-                            },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(digit.toString(), color = Color.White, fontSize = if (low) 22.sp else 26.sp, fontWeight = FontWeight.Medium)
+            if (!sideways) Spacer(Modifier.height(8.dp))
+            dtmfKeys.chunked(3).forEach { row ->
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = if (sideways) SideRowGap else 6.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                ) {
+                    row.forEach { digit ->
+                        Box(
+                            Modifier
+                                .size(keySize)
+                                .clip(CircleShape)
+                                .background(Color.White.copy(alpha = 0.12f))
+                                .clickable {
+                                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    typed += digit
+                                    onDigit(digit)
+                                },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(digit.toString(), color = Color.White, fontSize = if (keySize < FullKey) 22.sp else 26.sp, fontWeight = FontWeight.Medium)
+                        }
                     }
                 }
             }
+            if (!sideways) Spacer(Modifier.height(8.dp))
         }
-        Spacer(Modifier.height(if (low) 2.dp else 8.dp))
     }
 }
 
-/** Windows lower than this (a phone on its side) get the small keypad. */
-private val LowScreen = 480.dp
+/** The keys in the place of the controls: four rows of them, the row on top and the gaps in [height]. */
+private fun sideKeySize(height: Dp): Dp = ((height - HeaderHeight - SidePadding * 2) / 4 - SideRowGap * 2).coerceIn(MinKey, FullKey)
+
+private val FullKey = 66.dp
+
+/** What a finger needs. */
+private val MinKey = 48.dp
+private val HeaderHeight = 48.dp
+private val SidePadding = 8.dp
+private val SideRowGap = 4.dp
 
 /** Asks for the transfer target and whether to transfer blindly or after consulting. */
 @Composable

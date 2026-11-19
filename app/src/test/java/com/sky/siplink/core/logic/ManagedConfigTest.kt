@@ -1,6 +1,7 @@
 package com.sky.siplink.core.logic
 
 import com.sky.siplink.core.model.BannerPosition
+import com.sky.siplink.core.model.DockSide
 import com.sky.siplink.core.model.DndMode
 import com.sky.siplink.core.model.DtmfMode
 import com.sky.siplink.core.model.FeatureCodes
@@ -53,6 +54,9 @@ class ManagedConfigTest {
         callRecording = !current.callRecording,
         recordByDefault = !current.recordByDefault,
         recordingsKept = 100,
+        roomLimit = 10,
+        previewSide = DockSide.LEFT,
+        previewPlace = 0.5f,
     )
 
     /** The settings that stay the user's own, taken from [everythingChanged]. */
@@ -63,6 +67,8 @@ class ManagedConfigTest {
         callBannerPosition = everythingChanged.callBannerPosition,
         lockScreenPromptDeclined = everythingChanged.lockScreenPromptDeclined,
         recordingsKept = everythingChanged.recordingsKept,
+        previewSide = everythingChanged.previewSide,
+        previewPlace = everythingChanged.previewPlace,
     )
 
     /** The values of a data class in the order of its properties. */
@@ -130,6 +136,8 @@ class ManagedConfigTest {
             // Whether calls are recorded, and whether by default, is the administrator's.
             { it.copy(callRecording = !it.callRecording) },
             { it.copy(recordByDefault = !it.recordByDefault) },
+            // So is how many members the PBX takes from one phone at a time.
+            { it.copy(roomLimit = 10) },
         )
         locked.forEachIndexed { index, change ->
             val wanted = change(current)

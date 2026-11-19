@@ -56,6 +56,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sky.siplink.core.model.DirectoryContact
 import com.sky.siplink.engine
@@ -97,6 +99,13 @@ fun DirectoryScreen(onOpenSettings: () -> Unit) {
         if (current == null) return@LaunchedEffect
         delay(SEARCH_DEBOUNCE_MS)
         directory.search(current.id, query)
+    }
+    // The directory answers one search at a time, and the sheet that adds members to a conference
+    // room may have asked its own since this screen was last seen: back on screen, it asks again.
+    var seen by remember { mutableStateOf(false) }
+    LifecycleEventEffect(Lifecycle.Event.ON_START) {
+        if (seen && current != null) directory.search(current.id, query)
+        seen = true
     }
 
     Column(Modifier.fillMaxSize()) {

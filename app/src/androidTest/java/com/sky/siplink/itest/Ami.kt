@@ -58,6 +58,10 @@ class Ami(private val host: String, user: String, secret: String, port: Int = 50
         match: (Map<String, String>) -> Boolean = { true },
     ): Map<String, String> = awaitPacket(from, timeoutMs, "the AMI event $name") { it["Event"] == name && match(it) }
 
+    /** Every event [name] that arrived since [from] and matches, in order. */
+    fun events(name: String, from: Int, match: (Map<String, String>) -> Boolean = { true }): List<Map<String, String>> =
+        synchronized(lock) { packets.drop(from).filter { it["Event"] == name && match(it) } }
+
     /** True if a matching event arrives within [windowMs]; for asserting that something does not happen. */
     fun sees(name: String, from: Int, windowMs: Long, match: (Map<String, String>) -> Boolean = { true }): Boolean =
         try {

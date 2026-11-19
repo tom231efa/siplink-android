@@ -7,6 +7,7 @@ import com.sky.siplink.core.model.SupervisionMode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -145,5 +146,28 @@ class SupervisionTest : PbxTestBase() {
         awaitEnded()
         awaitNoCall()
         await("the app's leg to be gone") { pbxChannel(pbxLeg(APP)) == null }
+    }
+
+    /**
+     * A supervised call stays a call of its own (CallRules): it does not become a room, where the
+     * others would hear what it listens to. Its mode keys keep going to it alone, from the switch
+     * and from the keypad.
+     */
+    @Test
+    fun aSupervisedCallStaysOutOfTheRoom() {
+        register()
+        agentCall()
+        val pbxMark = pbx.mark()
+        supervise(FeatureDial.Action.WHISPER)
+        awaitConnected()
+        awaitSpying(pbxMark)
+        assertEquals("监听通话不能加入会议室", onMain { engine.calls.openRoom() })
+        assertNull(call()!!.room)
+
+        // A mode key typed on the keypad: the PBX barges in, and the app shows it.
+        val mark = phones.mark()
+        onMain { engine.calls.sendDtmf(SupervisionMode.BARGE.dtmf) }
+        assertEquals(SupervisionMode.BARGE, call()!!.supervision)
+        awaitPhoneHears(CUSTOMER, mark)
     }
 }

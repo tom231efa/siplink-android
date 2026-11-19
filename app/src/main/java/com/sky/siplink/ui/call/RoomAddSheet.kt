@@ -1,0 +1,293 @@
+@file:OptIn(ExperimentalLayoutApi::class)
+
+package com.sky.siplink.ui.call
+
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.InputChip
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sky.siplink.core.CallManager
+import com.sky.siplink.core.logic.Formatters
+import com.sky.siplink.core.logic.RoomRules
+import com.sky.siplink.core.model.RoomInfo
+import com.sky.siplink.core.model.ShortcutAction
+import com.sky.siplink.engine
+import com.sky.siplink.ui.components.AppBottomSheet
+import com.sky.siplink.ui.components.Avatar
+import com.sky.siplink.ui.components.ChoiceRow
+import com.sky.siplink.ui.components.FadingText
+import com.sky.siplink.ui.components.FieldText
+import kotlinx.coroutines.delay
+
+/** Someone who can be called into the room: by [name], at [target] (what is dialled). */
+private data class Candidate(val name: String, val target: String) {
+    val number: String get() = Formatters.userPart(target)
+}
+
+private enum class Source { RECENT, DIRECTORY, SHORTCUTS }
+
+/**
+ * Calls members into the room: numbers typed in, recent calls, the LDAP directory and the speed
+ * dial keys. Several are picked and called at once; the sheet stays open for more.
+ */
+@Composable
+internal fun RoomAddSheet(room: RoomInfo, calls: CallManager, onDismiss: () -> Unit) {
+    val engine = LocalContext.current.engine
+    val history by engine.history.entries.collectAsStateWithLifecycle()
+    val shortcuts by engine.shortcuts.shortcuts.collectAsStateWithLifecycle()
+    val directories by engine.directory.directories.collectAsStateWithLifecycle()
+    val found by engine.directory.state.collectAsStateWithLifecycle()
+    var typed by rememberSaveable { mutableStateOf("") }
+    var source by rememberSaveable { mutableStateOf(Source.RECENT) }
+    var message by remember { mutableStateOf<String?>(null) }
+    val picked = remember { mutableStateListOf<Candidate>() }
+
+    val directory = directories.firstOrNull { it.enabled }?.takeIf { engine.directory.isAvailable }
+    val speedDials = shortcuts.filter { it.action == ShortcutAction.SPEED_DIAL && it.number.isNotBlank() }
+    val sources = buildList {
+        add(Source.RECENT to "最近通话")
+        if (directory != null) add(Source.DIRECTORY to "通讯录")
+        if (speedDials.isNotEmpty()) add(Source.SHORTCUTS to "快捷键")
+    }
+    val shownSource = source.takeIf { chosen -> sources.any { it.first == chosen } } ?: Source.RECENT
+    val query = typed.trim()
+
+    LaunchedEffect(query, shownSource, directory) {
+        if (shownSource != Source.DIRECTORY || directory == null) return@LaunchedEffect
+        delay(SEARCH_DEBOUNCE_MS)
+        engine.directory.search(directory.id, query)
+    }
+    LaunchedEffect(message) {
+        if (message != null) {
+            delay(MESSAGE_MS)
+            message = null
+        }
+    }
+
+    val inRoom = room.members.filter { it.taken }.mapTo(HashSet()) { Formatters.userPart(it.address) }
+    val candidates = when (shownSource) {
+        Source.RECENT -> history.distinctBy { Formatters.userPart(it.address) }
+            .filter { it.name.contains(query, true) || it.address.contains(query, true) }
+            .map { Candidate(it.name, it.address) }
+        Source.DIRECTORY -> found.contacts.takeIf { found.directory == directory?.id }.orEmpty()
+            .map { Candidate(it.name, it.callTarget) }
+        Source.SHORTCUTS -> speedDials
+            .filter { it.label.contains(query, true) || it.number.contains(query, true) }
+            .map { Candidate(it.label, it.number) }
+    }
+
+    fun toggle(candidate: Candidate) {
+        val index = picked.indexOfFirst { it.number == candidate.number }
+        if (index >= 0) picked.removeAt(index) else picked += candidate
+    }
+
+    fun addTyped() {
+        if (query.isEmpty()) return
+        if (picked.none { it.number == Formatters.userPart(query) }) picked += Candidate(query, query)
+        typed = ""
+    }
+
+    val head: @Composable () -> Unit = {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("添加成员", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+            Text(
+                RoomRules.count(room.present, room.limit),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Spacer(Modifier.height(12.dp))
+        OutlinedTextField(
+            value = typed,
+            onValueChange = { typed = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp),
+            label = { FieldText("号码或姓名") },
+            singleLine = true,
+            shape = MaterialTheme.shapes.medium,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { addTyped() }),
+            trailingIcon = {
+                IconButton(onClick = ::addTyped, enabled = query.isNotEmpty()) {
+                    Icon(Icons.Rounded.Add, contentDescription = "添加号码")
+                }
+            },
+        )
+        AnimatedVisibility(picked.isNotEmpty()) {
+            FlowRow(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                picked.forEach { candidate ->
+                    InputChip(
+                        selected = true,
+                        onClick = { picked.remove(candidate) },
+                        label = { FadingText(candidate.name, modifier = Modifier.widthIn(max = 160.dp)) },
+                        trailingIcon = { Icon(Icons.Rounded.Close, contentDescription = "移除 ${candidate.name}", modifier = Modifier.size(18.dp)) },
+                    )
+                }
+            }
+        }
+        if (sources.size > 1) {
+            ChoiceRow(
+                options = sources,
+                selected = shownSource,
+                onSelect = { source = it },
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+            )
+        }
+    }
+    val list: @Composable (Modifier) -> Unit = { modifier ->
+        LazyColumn(modifier, contentPadding = PaddingValues(vertical = 4.dp)) {
+            items(candidates, key = { "${it.target}|${it.name}" }, contentType = { "candidate" }) { candidate ->
+                CandidateRow(
+                    candidate = candidate,
+                    inRoom = candidate.number in inRoom,
+                    picked = picked.any { it.number == candidate.number },
+                    onToggle = { toggle(candidate) },
+                )
+            }
+        }
+    }
+    val foot: @Composable () -> Unit = {
+        AnimatedVisibility(message != null) {
+            Text(
+                message.orEmpty(),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
+            )
+        }
+        Button(
+            onClick = {
+                val error = calls.inviteToRoom(picked.map { it.target })
+                if (error == null) picked.clear() else message = error
+            },
+            enabled = picked.isNotEmpty(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 12.dp),
+        ) {
+            Text(if (picked.isEmpty()) "呼叫" else "呼叫（${picked.size}）")
+        }
+    }
+
+    AppBottomSheet(onDismiss) {
+        BoxWithConstraints(
+            Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(SHEET_HEIGHT),
+        ) {
+            if (maxHeight < TWO_PANES_BELOW) {
+                // The phone on its side: too low for the list under the field, so it stands beside it.
+                Row(Modifier.fillMaxSize()) {
+                    Column(
+                        Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .verticalScroll(rememberScrollState()),
+                    ) {
+                        head()
+                        foot()
+                    }
+                    list(Modifier.weight(1f).fillMaxHeight())
+                }
+            } else {
+                Column(Modifier.fillMaxSize()) {
+                    head()
+                    list(Modifier.weight(1f))
+                    foot()
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CandidateRow(candidate: Candidate, inRoom: Boolean, picked: Boolean, onToggle: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 60.dp)
+            .clickable(enabled = !inRoom, onClick = onToggle)
+            .padding(start = 24.dp, end = 12.dp, top = 6.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Avatar(candidate.name, size = 40.dp)
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            FadingText(candidate.name, style = MaterialTheme.typography.titleMedium)
+            FadingText(
+                if (inRoom) "${candidate.number} · 已在会议室中" else candidate.number,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Checkbox(checked = picked || inRoom, onCheckedChange = { onToggle() }, enabled = !inRoom)
+    }
+}
+
+/** Gathers the letters of a quick typist into one question to the directory. */
+private const val SEARCH_DEBOUNCE_MS = 250L
+private const val MESSAGE_MS = 3_500L
+
+/** Tall enough for a list, and the room stays in sight above it. */
+private const val SHEET_HEIGHT = 0.86f
+
+/** A sheet lower than this has its list beside the field rather than under it. */
+private val TWO_PANES_BELOW = 420.dp

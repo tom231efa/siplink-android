@@ -16,7 +16,9 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
@@ -47,10 +49,13 @@ import androidx.compose.material.icons.rounded.CallEnd
 import androidx.compose.material.icons.rounded.Campaign
 import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.SwapCalls
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -61,17 +66,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sky.siplink.core.CallManager
+import com.sky.siplink.core.logic.CallRules
 import com.sky.siplink.core.logic.Formatters
 import com.sky.siplink.core.model.CallInfo
 import com.sky.siplink.core.model.CallPhase
@@ -91,7 +102,13 @@ internal enum class Controls { INCOMING, ACTIVE, ENDED }
  *   may let it shine through; without the blur it covers it whole
  */
 @Composable
-fun CallScreen(onAnswer: (video: Boolean) -> Unit, onFinished: () -> Unit, glass: Boolean = false) {
+fun CallScreen(
+    onAnswer: (video: Boolean) -> Unit,
+    onFinished: () -> Unit,
+    glass: Boolean = false,
+    endRoomAsked: Boolean = false,
+    onEndRoomAsked: () -> Unit = {},
+) {
     val context = LocalContext.current
     val calls = context.engine.calls
     val live by calls.call.collectAsStateWithLifecycle()
@@ -100,9 +117,13 @@ fun CallScreen(onAnswer: (video: Boolean) -> Unit, onFinished: () -> Unit, glass
     var keypadOpen by remember { mutableStateOf(false) }
     var transferOpen by remember { mutableStateOf(false) }
     var shortcutsOpen by remember { mutableStateOf(false) }
+    var addMembersOpen by remember { mutableStateOf(false) }
+    var confirmRoom by remember { mutableStateOf(false) }
+    var confirmRoomEnd by remember { mutableStateOf(false) }
     var notice by remember { mutableStateOf<String?>(null) }
-    // Hidden by tapping the video, so that the picture is seen whole.
-    var chromeHidden by remember { mutableStateOf(false) }
+    // Over video the controls go by themselves, and with a tap on the picture.
+    val controls = remember { ControlsVisibility() }
+    val stage = remember { VideoStageState() }
 
     // The camera permission is asked for where video is first wanted. Whatever the answer, the
     // action goes on: without the camera the video is only received (the call manager decides).
@@ -140,74 +161,112 @@ fun CallScreen(onAnswer: (video: Boolean) -> Unit, onFinished: () -> Unit, glass
 
     val info = shown
     val video = info?.video?.takeIf { info.phase == CallPhase.CONNECTED }
-    // The record button stands in the top right corner; over video, in the row of the camera buttons.
-    val recordable = info != null && info.recordable && (info.phase == CallPhase.CONNECTED || info.phase == CallPhase.HELD)
+    val established = info != null && (info.phase == CallPhase.CONNECTED || info.phase == CallPhase.HELD)
+    // The record button stands in the top end corner, ahead of the buttons of a video call.
+    val recordable = established && info.recordable
     val record: @Composable () -> Unit = { RecordControl(info?.recordingSince, onToggle = calls::toggleRecording) }
-    LaunchedEffect(video == null) { chromeHidden = false }
+    val room = info?.room?.takeIf { info.phase != CallPhase.ENDED }
+    // What the user chose for a video (whole or filled, swapped) ends with it.
+    LaunchedEffect(video == null) { if (video == null) stage.reset() }
+    // The hang up key of the notification asks here before a room ends for everyone.
+    LaunchedEffect(endRoomAsked) {
+        if (!endRoomAsked) return@LaunchedEffect
+        onEndRoomAsked()
+        val present = calls.call.value?.room?.present ?: return@LaunchedEffect
+        if (CallRules.confirmRoomEnd(present)) confirmRoomEnd = true else calls.hangUp()
+    }
+    // From a video call the room is opened once the user knows that the video ends.
+    val openRoom: () -> Unit = {
+        if (info?.video != null) confirmRoom = true else calls.openRoom()?.let { notice = it }
+    }
+    AutoHideControls(
+        controls,
+        canHide = video?.received != null && !keypadOpen && !transferOpen && !shortcutsOpen && notice == null &&
+            info.waitingCall == null && !info.videoOffer && transferLabel(info) == null && !touchExplorationOn(),
+    )
     Box(
         Modifier
             .fillMaxSize()
-            .graphicsLayer { alpha = presence.value },
+            .graphicsLayer { alpha = presence.value }
+            .pictureTaps(controls, enabled = video != null),
     ) {
         CallBackground(ringingIn = info?.phase == CallPhase.INCOMING, glass = glass)
-        if (video != null) {
-            VideoStage(
-                video = video,
-                chrome = !chromeHidden,
-                onTap = { chromeHidden = !chromeHidden },
-                onSwitchCamera = calls::switchCamera,
-                onToggleCamera = { withCamera { calls.toggleCamera()?.let { notice = it } } },
-                record = record.takeIf { recordable },
-            )
-        }
+        if (video != null) VideoStage(video = video, stage = stage, chrome = !controls.hidden)
         if (info != null) {
-            val controls = when (info.phase) {
+            val mode = when (info.phase) {
                 CallPhase.INCOMING -> Controls.INCOMING
                 CallPhase.ENDED -> Controls.ENDED
                 else -> Controls.ACTIVE
             }
-            AnimatedVisibility(!chromeHidden || video == null, enter = fadeIn(tween(180)), exit = fadeOut(tween(160))) {
-                CallContent(
-                    info = info,
-                    controls = controls,
-                    calls = calls,
-                    notice = notice,
-                    videoMode = video != null,
-                    recordRoom = recordable && video == null,
-                    // The call activity asks for the microphone and, to answer with video, the camera.
-                    onAnswer = onAnswer,
-                    onToggleVideo = {
-                        val toggle = { calls.toggleVideo()?.let { notice = it } }
-                        // Ending video needs no camera.
-                        if (info.video != null) toggle() else withCamera { toggle() }
-                    },
-                    onAcceptVideo = { withCamera { calls.answerVideoRequest(true) } },
-                    onOpenKeypad = { keypadOpen = true },
-                    onOpenTransfer = { transferOpen = true },
-                    onOpenShortcuts = { shortcutsOpen = true },
-                    onNotice = { notice = it },
-                )
+            CompositionLocalProvider(LocalControlsVisibility provides controls) {
+                AnimatedVisibility(!controls.hidden || video == null, enter = fadeIn(tween(180)), exit = fadeOut(tween(160))) {
+                    if (room != null) {
+                        RoomContent(
+                            info, room, calls, notice,
+                            onAddMembers = { addMembersOpen = true },
+                            onNotice = { notice = it },
+                            confirmEnd = confirmRoomEnd,
+                            onConfirmEnd = { confirmRoomEnd = it },
+                        )
+                    } else {
+                        CallContent(
+                            info = info,
+                            controls = mode,
+                            calls = calls,
+                            notice = notice,
+                            videoMode = video != null,
+                            topBar = {
+                                CallTopBar(
+                                    roomButton = established && mode == Controls.ACTIVE,
+                                    onOpenRoom = openRoom,
+                                    record = record.takeIf { recordable },
+                                    videoButtons = video?.let { shownVideo ->
+                                        {
+                                            VideoButtons(
+                                                shownVideo,
+                                                stage,
+                                                onSwitchCamera = calls::switchCamera,
+                                                onToggleCamera = { withCamera { calls.toggleCamera()?.let { notice = it } } },
+                                            )
+                                        }
+                                    },
+                                    onPlaced = { stage.topRowBottom = it },
+                                )
+                            },
+                            onControlsPlaced = { stage.controls = it },
+                            // The call activity asks for the microphone and, to answer with video, the camera.
+                            onAnswer = onAnswer,
+                            onToggleVideo = {
+                                val toggle = { calls.toggleVideo()?.let { notice = it } }
+                                // Ending video needs no camera.
+                                if (info.video != null) toggle() else withCamera { toggle() }
+                            },
+                            onAcceptVideo = { withCamera { calls.answerVideoRequest(true) } },
+                            onOpenKeypad = { keypadOpen = true },
+                            onOpenTransfer = { transferOpen = true },
+                            onOpenShortcuts = { shortcutsOpen = true },
+                            onOpenRoom = openRoom,
+                            onNotice = { notice = it },
+                        )
+                    }
+                }
             }
+            // The keypad takes the place of the controls, under the name upright and beside it with
+            // the phone on its side: the name, the notices, the top bar and the pictures stay in sight.
+            val sideways = LocalWindowInfo.current.containerSize.let { it.width > it.height }
             AnimatedVisibility(
-                visible = recordable && video == null,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .systemBarsPadding()
-                    .padding(top = 8.dp, end = 16.dp),
-                enter = fadeIn(tween(180)),
-                exit = fadeOut(tween(140)),
+                visible = keypadOpen && mode == Controls.ACTIVE,
+                modifier = Modifier.align(if (sideways) Alignment.CenterStart else Alignment.BottomCenter),
+                enter = if (sideways) {
+                    slideInHorizontally(spring(dampingRatio = 0.85f, stiffness = 300f)) { -it } + fadeIn()
+                } else {
+                    slideInVertically(spring(dampingRatio = 0.85f, stiffness = 300f)) { it } + fadeIn()
+                },
+                exit = if (sideways) slideOutHorizontally(tween(220)) { -it } + fadeOut() else slideOutVertically(tween(220)) { it } + fadeOut(),
             ) {
-                record()
+                DtmfPanel(onDigit = calls::sendDtmf, onClose = { keypadOpen = false }, sideways = sideways)
             }
-            AnimatedVisibility(
-                visible = keypadOpen && controls == Controls.ACTIVE,
-                modifier = Modifier.align(Alignment.BottomCenter),
-                enter = slideInVertically(spring(dampingRatio = 0.85f, stiffness = 300f)) { it } + fadeIn(),
-                exit = slideOutVertically(tween(220)) { it } + fadeOut(),
-            ) {
-                DtmfPanel(onDigit = calls::sendDtmf, onClose = { keypadOpen = false })
-            }
-            if (transferOpen && controls == Controls.ACTIVE) {
+            if (transferOpen && mode == Controls.ACTIVE) {
                 TransferSheet(
                     canConsult = info.heldCall == null && info.waitingCall == null,
                     onDismiss = { transferOpen = false },
@@ -221,8 +280,25 @@ fun CallScreen(onAnswer: (video: Boolean) -> Unit, onFinished: () -> Unit, glass
                     },
                 )
             }
-            if (shortcutsOpen && controls == Controls.ACTIVE) {
+            if (shortcutsOpen && mode == Controls.ACTIVE) {
                 ShortcutsSheet(onDismiss = { shortcutsOpen = false }, onNotice = { notice = it })
+            }
+            if (addMembersOpen && room != null) {
+                RoomAddSheet(room, calls, onDismiss = { addMembersOpen = false })
+            }
+            if (confirmRoom) {
+                AlertDialog(
+                    onDismissRequest = { confirmRoom = false },
+                    title = { Text("开启会议室？") },
+                    text = { Text("会议室仅支持语音，视频将关闭。") },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            confirmRoom = false
+                            calls.openRoom()?.let { notice = it }
+                        }) { Text("开启") }
+                    },
+                    dismissButton = { TextButton(onClick = { confirmRoom = false }) { Text("取消") } },
+                )
             }
         }
     }
@@ -270,22 +346,33 @@ private fun CallContent(
     calls: CallManager,
     notice: String?,
     videoMode: Boolean,
-    recordRoom: Boolean,
+    topBar: @Composable () -> Unit,
+    onControlsPlaced: (Rect) -> Unit,
     onAnswer: (video: Boolean) -> Unit,
     onToggleVideo: () -> Unit,
     onAcceptVideo: () -> Unit,
     onOpenKeypad: () -> Unit,
     onOpenTransfer: () -> Unit,
     onOpenShortcuts: () -> Unit,
+    onOpenRoom: () -> Unit,
     onNotice: (String) -> Unit,
 ) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
+        val wide = maxWidth > maxHeight
+        // A phone on its side is too low for the controls and the avatar as they are upright: they close up.
+        val compact = wide && maxHeight < CompactBelow
         // The in-call controls take two rows, so the avatar shrinks on short screens.
         val roomy = maxHeight >= 760.dp && controls != Controls.ACTIVE || maxHeight >= 860.dp
-        val ringSize = if (roomy) 224.dp else 148.dp
-        val avatarSize = if (roomy) 120.dp else 84.dp
-        // Below the record button in the top right corner, where it stands.
-        val top = if (recordRoom) 56.dp else 0.dp
+        val ringSize = when {
+            roomy -> 224.dp
+            compact -> 104.dp
+            else -> 148.dp
+        }
+        val avatarSize = when {
+            roomy -> 120.dp
+            compact -> 60.dp
+            else -> 84.dp
+        }
         val controlsArea: @Composable (Modifier) -> Unit = { modifier ->
             AnimatedContent(
                 targetState = controls,
@@ -297,25 +384,29 @@ private fun CallContent(
             ) { mode ->
                 when (mode) {
                     Controls.INCOMING -> IncomingControls(videoOffered = info.videoOffer, onAnswer = onAnswer, onDecline = calls::decline)
-                    Controls.ACTIVE -> ActiveControls(info, calls, onOpenKeypad, onOpenTransfer, onOpenShortcuts, onToggleVideo, onNotice)
+                    Controls.ACTIVE -> ActiveControls(info, calls, onOpenKeypad, onOpenTransfer, onOpenShortcuts, onToggleVideo, onOpenRoom, onNotice, compact)
                     Controls.ENDED -> Spacer(Modifier.fillMaxWidth())
                 }
             }
         }
 
-        if (maxWidth > maxHeight) {
+        // The top bar is part of the flow, so that nothing below it can run under its buttons,
+        // whatever the size of the screen or of the font.
+        if (wide) {
             // The phone lies on its side: too low for the controls under the name, so they stand
-            // beside it. The far corner stays free for the picture of the own camera.
+            // beside it, from top to bottom, and the top bar over the name only. The far corner
+            // stays free for the picture of the own camera.
             Row(
                 Modifier
                     .fillMaxSize()
-                    .systemBarsPadding()
-                    .padding(horizontal = 24.dp),
+                    .systemBarsPadding(),
             ) {
                 Box(
                     Modifier
+                        .padding(start = 24.dp)
                         .width(SideControlsWidth)
                         .fillMaxHeight()
+                        .onGloballyPositioned { onControlsPlaced(it.boundsInRoot()) }
                         .verticalScroll(rememberScrollState()),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -324,30 +415,113 @@ private fun CallContent(
                 Column(
                     Modifier
                         .weight(1f)
-                        .fillMaxHeight()
-                        .padding(start = 24.dp, end = if (videoMode) SideCornerWidth else 0.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
+                        .fillMaxHeight(),
                 ) {
-                    Spacer(Modifier.height(maxOf(8.dp, top)))
-                    CallHead(info, calls, notice, videoMode, avatarSize, ringSize, onAcceptVideo)
-                    if (!videoMode) Spacer(Modifier.weight(0.6f))
+                    topBar()
+                    // With the avatar, what waits beside the call (banners, a notice) may not fit
+                    // under the name: it scrolls. Not over video: a scroll there would take the
+                    // touches of the small picture under it.
+                    BoxWithConstraints(
+                        Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                    ) {
+                        Column(
+                            Modifier
+                                .then(if (videoMode) Modifier else Modifier.verticalScroll(rememberScrollState()))
+                                .heightIn(min = maxHeight)
+                                .fillMaxWidth()
+                                .padding(start = 24.dp, end = 24.dp + if (videoMode) SideCornerWidth else 0.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Spacer(Modifier.height(8.dp))
+                            CallHead(info, calls, notice, videoMode, avatarSize, ringSize, onAcceptVideo)
+                            if (!videoMode) Spacer(Modifier.weight(0.6f))
+                        }
+                    }
                 }
             }
         } else {
             Column(
-                modifier = Modifier
+                Modifier
                     .fillMaxSize()
-                    .systemBarsPadding()
-                    .padding(horizontal = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
+                    .systemBarsPadding(),
             ) {
-                Spacer(Modifier.height(maxOf(16.dp, top)))
-                CallHead(info, calls, notice, videoMode, avatarSize, ringSize, onAcceptVideo)
-                Spacer(Modifier.weight(1f))
-                controlsArea(Modifier.heightIn(min = 250.dp))
-                Spacer(Modifier.height(20.dp))
+                topBar()
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Spacer(Modifier.height(16.dp))
+                    CallHead(info, calls, notice, videoMode, avatarSize, ringSize, onAcceptVideo)
+                    Spacer(Modifier.weight(1f))
+                    controlsArea(
+                        Modifier
+                            .heightIn(min = 250.dp)
+                            .onGloballyPositioned { onControlsPlaced(it.boundsInRoot()) },
+                    )
+                    Spacer(Modifier.height(20.dp))
+                }
             }
         }
+    }
+}
+
+/**
+ * The buttons at the top of a call that is up: the conference room at the start, recording at
+ * the end, and over video the buttons of the picture after it ([videoButtons]), all in one row.
+ *
+ * @param onPlaced where the row ends, in pixels from the top of the window (the small picture of a video call stays under it)
+ */
+@Composable
+private fun CallTopBar(
+    roomButton: Boolean,
+    onOpenRoom: () -> Unit,
+    record: (@Composable () -> Unit)?,
+    videoButtons: (@Composable () -> Unit)?,
+    onPlaced: (Float) -> Unit,
+) {
+    AnimatedVisibility(
+        visible = roomButton || record != null || videoButtons != null,
+        enter = expandVertically(tween(220)) + fadeIn(tween(180)),
+        exit = shrinkVertically(tween(200)) + fadeOut(tween(140)),
+    ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .onGloballyPositioned { onPlaced(it.boundsInRoot().bottom) }
+                .padding(start = 16.dp, end = 16.dp, top = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // A long label (a large font) gives way to the buttons and fades.
+            if (roomButton) RoomButton(onOpenRoom, Modifier.weight(1f, fill = false)) else Spacer(Modifier.weight(1f))
+            Spacer(Modifier.width(12.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                record?.invoke()
+                videoButtons?.invoke()
+            }
+        }
+    }
+}
+
+/** Opens the conference room with the call that is up. */
+@Composable
+private fun RoomButton(onClick: () -> Unit, modifier: Modifier) {
+    Row(
+        modifier
+            .heightIn(min = 40.dp)
+            .clip(CircleShape)
+            .background(Color.Black.copy(alpha = 0.32f))
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(start = 12.dp, end = 14.dp, top = 8.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Rounded.Groups, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(6.dp))
+        FadingText("会议室", style = MaterialTheme.typography.labelLarge, color = Color.White, modifier = Modifier.weight(1f, fill = false))
     }
 }
 
@@ -367,7 +541,6 @@ private fun ColumnScope.CallHead(
         // A long line name gives way to the chips beside it.
         if (info.accountLabel.isNotEmpty() && !videoMode) Chip(text = info.accountLabel, modifier = Modifier.weight(1f, fill = false))
         if (info.intercom) Chip(text = "对讲", icon = Icons.Rounded.Campaign, highlighted = true)
-        if (info.conference) Chip(text = "三方通话", icon = Icons.Rounded.Groups, highlighted = true)
     }
 
     AnimatedVisibility(
@@ -424,8 +597,14 @@ private fun ColumnScope.CallHead(
 }
 
 /** With the phone on its side: the width of the controls, and what the own picture needs of the far corner. */
-private val SideControlsWidth = 380.dp
+internal val SideControlsWidth = 380.dp
 private val SideCornerWidth = 172.dp
+
+/** The controls with the margin before them: what the keypad takes the place of with the phone on its side. */
+internal val SidePaneWidth = SideControlsWidth + 24.dp
+
+/** A screen on its side lower than this has the controls closed up. */
+private val CompactBelow = 420.dp
 
 private fun transferLabel(info: CallInfo): String? = when (info.transfer) {
     TransferStatus.IN_PROGRESS -> "正在转接…"
@@ -435,7 +614,7 @@ private fun transferLabel(info: CallInfo): String? = when (info.transfer) {
 }
 
 @Composable
-private fun NoticeLine(text: String?) {
+internal fun NoticeLine(text: String?) {
     AnimatedVisibility(text != null, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
         Text(
             text.orEmpty(),
@@ -499,17 +678,13 @@ private fun HeldCallBanner(info: CallInfo, onSwap: () -> Unit) {
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.large)
             .background(Color.White.copy(alpha = 0.12f))
-            .clickable(enabled = !info.conference, onClick = onSwap)
+            .clickable(onClick = onSwap)
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
             Text(
-                when {
-                    info.conference -> "三方通话成员"
-                    info.consulting -> "等待转接（保留中）"
-                    else -> "保留中"
-                },
+                if (info.consulting) "等待转接（保留中）" else "保留中",
                 style = MaterialTheme.typography.labelMedium,
                 color = Color.White.copy(alpha = 0.7f),
             )
@@ -519,9 +694,7 @@ private fun HeldCallBanner(info: CallInfo, onSwap: () -> Unit) {
                 color = Color.White,
             )
         }
-        if (!info.conference) {
-            Icon(Icons.Rounded.SwapCalls, contentDescription = "切换通话", tint = Color.White)
-        }
+        Icon(Icons.Rounded.SwapCalls, contentDescription = "切换通话", tint = Color.White)
     }
 }
 
@@ -570,7 +743,7 @@ private fun StatusLine(info: CallInfo) {
 }
 
 @Composable
-private fun callTimer(connectedAt: Long?): String {
+internal fun callTimer(connectedAt: Long?): String {
     if (connectedAt == null) return "已接通"
     val now by produceState(SystemClock.elapsedRealtime(), connectedAt) {
         while (true) {

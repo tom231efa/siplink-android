@@ -168,6 +168,7 @@ data class RemoteDocument(
                 ipv6 = fields.bool("ipv6", d.ipv6),
                 callRecording = fields.bool("callRecording", d.callRecording),
                 recordByDefault = fields.bool("recordByDefault", d.recordByDefault),
+                roomLimit = RoomRules.limitOf(fields.int("roomLimit", d.roomLimit)),
             )
         }
 

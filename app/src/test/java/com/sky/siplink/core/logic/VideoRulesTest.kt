@@ -181,4 +181,16 @@ class VideoRulesTest {
         assertEquals(VideoRules.Update.ACCEPT, update(offersVideo = false, allowed = false))
         assertEquals(VideoRules.Update.ACCEPT, update(hasVideo = true))
     }
+
+    @Test
+    fun `the pictures swap only while both are there`() {
+        assertFalse("No picture of the other side yet", VideoRules.canSwap(sending = true, received = false))
+        assertFalse("Own camera off", VideoRules.canSwap(sending = false, received = true))
+        assertTrue(VideoRules.canSwap(sending = true, received = true))
+        assertTrue(VideoRules.swapped(chosen = true, sending = true, received = true))
+        assertFalse(VideoRules.swapped(chosen = false, sending = true, received = true))
+        // The camera goes off, or the other side stops its video: back to normal.
+        assertFalse(VideoRules.swapped(chosen = true, sending = false, received = true))
+        assertFalse(VideoRules.swapped(chosen = true, sending = true, received = false))
+    }
 }

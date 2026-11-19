@@ -9,7 +9,7 @@ import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** Blind transfer, attended transfer, parking and three-way merge. */
+/** Blind transfer, attended transfer, parking, and merging two calls into a conference room. */
 @RunWith(AndroidJUnit4::class)
 class TransferParkTest : PbxTestBase() {
     @Test
@@ -96,8 +96,8 @@ class TransferParkTest : PbxTestBase() {
 
         // Muted while talking to the second party: that stays so in the three-way call.
         onMain { engine.calls.toggleMute() }
-        ok(onMain { engine.calls.merge() })
-        assertTrue(awaitCall("the three-way call") { it.conference }.muted)
+        ok(onMain { engine.calls.openRoom() })
+        assertTrue(awaitCall("the room of three") { it.room?.present == 2 }.muted)
         // Muting inside the three-way call must leave the mix alone as well.
         awaitBridgedWithApp()
         onMain { engine.calls.toggleMute() }

@@ -2,7 +2,8 @@
 # Runs the integration tests of app/src/androidTest on the connected emulator or device, against
 # the test environment started by ./up.sh.
 #
-#   ./run-tests.sh                                          all tests (except PbxReferTest, see there)
+#   ./run-tests.sh                                          all tests (except PbxReferTest, see there,
+#                                                           and ConferenceLoadTest, a measurement run by hand)
 #   ./run-tests.sh com.sky.siplink.itest.BasicCallTest      one class
 #   ./run-tests.sh 'com.sky.siplink.itest.BasicCallTest#outgoingCallSendsDtmf'
 #   SKIP_INSTALL=1 ./run-tests.sh ...                       reuse the APKs already installed
@@ -113,7 +114,8 @@ failed=()
 for class in RegistrationTest BasicCallTest TransferParkTest SupervisionTest CallHandlingTest \
   CallerIdTest LineRoutingTest CodecTest DirectoryTest DirectoryTrustTest ShortcutStoreTest DirectoryCacheTest \
   VideoCallTest VideoNoCameraTest ManagedLockTest ManagedScreensTest RemoteConfigTest \
-  AdvancedSettingsTest SdkDefaultsTest AccountFormTest ReleaseJsonTest UpdateCheckTest CallRecordingTest IncomingSlideTest; do
+  AdvancedSettingsTest SdkDefaultsTest AccountFormTest ReleaseJsonTest UpdateCheckTest CallRecordingTest IncomingSlideTest \
+  ConferenceTest ConferencePacingTest VideoControlsTest VideoWindowTest CallConflictTest LandscapeScreensTest; do
   echo "=== $class" >&2
   run -e class "com.sky.siplink.itest.$class" || failed+=("$class")
 done

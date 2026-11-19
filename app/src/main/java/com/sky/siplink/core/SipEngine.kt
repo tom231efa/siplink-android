@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import com.sky.siplink.BuildConfig
+import com.sky.siplink.core.logic.RoomRules
 import com.sky.siplink.core.logic.UserAgent
 import com.sky.siplink.core.model.DtmfMode
 import com.sky.siplink.core.model.Settings
@@ -145,7 +146,7 @@ class SipEngine(context: Context) {
         tls.applySettings(settings.current)
         accounts = AccountManager(core, lock)
         recordings = RecordingStore(File(appContext.filesDir, RecordingStore.DIRECTORY)) { settings.current.recordingsKept }
-        calls = CallManager(core, settings, accounts, names, recordings)
+        calls = CallManager(core, settings, accounts, names, recordings, RoomMonitor(appContext))
         history = HistoryManager(core, names) { settings.current.features }
         shortcuts = ShortcutManager(File(appContext.filesDir, SHORTCUTS_FILE), lock)
         accounts.onEdited = ::onAccountsEdited
@@ -236,10 +237,10 @@ class SipEngine(context: Context) {
         core.autoIterateBackgroundSchedule = BACKGROUND_ITERATE_MS
         core.isKeepAliveEnabled = true
 
-        // Two calls are shown to the user (current + held or waiting); the extra room is for the
-        // short overlaps while the PBX rearranges calls (REFER, replaces). Video follows the
+        // The calls of a conference room and one waiting next to it, with room for the short
+        // overlaps while the PBX rearranges calls (RoomRules.MAX_CALLS). Video follows the
         // settings, see CallVideoSupport.configure.
-        core.maxCalls = MAX_CALLS
+        core.maxCalls = RoomRules.MAX_CALLS
 
         // CallManager ends transferred calls itself: a parked call has to stay up until the PBX
         // has announced the parking slot, which the core's automatic hang-up would cut off.
@@ -271,7 +272,6 @@ class SipEngine(context: Context) {
         const val RE_REGISTER_DELAY_MS = 1_500L
         const val CONFIG_FILE = "linphonerc"
         const val SHORTCUTS_FILE = "shortcuts.csv"
-        const val MAX_CALLS = 4
         const val BACKGROUND_ITERATE_MS = 100
 
         /** liblinphone's LC_SIP_TRANSPORT_RANDOM. */

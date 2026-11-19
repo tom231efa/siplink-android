@@ -17,7 +17,8 @@ object ManagedConfig {
     /**
      * What a settings change made on the phone comes to while the configuration is managed. The
      * user's own settings are taken from [wanted]: the do not disturb switch (not who keeps it),
-     * the appearance, the answer to the lock screen question, and how many recordings are kept.
+     * the appearance, the answer to the lock screen question, how many recordings are kept, and
+     * where the small picture of a video call stands.
      * Everything else stays as it is in [current].
      *
      * The change was taken in full when the result equals [wanted].
@@ -29,6 +30,8 @@ object ManagedConfig {
         callBannerPosition = wanted.callBannerPosition,
         lockScreenPromptDeclined = wanted.lockScreenPromptDeclined,
         recordingsKept = wanted.recordingsKept,
+        previewSide = wanted.previewSide,
+        previewPlace = wanted.previewPlace,
     )
 
     /**

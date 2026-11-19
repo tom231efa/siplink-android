@@ -43,6 +43,9 @@ class CallActivity : ComponentActivity() {
      * older, and stops when the user saves battery; the screen then covers what is behind whole.
      */
     private var blurred by mutableStateOf(false)
+
+    /** The hang up key of a room's notification was pressed: the call screen asks before the room ends. */
+    private var endRoomAsked by mutableStateOf(false)
     private val onBlurChanged = Consumer<Boolean> { blurred = it }
 
     /** Answering with video waits for the permissions; [answerWithVideo] remembers which way it was. */
@@ -74,7 +77,13 @@ class CallActivity : ComponentActivity() {
         handleIntent(intent)
         setContent {
             SipLinkTheme(themeMode = ThemeMode.DARK, dynamicColor = false) {
-                CallScreen(onAnswer = ::answer, onFinished = ::finishAndRemoveTask, glass = blurred)
+                CallScreen(
+                    onAnswer = ::answer,
+                    onFinished = ::finishAndRemoveTask,
+                    glass = blurred,
+                    endRoomAsked = endRoomAsked,
+                    onEndRoomAsked = { endRoomAsked = false },
+                )
             }
         }
         lifecycleScope.launch {
@@ -121,10 +130,17 @@ class CallActivity : ComponentActivity() {
     }
 
     private fun handleIntent(intent: Intent?) {
-        if (intent?.action == ACTION_ANSWER) {
-            intent.action = null
-            // From the notification: audio-only, the camera is only started from the call screen.
-            answer(video = false)
+        when (intent?.action) {
+            ACTION_ANSWER -> {
+                intent.action = null
+                // From the notification: audio-only, the camera is only started from the call screen.
+                answer(video = false)
+            }
+            // The hang up key of the notification of a room: the call screen asks first.
+            ACTION_END_ROOM -> {
+                intent.action = null
+                endRoomAsked = true
+            }
         }
     }
 
@@ -164,6 +180,7 @@ class CallActivity : ComponentActivity() {
 
     companion object {
         const val ACTION_ANSWER = "com.sky.siplink.action.ANSWER"
+        const val ACTION_END_ROOM = "com.sky.siplink.action.END_ROOM"
         private const val PROXIMITY_TAG = "siplink:proximity"
         private const val MAX_PROXIMITY_HOLD_MS = 4 * 60 * 60 * 1000L
         private const val BLUR_RADIUS_DP = 28

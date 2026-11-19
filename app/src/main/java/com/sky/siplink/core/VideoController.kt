@@ -53,9 +53,9 @@ internal class VideoController(
     fun isRequesting(call: Call): Boolean = request?.nativePointer == call.nativePointer
 
     /** Adds video to [call], or ends it (re-INVITE). */
-    fun toggleVideo(call: Call?, inConference: Boolean): String? {
+    fun toggleVideo(call: Call?): String? {
         if (call?.state != Call.State.StreamsRunning) return "通话接通后方可开启视频"
-        if (!allowed || inConference) return "此通话不支持视频"
+        if (!allowed) return "此通话不支持视频"
         val params = core.createCallParams(call) ?: return "无法更改通话"
         val on = !CallVideoSupport.hasVideo(call)
         CallVideoSupport.apply(params, on, cameraPermitted())

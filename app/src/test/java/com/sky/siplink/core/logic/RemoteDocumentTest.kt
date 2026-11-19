@@ -217,6 +217,16 @@ class RemoteDocumentTest {
     }
 
     @Test
+    fun theSizeOfTheRoomIsTheAppsUnlessSentAndStaysInItsRange() {
+        // The fixture is from before the platform sent it.
+        assertEquals(RoomRules.LIMIT, parsed(fixture).settings.roomLimit)
+        assertEquals(8, parsed(with("8", "settings", "roomLimit")).settings.roomLimit)
+        assertEquals(RoomRules.MIN_LIMIT, parsed(with("1", "settings", "roomLimit")).settings.roomLimit)
+        assertEquals(RoomRules.LIMIT, parsed(with("100", "settings", "roomLimit")).settings.roomLimit)
+        assertEquals(listOf("settings.roomLimit 格式不正确"), errors(with("\"8\"", "settings", "roomLimit")))
+    }
+
+    @Test
     fun autoAnswerIsOffUnlessSentAndItsTimeIsOneThatCanBeChosen() {
         val absent = parsed(with("""{"intercomAutoAnswer": true}""", "settings")).settings
         assertEquals(false to AutoAnswerRules.DEFAULT_SECONDS, absent.autoAnswer to absent.autoAnswerSeconds)

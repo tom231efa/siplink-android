@@ -112,8 +112,8 @@ data class CallInfo(
     val transfer: TransferStatus? = null,
     /** True once the call was parked and the PBX is announcing the parking slot on it. */
     val parked: Boolean = false,
-    /** True when both calls were merged into a local three-way conference. */
-    val conference: Boolean = false,
+    /** The conference room, which takes the place of the call while it is open (see [RoomInfo]). */
+    val room: RoomInfo? = null,
     val supervision: SupervisionMode? = null,
     /** Video of this call; null while it has none, and always while video calls are switched off. */
     val video: CallVideo? = null,
@@ -122,9 +122,9 @@ data class CallInfo(
      * side asks to add it and waits for the user's answer.
      */
     val videoOffer: Boolean = false,
-    /** Video can be switched on in this call (video calls are on in the settings, no three-way call). */
+    /** Video can be switched on in this call (video calls are on in the settings, no conference room). */
     val videoAllowed: Boolean = false,
-    /** The call can be recorded: recording is allowed, the call got a file for it, and it is no three-way call. */
+    /** The call can be recorded: recording is allowed, the call got a file for it, and it is no conference room. */
     val recordable: Boolean = false,
     /** While the call is being recorded: SystemClock.elapsedRealtime() at which the recording would have started without its breaks. */
     val recordingSince: Long? = null,
@@ -285,6 +285,9 @@ enum class DtmfMode {
 /** Where the strip that leads back to a running call sits on the main screens. */
 enum class BannerPosition { TOP, BOTTOM }
 
+/** The edge of the screen the small picture of a video call stands at. */
+enum class DockSide { LEFT, RIGHT }
+
 /**
  * How large the picture is that the camera is sent with.
  *
@@ -360,4 +363,13 @@ data class Settings(
      * the oldest go first. The user's own, also under a managed configuration.
      */
     val recordingsKept: Int = com.sky.siplink.core.logic.RecordingRules.DEFAULT_KEEP,
+    /**
+     * How many members the conference room holds at most besides the user, from
+     * [com.sky.siplink.core.logic.RoomRules.MIN_LIMIT] to [com.sky.siplink.core.logic.RoomRules.LIMIT]:
+     * a PBX with fewer lines for one extension is spared the calls it would refuse.
+     */
+    val roomLimit: Int = com.sky.siplink.core.logic.RoomRules.LIMIT,
+    /** Where the user put the small picture of a video call: the edge, and how far down ([com.sky.siplink.core.logic.PreviewDock]). The user's own. */
+    val previewSide: DockSide = DockSide.RIGHT,
+    val previewPlace: Float = 0f,
 )

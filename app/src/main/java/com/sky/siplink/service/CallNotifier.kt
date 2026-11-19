@@ -16,6 +16,7 @@ import androidx.core.content.ContextCompat
 import com.sky.siplink.CallActivity
 import com.sky.siplink.MainActivity
 import com.sky.siplink.R
+import com.sky.siplink.core.logic.CallRules
 import com.sky.siplink.core.model.CallInfo
 
 /** Builds and posts every notification of the app. */
@@ -49,7 +50,7 @@ class CallNotifier(private val context: Context) {
             .setSmallIcon(R.drawable.ic_stat_call)
             .setContentTitle(info.remoteName)
             .setContentText(if (info.connectedAt == null) "正在呼叫…" else info.remoteAddress)
-            .setStyle(NotificationCompat.CallStyle.forOngoingCall(person(info), broadcast(ACTION_HANG_UP)))
+            .setStyle(NotificationCompat.CallStyle.forOngoingCall(person(info), hangUp(info)))
             .setContentIntent(activity(CallActivity::class.java, null, REQUEST_CALL))
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
@@ -61,6 +62,16 @@ class CallNotifier(private val context: Context) {
                 .setWhen(System.currentTimeMillis() - (SystemClock.elapsedRealtime() - it))
         }
         return builder.build()
+    }
+
+    /** Hangs up; a room with more than one member is ended on the call screen, which asks first (CallRules). */
+    private fun hangUp(info: CallInfo): PendingIntent {
+        val room = info.room ?: return broadcast(ACTION_HANG_UP)
+        return if (CallRules.confirmRoomEnd(room.present)) {
+            activity(CallActivity::class.java, CallActivity.ACTION_END_ROOM, REQUEST_END_ROOM)
+        } else {
+            broadcast(ACTION_HANG_UP)
+        }
     }
 
     /** Renames the incoming call notification if there is one; it does not ring or pop up again. */
@@ -187,5 +198,6 @@ class CallNotifier(private val context: Context) {
         private const val REQUEST_MAIN = 1
         private const val REQUEST_CALL = 2
         private const val REQUEST_ANSWER = 3
+        private const val REQUEST_END_ROOM = 4
     }
 }
