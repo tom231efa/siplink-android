@@ -48,7 +48,9 @@ class HistoryManager(private val core: Core, private val names: NameResolver, pr
     }
 
     fun remove(id: String) {
-        core.callLogs.firstOrNull { idOf(it) == id }?.let(core::removeCallLog)
+        // By its Call-ID, which the core looks up by itself; an entry without one by going through the log.
+        val log = core.findCallLogFromCallId(id)?.takeIf { idOf(it) == id } ?: core.callLogs.firstOrNull { idOf(it) == id }
+        log?.let(core::removeCallLog)
         state.value = state.value.filterNot { it.id == id }
     }
 
@@ -57,8 +59,13 @@ class HistoryManager(private val core: Core, private val names: NameResolver, pr
         state.value = emptyList()
     }
 
+    /**
+     * The newest [MAX_ENTRIES] calls, newest first. The logs are put in order by their start
+     * alone, so that only those shown are read in full. (The core's own limit, max_call_logs, is a
+     * setting of the core that goes by the order in which the logs were written, not by their start.)
+     */
     private fun load(): List<HistoryEntry> =
-        core.callLogs.map(::toEntry).sortedByDescending { it.startedAtMs }.take(MAX_ENTRIES)
+        core.callLogs.map { it.startDate to it }.sortedByDescending { it.first }.take(MAX_ENTRIES).map { toEntry(it.second) }
 
     fun isMissed(log: CallLog): Boolean = log.dir == Call.Dir.Incoming && log.status == Call.Status.Missed
 
