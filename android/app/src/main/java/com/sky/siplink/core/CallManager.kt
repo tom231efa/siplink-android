@@ -324,12 +324,14 @@ class CallManager(
 
     /**
      * The statistics of [call] came in, about once a second while it runs: the pictures of a
-     * video call can have changed their size since (the other side turned its phone round, say).
+     * video call can have changed their size since (the other side turned its phone round, say),
+     * and sound can have stopped or come back.
      */
     fun onCallStatsUpdated(call: Call) {
         if (!same(call, current)) return
-        val shown = state.value?.video ?: return
-        if (CallVideoSupport.stateOf(call) != shown) publish()
+        val shown = state.value ?: return
+        val video = shown.video
+        if ((video != null && CallVideoSupport.stateOf(call) != video) || (shown.room == null && shown.noSound != accounts.media.hearsNothing(call))) publish()
     }
 
     /** Video calls were switched on or off in the settings; off, running video ends. */
@@ -712,6 +714,7 @@ class CallManager(
             videoAllowed = videoAllowed,
             recordable = recorder.recordable(call),
             recordingSince = recorder.startedAt(call),
+            noSound = accounts.media.hearsNothing(call),
         )
     }
 

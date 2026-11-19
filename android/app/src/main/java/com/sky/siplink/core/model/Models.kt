@@ -128,6 +128,8 @@ data class CallInfo(
     val recordable: Boolean = false,
     /** While the call is being recorded: SystemClock.elapsedRealtime() at which the recording would have started without its breaks. */
     val recordingSince: Long? = null,
+    /** No sound has come in for a few seconds while the call runs (core/CallMediaWatch.kt). */
+    val noSound: Boolean = false,
 )
 
 /** Which ways the video of a call goes. */
