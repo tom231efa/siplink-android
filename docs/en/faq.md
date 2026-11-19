@@ -74,4 +74,12 @@ When the primary server does not respond, or returns 408 or 5xx, the account swi
 
 ## The record button is missing
 
-**Settings → Call features → Recording → Call recording** is off, or remote configuration turned it off. A call that was set up while "Call recording" was off cannot be recorded, even if it is turned on later (the recording file has to be set when the call is set up). Three-way calls and calls transferred in by the PBX (REFER, Replaces) cannot be recorded.
+**Settings → Call features → Recording → Call recording** is off, or remote configuration turned it off. A call that was set up while "Call recording" was off cannot be recorded, even if it is turned on later (the recording file has to be set when the call is set up). Conference rooms and calls transferred in by the PBX (REFER, Replaces) cannot be recorded.
+
+## Conference room members show "Line full"
+
+The PBX takes no more calls on this line, see [Conference room → Failed calls](user-guide.md#failed-calls). In FreePBX, an extension's "Outbound Concurrency Limit" defaults to 3: raise it for the extension that opens rooms, or lower the limit in **Settings → Advanced settings → Conference room → Maximum members**.
+
+## The other party's video freezes in a video call
+
+On packet loss, the other party's video can stop on its last frame until the next key frame arrives, usually within seconds; longer when the PBX or the other side does not answer key frame requests.

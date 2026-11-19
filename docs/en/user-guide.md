@@ -8,6 +8,7 @@
 - [Accounts](#accounts)
 - [Dialing and calls](#dialing-and-calls)
 - [Incoming call handling](#incoming-call-handling)
+- [Conference room](#conference-room)
 - [Video calls](#video-calls)
 - [Feature codes](#feature-codes)
 - [Shortcut keys](#shortcut-keys)
@@ -92,6 +93,7 @@ Example:
 - Next to the call button are the video call button (when video calls are on) and the shortcut keys button
 - The call features button opens the call features panel, see [Feature codes](#feature-codes)
 - With do not disturb on, "Do not disturb is on" is shown; tap it to turn it off. With new voicemail, "N new voicemails" is shown; tap it to dial the voicemail feature code
+- In landscape, the account, reminders, number and call button are on one side and the dial keys on the other
 
 ### Call screen
 
@@ -104,16 +106,19 @@ Example:
 | Transfer | Enter the target, then choose **Blind transfer** or **Attended transfer** |
 | Park | Blind-transfers the call to the park feature code; the PBX announces the parking slot, then the call ends. Not available with a second call |
 | Swap | Switches between the current call and the held call |
-| Merge | Merges the current call and the held call into a three-way call on the phone; the hang-up button becomes "End all" |
+| Merge | Opens a conference room with the current call and the held call, see [Conference room](#conference-room) |
 | Shortcut keys | Opens the shortcut keys panel |
 | Video | Adds or removes video, see [Video calls](#video-calls) |
-| Record (top right) | Starts / stops recording and shows the recorded time while recording; in video calls it is in the button group at the top right. See [Call recording](#call-recording) |
+| Conference room (top left) | Opens a conference room, see [Conference room](#conference-room) |
+| Record (top right) | Starts / stops recording and shows the recorded time while recording; in video calls it stands in the top row with the camera buttons. See [Call recording](#call-recording) |
 
 **Attended transfer**: the current call is put on hold and the target is called first; once connected, tap "Complete transfer" to transfer the held party to the target.
 
-**Listen / whisper / barge**: a supervisor call started with a feature code can switch between the three modes on the call screen; switching sends DTMF `4` / `5` / `6` to the PBX.
+**Listen / whisper / barge**: a supervisor call started with a feature code can switch between the three modes on the call screen; switching sends DTMF `4` / `5` / `6` to the PBX, to that call only.
 
-The interface shows at most two calls at a time (the current call plus one held or waiting call).
+The interface shows at most two calls at a time (the current call plus one held or waiting call), except in a conference room.
+
+In landscape, the in-call keypad takes the side of the controls and covers the hang-up button until it is closed (as in portrait).
 
 ### Call waiting
 
@@ -127,7 +132,7 @@ An incoming call that asks to be answered automatically is treated as an interco
 - `Alert-Info` containing `alert-autoanswer`, `auto answer` or `intercom`
 - `Answer-Mode: Auto`
 
-With **Settings → Intercom and auto answer → Auto answer intercom calls** on (off by default), intercom calls are answered at once; the setting applies to intercom calls only. When the app is not in the foreground, it shows the call screen first and then answers (Android does not let background apps use the microphone). **Use speaker for intercom** (on by default) decides whether intercom calls use the speaker. To start an intercom call, use the feature code, see [Feature codes](#feature-codes).
+With **Settings → Intercom and auto answer → Auto answer intercom calls** on (off by default), intercom calls are answered at once; the setting applies to intercom calls only. When the app is not in the foreground, it shows the call screen first and then answers (Android does not let background apps use the microphone). With a call (held calls included) or a conference room up, intercom calls are not answered automatically either. **Use speaker for intercom** (on by default) decides whether intercom calls use the speaker. To start an intercom call, use the feature code, see [Feature codes](#feature-codes).
 
 ### Auto answer
 
@@ -146,8 +151,10 @@ Incoming calls are handled in this order; the first match applies:
 | 1 | Do not disturb on, mode "Software" | Rejected by the phone |
 | 2 | The caller hides the number and "Reject anonymous calls" is on | Rejected with SIP 433 Anonymity Disallowed |
 | 3 | Forward always is set | Forwarded |
-| 4 | Already in a call | Forwarded if forward when busy is set; otherwise a waiting call if call waiting is on and there is no second call; otherwise rejected as busy |
+| 4 | Already in a call (held calls included) or a conference room | Forwarded if forward when busy is set; otherwise a waiting call if call waiting is on and there is no second call; otherwise rejected as busy |
 | 5 | Otherwise | Rings; with forward on no answer set, forwarded after the wait time |
+
+A waiting call is never answered automatically (intercom calls included); with a conference room open, the only choices are **Join room** and **Decline**.
 
 Forwarding is done by the phone with a SIP redirect and works only while the app runs and is registered. A forwarding target that is only a number gets the domain of the receiving account.
 
@@ -155,6 +162,37 @@ Forwarding is done by the phone with a SIP redirect and works only while the app
 
 - **Software** (default): the phone rejects all incoming calls
 - **Server**: turning do not disturb on or off dials the PBX's "DND on" / "DND off" feature code, and the PBX handles incoming calls. Available only when both feature codes are set; changing the mode turns do not disturb off
+
+## Conference room
+
+A conference room brings several calls together on the phone: the phone mixes the audio, and on the PBX each member is an ordinary call (signaling always goes through the PBX; media does too, unless the PBX uses direct media). Conference rooms are voice only.
+
+- **Open**: once a call is connected, tap **Conference room** at the top left of the call screen; the current call (and the held call) go into the room. **Merge** opens a room as well. In a video call, the app first confirms "The conference room is voice only; video will stop."
+- **Size**: up to 30 members by default (not counting the phone), set to 2–30 in **Settings → Advanced settings → Conference room → Maximum members**; read-only when the configuration is managed remotely. The title shows the count and the limit, such as `3/30`; when the room is full, **Add members** is grayed out
+- **Add members**: choose from "Recent calls", "Directory" (the first enabled LDAP directory) or "Shortcut keys" (speed dial keys), or type a number and add it; several can be picked, then tap **Call**. Numbers already in the room are not called again
+- **Calling**: the phone calls at most 3 members at a time; the others show "Waiting" and are called in turn
+- **Members**: each row shows the state (Waiting, Calling, Ringing, Connected, On hold), and connected members also three call quality bars; each member can be hung up on their own
+- **End**: **End conference** hangs up all members, after a confirmation when more than one member is in the room (also when hanging up from the notification). The room ends when the last member leaves
+- **New call**: the only choices are **Join room** and **Decline**
+- **Another app takes the audio** (for example a mobile network call): the phone leaves the room's audio and shows "Away", while the other members keep talking; tap **Return to room** to go back
+- When the PBX ends all calls or the network is lost, the room ends cleanly; if the system ends the app's process during a room, the room ends with it
+- **Limits**: a room has no keypad, transfer, park, recording or video; a running recording ends when a room opens, and video requests from members are declined. Listen, whisper and barge calls cannot open or join a room, and their feature codes and the force hang-up code cannot be called as members. No room can be opened while a transfer or park is in progress
+
+### Failed calls
+
+When the PBX refuses a call, the member's row shows the reason. On 503, or after 3 failures in a row (with no answer in between), the remaining members are not called and show the same reason. Nothing is retried automatically: each row has **Call again** and **Remove**. When the PBX gives `Retry-After`, calling again before that time shows "Try again later".
+
+| Message | Cause |
+| --- | --- |
+| Line full | 503; with members already in the room, a run of busy or refused calls, or a member hung up by the other side within 8 seconds of answering (FreePBX does this when the extension's concurrent call limit is reached), see [FAQ](faq.md#conference-room-members-show-line-full) |
+| Refused by PBX | 403 |
+| Busy | 486, 600 |
+| Unavailable | 480 |
+| Media negotiation failed | 488 |
+
+### Quality warnings
+
+During a room, the app watches the phone (CPU, temperature, memory) and every member's line (packet loss, jitter, round-trip time), and when the room may suffer it shows a warning next to the title: "Device too hot", "Device overloaded", "Low memory" or "Poor network"; with several at once, the first of these is shown. Tap the warning to see the measured values: CPU, busiest thread, device temperature, memory, and for up to 5 members with a poor line the upload / download packet loss, jitter and round-trip time. When a member's line has been poor for a while, its quality bars turn amber.
 
 ## Video calls
 
@@ -164,10 +202,12 @@ Forwarding is done by the phone with a SIP redirect and works only while the app
 - In a call: the "Video" button adds or removes video; when the other party asks to turn on video, a prompt offers **Decline** or **Turn on**; the camera stays off until then
 - Camera permission is requested the first time video is used; without it, the phone only receives the other party's video
 - The camera works only while the call screen is in the foreground; when you leave the screen, a still picture is sent instead
-- Switch between front and back cameras, turn the camera off or on; the other party's video keeps its aspect ratio and can be switched between "Show whole picture" and "Fill screen"
+- Switch between front and back cameras, turn the camera off or on; the other party's video keeps its aspect ratio and can be switched between "Show whole picture" and "Fill screen". These buttons stand in the top row with the record button
+- Once the other party's video arrives, the controls hide after about 4 seconds without a touch (or after the longer time set in the system's accessibility settings); a tap on the picture shows or hides them. They stay while the keypad or a panel is open, a notice or a new call is shown, or a screen reader is on
+- Your own video is a small window: drag it, and on release it docks at the left or right edge (a fling picks the side it was flung towards); near the top or bottom it moves up and down as the controls show and hide; a tap on it swaps the two pictures. Its place is remembered across turns of the phone and later calls. Screen reader actions: "Swap pictures", "Move left", "Move right", "Move up", "Move down"
 - When video starts while the earpiece is in use and no headset or Bluetooth device is connected, audio switches to the speaker
 - The call screen supports landscape
-- Video is not available in three-way calls
+- Video is not available in a conference room
 
 Resolution and frame rate are set in **Settings → Codecs**:
 
@@ -296,7 +336,7 @@ The record button at the top right of the call screen starts or stops recording;
 
 - Both sides are recorded (mixed to mono); video calls record audio only
 - Each call is recorded separately; the record button acts on the current call
-- Three-way calls (merged) cannot be recorded: a running recording ends at the merge, and the record button is hidden during the three-way call
+- Conference rooms cannot be recorded: a running recording ends when a room opens, and a room has no record button
 - Calls transferred in by the PBX (REFER, Replaces) cannot be recorded
 
 **Settings → Call features → Recording**:
@@ -377,6 +417,7 @@ See [Intercom](#intercom) and [Auto answer](#auto-answer).
 | | DTMF mode | RFC 2833 | The other option, SIP INFO, is for PBXs or trunks that require SIP INFO |
 | Call forwarding | Forward always, Forward when busy, Forward on no answer | Empty | Empty means no forwarding |
 | | No-answer wait (seconds) | 20 | 5–120 |
+| Conference room | Maximum members | 30 | 2–30, see [Conference room](#conference-room) |
 | Media and network | Adaptive rate control | Off | See below |
 | | Echo cancellation | On | The SIP stack's echo cancellation |
 | | Allow IPv6 | On | |

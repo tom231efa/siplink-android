@@ -36,7 +36,7 @@ The update check contacts `api.github.com` and can be turned off in Settings, se
 
 - [Features](docs/en/features.md)
 - [Screenshots](docs/en/screenshots.md)
-- [User guide](docs/en/user-guide.md): accounts, calls, video, feature codes, shortcut keys, directories, recording, settings
+- [User guide](docs/en/user-guide.md): accounts, calls, conference room, video, feature codes, shortcut keys, directories, recording, settings
 - [Remote configuration](docs/en/remote-configuration.md): loading and sync, what is locked, configuration document format
 - [Management platform](docs/en/platform.md): the server that provisions configuration, Docker deployment
 - [FAQ](docs/en/faq.md): no incoming calls, no sound in calls, certificates, LDAP, updates

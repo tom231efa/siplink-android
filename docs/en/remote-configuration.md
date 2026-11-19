@@ -58,6 +58,7 @@ Provisioned content is read-only on the phone: the top bar of each page shows a 
 | --- | --- |
 | Do not disturb switch | Still controlled by the user; the DND mode is provisioned by the platform |
 | Appearance | Theme, dynamic color, call banner position |
+| Video window place | Where your own small video window stands in video calls |
 | Lock screen call reminder | The "Don't remind me again" choice |
 | Call history | |
 | Call recording | The Recordings page (play, export, delete) and the number of recordings to keep |
@@ -206,8 +207,9 @@ A missing or `null` field gets the app default (not the phone's current value); 
 | `ipv6` | Boolean | `true` |
 | `callRecording` | Boolean: whether calls may be recorded; when `false`, the record button is hidden, a recording in progress at the sync ends, and existing files are kept | `true` |
 | `recordByDefault` | Boolean: every call is recorded once connected | `false` |
+| `roomLimit` | Integer: maximum members of a conference room, 2–30; values outside are clamped | `30` |
 
-The do not disturb switch, theme, dynamic color, call banner position and number of recordings to keep are not in the document; they are always up to the user.
+The do not disturb switch, theme, dynamic color, call banner position, number of recordings to keep and video window place are not in the document; they are always up to the user.
 
 **`accounts[]`**
 

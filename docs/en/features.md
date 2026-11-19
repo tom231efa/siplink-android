@@ -11,7 +11,8 @@
 <img src="../images/feature-calls.svg" width="300" align="right" alt="">
 
 - Slide to answer or decline incoming calls; hold, mute, and switch between earpiece, speaker and Bluetooth during a call
-- Blind transfer, attended transfer, park, merge into a three-way call
+- Blind transfer, attended transfer, park
+- Conference room: voice only, up to 30 members by default, mixed on the phone; members can be hung up or called again one by one; warnings about phone and line quality
 - Call waiting, call forwarding (always / when busy / on no answer), do not disturb, reject anonymous calls
 - Intercom: optional auto answer on the speaker
 - Auto answer for regular calls: immediately or after 3–30 seconds
@@ -45,6 +46,7 @@
 - Sending resolution 240p–1080p, selectable frame rate
 - The other party's video keeps its aspect ratio; switch between "Fit" and "Fill"
 - Landscape supported; switch between front and back cameras, pause your own video
+- Controls hide when not touched; your own video can be dragged to the left or right side, and a tap swaps the two pictures
 
 <br clear="right">
 

@@ -36,7 +36,7 @@ SipLink 是基于 [Linphone SDK](https://www.linphone.org/en/liblinphone-voip-sd
 
 - [功能特性](docs/features.md)
 - [应用截图](docs/screenshots.md)
-- [使用指南](docs/user-guide.md)：账号、通话、视频、功能码、快捷键、通讯录、录音、设置
+- [使用指南](docs/user-guide.md)：账号、通话、会议室、视频、功能码、快捷键、通讯录、录音、设置
 - [远程配置](docs/remote-configuration.md)：载入与同步、锁定范围、配置文档格式
 - [管理平台](docs/platform.md)：集中下发配置的服务端，Docker 部署
 - [常见问题](docs/faq.md)：收不到来电、通话无声、证书、LDAP、更新
