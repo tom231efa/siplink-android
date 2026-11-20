@@ -109,7 +109,7 @@ Rule-like logic (input validation, CSV, incoming call policy, remote document pa
 
 ## Languages
 
-The app's texts are string resources: English, the default, in `res/values/`, Simplified Chinese in `res/values-b+zh+Hans/`. The languages the app offers are listed in `core/model/Language.kt` and in `res/xml/locales_config.xml` (the manifest's `android:localeConfig`); `androidResources.localeFilters` in `android/app/build.gradle.kts` keeps the texts of libraries to the same languages. The texts are split by area into `strings.xml` (shared), `strings_form.xml`, `strings_call.xml`, `strings_room.xml`, `strings_account.xml`, `strings_directory.xml`, `strings_shortcut.xml`, `strings_remote.xml`, `strings_settings.xml` and `strings_notification.xml`; names are lower snake case and start with their area (`call_ended`, `remote_invalid`).
+The app's texts are string resources: English, the default, in `res/values/`, Simplified Chinese in `res/values-b+zh+Hans/`. The languages the app offers are listed in `core/model/Language.kt` and in `res/xml/locales_config.xml` (the manifest's `android:localeConfig`); `androidResources.localeFilters` in `android/app/build.gradle.kts` keeps the texts of libraries to the same languages. The texts are split by area: `strings.xml` holds what every area uses (the common buttons, `common_cancel`, `common_save`, …), and each area has its own `strings_{area}.xml` (`strings_call.xml`, `strings_room.xml`, `strings_settings.xml`, `strings_dialer.xml`, …); names are lower snake case and start with their area (`call_ended`, `remote_invalid`). The same words in two roles (a button and a state, a title and a value) are two texts, since other languages may need different words.
 
 ### Choosing the language
 
@@ -119,9 +119,9 @@ Settings › Language offers "System default", what a new installation has, and 
 
 - `core/logic` holds no text. It returns enums, `@StringRes` ids or a `Phrase` (`core/model/Phrase.kt`): a resource with its arguments, a plural with its count, or plain text that is shown as it is.
 - The managers keep typed values and render the snapshots they publish (`StateFlow`) with `AppTexts`. When the language changes, `SipLinkApp` calls `SipEngine.onLanguageChanged()`, the managers publish their snapshots again, `CallNotifier` renames its channels and the service renews its notification.
-- Screens render a `Phrase` with `Phrase.text()` (`ui/components/Phrases.kt`) and their own texts with `stringResource`.
+- Screens render a `Phrase` with `Phrase.text()` (`ui/components/Phrases.kt`) and their own texts with `stringResource` and `pluralStringResource`. A text needed outside composition (a notice built in a callback) is read from the resources of the activity's context, not of the application.
 - Nothing rendered is stored. What the remote configuration keeps of its errors is stored as phrases by the names of their resources (`core/logic/PhraseCodec.kt`); text an older version stored is shown as it is.
-- Arguments are numbered (`%1$s`, `%2$s`); a text is never glued from parts. Numbers are written with Western digits (`Locale.ROOT`); in right-to-left text every value is isolated (U+2068 … U+2069) so that numbers and addresses keep their order. Counts use `<plurals>`. Dates follow the app's language.
+- Arguments are numbered (`%1$s`, `%2$s`); a text is never glued from parts. Numbers are written with Western digits (`Locale.ROOT`); in right-to-left text every value is isolated (U+2068 … U+2069) so that numbers and addresses keep their order. Counts use `<plurals>`. Dates follow the app's language: the locale is taken from the composition's configuration (`LocalConfiguration.current.locales[0]`), and dates with words come from `DateFormat.getBestDateTimePattern` (the day headers of the history: skeletons `MMMd` and `yMMMd`); purely numeric stamps (`yyyy-MM-dd HH:mm`, `HH:mm:ss`) are the same in every language.
 
 ### Data, not texts
 
@@ -129,7 +129,7 @@ These stay as they are in every language: the CSV formats of accounts and shortc
 
 ### Adding a text
 
-Add the string to the file of its area in `res/values/` and in every `res/values-*/` folder, with the same placeholders. In `core`, return `Phrase.of(R.string.name, …)` (or `Phrase.count(R.plurals.name, n, …)`); on a screen, use `stringResource`.
+Add the string to the file of its area in `res/values/` and in every `res/values-*/` folder, with the same placeholders. In `core`, return `Phrase.of(R.string.name, …)` (or `Phrase.count(R.plurals.name, n, …)`); on a screen, use `stringResource` (or `pluralStringResource`).
 
 ### Adding a language
 
@@ -138,8 +138,8 @@ Create `res/values-{qualifier}/` with every text of `res/values/` (`{qualifier}`
 ### Tests
 
 - `LanguageCatalogTest` (unit test) compares every language with the default: the same keys, the same placeholders, the plural forms the language needs, no empty text; and the languages with `Language` and `locales_config.xml`.
-- `SourceTextTest` fails when a string literal of the Kotlin sources holds Chinese, Japanese or Korean characters outside its allow-list: data (`Language.kt`, the CSV words of `ShortcutRules.kt`) and the screens not moved yet, a list that only shrinks.
+- `SourceTextTest` fails when a string literal of the Kotlin sources holds Chinese, Japanese or Korean characters outside its allow-list of data (`Language.kt`, the CSV words of `ShortcutRules.kt`).
 - Unit tests assert on the real texts: `Texts` reads the resource files and renders a `Phrase` in a language (`zh(…)` for Simplified Chinese).
-- The integration tests set the app's own language to Simplified Chinese before each test (`PbxTestBase.pinLanguage`), through the app's setting, and leave it so after a run; the phone's system language is not changed. `AppLanguageTest` covers choosing, following the system, falling back to English, the script of Chinese, a change made outside the app while it shows no screen, a call during a change, and texts the core puts together.
+- The integration tests set the app's own language to Simplified Chinese before each test (`PbxTestBase.pinLanguage`), through the app's setting, and leave it so after a run; the phone's system language is not changed. `AppLanguageTest` covers choosing, following the system, falling back to English, the script of Chinese, a change made outside the app while it shows no screen, a call during a change, texts the core puts together, and the day headers of the history. `EnglishScreensTest` walks the four tabs, the settings pages, the call screen and the conference room in English and fails on any Chinese character a screen shows, but the languages' own names and data.
 
 For tests, see [Testing](testing.md).

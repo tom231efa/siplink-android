@@ -109,7 +109,7 @@ android/app/src/main/java/com/sky/siplink/
 
 ## 语言
 
-应用的文字都是字符串资源：默认的英文在 `res/values/`，简体中文在 `res/values-b+zh+Hans/`。应用提供的语言列在 `core/model/Language.kt` 和 `res/xml/locales_config.xml`（清单中的 `android:localeConfig`）；`android/app/build.gradle.kts` 中的 `androidResources.localeFilters` 让依赖库的文字也只保留这些语言。文字按领域分文件：`strings.xml`（公共）、`strings_form.xml`、`strings_call.xml`、`strings_room.xml`、`strings_account.xml`、`strings_directory.xml`、`strings_shortcut.xml`、`strings_remote.xml`、`strings_settings.xml`、`strings_notification.xml`；名称为小写下划线，以领域开头（`call_ended`、`remote_invalid`）。
+应用的文字都是字符串资源：默认的英文在 `res/values/`，简体中文在 `res/values-b+zh+Hans/`。应用提供的语言列在 `core/model/Language.kt` 和 `res/xml/locales_config.xml`（清单中的 `android:localeConfig`）；`android/app/build.gradle.kts` 中的 `androidResources.localeFilters` 让依赖库的文字也只保留这些语言。文字按领域分文件：`strings.xml` 放各领域共用的文字（公共按钮 `common_cancel`、`common_save` 等），每个领域有自己的 `strings_{area}.xml`（`strings_call.xml`、`strings_room.xml`、`strings_settings.xml`、`strings_dialer.xml` 等）；名称为小写下划线，以领域开头（`call_ended`、`remote_invalid`）。同样的字用在两种角色（按钮与状态、标题与取值）时是两条文字，因为其他语言可能需要不同的词。
 
 ### 选择语言
 
@@ -119,9 +119,9 @@ android/app/src/main/java/com/sky/siplink/
 
 - `core/logic` 不含文字，只返回枚举、`@StringRes` id 或 `Phrase`（`core/model/Phrase.kt`）：带参数的资源、带数量的复数资源，或原样显示的文字。
 - 各管理器保存类型化的值，用 `AppTexts` 生成发布出去的快照（`StateFlow`）。语言改变时，`SipLinkApp` 调用 `SipEngine.onLanguageChanged()`，各管理器重新发布快照，`CallNotifier` 重命名通知渠道，服务更新它的通知。
-- 界面用 `Phrase.text()`（`ui/components/Phrases.kt`）显示 `Phrase`，自己的文字用 `stringResource`。
+- 界面用 `Phrase.text()`（`ui/components/Phrases.kt`）显示 `Phrase`，自己的文字用 `stringResource` 和 `pluralStringResource`。组合之外需要的文字（回调中生成的提示）取 Activity 的 context 的资源，而不是 application 的。
 - 生成后的文字不保存。远程配置保存的错误按资源名称存为 phrase（`core/logic/PhraseCodec.kt`）；旧版本保存的文字原样显示。
-- 参数带编号（`%1$s`、`%2$s`），不拼接文字片段。数字用西文数字（`Locale.ROOT`）；在从右到左的文字中，每个值都被隔离（U+2068 … U+2069），使数字和地址保持顺序。数量用 `<plurals>`。日期跟随应用语言。
+- 参数带编号（`%1$s`、`%2$s`），不拼接文字片段。数字用西文数字（`Locale.ROOT`）；在从右到左的文字中，每个值都被隔离（U+2068 … U+2069），使数字和地址保持顺序。数量用 `<plurals>`。日期跟随应用语言：语言区域取自组合的配置（`LocalConfiguration.current.locales[0]`），带文字的日期格式来自 `DateFormat.getBestDateTimePattern`（通话记录的日期标题：骨架 `MMMd` 和 `yMMMd`）；纯数字的时间戳（`yyyy-MM-dd HH:mm`、`HH:mm:ss`）在所有语言中相同。
 
 ### 是数据而不是文字的内容
 
@@ -129,7 +129,7 @@ android/app/src/main/java/com/sky/siplink/
 
 ### 添加一条文字
 
-把字符串加到 `res/values/` 和每个 `res/values-*/` 目录中对应领域的文件，占位符相同。在 `core` 中返回 `Phrase.of(R.string.name, …)`（或 `Phrase.count(R.plurals.name, n, …)`）；在界面中用 `stringResource`。
+把字符串加到 `res/values/` 和每个 `res/values-*/` 目录中对应领域的文件，占位符相同。在 `core` 中返回 `Phrase.of(R.string.name, …)`（或 `Phrase.count(R.plurals.name, n, …)`）；在界面中用 `stringResource`（或 `pluralStringResource`）。
 
 ### 添加一种语言
 
@@ -138,8 +138,8 @@ android/app/src/main/java/com/sky/siplink/
 ### 测试
 
 - `LanguageCatalogTest`（单元测试）把每种语言与默认语言比较：键相同、占位符相同、具备该语言需要的复数形式、没有空文字；并把语言与 `Language` 和 `locales_config.xml` 比较。
-- `SourceTextTest`：Kotlin 源码的字符串字面量中出现中日韩字符、且不在允许列表中时失败。允许列表是数据（`Language.kt`、`ShortcutRules.kt` 中 CSV 的词）和尚未迁移的界面，后者只减不增。
+- `SourceTextTest`：Kotlin 源码的字符串字面量中出现中日韩字符、且不在允许列表中时失败。允许列表只有数据（`Language.kt`、`ShortcutRules.kt` 中 CSV 的词）。
 - 单元测试断言真实文字：`Texts` 读取资源文件，以某种语言生成 `Phrase`（简体中文用 `zh(…)`）。
-- 集成测试在每个测试前通过应用自己的设置把应用语言设为简体中文（`PbxTestBase.pinLanguage`），跑完后保持简体中文，不改手机的系统语言。`AppLanguageTest` 覆盖选择语言、跟随系统、回退到英文、中文的书写体系、应用没有界面时在应用外改语言、通话中切换语言，以及 core 生成的文字。
+- 集成测试在每个测试前通过应用自己的设置把应用语言设为简体中文（`PbxTestBase.pinLanguage`），跑完后保持简体中文，不改手机的系统语言。`AppLanguageTest` 覆盖选择语言、跟随系统、回退到英文、中文的书写体系、应用没有界面时在应用外改语言、通话中切换语言、core 生成的文字，以及通话记录的日期标题。`EnglishScreensTest` 以英文走遍四个标签页、各设置页面、通话界面和会议室，界面上出现任何中文字符即失败（语言自身的名称和数据除外）。
 
 测试见[测试](testing.md)。
