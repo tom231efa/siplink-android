@@ -154,6 +154,9 @@ internal object CallSupport {
     /** What the call screen says while no sound comes in, and after the SIP core ended a call for it. */
     const val NO_SOUND = "未收到对方声音"
 
+    /** Why a call out ended that its server gave no answer, and that could not go over the other server. */
+    const val SERVER_SILENT = "服务器无响应"
+
     fun endReason(call: Call, callState: Call.State, wasConnected: Boolean, message: String): String {
         if (wasConnected && CallMediaWatch.mediaLost(call)) return NO_SOUND
         if (callState == Call.State.End) {

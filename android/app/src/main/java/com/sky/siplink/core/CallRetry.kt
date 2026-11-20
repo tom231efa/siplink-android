@@ -1,9 +1,11 @@
 package com.sky.siplink.core
 
 import android.os.Handler
+import android.os.SystemClock
 import android.util.Log
 import com.sky.siplink.core.logic.ServerChoice
 import org.linphone.core.Call
+import org.linphone.core.RegistrationState
 
 /**
  * Places a call out once more over the other server of its account, when the server it went to
@@ -12,15 +14,21 @@ import org.linphone.core.Call
  * stays up: the new call takes the place of the old one, which ends without a word and leaves no
  * entry in the history. Once per call; not for the room's calls, nor for a consultation.
  *
+ * The new call goes out once the account is registered on the other server, which may know its
+ * users by their registration, or after [REGISTRATION_WAIT_MS] at the latest; a call that rings
+ * meanwhile, or that the user ends, is left alone.
+ *
  * Main thread only.
  *
  * @param redial places [Call] again on its account, now on its other server, having ended it with
  *   the function it is given once it took what it needs of it; false when it could not
+ * @param gaveUp the call could not be placed again: it ended, without an answer from its server
  */
 internal class CallRetry(
     private val handler: Handler,
     private val accounts: AccountManager,
     private val redial: (Call, () -> Unit) -> Boolean,
+    private val gaveUp: (Call) -> Unit,
 ) {
     private val watched = HashMap<Long, Runnable>()
 
@@ -42,27 +50,49 @@ internal class CallRetry(
         val pointer = call.nativePointer
         if (!ServerChoice.mayRetry(inRoom, consultation, retried = pointer in retries, waiting = waiting(call))) return
         val server = hostPortOf(account.params.serverAddress)
-        val task = Runnable {
-            watched.remove(pointer)
-            if (!waiting(call)) return@Runnable
+        later(pointer, after) {
+            if (!waiting(call)) return@later
             accounts.leaveSilentServer(id, server) { moved ->
-                if (moved && waiting(call)) placeAgain(call)
+                if (moved && waiting(call)) awaitRegistration(call, id, server, SystemClock.elapsedRealtime())
             }
         }
-        watched[pointer] = task
-        handler.postDelayed(task, after)
+    }
+
+    /** Places [call] again once its account is registered on another server than [server], or the wait since [since] is over. */
+    private fun awaitRegistration(call: Call, id: String, server: String, since: Long) {
+        if (!waiting(call)) return
+        val account = accounts.find(id)
+        val registered = account != null && account.state == RegistrationState.Ok &&
+            !hostPortOf(account.params.serverAddress).equals(server, ignoreCase = true)
+        if (registered || SystemClock.elapsedRealtime() - since >= REGISTRATION_WAIT_MS) {
+            placeAgain(call)
+        } else {
+            later(call.nativePointer, POLL_MS) { awaitRegistration(call, id, server, since) }
+        }
+    }
+
+    private fun later(pointer: Long, delayMs: Long, task: () -> Unit) {
+        val runnable = Runnable {
+            watched.remove(pointer)
+            task()
+        }
+        watched[pointer] = runnable
+        handler.postDelayed(runnable, delayMs)
     }
 
     /**
      * Ends [call] without a word and places it again. The old call goes first: the SIP core places
      * no call while another one being set up holds the sound ("sound are locked by another call").
-     * Where the new one cannot be placed, the old one's end is shown after all, once it is released.
+     * Where the new one cannot be placed, the old one counts again, as the call that got no answer
+     * it is, and is shown as ended at once.
      */
     private fun placeAgain(call: Call) {
         val pointer = call.nativePointer
+        var ended = false
         replacing = call
         val placed = try {
             redial(call) {
+                ended = true
                 superseded += pointer
                 accounts.supersede(call)
                 call.terminate()
@@ -70,11 +100,14 @@ internal class CallRetry(
         } finally {
             replacing = null
         }
-        if (placed) {
-            Log.i(TAG, "A call out got no answer from a server out of reach: placed again over the other server")
-        } else {
-            Log.w(TAG, "A call out could not be placed again over the other server")
-            superseded -= pointer
+        when {
+            placed -> Log.i(TAG, "A call out got no answer from a server out of reach: placed again over the other server")
+            ended -> {
+                Log.w(TAG, "A call out could not be placed again over the other server")
+                superseded -= pointer
+                accounts.unsupersede(call)
+                gaveUp(call)
+            }
         }
     }
 
@@ -97,7 +130,17 @@ internal class CallRetry(
     private companion object {
         const val TAG = "SipLink.Call"
 
-        /** No answer that the SDK shows: being set up, nothing ringing. */
-        fun waiting(call: Call): Boolean = call.state == Call.State.OutgoingInit || call.state == Call.State.OutgoingProgress
+        /** The longest wait for the registration on the other server before the call goes out all the same. */
+        const val REGISTRATION_WAIT_MS = 3_000L
+        const val POLL_MS = 100L
+
+        /**
+         * No answer that the SDK shows: being set up, nothing ringing, and nothing of a provisional
+         * answer either. A 100 Trying changes no state; it leaves a User-Agent (sal.cpp:327,
+         * op.cpp:890) or a Contact (sal.cpp:331) where it carries one, which counts as an answer.
+         */
+        fun waiting(call: Call): Boolean =
+            (call.state == Call.State.OutgoingInit || call.state == Call.State.OutgoingProgress) &&
+                call.remoteUserAgent.isNullOrEmpty() && call.remoteContact.isNullOrEmpty() && call.remoteTag.isNullOrEmpty()
     }
 }

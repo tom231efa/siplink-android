@@ -17,7 +17,6 @@ import com.sky.siplink.core.logic.VideoRules
 import com.sky.siplink.core.model.AudioRoute
 import com.sky.siplink.core.model.CallInfo
 import com.sky.siplink.core.model.CallPhase
-import com.sky.siplink.core.model.RoomInfo
 import com.sky.siplink.core.model.RoomReadings
 import com.sky.siplink.core.model.SideCall
 import com.sky.siplink.core.model.SupervisionMode
@@ -120,7 +119,7 @@ class CallManager(
 
     private val room = ConferenceRoom(core, roomMonitor, ::partyOf, limit = { settings.current.roomLimit }, lineOn = accounts::isSwitchedOn) { publish() }
     private val transfer = CallTransfer(core, settings) { publish() }
-    private val retry = CallRetry(handler, accounts, ::redial)
+    private val retry = CallRetry(handler, accounts, ::redial, ::retryGaveUp)
 
     /** A call out was placed again over the other server ([CallRetry]): its entry in the history goes, by its Call-ID. */
     var onSuperseded: ((String) -> Unit)? = null
@@ -188,6 +187,13 @@ class CallManager(
         // The route chosen goes with the call's facts (CallMeta.chosenRoute), applied as its sound starts.
         metas[placed.nativePointer] = meta
         return true
+    }
+
+    /** The current call [old] could not be placed again ([CallRetry]): it ended without an answer from its server, and shows so at once. */
+    private fun retryGaveUp(old: Call) {
+        if (!same(old, current)) return
+        metaOf(old).endReason = CallSupport.SERVER_SILENT
+        finish(metas.remove(old.nativePointer))
     }
 
     // ---------------------------------------------------------------- answering / ending
@@ -744,7 +750,8 @@ class CallManager(
 
     private fun publish(): CallInfo? {
         val previous = state.value
-        val info = room.snapshot()?.let { roomInfo(it, previous) } ?: current?.let(::callInfo) ?: return null
+        val info = room.snapshot()?.let { describer.roomInfo(it, room, previous, live(other)?.takeIf(::isRinging)?.let(::partyOf)) }
+            ?: current?.let(::callInfo) ?: return null
         state.value = info
         // The notification shows the call or the room: posted again when what it shows changes.
         if (OngoingNotice.of(previous) != OngoingNotice.of(info)) host?.onCallActivityChanged()
@@ -765,25 +772,7 @@ class CallManager(
         )
     }
 
-    /** The room in place of a call, with the call that waits beside it. */
-    private fun roomInfo(room: RoomInfo, previous: CallInfo?) = CallInfo(
-        phase = CallPhase.CONNECTED,
-        remoteName = ROOM_NAME,
-        remoteAddress = "",
-        accountLabel = CallSupport.lineOf(this.room.account),
-        incoming = false,
-        intercom = false,
-        muted = this.room.muted,
-        route = this.room.route ?: previous?.route ?: AudioRoute.EARPIECE,
-        availableRoutes = CallSupport.availableRoutes(core),
-        connectedAt = room.openedAt,
-        waitingCall = live(other)?.takeIf(::isRinging)?.let(::partyOf),
-        room = room,
-    )
-
     private companion object {
-        /** What the call screen and the notification call the conference room. */
-        const val ROOM_NAME = "会议室"
         const val END_LINGER_MS = 1400L
 
         /** SIP status for a caller who withholds the number where that is not accepted. */

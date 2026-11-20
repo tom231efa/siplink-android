@@ -5,6 +5,8 @@ import com.sky.siplink.core.CallSupport.phaseOf
 import com.sky.siplink.core.logic.PartyName
 import com.sky.siplink.core.model.AudioRoute
 import com.sky.siplink.core.model.CallInfo
+import com.sky.siplink.core.model.CallPhase
+import com.sky.siplink.core.model.RoomInfo
 import com.sky.siplink.core.model.SideCall
 import com.sky.siplink.core.model.SupervisionMode
 import org.linphone.core.Call
@@ -71,5 +73,26 @@ internal class CallDescriber(
             recordingSince = recorder.startedAt(call),
             noSound = accounts.media.hearsNothing(call),
         )
+    }
+
+    /** The room in place of a call, with the call that waits beside it ([waiting]). */
+    fun roomInfo(room: RoomInfo, conference: ConferenceRoom, previous: CallInfo?, waiting: SideCall?) = CallInfo(
+        phase = CallPhase.CONNECTED,
+        remoteName = ROOM_NAME,
+        remoteAddress = "",
+        accountLabel = CallSupport.lineOf(conference.account),
+        incoming = false,
+        intercom = false,
+        muted = conference.muted,
+        route = conference.route ?: previous?.route ?: AudioRoute.EARPIECE,
+        availableRoutes = CallSupport.availableRoutes(core),
+        connectedAt = room.openedAt,
+        waitingCall = waiting,
+        room = room,
+    )
+
+    private companion object {
+        /** What the call screen and the notification call the conference room. */
+        const val ROOM_NAME = "会议室"
     }
 }
