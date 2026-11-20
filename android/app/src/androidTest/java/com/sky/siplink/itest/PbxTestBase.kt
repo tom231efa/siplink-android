@@ -92,7 +92,25 @@ abstract class PbxTestBase {
             pbx.close()
             phones.close()
         }
-        scenario?.close()
+        scenario?.let { shown ->
+            // The call screen stays a moment after the calls ended and fades out, see-through again
+            // (CallActivity.coverBehind): the app behind it is then started, but not in front, a
+            // stage from which ActivityScenario cannot close it. It is closed once that is over.
+            val settled = settles(TIMEOUT_MS) { callScreenClosed() }
+            try {
+                shown.close()
+            } finally {
+                assertTrue("The call screen was still open ${TIMEOUT_MS}ms after the calls ended", settled)
+            }
+        }
+    }
+
+    /** No call screen is on the screen any more, and the app is at rest: in front, behind something, or gone. */
+    private fun callScreenClosed(): Boolean = onMain {
+        val monitor = ActivityLifecycleMonitorRegistry.getInstance()
+        val callScreenShown = SHOWN_STAGES.any { stage -> monitor.getActivitiesInStage(stage).any { it is CallActivity } }
+        val appMoving = MOVING_STAGES.any { stage -> monitor.getActivitiesInStage(stage).any { it is MainActivity } }
+        !callScreenShown && !appMoving
     }
 
     /** Ends every call and removes every account of the app. */
@@ -401,6 +419,12 @@ abstract class PbxTestBase {
         private const val DIRECTORY_DELAY_MS = 100
         private const val UNREGISTER_WAIT_MS = 20_000L
         const val POLL_MS = 200L
+
+        /** The stages of an activity that is on the screen, or on its way there or away from it. */
+        private val SHOWN_STAGES = listOf(Stage.PRE_ON_CREATE, Stage.CREATED, Stage.STARTED, Stage.RESTARTED, Stage.RESUMED, Stage.PAUSED)
+
+        /** The stages that ActivityScenario does not take as an activity at rest (only resumed, paused, stopped, destroyed). */
+        private val MOVING_STAGES = listOf(Stage.PRE_ON_CREATE, Stage.CREATED, Stage.STARTED, Stage.RESTARTED)
 
         const val SILENCE_DB = -120f
         const val AUDIBLE_DB = -40f
