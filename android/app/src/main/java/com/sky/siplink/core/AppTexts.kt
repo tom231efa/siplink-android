@@ -1,6 +1,7 @@
 package com.sky.siplink.core
 
 import android.content.Context
+import android.content.res.Resources
 import android.view.View
 import androidx.annotation.StringRes
 import com.sky.siplink.core.logic.PhraseFormat
@@ -18,11 +19,11 @@ class AppTexts(private val language: AppLanguage) {
 }
 
 /** [phrase] in the language of this context's resources (an activity's: the app's language). */
-fun Context.render(phrase: Phrase): String {
-    val resources = resources
-    return PhraseFormat(
-        string = resources::getString,
-        plural = resources::getQuantityString,
-        rtl = resources.configuration.layoutDirection == View.LAYOUT_DIRECTION_RTL,
-    ).render(phrase)
-}
+fun Context.render(phrase: Phrase): String = resources.render(phrase)
+
+/** [phrase] in the language of these resources (on a screen, `LocalResources.current`). */
+fun Resources.render(phrase: Phrase): String = PhraseFormat(
+    string = this::getString,
+    plural = this::getQuantityString,
+    rtl = configuration.layoutDirection == View.LAYOUT_DIRECTION_RTL,
+).render(phrase)

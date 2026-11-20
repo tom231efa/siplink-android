@@ -1,7 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Texts every area uses. Areas: strings_call, strings_room, strings_account, strings_directory, strings_shortcut, strings_remote, strings_settings, strings_notification, strings_form. -->
+<!-- Texts every area uses. Each area has its own strings_{area}.xml. -->
 <resources>
     <string name="list_separator">；</string>
     <string name="managed_notice">配置由远程下发，不能在本机修改</string>
     <string name="managed_locked">配置由远程下发</string>
+
+    <!-- Buttons every area uses -->
+    <string name="common_cancel">取消</string>
+    <string name="common_back">返回</string>
+    <string name="common_delete">删除</string>
+    <string name="common_confirm_delete">确认删除</string>
+    <string name="common_save">保存</string>
+    <string name="common_ok">确定</string>
+    <string name="common_edit">编辑</string>
+    <string name="common_done">完成</string>
+    <string name="common_close">关闭</string>
+    <string name="common_more">更多</string>
+    <string name="common_clear">清除</string>
+    <string name="common_restore_defaults">恢复默认</string>
 </resources>

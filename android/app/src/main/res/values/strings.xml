@@ -1,8 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Texts every area uses. Areas: strings_call, strings_room, strings_account, strings_directory, strings_shortcut, strings_remote, strings_settings, strings_notification, strings_form. -->
+<!-- Texts every area uses. Each area has its own strings_{area}.xml. -->
 <resources>
     <string name="app_name" translatable="false">SipLink</string>
     <string name="list_separator">"; "</string>
     <string name="managed_notice">Managed remotely; cannot be changed on this device</string>
     <string name="managed_locked">Managed remotely</string>
+
+    <!-- Buttons every area uses -->
+    <string name="common_cancel">Cancel</string>
+    <string name="common_back">Back</string>
+    <string name="common_delete">Delete</string>
+    <string name="common_confirm_delete">Confirm delete</string>
+    <string name="common_save">Save</string>
+    <string name="common_ok">OK</string>
+    <string name="common_edit">Edit</string>
+    <string name="common_done">Done</string>
+    <string name="common_close">Close</string>
+    <string name="common_more">More</string>
+    <string name="common_clear">Clear</string>
+    <string name="common_restore_defaults">Restore defaults</string>
 </resources>
