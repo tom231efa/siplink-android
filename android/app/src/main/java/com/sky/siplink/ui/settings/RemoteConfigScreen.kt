@@ -35,7 +35,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -52,6 +51,7 @@ import com.sky.siplink.ui.components.NavRow
 import com.sky.siplink.ui.components.Personal
 import com.sky.siplink.ui.components.SectionCard
 import com.sky.siplink.ui.components.SubScreen
+import com.sky.siplink.ui.components.endAlign
 import com.sky.siplink.ui.components.pluralOf
 import com.sky.siplink.ui.components.stringOf
 import java.time.ZoneId
@@ -231,7 +231,7 @@ private fun InfoRow(label: String, value: String, error: Boolean = false) {
                 value,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.error,
-                textAlign = TextAlign.End,
+                textAlign = endAlign(),
                 modifier = Modifier.weight(1f),
             )
         } else {
@@ -240,7 +240,7 @@ private fun InfoRow(label: String, value: String, error: Boolean = false) {
                 value,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.End,
+                textAlign = endAlign(),
                 modifier = Modifier.weight(1f),
             )
         }

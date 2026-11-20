@@ -23,6 +23,21 @@ class FilledTextTest {
         assertEquals("Texts filled without PhraseFormat (use stringOf / pluralOf, or render a Phrase)", emptyList<String>(), found)
     }
 
+    /**
+     * Where a text starts or ends is the screen's business: TextAlign.Start and TextAlign.End
+     * follow the text's own direction, and put an address and an Arabic word of one Arabic screen
+     * on two different sides. The theme aligns every text to the start of the screen; a column of
+     * values at the end takes endAlign() (ui/components/Direction.kt).
+     */
+    @Test
+    fun `no screen aligns a text by its own direction`() {
+        val ui = File(sources, "com/sky/siplink/ui")
+        val found = ui.walk().filter { it.isFile && it.extension == "kt" && it.name !in OWN_DIRECTION }
+            .flatMap { file -> ALIGNED_BY_TEXT.findAll(withoutComments(file.readText())).map { "${file.name}: ${it.value}" } }
+            .toList()
+        assertEquals("Use the theme's alignment or endAlign()", emptyList<String>(), found)
+    }
+
     @Test
     fun `the scanner finds the calls with arguments and leaves the others alone`() {
         val q = "\""
@@ -50,9 +65,9 @@ class FilledTextTest {
     @Test
     fun `in Arabic the values of a filled text are isolated, in other languages they are not`() {
         val arabic = Texts("ar").render(Phrase.of(R.string.main_banner_incoming, "+1 555 0100"))
-        assertEquals(true, "⁨+1 555 0100⁩" in arabic)
+        assertEquals(true, "\u2068+1 555 0100\u2069" in arabic)
         val french = Texts("fr").render(Phrase.of(R.string.main_banner_incoming, "+1 555 0100"))
-        assertEquals(false, '⁨' in french)
+        assertEquals(false, '\u2068' in french)
         assertEquals(true, "+1 555 0100" in french)
     }
 
@@ -66,6 +81,11 @@ class FilledTextTest {
     }
 
     private companion object {
+        val ALIGNED_BY_TEXT = Regex("""TextAlign\.(Start|End)\b""")
+
+        /** FadingText: a line that runs on starts where its own direction starts, so that its beginning stays in sight. */
+        val OWN_DIRECTION = setOf("FadingText.kt")
+
         val CALL = Regex("""(?<![\w:])(stringResource|pluralStringResource|getQuantityString|getString)\(""")
 
         /** The calls of [code] that fill a text by Android's own formatting, as they start. */

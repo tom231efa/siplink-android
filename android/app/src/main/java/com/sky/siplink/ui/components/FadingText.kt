@@ -31,7 +31,8 @@ import androidx.compose.ui.unit.dp
  * The fade takes the text's own transparency away, so it works on any background, the dark call
  * screen included. It is drawn only while the text does not fit; a text that fits is drawn as a
  * plain [Text]. It sits at the end the line runs out at: the right, or the left for right-to-left
- * text.
+ * text. A line that runs on keeps its beginning in sight: it starts where its own direction
+ * starts (an address in an Arabic row at the left), not where the screen aligns a text that fits.
  *
  * @param maxLines one, the usual: the line runs on and is cut. More: the text wraps, and the last
  *   of these lines fades when there is more to come
@@ -50,6 +51,8 @@ fun FadingText(
 ) {
     // Where the text is cut, written while laying out and read while drawing: the same frame shows it.
     val cut = remember { mutableStateOf<Cut?>(null) }
+    // Whether the one line runs on past the box: read from the last layout of this text.
+    val runsOn = remember(text) { mutableStateOf(false) }
     Text(
         text,
         modifier = modifier.drawWithContent {
@@ -74,11 +77,14 @@ fun FadingText(
         color = color,
         style = style,
         fontWeight = fontWeight,
-        textAlign = textAlign,
+        textAlign = if (runsOn.value) TextAlign.Start else textAlign,
         maxLines = maxLines,
         softWrap = maxLines > 1,
         overflow = TextOverflow.Clip,
-        onTextLayout = { layout -> cut.value = Cut.of(layout, maxLines) },
+        onTextLayout = { layout ->
+            cut.value = Cut.of(layout, maxLines)
+            runsOn.value = maxLines == 1 && linesRunOut(layout)
+        },
     )
 }
 
@@ -89,7 +95,7 @@ fun FadingText(
 private data class Cut(val end: Float, val top: Float, val bottom: Float, val rightToLeft: Boolean) {
     companion object {
         fun of(layout: TextLayoutResult, maxLines: Int): Cut? {
-            val cut = if (maxLines == 1) layout.didOverflowWidth else layout.didOverflowHeight
+            val cut = if (maxLines == 1) linesRunOut(layout) else layout.didOverflowHeight
             if (!cut || layout.lineCount == 0) return null
             val line = layout.lineCount - 1
             val rightToLeft = layout.getParagraphDirection(layout.getLineStart(line)) == ResolvedTextDirection.Rtl
@@ -102,3 +108,10 @@ private data class Cut(val end: Float, val top: Float, val bottom: Float, val ri
         }
     }
 }
+
+/**
+ * Whether the one line of [layout] is wider than its box. (didOverflowWidth also holds for a text
+ * laid out across the whole width to be aligned and shown only as wide as it is, which fits.)
+ */
+private fun linesRunOut(layout: TextLayoutResult): Boolean =
+    layout.lineCount > 0 && layout.getLineRight(0) - layout.getLineLeft(0) > layout.size.width + 1f

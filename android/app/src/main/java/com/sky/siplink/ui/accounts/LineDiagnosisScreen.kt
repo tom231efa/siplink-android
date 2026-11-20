@@ -2,6 +2,7 @@ package com.sky.siplink.ui.accounts
 
 import android.content.Intent
 import android.provider.Settings
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,7 +27,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.sky.siplink.R
 import com.sky.siplink.core.CallSupport
@@ -45,6 +45,7 @@ import com.sky.siplink.ui.components.LocalMessenger
 import com.sky.siplink.ui.components.Personal
 import com.sky.siplink.ui.components.SectionCard
 import com.sky.siplink.ui.components.SubScreen
+import com.sky.siplink.ui.components.endAlign
 import com.sky.siplink.ui.components.pluralOf
 import com.sky.siplink.ui.components.regStateLabel
 import com.sky.siplink.ui.components.stringOf
@@ -172,8 +173,9 @@ private fun NetworkCard(report: LineReport, onBattery: () -> Unit) {
                     .padding(start = 16.dp, end = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Label(stringResource(R.string.diagnosis_battery))
-                Spacer(Modifier.weight(1f))
+                // What the row is about yields first, so the value and its button keep their words whole.
+                Box(Modifier.weight(1f)) { Label(stringResource(R.string.diagnosis_battery)) }
+                Spacer(Modifier.width(16.dp))
                 Text(stringResource(R.string.diagnosis_battery_restricted), style = MaterialTheme.typography.bodyMedium)
                 TextButton(onClick = onBattery) { Text(stringResource(R.string.diagnosis_battery_settings)) }
             }
@@ -296,7 +298,7 @@ private fun ValueRow(label: String, value: String, error: Boolean = false) {
             value,
             style = MaterialTheme.typography.bodyMedium,
             color = if (error) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
-            textAlign = TextAlign.End,
+            textAlign = endAlign(),
             modifier = Modifier.weight(1f),
         )
     }

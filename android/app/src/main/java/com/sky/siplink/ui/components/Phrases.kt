@@ -21,7 +21,7 @@ fun Phrase.text(): String {
  * A string resource filled with [args], rendered as the phrases of the core are
  * ([com.sky.siplink.core.logic.PhraseFormat]): in a right-to-left language every value is
  * isolated, so that a number or an address keeps its own direction inside the sentence. Screens
- * fill their texts with this, not with `stringResource(id, args)` (SourceTextTest).
+ * fill their texts with this, not with `stringResource(id, args)` (FilledTextTest).
  */
 @Composable
 @ReadOnlyComposable

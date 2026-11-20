@@ -14,9 +14,12 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sky.siplink.core.model.ThemeMode
@@ -118,29 +121,52 @@ private val AppShapes = Shapes(
 /**
  * Every text takes the direction of its first letter, and one without any (a number, an address,
  * a call timer) is written left to right, in a right-to-left language too: by default it would
- * take the direction of the screen, and "2501@host" would read "host@2501" in Arabic.
+ * take the direction of the screen, and "2501@host" would read "host@2501" in Arabic. Where a
+ * text stands in its box is the screen's business, not the text's: see [alignedTo].
  */
 private val AppTypography = Typography().run {
     copy(
-        displayLarge = displayLarge.byContent(),
-        displayMedium = displayMedium.byContent(),
-        displaySmall = displaySmall.copy(fontWeight = FontWeight.SemiBold, letterSpacing = (-0.5).sp).byContent(),
-        headlineLarge = headlineLarge.byContent(),
-        headlineMedium = headlineMedium.copy(fontWeight = FontWeight.SemiBold).byContent(),
-        headlineSmall = headlineSmall.copy(fontWeight = FontWeight.SemiBold).byContent(),
-        titleLarge = titleLarge.copy(fontWeight = FontWeight.SemiBold).byContent(),
-        titleMedium = titleMedium.copy(fontWeight = FontWeight.SemiBold).byContent(),
-        titleSmall = titleSmall.byContent(),
-        bodyLarge = bodyLarge.byContent(),
-        bodyMedium = bodyMedium.byContent(),
-        bodySmall = bodySmall.byContent(),
-        labelLarge = labelLarge.copy(fontWeight = FontWeight.SemiBold).byContent(),
-        labelMedium = labelMedium.byContent(),
-        labelSmall = labelSmall.byContent(),
-    )
+        displaySmall = displaySmall.copy(fontWeight = FontWeight.SemiBold, letterSpacing = (-0.5).sp),
+        headlineMedium = headlineMedium.copy(fontWeight = FontWeight.SemiBold),
+        headlineSmall = headlineSmall.copy(fontWeight = FontWeight.SemiBold),
+        titleLarge = titleLarge.copy(fontWeight = FontWeight.SemiBold),
+        titleMedium = titleMedium.copy(fontWeight = FontWeight.SemiBold),
+        labelLarge = labelLarge.copy(fontWeight = FontWeight.SemiBold),
+    ).map { it.copy(textDirection = TextDirection.ContentOrLtr) }
 }
 
-private fun TextStyle.byContent(): TextStyle = copy(textDirection = TextDirection.ContentOrLtr)
+/**
+ * [Typography] whose texts start at the side the screen starts from in [direction]: the left, or
+ * the right in a right-to-left language, whatever the text is made of. (TextAlign.Start follows
+ * the text's own direction: an address in an Arabic row would stick to the left.) The order of
+ * the characters inside a text stays its own.
+ */
+fun Typography.alignedTo(direction: LayoutDirection): Typography {
+    val start = if (direction == LayoutDirection.Rtl) TextAlign.Right else TextAlign.Left
+    return map { it.copy(textAlign = start) }
+}
+
+/** The app's typography for each direction of the screen, built once. */
+private val LeftToRightTypography = AppTypography.alignedTo(LayoutDirection.Ltr)
+private val RightToLeftTypography = AppTypography.alignedTo(LayoutDirection.Rtl)
+
+private fun Typography.map(style: (TextStyle) -> TextStyle): Typography = copy(
+    displayLarge = style(displayLarge),
+    displayMedium = style(displayMedium),
+    displaySmall = style(displaySmall),
+    headlineLarge = style(headlineLarge),
+    headlineMedium = style(headlineMedium),
+    headlineSmall = style(headlineSmall),
+    titleLarge = style(titleLarge),
+    titleMedium = style(titleMedium),
+    titleSmall = style(titleSmall),
+    bodyLarge = style(bodyLarge),
+    bodyMedium = style(bodyMedium),
+    bodySmall = style(bodySmall),
+    labelLarge = style(labelLarge),
+    labelMedium = style(labelMedium),
+    labelSmall = style(labelSmall),
+)
 
 @Composable
 fun isDarkTheme(mode: ThemeMode): Boolean = when (mode) {
@@ -180,5 +206,6 @@ fun SipLinkTheme(
     } else {
         own
     }
-    MaterialTheme(colorScheme = scheme, typography = AppTypography, shapes = AppShapes, content = content)
+    val typography = if (LocalLayoutDirection.current == LayoutDirection.Rtl) RightToLeftTypography else LeftToRightTypography
+    MaterialTheme(colorScheme = scheme, typography = typography, shapes = AppShapes, content = content)
 }
