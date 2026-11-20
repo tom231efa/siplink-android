@@ -62,6 +62,7 @@ import com.sky.siplink.core.model.ShortcutAction
 import com.sky.siplink.engine
 import com.sky.siplink.ui.components.FadingText
 import com.sky.siplink.ui.components.pressScale
+import com.sky.siplink.ui.components.stringOf
 import com.sky.siplink.ui.components.text
 
 /**
@@ -142,7 +143,7 @@ internal fun ShortcutBoard(
                     FilterChip(
                         selected = category == null,
                         onClick = { onCategoryChange(null) },
-                        label = { Text(stringResource(R.string.shortcut_chip_all, all.size.toString())) },
+                        label = { Text(stringOf(R.string.shortcut_chip_all, all.size.toString())) },
                     )
                 }
                 items(categories, key = { "c:${it.first}" }, contentType = { "chip" }) { (name, count) ->
@@ -150,7 +151,7 @@ internal fun ShortcutBoard(
                     FilterChip(
                         selected = category == name,
                         onClick = { onCategoryChange(if (category == name) null else name) },
-                        label = { Text(stringResource(R.string.shortcut_chip_category, shownName, count.toString())) },
+                        label = { Text(stringOf(R.string.shortcut_chip_category, shownName, count.toString())) },
                         modifier = Modifier.animateItem(),
                     )
                 }

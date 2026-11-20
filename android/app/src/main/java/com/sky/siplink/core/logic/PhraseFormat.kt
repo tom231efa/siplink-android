@@ -9,7 +9,10 @@ import java.util.Locale
  * String.format. Every argument goes in as text: numbers with Western digits (Locale.ROOT), and,
  * in a right-to-left language, each value that is not a text of the app ([Phrase.Plain], a
  * String, a number) wrapped in a first-strong isolate (U+2068 … U+2069), so that a number or
- * an address keeps its own direction.
+ * an address keeps its own direction. A pattern that holds no letter of its own ("%1$s · %2$s")
+ * then starts with a right-to-left mark, so that its values follow one another from the right as
+ * the language reads: the screens write a text without letters left to right (the app's
+ * typography), which is what a value alone wants, not a list of them.
  *
  * @param string the pattern of a string resource
  * @param plural the pattern of a plural resource for a count
@@ -28,7 +31,16 @@ class PhraseFormat(
 
     private fun fill(pattern: String, args: List<Any>): String {
         if (args.isEmpty()) return pattern
-        return String.format(Locale.ROOT, pattern, *args.map(::argument).toTypedArray())
+        val filled = String.format(Locale.ROOT, pattern, *args.map(::argument).toTypedArray())
+        return if (rtl && !hasLetter(pattern)) "$RLM$filled" else filled
+    }
+
+    /** Whether [pattern] holds a character of a strong direction outside its placeholders. */
+    private fun hasLetter(pattern: String): Boolean = PLACEHOLDER.replace(pattern, "").any { char ->
+        when (Character.getDirectionality(char)) {
+            Character.DIRECTIONALITY_LEFT_TO_RIGHT, Character.DIRECTIONALITY_RIGHT_TO_LEFT, Character.DIRECTIONALITY_RIGHT_TO_LEFT_ARABIC -> true
+            else -> false
+        }
     }
 
     private fun argument(value: Any): String = when (value) {
@@ -42,5 +54,7 @@ class PhraseFormat(
     private companion object {
         const val FSI = '\u2068'
         const val PDI = '\u2069'
+        const val RLM = '\u200F'
+        val PLACEHOLDER = Regex("%\\d+\\${'$'}s")
     }
 }

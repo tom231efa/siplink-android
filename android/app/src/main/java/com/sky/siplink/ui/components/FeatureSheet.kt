@@ -102,7 +102,7 @@ fun FeatureSheet(
                 FadingText(name ?: stringResource(R.string.feature_sheet_title), style = MaterialTheme.typography.titleLarge)
                 if (name != null) {
                     FadingText(
-                        stringResource(R.string.feature_sheet_extension, extension),
+                        stringOf(R.string.feature_sheet_extension, extension),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -137,7 +137,7 @@ fun FeatureSheet(
             DialRow(FeatureDial.Action.BARGE, Icons.Rounded.GroupAdd)
             FeatureRow(
                 icon = Icons.Rounded.PhoneDisabled,
-                title = if (confirmForce) stringResource(R.string.feature_sheet_force_confirm, extension) else stringResource(FeatureDial.Action.FORCE_HANG_UP.label),
+                title = if (confirmForce) stringOf(R.string.feature_sheet_force_confirm, extension) else stringResource(FeatureDial.Action.FORCE_HANG_UP.label),
                 enabled = hasTarget || !forceConfigured,
                 destructive = true,
                 dimmed = !forceConfigured,

@@ -34,7 +34,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -53,6 +52,8 @@ import com.sky.siplink.ui.components.NavRow
 import com.sky.siplink.ui.components.Personal
 import com.sky.siplink.ui.components.SectionCard
 import com.sky.siplink.ui.components.SubScreen
+import com.sky.siplink.ui.components.pluralOf
+import com.sky.siplink.ui.components.stringOf
 import java.time.ZoneId
 
 /**
@@ -124,7 +125,7 @@ fun RemoteConfigScreen(onBack: () -> Unit) {
             onDismissRequest = { pending = null },
             title = { Text(stringResource(R.string.remote_load_title)) },
             text = {
-                Text(stringResource(R.string.remote_load_text, enrollment.host))
+                Text(stringOf(R.string.remote_load_text, enrollment.host))
             },
             confirmButton = {
                 TextButton(onClick = {
@@ -196,7 +197,7 @@ private fun Enrolled(status: RemoteConfig.Status, onSync: () -> Unit, onDelete: 
         if (status.lastError.isNotEmpty()) InfoRow(stringResource(R.string.remote_sync_result), status.lastError, error = true)
         NavRow(
             title = stringResource(if (status.busy) R.string.remote_syncing else R.string.remote_sync_now),
-            subtitle = pluralStringResource(R.plurals.remote_sync_interval, status.refreshMinutes, status.refreshMinutes.toString()),
+            subtitle = pluralOf(R.plurals.remote_sync_interval, status.refreshMinutes, status.refreshMinutes.toString()),
             icon = Icons.Rounded.Sync,
             onClick = { if (!status.busy) onSync() },
         )

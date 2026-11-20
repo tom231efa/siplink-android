@@ -14,7 +14,9 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sky.siplink.core.model.ThemeMode
@@ -113,16 +115,32 @@ private val AppShapes = Shapes(
     extraLarge = RoundedCornerShape(32.dp),
 )
 
+/**
+ * Every text takes the direction of its first letter, and one without any (a number, an address,
+ * a call timer) is written left to right, in a right-to-left language too: by default it would
+ * take the direction of the screen, and "2501@host" would read "host@2501" in Arabic.
+ */
 private val AppTypography = Typography().run {
     copy(
-        displaySmall = displaySmall.copy(fontWeight = FontWeight.SemiBold, letterSpacing = (-0.5).sp),
-        headlineMedium = headlineMedium.copy(fontWeight = FontWeight.SemiBold),
-        headlineSmall = headlineSmall.copy(fontWeight = FontWeight.SemiBold),
-        titleLarge = titleLarge.copy(fontWeight = FontWeight.SemiBold),
-        titleMedium = titleMedium.copy(fontWeight = FontWeight.SemiBold),
-        labelLarge = labelLarge.copy(fontWeight = FontWeight.SemiBold),
+        displayLarge = displayLarge.byContent(),
+        displayMedium = displayMedium.byContent(),
+        displaySmall = displaySmall.copy(fontWeight = FontWeight.SemiBold, letterSpacing = (-0.5).sp).byContent(),
+        headlineLarge = headlineLarge.byContent(),
+        headlineMedium = headlineMedium.copy(fontWeight = FontWeight.SemiBold).byContent(),
+        headlineSmall = headlineSmall.copy(fontWeight = FontWeight.SemiBold).byContent(),
+        titleLarge = titleLarge.copy(fontWeight = FontWeight.SemiBold).byContent(),
+        titleMedium = titleMedium.copy(fontWeight = FontWeight.SemiBold).byContent(),
+        titleSmall = titleSmall.byContent(),
+        bodyLarge = bodyLarge.byContent(),
+        bodyMedium = bodyMedium.byContent(),
+        bodySmall = bodySmall.byContent(),
+        labelLarge = labelLarge.copy(fontWeight = FontWeight.SemiBold).byContent(),
+        labelMedium = labelMedium.byContent(),
+        labelSmall = labelSmall.byContent(),
     )
 }
+
+private fun TextStyle.byContent(): TextStyle = copy(textDirection = TextDirection.ContentOrLtr)
 
 @Composable
 fun isDarkTheme(mode: ThemeMode): Boolean = when (mode) {

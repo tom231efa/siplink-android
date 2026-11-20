@@ -74,7 +74,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -96,6 +95,8 @@ import com.sky.siplink.core.model.SideCall
 import com.sky.siplink.engine
 import com.sky.siplink.ui.components.Avatar
 import com.sky.siplink.ui.components.FadingText
+import com.sky.siplink.ui.components.pluralOf
+import com.sky.siplink.ui.components.stringOf
 import com.sky.siplink.ui.components.text
 import com.sky.siplink.ui.theme.Brand
 import java.util.Locale
@@ -127,7 +128,7 @@ internal fun RoomContent(
         AlertDialog(
             onDismissRequest = { onConfirmEnd(false) },
             title = { Text(stringResource(R.string.room_end_title)) },
-            text = { Text(pluralStringResource(R.plurals.room_end_text, room.present, room.present.toString())) },
+            text = { Text(pluralOf(R.plurals.room_end_text, room.present, room.present.toString())) },
             confirmButton = {
                 TextButton(onClick = {
                     onConfirmEnd(false)
@@ -328,7 +329,7 @@ private fun thermalText(status: Int?): Int = when (status) {
 
 @Composable
 private fun linkText(link: LinkReadings): String =
-    stringResource(R.string.room_link_readings, whole(link.lossUp), whole(link.lossDown), whole(link.jitterMs), whole(link.roundTripMs))
+    stringOf(R.string.room_link_readings, whole(link.lossUp), whole(link.lossDown), whole(link.jitterMs), whole(link.roundTripMs))
 
 private fun whole(value: Float): String = "%.0f".format(Locale.ROOT, value)
 
@@ -431,11 +432,11 @@ private fun MemberRow(member: RoomMember, onHangUp: () -> Unit, onRetry: () -> U
         when {
             left -> Unit
             heldBack -> {
-                RowAction(Icons.Rounded.Call, stringResource(R.string.room_member_retry, member.name), Color.White, onRetry)
-                RowAction(Icons.Rounded.Close, stringResource(R.string.room_member_remove, member.name), Color.White, onHangUp)
+                RowAction(Icons.Rounded.Call, stringOf(R.string.room_member_retry, member.name), Color.White, onRetry)
+                RowAction(Icons.Rounded.Close, stringOf(R.string.room_member_remove, member.name), Color.White, onHangUp)
             }
-            member.state == MemberState.QUEUED -> RowAction(Icons.Rounded.Close, stringResource(R.string.room_member_remove, member.name), Color.White, onHangUp)
-            else -> RowAction(Icons.Rounded.CallEnd, stringResource(R.string.room_member_hang_up, member.name), Brand.HangUpRed, onHangUp)
+            member.state == MemberState.QUEUED -> RowAction(Icons.Rounded.Close, stringOf(R.string.room_member_remove, member.name), Color.White, onHangUp)
+            else -> RowAction(Icons.Rounded.CallEnd, stringOf(R.string.room_member_hang_up, member.name), Brand.HangUpRed, onHangUp)
         }
     }
 }
@@ -471,7 +472,7 @@ private fun SignalBars(bars: Int?, poor: Boolean) {
     val shown = bars ?: if (poor) 1 else return
     val on = if (poor) Brand.Amber else Color.White.copy(alpha = 0.7f)
     val off = Color.White.copy(alpha = 0.18f)
-    val description = if (poor) stringResource(R.string.room_signal_poor) else stringResource(R.string.room_signal, shown.toString(), "3")
+    val description = if (poor) stringResource(R.string.room_signal_poor) else stringOf(R.string.room_signal, shown.toString(), "3")
     Canvas(
         Modifier
             .size(width = 14.dp, height = 11.dp)

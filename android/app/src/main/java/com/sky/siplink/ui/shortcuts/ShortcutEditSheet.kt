@@ -53,6 +53,7 @@ import com.sky.siplink.R
 import com.sky.siplink.core.logic.ShortcutLines
 import com.sky.siplink.core.logic.ShortcutRules
 import com.sky.siplink.core.model.DndMode
+import com.sky.siplink.core.model.Phrase
 import com.sky.siplink.core.model.Shortcut
 import com.sky.siplink.core.model.ShortcutAction
 import com.sky.siplink.core.model.ShortcutIcon
@@ -66,6 +67,7 @@ import com.sky.siplink.ui.components.LocalConfigLocked
 import com.sky.siplink.ui.components.LocalMessenger
 import com.sky.siplink.ui.components.ManagedLock
 import com.sky.siplink.ui.components.pressScale
+import com.sky.siplink.ui.components.stringOf
 
 /** Offers to make a new key of a contact or a call log entry. */
 @Composable
@@ -119,7 +121,7 @@ internal fun ShortcutEditSheet(shortcut: Shortcut, onDismiss: () -> Unit) {
     val lineError = when {
         lineAccount != null -> null
         // The account was removed, or the key came from an import that named one this phone lacks.
-        line.isNotEmpty() -> stringResource(R.string.shortcut_line_gone, line)
+        line.isNotEmpty() -> stringOf(R.string.shortcut_line_gone, line)
         lineChecked -> stringResource(R.string.form_required)
         else -> null
     }
@@ -338,8 +340,8 @@ private fun lineModeLabel(resources: Resources, fixed: Boolean): String =
     resources.getString(if (fixed) R.string.shortcut_line_fixed else R.string.shortcut_line_ask)
 
 private fun lineLabel(resources: Resources, account: SipAccount): String {
-    val name = if (account.name.isBlank()) account.identity else resources.getString(R.string.shortcut_line_named, account.name, account.identity)
-    return if (account.enabled) name else resources.getString(R.string.shortcut_line_disabled, name)
+    val name = if (account.name.isBlank()) account.identity else resources.render(Phrase.of(R.string.shortcut_line_named, account.name, account.identity))
+    return if (account.enabled) name else resources.render(Phrase.of(R.string.shortcut_line_disabled, name))
 }
 
 private val IconChoiceSize = 46.dp

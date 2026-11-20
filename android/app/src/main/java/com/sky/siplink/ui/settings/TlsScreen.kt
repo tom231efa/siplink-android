@@ -50,6 +50,7 @@ import com.sky.siplink.core.TlsManager
 import com.sky.siplink.core.logic.ManagedConfig
 import com.sky.siplink.core.model.CertInfo
 import com.sky.siplink.core.model.MediaSecurity
+import com.sky.siplink.core.model.Phrase
 import com.sky.siplink.core.render
 import com.sky.siplink.engine
 import com.sky.siplink.ui.components.ChoiceRow
@@ -60,6 +61,7 @@ import com.sky.siplink.ui.components.LocalMessenger
 import com.sky.siplink.ui.components.SectionCard
 import com.sky.siplink.ui.components.SubScreen
 import com.sky.siplink.ui.components.SwitchRow
+import com.sky.siplink.ui.components.stringOf
 import com.sky.siplink.ui.theme.Brand
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -109,7 +111,7 @@ fun TlsScreen(onBack: () -> Unit) {
                 else -> when (val result = engine.tls.import(data)) {
                     is TlsManager.ImportResult.Added -> {
                         restartPrompt = engine.directory.tlsChangeNeedsRestart
-                        resources.getQuantityString(R.plurals.tls_imported, result.count, result.count.toString())
+                        resources.render(Phrase.count(R.plurals.tls_imported, result.count))
                     }
                     TlsManager.ImportResult.AlreadyTrusted -> resources.getString(R.string.tls_already_trusted)
                     is TlsManager.ImportResult.Invalid -> resources.render(result.reason)
@@ -194,7 +196,7 @@ fun TlsScreen(onBack: () -> Unit) {
         AlertDialog(
             onDismissRequest = { pendingRemoval = null },
             title = { Text(stringResource(R.string.tls_remove_title)) },
-            text = { Text(stringResource(R.string.tls_remove_text, certificate.subject)) },
+            text = { Text(stringOf(R.string.tls_remove_text, certificate.subject)) },
             confirmButton = {
                 TextButton(onClick = {
                     engine.tls.remove(certificate.fingerprint)
@@ -232,16 +234,16 @@ private fun CertificateRow(certificate: CertInfo, onRemove: (() -> Unit)?) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             FadingText(certificate.subject, style = MaterialTheme.typography.titleMedium)
             FadingText(
-                stringResource(R.string.tls_issuer, certificate.issuer),
+                stringOf(R.string.tls_issuer, certificate.issuer),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             val expiry = Instant.ofEpochMilli(certificate.notAfterMs).atZone(zone).format(dateFormat)
             Text(
                 when {
-                    certificate.expired -> stringResource(R.string.tls_expired, expiry)
-                    !certificate.isCa -> stringResource(R.string.tls_valid_until_not_ca, expiry)
-                    else -> stringResource(R.string.tls_valid_until, expiry)
+                    certificate.expired -> stringOf(R.string.tls_expired, expiry)
+                    !certificate.isCa -> stringOf(R.string.tls_valid_until_not_ca, expiry)
+                    else -> stringOf(R.string.tls_valid_until, expiry)
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = if (certificate.expired) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,

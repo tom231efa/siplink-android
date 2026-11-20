@@ -38,7 +38,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.sky.siplink.R
@@ -47,6 +46,8 @@ import com.sky.siplink.core.logic.RecordingPeriod
 import com.sky.siplink.core.logic.RecordingRules
 import com.sky.siplink.core.model.Recording
 import com.sky.siplink.ui.components.FadingText
+import com.sky.siplink.ui.components.pluralOf
+import com.sky.siplink.ui.components.stringOf
 import java.io.File
 import java.time.Instant
 import java.time.LocalDate
@@ -66,8 +67,8 @@ internal fun PeriodRow(period: RecordingPeriod, range: Pair<LocalDate, LocalDate
         listOf(
             RecordingPeriod.ALL to stringResource(R.string.recording_period_all),
             RecordingPeriod.TODAY to stringResource(R.string.recording_period_today),
-            RecordingPeriod.WEEK to pluralStringResource(R.plurals.recording_period_days, 7, "7"),
-            RecordingPeriod.MONTH to pluralStringResource(R.plurals.recording_period_days, 30, "30"),
+            RecordingPeriod.WEEK to pluralOf(R.plurals.recording_period_days, 7, "7"),
+            RecordingPeriod.MONTH to pluralOf(R.plurals.recording_period_days, 30, "30"),
         )
             .forEach { (value, label) -> FilterChip(selected = period == value, onClick = { onPeriod(value) }, label = { Text(label) }) }
         FilterChip(
@@ -75,7 +76,7 @@ internal fun PeriodRow(period: RecordingPeriod, range: Pair<LocalDate, LocalDate
             onClick = onPickRange,
             label = {
                 Text(
-                    range?.let { (from, to) -> stringResource(R.string.recording_period_range, DAY.format(from), DAY.format(to)) }
+                    range?.let { (from, to) -> stringOf(R.string.recording_period_range, DAY.format(from), DAY.format(to)) }
                         ?: stringResource(R.string.recording_period_custom),
                 )
             },
@@ -105,7 +106,7 @@ internal fun RecordingRow(
     val unknown = stringResource(R.string.recording_unknown_number)
     val title = recording.name.ifEmpty { recording.number }.ifEmpty { unknown }
     val time = TIME.format(Instant.ofEpochMilli(recording.startedAt).atZone(zone))
-    val detail = stringResource(
+    val detail = stringOf(
         if (recording.incoming) R.string.recording_detail_incoming else R.string.recording_detail_outgoing,
         time,
         Formatters.duration(recording.durationMs / 1000),

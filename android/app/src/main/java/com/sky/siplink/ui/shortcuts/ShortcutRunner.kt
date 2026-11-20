@@ -49,7 +49,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
-import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sky.siplink.R
 import com.sky.siplink.core.SipEngine
@@ -58,6 +57,7 @@ import com.sky.siplink.core.logic.ShortcutLines
 import com.sky.siplink.core.logic.ShortcutRules
 import com.sky.siplink.core.model.CallPhase
 import com.sky.siplink.core.model.DndMode
+import com.sky.siplink.core.model.Phrase
 import com.sky.siplink.core.model.Shortcut
 import com.sky.siplink.core.model.ShortcutAction
 import com.sky.siplink.core.model.ShortcutIcon
@@ -66,6 +66,7 @@ import com.sky.siplink.engine
 import com.sky.siplink.ui.components.AccountPickerSheet
 import com.sky.siplink.ui.components.CallLauncher
 import com.sky.siplink.ui.components.rememberCallLauncher
+import com.sky.siplink.ui.components.stringOf
 import com.sky.siplink.ui.components.text
 
 fun shortcutIcon(action: ShortcutAction): ImageVector = when (action) {
@@ -163,10 +164,10 @@ fun rememberShortcutRunner(accountId: String?, onOutcome: (ShortcutOutcome) -> U
                 report(press(resources, engine, launcher, ask.shortcut, id))
             },
             onDismiss = { asking = null },
-            title = stringResource(R.string.shortcut_choose_line_title, ShortcutRules.title(ask.shortcut).text()),
+            title = stringOf(R.string.shortcut_choose_line_title, ShortcutRules.title(ask.shortcut).text()),
             defaultTitle = null,
             pinnedId = preferred,
-            note = ask.lost?.let { stringResource(R.string.shortcut_line_unavailable, it) },
+            note = ask.lost?.let { stringOf(R.string.shortcut_line_unavailable, it) },
         )
     }
 
@@ -219,13 +220,13 @@ private fun press(
             if (inCall) return onCall(calls.startConsultation(number)) else launcher.call(number, account)
         ShortcutAction.BLIND_TRANSFER ->
             if (inCall) return onCall(calls.blindTransfer(number)) else launcher.call(number, account)
-        ShortcutAction.DTMF -> return calls.sendDtmfs(number)?.let(::ShortcutOutcome) ?: ShortcutOutcome(resources.getString(R.string.shortcut_dtmf_sent, number), showCall = true)
+        ShortcutAction.DTMF -> return calls.sendDtmfs(number)?.let(::ShortcutOutcome) ?: ShortcutOutcome(resources.render(Phrase.of(R.string.shortcut_dtmf_sent, number)), showCall = true)
         ShortcutAction.FORWARD -> {
             val on = engine.settings.current.forwardAlways != number
             // Forwarding is part of a managed configuration: the key then has nothing to switch.
             if (!engine.updateSettings { it.copy(forwardAlways = if (on) number else "") }) return ShortcutOutcome(resources.render(ManagedConfig.NOTICE))
             return ShortcutOutcome(
-                if (on) resources.getString(R.string.shortcut_forward_on, number) else resources.getString(R.string.shortcut_forward_off),
+                if (on) resources.render(Phrase.of(R.string.shortcut_forward_on, number)) else resources.getString(R.string.shortcut_forward_off),
             )
         }
         ShortcutAction.DND -> {

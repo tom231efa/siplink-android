@@ -48,7 +48,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -61,7 +60,9 @@ import com.sky.siplink.ui.components.Avatar
 import com.sky.siplink.ui.components.EmptyState
 import com.sky.siplink.ui.components.FadingText
 import com.sky.siplink.ui.components.FeatureSheet
+import com.sky.siplink.ui.components.pluralOf
 import com.sky.siplink.ui.components.rememberCallLauncher
+import com.sky.siplink.ui.components.stringOf
 import com.sky.siplink.ui.shortcuts.NewShortcutSheet
 import com.sky.siplink.ui.theme.Brand
 import java.time.Instant
@@ -187,7 +188,7 @@ fun HistoryScreen() {
         AlertDialog(
             onDismissRequest = { confirmClear = false },
             title = { Text(stringResource(R.string.history_clear_title)) },
-            text = { Text(pluralStringResource(R.plurals.history_clear_text, entries.size, entries.size.toString())) },
+            text = { Text(pluralOf(R.plurals.history_clear_text, entries.size, entries.size.toString())) },
             confirmButton = {
                 TextButton(onClick = {
                     history.clear()
@@ -221,12 +222,12 @@ private fun HistoryRow(
         HistoryKind.OUTGOING -> Triple(
             Icons.AutoMirrored.Rounded.CallMade,
             Brand.CallGreen,
-            stringResource(R.string.history_outgoing, Formatters.duration(entry.durationSec.toLong())),
+            stringOf(R.string.history_outgoing, Formatters.duration(entry.durationSec.toLong())),
         )
         HistoryKind.INCOMING -> Triple(
             Icons.AutoMirrored.Rounded.CallReceived,
             MaterialTheme.colorScheme.primary,
-            stringResource(R.string.history_incoming, Formatters.duration(entry.durationSec.toLong())),
+            stringOf(R.string.history_incoming, Formatters.duration(entry.durationSec.toLong())),
         )
         HistoryKind.MISSED -> Triple(Icons.AutoMirrored.Rounded.CallMissed, Brand.HangUpRed, stringResource(R.string.history_missed))
         HistoryKind.FAILED -> Triple(Icons.AutoMirrored.Rounded.CallMade, MaterialTheme.colorScheme.outline, stringResource(R.string.history_failed))
@@ -251,7 +252,7 @@ private fun HistoryRow(
                     Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(15.dp))
                     Spacer(Modifier.width(4.dp))
                     FadingText(
-                        stringResource(R.string.history_time_detail, time, detail),
+                        stringOf(R.string.history_time_detail, time, detail),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

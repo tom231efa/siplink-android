@@ -40,6 +40,7 @@ import com.sky.siplink.ui.components.LocalMessenger
 import com.sky.siplink.ui.components.SectionCard
 import com.sky.siplink.ui.components.SubScreen
 import com.sky.siplink.ui.components.SwitchRow
+import com.sky.siplink.ui.components.stringOf
 import com.sky.siplink.ui.components.text
 
 /**
@@ -145,7 +146,7 @@ fun AdvancedSettingsScreen(onBack: () -> Unit) {
                     label = stringResource(R.string.advanced_no_answer_seconds),
                     error = when {
                         seconds.isEmpty() -> stringResource(R.string.form_required)
-                        seconds.toIntOrNull() !in range -> stringResource(R.string.advanced_range, range.first.toString(), range.last.toString())
+                        seconds.toIntOrNull() !in range -> stringOf(R.string.advanced_range, range.first.toString(), range.last.toString())
                         else -> null
                     },
                     keyboardType = KeyboardType.Number,
@@ -165,7 +166,7 @@ fun AdvancedSettingsScreen(onBack: () -> Unit) {
                     label = stringResource(R.string.advanced_room_limit),
                     error = when {
                         roomLimit.isEmpty() -> stringResource(R.string.form_required)
-                        roomLimit.toIntOrNull() !in roomRange -> stringResource(R.string.advanced_range, roomRange.first.toString(), roomRange.last.toString())
+                        roomLimit.toIntOrNull() !in roomRange -> stringOf(R.string.advanced_range, roomRange.first.toString(), roomRange.last.toString())
                         else -> null
                     },
                     keyboardType = KeyboardType.Number,

@@ -47,6 +47,7 @@ import com.sky.siplink.ui.components.NavRow
 import com.sky.siplink.ui.components.SectionCard
 import com.sky.siplink.ui.components.SubScreen
 import com.sky.siplink.ui.components.SwitchRow
+import com.sky.siplink.ui.components.stringOf
 
 /** What is wrong with something that is folded away: the advanced settings open to show it. */
 private val advancedErrors = setOf(
@@ -350,7 +351,7 @@ fun LdapEditScreen(directoryId: String?, onBack: () -> Unit, onOpenTls: () -> Un
     if (confirmDelete && stored != null && !locked) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
-            title = { Text(stringResource(R.string.directory_delete_title, stored.title)) },
+            title = { Text(stringOf(R.string.directory_delete_title, stored.title)) },
             text = { Text(stringResource(R.string.directory_delete_text)) },
             confirmButton = {
                 TextButton(onClick = {

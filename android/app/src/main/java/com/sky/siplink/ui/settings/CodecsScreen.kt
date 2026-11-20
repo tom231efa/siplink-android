@@ -35,7 +35,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -49,6 +48,8 @@ import com.sky.siplink.ui.components.ChoiceRow
 import com.sky.siplink.ui.components.LocalConfigLocked
 import com.sky.siplink.ui.components.LocalMessenger
 import com.sky.siplink.ui.components.ManagedLock
+import com.sky.siplink.ui.components.pluralOf
+import com.sky.siplink.ui.components.stringOf
 
 /**
  * Audio and video codecs: which ones are offered, and in which order of preference. The video
@@ -198,9 +199,9 @@ private fun CodecRow(
                 if (!codec.isVideo) {
                     Text(
                         if (codec.channels > 1) {
-                            pluralStringResource(R.plurals.codec_rate_channels, codec.channels, codec.clockRate.toString(), codec.channels.toString())
+                            pluralOf(R.plurals.codec_rate_channels, codec.channels, codec.clockRate.toString(), codec.channels.toString())
                         } else {
-                            stringResource(R.string.codec_rate, codec.clockRate.toString())
+                            stringOf(R.string.codec_rate, codec.clockRate.toString())
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -208,10 +209,10 @@ private fun CodecRow(
                 }
             }
             IconButton(onClick = { onMove(-1) }, enabled = canMoveUp && !locked) {
-                Icon(Icons.Rounded.KeyboardArrowUp, contentDescription = stringResource(R.string.codec_move_up, codec.mime))
+                Icon(Icons.Rounded.KeyboardArrowUp, contentDescription = stringOf(R.string.codec_move_up, codec.mime))
             }
             IconButton(onClick = { onMove(1) }, enabled = canMoveDown && !locked) {
-                Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = stringResource(R.string.codec_move_down, codec.mime))
+                Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = stringOf(R.string.codec_move_down, codec.mime))
             }
             Spacer(Modifier.width(4.dp))
             Switch(checked = codec.enabled, onCheckedChange = onEnabledChange, enabled = !locked)

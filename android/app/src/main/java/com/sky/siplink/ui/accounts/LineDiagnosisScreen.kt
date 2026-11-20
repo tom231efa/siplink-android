@@ -25,7 +25,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -46,7 +45,9 @@ import com.sky.siplink.ui.components.LocalMessenger
 import com.sky.siplink.ui.components.Personal
 import com.sky.siplink.ui.components.SectionCard
 import com.sky.siplink.ui.components.SubScreen
+import com.sky.siplink.ui.components.pluralOf
 import com.sky.siplink.ui.components.regStateLabel
+import com.sky.siplink.ui.components.stringOf
 import com.sky.siplink.ui.components.text
 import java.time.Instant
 import java.time.ZoneId
@@ -136,7 +137,7 @@ private fun NetworkCard(report: LineReport, onBattery: () -> Unit) {
                     NetType.ETHERNET -> stringResource(R.string.diagnosis_type_ethernet)
                     NetType.OTHER -> stringResource(R.string.diagnosis_type_other)
                 }
-                if (it.vpn) stringResource(R.string.diagnosis_type_vpn, type) else type
+                if (it.vpn) stringOf(R.string.diagnosis_type_vpn, type) else type
             } ?: stringResource(R.string.diagnosis_no_network),
         )
         ValueRow(stringResource(R.string.diagnosis_local_address), report.localAddress ?: NONE)
@@ -231,7 +232,7 @@ private fun RegistrationCard(report: LineReport) {
         ValueRow(stringResource(R.string.diagnosis_state), report.error ?: regStateLabel(report.registration), error = report.error != null)
         ValueRow(stringResource(R.string.diagnosis_transport), report.adaptedTransport?.let { LineAdapt.label(it).text() } ?: report.transport.name)
         ValueRow("Contact", report.contact ?: NONE)
-        ValueRow(stringResource(R.string.diagnosis_expires), pluralStringResource(R.plurals.diagnosis_seconds, report.expires, report.expires.toString()))
+        ValueRow(stringResource(R.string.diagnosis_expires), pluralOf(R.plurals.diagnosis_seconds, report.expires, report.expires.toString()))
     }
 }
 
@@ -249,7 +250,7 @@ private fun LastCallCard(report: LineReport) {
             },
             error = call.flow != MediaFlow.BOTH,
         )
-        ValueRow(stringResource(R.string.diagnosis_loss), stringResource(R.string.diagnosis_loss_value, percent(call.lossDown), percent(call.lossUp)))
+        ValueRow(stringResource(R.string.diagnosis_loss), stringOf(R.string.diagnosis_loss_value, percent(call.lossDown), percent(call.lossUp)))
         ValueRow(stringResource(R.string.diagnosis_jitter), "${call.jitterMs.toInt()} ms")
         ValueRow(stringResource(R.string.diagnosis_round_trip), "${call.roundTripMs.toInt()} ms")
         if (call.ice.isNotEmpty()) ValueRow("ICE", call.ice)
@@ -261,7 +262,7 @@ private fun LastCallCard(report: LineReport) {
 private fun AdaptationCard(report: LineReport, onReset: () -> Unit) {
     SectionCard(title = stringResource(R.string.diagnosis_adaptation)) {
         report.adaptedTransport?.let { ValueRow(stringResource(R.string.diagnosis_adapted_transport), it.name) }
-        report.adaptedExpires?.let { ValueRow(stringResource(R.string.diagnosis_adapted_expires), pluralStringResource(R.plurals.diagnosis_seconds, it, it.toString())) }
+        report.adaptedExpires?.let { ValueRow(stringResource(R.string.diagnosis_adapted_expires), pluralOf(R.plurals.diagnosis_seconds, it, it.toString())) }
         if (report.adaptedIce) ValueRow("ICE", stringResource(R.string.diagnosis_on))
         OutlinedButton(
             onClick = onReset,

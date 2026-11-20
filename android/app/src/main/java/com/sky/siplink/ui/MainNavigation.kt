@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import com.sky.siplink.R
+import com.sky.siplink.ui.components.stringOf
 
 /** The four main screens, in the order of the bar and of the rail. */
 internal enum class Tab(val route: String, @StringRes val label: Int, val icon: ImageVector, val selectedIcon: ImageVector) {
@@ -150,6 +151,6 @@ private fun TabIcon(tab: Tab, selected: Boolean, news: Boolean) {
 private fun TabLabel(tab: Tab, news: Boolean) {
     val label = stringResource(tab.label)
     // What the settings tab says to a screen reader while it carries the dot.
-    val withNews = stringResource(R.string.main_tab_update_news, label)
+    val withNews = stringOf(R.string.main_tab_update_news, label)
     Text(label, modifier = if (news) Modifier.semantics { contentDescription = withNews } else Modifier)
 }

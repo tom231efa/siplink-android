@@ -92,7 +92,7 @@ fun AccountPickerSheet(
                         val default = accounts.firstOrNull { it.isDefault }
                         PickerRow(
                             title = defaultTitle,
-                            subtitle = default?.let { stringResource(R.string.account_picker_row, it.label, it.identity) }
+                            subtitle = default?.let { stringOf(R.string.account_picker_row, it.label, it.identity) }
                                 ?: stringResource(R.string.account_picker_not_set),
                             state = default?.state ?: RegState.NONE,
                             selected = selectedId == null,
@@ -103,7 +103,7 @@ fun AccountPickerSheet(
                 items(filtered, key = { it.id }, contentType = { "row" }) { account ->
                     PickerRow(
                         title = account.label,
-                        subtitle = stringResource(
+                        subtitle = stringOf(
                             if (account.id == pinnedId) R.string.account_picker_row_pinned else R.string.account_picker_row_status,
                             account.identity,
                             regStateLabel(account.state),

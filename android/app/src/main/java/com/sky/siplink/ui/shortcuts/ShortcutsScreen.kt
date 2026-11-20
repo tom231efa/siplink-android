@@ -42,6 +42,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sky.siplink.R
 import com.sky.siplink.core.logic.ManagedConfig
 import com.sky.siplink.core.logic.ShortcutRules
+import com.sky.siplink.core.model.Phrase
 import com.sky.siplink.core.model.Shortcut
 import com.sky.siplink.core.render
 import com.sky.siplink.engine
@@ -52,6 +53,7 @@ import com.sky.siplink.ui.components.ImportOutcome
 import com.sky.siplink.ui.components.LocalConfigLocked
 import com.sky.siplink.ui.components.LocalMessenger
 import com.sky.siplink.ui.components.importReport
+import com.sky.siplink.ui.components.stringOf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -107,7 +109,7 @@ fun ShortcutsScreen(accountId: String?, onBack: () -> Unit) {
                 runCatching { context.contentResolver.openOutputStream(uri)?.use { it.write(text.toByteArray()) } }.getOrNull()
             }
             messenger(
-                if (written == null) exportFailed else resources.getQuantityString(R.plurals.shortcut_exported, all.size, all.size.toString()),
+                if (written == null) exportFailed else resources.render(Phrase.count(R.plurals.shortcut_exported, all.size)),
             )
         }
     }
@@ -120,9 +122,9 @@ fun ShortcutsScreen(accountId: String?, onBack: () -> Unit) {
                     // Under a managed configuration what counts is how many keys of their own the user has.
                     Text(
                         if (locked) {
-                            stringResource(R.string.shortcut_count_of, ownCount.toString(), ShortcutRules.MAX_OWN.toString())
+                            stringOf(R.string.shortcut_count_of, ownCount.toString(), ShortcutRules.MAX_OWN.toString())
                         } else {
-                            stringResource(R.string.shortcut_count_of, all.size.toString(), ShortcutRules.MAX_SHORTCUTS.toString())
+                            stringOf(R.string.shortcut_count_of, all.size.toString(), ShortcutRules.MAX_SHORTCUTS.toString())
                         },
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -162,7 +164,7 @@ fun ShortcutsScreen(accountId: String?, onBack: () -> Unit) {
                     val selected = category
                     if (!selected.isNullOrEmpty() && (!locked || ShortcutRules.ownsCategory(all, selected))) {
                         DropdownMenuItem(
-                            text = { Text(stringResource(R.string.shortcut_edit_category, selected)) },
+                            text = { Text(stringOf(R.string.shortcut_edit_category, selected)) },
                             onClick = {
                                 menuOpen = false
                                 renaming = selected
@@ -205,7 +207,7 @@ fun ShortcutsScreen(accountId: String?, onBack: () -> Unit) {
         CsvImportSheet(
             title = stringResource(R.string.shortcut_import_title),
             // The words of the types and icons are data: what the CSV format takes.
-            formatHint = stringResource(
+            formatHint = stringOf(
                 R.string.shortcut_import_hint,
                 resources.render(ShortcutRules.FORMAT),
                 ShortcutRules.typeWords.joinToString(" / "),

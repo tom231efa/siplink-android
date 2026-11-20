@@ -15,7 +15,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -29,6 +28,7 @@ import com.sky.siplink.ui.components.LocalMessenger
 import com.sky.siplink.ui.components.NavRow
 import com.sky.siplink.ui.components.SectionCard
 import com.sky.siplink.ui.components.SubScreen
+import com.sky.siplink.ui.components.pluralOf
 import java.util.Locale
 
 /**
@@ -62,7 +62,7 @@ fun LdapListScreen(onBack: () -> Unit, onAdd: () -> Unit, onEdit: (String) -> Un
             )
         } else {
             SectionCard(
-                title = pluralStringResource(
+                title = pluralOf(
                     R.plurals.directory_count,
                     LdapRules.MAX_DIRECTORIES,
                     directories.size.toString(),
@@ -82,7 +82,7 @@ fun LdapListScreen(onBack: () -> Unit, onAdd: () -> Unit, onEdit: (String) -> Un
 
             SectionCard(title = stringResource(R.string.directory_cache_title)) {
                 Text(
-                    pluralStringResource(
+                    pluralOf(
                         R.plurals.directory_cache_usage,
                         cache.entries.toPluralCount(),
                         cache.entries.toString(),

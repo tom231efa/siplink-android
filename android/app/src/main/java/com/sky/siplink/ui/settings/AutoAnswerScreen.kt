@@ -13,7 +13,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -24,6 +23,7 @@ import com.sky.siplink.ui.components.ChoiceRow
 import com.sky.siplink.ui.components.SectionCard
 import com.sky.siplink.ui.components.SubScreen
 import com.sky.siplink.ui.components.SwitchRow
+import com.sky.siplink.ui.components.pluralOf
 
 /** Incoming calls answered by themselves: intercom calls at once, regular calls after a time of their own. */
 @Composable
@@ -75,4 +75,4 @@ fun AutoAnswerScreen(onBack: () -> Unit) {
 
 @Composable
 private fun secondsLabel(seconds: Int): String =
-    if (seconds == 0) stringResource(R.string.auto_answer_now) else pluralStringResource(R.plurals.auto_answer_seconds, seconds, seconds.toString())
+    if (seconds == 0) stringResource(R.string.auto_answer_now) else pluralOf(R.plurals.auto_answer_seconds, seconds, seconds.toString())

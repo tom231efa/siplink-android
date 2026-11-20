@@ -55,7 +55,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -71,7 +70,9 @@ import com.sky.siplink.ui.components.EmptyState
 import com.sky.siplink.ui.components.FadingText
 import com.sky.siplink.ui.components.FeatureSheet
 import com.sky.siplink.ui.components.FieldText
+import com.sky.siplink.ui.components.pluralOf
 import com.sky.siplink.ui.components.rememberCallLauncher
+import com.sky.siplink.ui.components.stringOf
 import com.sky.siplink.ui.shortcuts.NewShortcutSheet
 import kotlinx.coroutines.delay
 
@@ -231,7 +232,7 @@ fun DirectoryScreen(onOpenSettings: () -> Unit) {
                         if (state.limitReached) {
                             item(key = "limit") {
                                 Text(
-                                    pluralStringResource(R.plurals.directory_first_only, contacts.size, contacts.size.toString()),
+                                    pluralOf(R.plurals.directory_first_only, contacts.size, contacts.size.toString()),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
@@ -280,17 +281,17 @@ private fun ContactRow(
                 if (contact.organization.isEmpty()) {
                     contact.number
                 } else {
-                    stringResource(R.string.directory_number_organization, contact.number, contact.organization)
+                    stringOf(R.string.directory_number_organization, contact.number, contact.organization)
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         FilledIconButton(onClick = onCall) {
-            Icon(Icons.Rounded.Call, contentDescription = stringResource(R.string.directory_call_contact, contact.name))
+            Icon(Icons.Rounded.Call, contentDescription = stringOf(R.string.directory_call_contact, contact.name))
         }
         IconButton(onClick = onMore) {
-            Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.directory_more_for, contact.name))
+            Icon(Icons.Rounded.MoreVert, contentDescription = stringOf(R.string.directory_more_for, contact.name))
         }
     }
 }

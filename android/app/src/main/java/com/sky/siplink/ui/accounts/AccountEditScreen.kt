@@ -32,7 +32,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -55,6 +54,8 @@ import com.sky.siplink.ui.components.NavRow
 import com.sky.siplink.ui.components.SectionCard
 import com.sky.siplink.ui.components.SubScreen
 import com.sky.siplink.ui.components.SwitchRow
+import com.sky.siplink.ui.components.pluralOf
+import com.sky.siplink.ui.components.stringOf
 
 /** The errors of the fields under "advanced settings". */
 private val advancedErrors = setOf(
@@ -354,8 +355,8 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
                 val shortcuts by context.engine.shortcuts.shortcuts.collectAsStateWithLifecycle()
                 val keys = ShortcutLines.fixedTo(existing, shortcuts)
                 Text(
-                    stringResource(R.string.account_delete_text, existing.identity) +
-                        if (keys > 0) pluralStringResource(R.plurals.account_delete_keys, keys, keys.toString()) else "",
+                    stringOf(R.string.account_delete_text, existing.identity) +
+                        if (keys > 0) pluralOf(R.plurals.account_delete_keys, keys, keys.toString()) else "",
                 )
             },
             confirmButton = {

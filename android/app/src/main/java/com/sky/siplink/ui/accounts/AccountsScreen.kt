@@ -63,7 +63,6 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -85,8 +84,10 @@ import com.sky.siplink.ui.components.LocalConfigLocked
 import com.sky.siplink.ui.components.LocalMessenger
 import com.sky.siplink.ui.components.ManagedLock
 import com.sky.siplink.ui.components.StatusDot
+import com.sky.siplink.ui.components.pluralOf
 import com.sky.siplink.ui.components.regStateColor
 import com.sky.siplink.ui.components.regStateLabel
+import com.sky.siplink.ui.components.stringOf
 import com.sky.siplink.ui.components.text
 
 /** The accounts and their registrations. Where the configuration is locked they are only listed: nothing adds, imports or switches one. */
@@ -263,7 +264,7 @@ private fun SummaryRow(accounts: List<SipAccount>) {
             itemVerticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                pluralStringResource(
+                pluralOf(
                     R.plurals.account_summary_total,
                     AccountRules.MAX_ACCOUNTS,
                     accounts.size.toString(),
@@ -273,9 +274,9 @@ private fun SummaryRow(accounts: List<SipAccount>) {
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
             )
-            SummaryStat(regStateColor(RegState.OK), stringResource(R.string.account_summary_registered, registered.toString()))
-            SummaryStat(regStateColor(RegState.FAILED), stringResource(R.string.account_summary_failed, failed.toString()))
-            SummaryStat(regStateColor(RegState.DISABLED), stringResource(R.string.account_summary_disabled, disabled.toString()))
+            SummaryStat(regStateColor(RegState.OK), stringOf(R.string.account_summary_registered, registered.toString()))
+            SummaryStat(regStateColor(RegState.FAILED), stringOf(R.string.account_summary_failed, failed.toString()))
+            SummaryStat(regStateColor(RegState.DISABLED), stringOf(R.string.account_summary_disabled, disabled.toString()))
         }
     }
 }
@@ -368,7 +369,7 @@ private fun AccountRow(
                         Spacer(Modifier.width(3.dp))
                     }
                     FadingText(
-                        stringResource(
+                        stringOf(
                             if (account.onBackup) R.string.account_row_status_backup else R.string.account_row_status,
                             adapted?.let { LineAdapt.label(it).text() } ?: account.transport.name,
                             account.error ?: regStateLabel(account.state),

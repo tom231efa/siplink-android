@@ -76,6 +76,7 @@ import com.sky.siplink.ui.components.LdapRestartDialog
 import com.sky.siplink.ui.components.LocalConfigLocked
 import com.sky.siplink.ui.components.LocalMessenger
 import com.sky.siplink.ui.components.pressScale
+import com.sky.siplink.ui.components.stringOf
 import com.sky.siplink.ui.dialer.DialerScreen
 import com.sky.siplink.ui.directory.DirectoryScreen
 import com.sky.siplink.ui.directory.LdapEditScreen
@@ -396,9 +397,9 @@ private fun ActiveCallBanner(call: CallInfo?, visible: Boolean, onClick: () -> U
                 Spacer(Modifier.width(10.dp))
                 FadingText(
                     text = when (call?.phase) {
-                        CallPhase.INCOMING -> stringResource(R.string.main_banner_incoming, call.remoteName)
-                        CallPhase.OUTGOING -> stringResource(R.string.main_banner_outgoing, call.remoteName)
-                        else -> stringResource(R.string.main_banner_in_call, call?.remoteName.orEmpty())
+                        CallPhase.INCOMING -> stringOf(R.string.main_banner_incoming, call.remoteName)
+                        CallPhase.OUTGOING -> stringOf(R.string.main_banner_outgoing, call.remoteName)
+                        else -> stringOf(R.string.main_banner_in_call, call?.remoteName.orEmpty())
                     },
                     color = Color.White,
                     style = MaterialTheme.typography.labelLarge,

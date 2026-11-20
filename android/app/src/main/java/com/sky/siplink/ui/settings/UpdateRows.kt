@@ -43,6 +43,7 @@ import com.sky.siplink.ui.components.AppBottomSheet
 import com.sky.siplink.ui.components.LocalMessenger
 import com.sky.siplink.ui.components.NavRow
 import com.sky.siplink.ui.components.SwitchRow
+import com.sky.siplink.ui.components.stringOf
 import com.sky.siplink.ui.components.text
 
 /**
@@ -70,7 +71,7 @@ internal fun UpdateRows() {
     }
 
     NavRow(
-        title = stringResource(R.string.about_version, installed),
+        title = stringOf(R.string.about_version, installed),
         subtitle = UpdateRules.status(update, installed, download).text(),
         icon = Icons.Rounded.SystemUpdate,
         onClick = {
@@ -130,9 +131,9 @@ private fun ReleaseSheet(release: FoundRelease, installed: String, download: Dow
                 .padding(horizontal = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(stringResource(R.string.about_new_version, release.version), style = MaterialTheme.typography.titleLarge)
+            Text(stringOf(R.string.about_new_version, release.version), style = MaterialTheme.typography.titleLarge)
             Text(
-                stringResource(R.string.about_current_version, installed),
+                stringOf(R.string.about_current_version, installed),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -157,7 +158,7 @@ private fun ReleaseSheet(release: FoundRelease, installed: String, download: Dow
                         LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                     }
                     Text(
-                        stringResource(R.string.update_downloading, UpdateRules.percent(mine)),
+                        stringOf(R.string.update_downloading, UpdateRules.percent(mine)),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

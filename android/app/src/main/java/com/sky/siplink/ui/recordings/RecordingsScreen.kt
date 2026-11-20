@@ -38,17 +38,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sky.siplink.R
 import com.sky.siplink.core.logic.RecordingPeriod
 import com.sky.siplink.core.logic.RecordingRules
+import com.sky.siplink.core.model.Phrase
 import com.sky.siplink.core.model.Recording
+import com.sky.siplink.core.render
 import com.sky.siplink.engine
 import com.sky.siplink.ui.components.EmptyState
 import com.sky.siplink.ui.components.LocalMessenger
+import com.sky.siplink.ui.components.pluralOf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -93,7 +95,7 @@ fun RecordingsScreen(onBack: () -> Unit) {
 
     val exportFailed = stringResource(R.string.recording_export_failed)
     fun exported(count: Int, of: Int) =
-        messenger(if (count == of) resources.getQuantityString(R.plurals.recording_exported, count, count.toString()) else exportFailed)
+        messenger(if (count == of) resources.render(Phrase.count(R.plurals.recording_exported, count)) else exportFailed)
 
     val saveOne = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("audio/mp4")) { uri ->
         val recording = exportOne ?: return@rememberLauncherForActivityResult
@@ -121,7 +123,7 @@ fun RecordingsScreen(onBack: () -> Unit) {
             title = {
                 Text(
                     if (selecting) {
-                        pluralStringResource(R.plurals.recording_selected, selected.size, selected.size.toString())
+                        pluralOf(R.plurals.recording_selected, selected.size, selected.size.toString())
                     } else {
                         stringResource(R.string.recording_title)
                     },
@@ -157,7 +159,7 @@ fun RecordingsScreen(onBack: () -> Unit) {
             onPickRange = { pickingRange = true },
         )
         Text(
-            pluralStringResource(R.plurals.recording_summary, shown.size, shown.size.toString(), RecordingRules.sizeText(shown.sumOf { it.bytes })),
+            pluralOf(R.plurals.recording_summary, shown.size, shown.size.toString(), RecordingRules.sizeText(shown.sumOf { it.bytes })),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(start = 24.dp, top = 8.dp, bottom = 4.dp),
@@ -201,7 +203,7 @@ fun RecordingsScreen(onBack: () -> Unit) {
     confirmDelete?.let { doomed ->
         AlertDialog(
             onDismissRequest = { confirmDelete = null },
-            title = { Text(pluralStringResource(R.plurals.recording_delete_title, doomed.size, doomed.size.toString())) },
+            title = { Text(pluralOf(R.plurals.recording_delete_title, doomed.size, doomed.size.toString())) },
             confirmButton = {
                 TextButton(onClick = {
                     if (doomed.any { it.id == playing }) {

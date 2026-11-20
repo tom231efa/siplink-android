@@ -71,6 +71,7 @@ import com.sky.siplink.core.model.CallPhase
 import com.sky.siplink.core.model.SupervisionMode
 import com.sky.siplink.engine
 import com.sky.siplink.ui.components.ChoiceRow
+import com.sky.siplink.ui.components.stringOf
 import com.sky.siplink.ui.theme.Brand
 
 /** @param videoOffered the caller offers video: a switch above the slider says whether to answer with it */
@@ -124,7 +125,7 @@ internal fun ActiveControls(
             ) {
                 Icon(Icons.AutoMirrored.Rounded.PhoneForwarded, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.size(8.dp))
-                Text(stringResource(R.string.call_complete_transfer, info.heldCall?.name.orEmpty()))
+                Text(stringOf(R.string.call_complete_transfer, info.heldCall?.name.orEmpty()))
             }
         }
 

@@ -67,6 +67,7 @@ import com.sky.siplink.ui.components.Avatar
 import com.sky.siplink.ui.components.ChoiceRow
 import com.sky.siplink.ui.components.FadingText
 import com.sky.siplink.ui.components.FieldText
+import com.sky.siplink.ui.components.stringOf
 import kotlinx.coroutines.delay
 
 /** Someone who can be called into the room: by [name], at [target] (what is dialled). */
@@ -184,7 +185,7 @@ internal fun RoomAddSheet(room: RoomInfo, calls: CallManager, onDismiss: () -> U
                         selected = true,
                         onClick = { picked.remove(candidate) },
                         label = { FadingText(candidate.name, modifier = Modifier.widthIn(max = 160.dp)) },
-                        trailingIcon = { Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.room_pick_remove, candidate.name), modifier = Modifier.size(18.dp)) },
+                        trailingIcon = { Icon(Icons.Rounded.Close, contentDescription = stringOf(R.string.room_pick_remove, candidate.name), modifier = Modifier.size(18.dp)) },
                     )
                 }
             }
@@ -233,7 +234,7 @@ internal fun RoomAddSheet(room: RoomInfo, calls: CallManager, onDismiss: () -> U
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp, vertical = 12.dp),
         ) {
-            Text(if (picked.isEmpty()) stringResource(R.string.room_call) else stringResource(R.string.room_call_count, picked.size.toString()))
+            Text(if (picked.isEmpty()) stringResource(R.string.room_call) else stringOf(R.string.room_call_count, picked.size.toString()))
         }
     }
 
@@ -283,7 +284,7 @@ private fun CandidateRow(candidate: Candidate, inRoom: Boolean, picked: Boolean,
         Column(Modifier.weight(1f)) {
             FadingText(candidate.name, style = MaterialTheme.typography.titleMedium)
             FadingText(
-                if (inRoom) stringResource(R.string.room_candidate_in_room, candidate.number) else candidate.number,
+                if (inRoom) stringOf(R.string.room_candidate_in_room, candidate.number) else candidate.number,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

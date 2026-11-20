@@ -71,7 +71,6 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -91,7 +90,9 @@ import com.sky.siplink.ui.components.FieldText
 import com.sky.siplink.ui.components.LocalConfigLocked
 import com.sky.siplink.ui.components.LocalMessenger
 import com.sky.siplink.ui.components.StatusDot
+import com.sky.siplink.ui.components.pluralOf
 import com.sky.siplink.ui.components.rememberCallLauncher
+import com.sky.siplink.ui.components.stringOf
 import com.sky.siplink.ui.theme.Brand
 
 @Composable
@@ -454,7 +455,7 @@ private fun StatusChips(
                 AssistChip(
                     onClick = onVoicemail,
                     modifier = Modifier.alpha(if (voicemailConfigured) 1f else 0.38f),
-                    label = { Text(pluralStringResource(R.plurals.dialer_new_voicemail, voicemail, voicemail.toString()), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    label = { Text(pluralOf(R.plurals.dialer_new_voicemail, voicemail, voicemail.toString()), maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     leadingIcon = { Icon(Icons.Rounded.Voicemail, contentDescription = null, modifier = Modifier.size(18.dp)) },
                 )
             }
@@ -556,7 +557,7 @@ private fun AddressInput(value: String, onChange: (String) -> Unit, onCall: () -
         onValueChange = onChange,
         modifier = Modifier.fillMaxWidth(),
         label = { FieldText(stringResource(R.string.dialer_address_label)) },
-        placeholder = { FieldText(stringResource(R.string.dialer_address_example, "1001", "alice@example.com")) },
+        placeholder = { FieldText(stringOf(R.string.dialer_address_example, "1001", "alice@example.com")) },
         singleLine = true,
         shape = MaterialTheme.shapes.medium,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Go),
