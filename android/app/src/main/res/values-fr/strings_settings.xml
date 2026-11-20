@@ -29,7 +29,7 @@
     <string name="settings_lock_screen_open_failed">Impossible d\'ouvrir les paramètres des notifications en plein écran</string>
     <string name="settings_section_appearance">Apparence</string>
     <string name="settings_theme">Thème</string>
-    <string name="settings_theme_system">Suivre le système</string>
+    <string name="settings_theme_system">Système</string>
     <string name="settings_theme_light">Clair</string>
     <string name="settings_theme_dark">Sombre</string>
     <string name="settings_banner_position">Position du bandeau d\'appel</string>

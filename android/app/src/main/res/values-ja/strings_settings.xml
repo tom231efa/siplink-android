@@ -27,7 +27,7 @@
     <string name="settings_lock_screen_open_failed">全画面通知の設定を開けません</string>
     <string name="settings_section_appearance">外観</string>
     <string name="settings_theme">テーマ</string>
-    <string name="settings_theme_system">システムのデフォルト</string>
+    <string name="settings_theme_system">システム</string>
     <string name="settings_theme_light">ライト</string>
     <string name="settings_theme_dark">ダーク</string>
     <string name="settings_banner_position">通話バナーの位置</string>

@@ -75,7 +75,7 @@
     <string name="call_supervision_whisper">Суфлирование</string>
     <string name="call_supervision_barge">Вмешательство</string>
     <string name="call_route_earpiece">Разговорный динамик</string>
-    <string name="call_route_speaker">Громкая связь</string>
+    <string name="call_route_speaker">Динамик</string>
     <string name="call_route_bluetooth">Bluetooth</string>
     <string name="call_route_headset">Гарнитура</string>
     <string name="call_route_wired_headset">Проводная гарнитура</string>

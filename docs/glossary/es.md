@@ -96,7 +96,7 @@ stay online in background / 后台保持在线 → mantener activo en segundo pl
 battery optimization / 电池优化 → optimización de batería
 lock screen / 锁屏 → pantalla de bloqueo
 full-screen notification / 全屏通知 → notificaciones a pantalla completa
-system default / 跟随系统 → predeterminado del sistema
+system default / 跟随系统 → predeterminado del sistema; as one of three choices side by side (the theme): Sistema
 required / 必填 → obligatorio ; optional / 可选 → opcional
 host[:port] → host[:puerto]
 e.g. / 例如 → p. ej.,

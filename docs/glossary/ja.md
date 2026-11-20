@@ -103,7 +103,7 @@ End conference / 结束会议 → 会議を終了
 Away / 已暂离 → 離席中
 
 ## Shortcut keys
-Shortcut key / 快捷键 → ショートカットキー (platform templates say キー)
+Shortcut key / 快捷键 → ショートカットキー (platform templates say キー); the button of the call screen: ショートカット (the label under its icon has no room for more)
 Speed dial / 速拨 → スピードダイヤル
 Send DTMF / 发送按键 → DTMF 送信
 Keys (DTMF field) / 按键 → DTMF

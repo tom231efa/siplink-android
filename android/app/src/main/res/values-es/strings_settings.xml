@@ -28,7 +28,7 @@
     <string name="settings_lock_screen_open_failed">No se pueden abrir los ajustes de notificaciones a pantalla completa</string>
     <string name="settings_section_appearance">Apariencia</string>
     <string name="settings_theme">Tema</string>
-    <string name="settings_theme_system">Predeterminado del sistema</string>
+    <string name="settings_theme_system">Sistema</string>
     <string name="settings_theme_light">Claro</string>
     <string name="settings_theme_dark">Oscuro</string>
     <string name="settings_banner_position">Posición del banner de llamada</string>

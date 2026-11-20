@@ -50,7 +50,7 @@ mute / 静音 → Без звука; muted → Звук откл.
 keypad / 键盘 → клавиатура
 hang up / 挂断 → Завершить
 decline / 拒绝 → Отклонить
-earpiece / speaker / 听筒 / 扬声器 → разговорный динамик / громкая связь
+earpiece / speaker / 听筒 / 扬声器 → разговорный динамик / громкая связь; the route of a call (a button under its icon): Динамик
 headset / 耳机 → гарнитура
 call waiting / 呼叫等待 → ожидание вызова
 call forwarding / 呼叫前转 → переадресация
