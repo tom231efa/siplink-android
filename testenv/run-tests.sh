@@ -116,7 +116,7 @@ for class in RegistrationTest BasicCallTest TransferParkTest SupervisionTest Cal
   VideoCallTest VideoNoCameraTest ManagedLockTest ManagedScreensTest RemoteConfigTest \
   AdvancedSettingsTest SdkDefaultsTest AccountFormTest ReleaseJsonTest UpdateCheckTest CallRecordingTest IncomingSlideTest \
   ConferenceTest ConferencePacingTest VideoControlsTest VideoWindowTest CallConflictTest LandscapeScreensTest \
-  LockScreenTest TwinEntriesTest; do
+  LockScreenTest TwinEntriesTest AppLanguageTest; do
   echo "=== $class" >&2
   run -e class "com.sky.siplink.itest.$class" || failed+=("$class")
 done

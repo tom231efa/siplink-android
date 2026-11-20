@@ -11,18 +11,21 @@ import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import androidx.test.runner.lifecycle.Stage
 import com.sky.siplink.CallActivity
 import com.sky.siplink.MainActivity
+import com.sky.siplink.R
 import com.sky.siplink.SipLinkApp
 import com.sky.siplink.core.ReleaseFeed
 import com.sky.siplink.core.SipEngine
 import com.sky.siplink.core.model.AccountDraft
 import com.sky.siplink.core.model.CallInfo
 import com.sky.siplink.core.model.CallPhase
+import com.sky.siplink.core.model.Language
 import com.sky.siplink.core.model.RegState
 import com.sky.siplink.core.model.Settings
 import com.sky.siplink.core.model.SipAccount
 import com.sky.siplink.core.model.SipTransport
 import com.sky.siplink.core.model.SupervisionMode
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -58,6 +61,9 @@ abstract class PbxTestBase {
             Manifest.permission.POST_NOTIFICATIONS,
             Manifest.permission.BLUETOOTH_CONNECT,
         ).forEach { instrumentation.uiAutomation.grantRuntimePermission(packageName, it) }
+
+        // The tests' texts are the user's Chinese ones; the phone may speak another language.
+        pinLanguage(Language.CHINESE_SIMPLIFIED)
 
         pbx = Ami(env.pbxHost, env.amiUser, env.amiSecret)
         phones = Ami(env.phonesAmiHost, env.amiUser, env.amiSecret, env.phonesAmiPort)
@@ -183,6 +189,18 @@ abstract class PbxTestBase {
         }
     }
 
+    /**
+     * Sets the app's own language to [language] (null: the system's) and waits until its texts
+     * are in it. The phone's language stays as it is.
+     */
+    protected fun pinLanguage(language: Language?) {
+        if (onMain { engine.language.chosen != language || (language == null) != engine.language.followsSystem }) {
+            onMain { engine.language.choose(language) }
+        }
+        val expected = textsIn(language?.tag ?: systemLanguages()).getString(R.string.call_ended)
+        await("the app to speak ${language?.tag ?: "the system's language"}") { onMain { engine.texts.get(R.string.call_ended) } == expected }
+    }
+
     /** Like [await], but reports a timeout as false instead of failing. */
     protected fun settles(timeoutMs: Long, condition: () -> Boolean): Boolean {
         val deadline = System.currentTimeMillis() + timeoutMs
@@ -212,6 +230,20 @@ abstract class PbxTestBase {
         var found: CallInfo? = null
         await(what, timeoutMs) { call()?.takeIf(match)?.also { found = it } != null }
         return found!!
+    }
+
+    /** The PBX calls the app and presents [callerId], written as `"name" <number>`. */
+    protected fun ringing(callerId: String): CallInfo {
+        val response = pbx.send(
+            "Originate",
+            "Channel" to "PJSIP/$APP",
+            "CallerID" to callerId,
+            "Application" to "Wait",
+            "Data" to "30",
+            "Async" to "true",
+        )
+        assertEquals("Originate refused: $response", "Success", response["Response"])
+        return awaitCall("the call of $callerId to ring") { it.phase == CallPhase.INCOMING }
     }
 
     protected fun awaitConnected(peer: String? = null): CallInfo =

@@ -1,9 +1,9 @@
 package com.sky.siplink.itest
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.sky.siplink.core.logic.PartyName
-import com.sky.siplink.core.model.CallInfo
+import com.sky.siplink.R
 import com.sky.siplink.core.model.CallPhase
+import com.sky.siplink.core.model.Phrase
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -15,20 +15,6 @@ import org.junit.runner.RunWith
  */
 @RunWith(AndroidJUnit4::class)
 class CallerIdTest : PbxTestBase() {
-    /** The PBX calls the app and presents [callerId], written as `"name" <number>`. */
-    private fun ringing(callerId: String): CallInfo {
-        val response = pbx.send(
-            "Originate",
-            "Channel" to "PJSIP/$APP",
-            "CallerID" to callerId,
-            "Application" to "Wait",
-            "Data" to "30",
-            "Async" to "true",
-        )
-        assertEquals("Originate refused: $response", "Success", response["Response"])
-        return awaitCall("the call of $callerId to ring") { it.phase == CallPhase.INCOMING }
-    }
-
     private fun decline() {
         onMain { engine.calls.decline() }
         awaitNoCall()
@@ -79,10 +65,10 @@ class CallerIdTest : PbxTestBase() {
     fun aCallerWhoWithholdsTheNumber() {
         register()
         val before = logged()
-        assertEquals(PartyName.WITHHELD, ringing("\"Anonymous\" <anonymous>").remoteName)
+        assertEquals(zh(Phrase.of(R.string.call_withheld)), ringing("\"Anonymous\" <anonymous>").remoteName)
         decline()
         awaitLogged(before)
-        assertEquals(PartyName.WITHHELD, lastLogged().name)
+        assertEquals(zh(Phrase.of(R.string.call_withheld)), lastLogged().name)
     }
 
     @Test
