@@ -57,7 +57,7 @@ class AccountManager(private val core: Core, private val lock: ConfigLock) {
     )
 
     /** How the sound of the calls goes: for the line checks, the call screen, and what the lines learn from it. */
-    internal val media = CallMediaWatch(core, ::idOf, doctor::onCallFinished)
+    internal val media = CallMediaWatch(core, ::idOf, { router.isOnBackup(idOf(it)) }, doctor::onCallFinished)
 
     /** Backup servers and DNS servers of the accounts. */
     private val router: AccountRouter = AccountRouter(
@@ -194,6 +194,13 @@ class AccountManager(private val core: Core, private val lock: ConfigLock) {
     internal fun supersede(call: Call) {
         doctor.supersede(call)
         media.supersede(call)
+    }
+
+    /** [call] could not be placed again after all ([supersede]): it counts as the call out without an answer it is. */
+    internal fun unsupersede(call: Call) {
+        doctor.unsupersede(call)
+        media.unsupersede(call)
+        media.failedOut(call, NO_ANSWER)
     }
 
     /** The fast timeout of account [id] in ms; 0: off, or no backup server. */
@@ -595,6 +602,9 @@ class AccountManager(private val core: Core, private val lock: ConfigLock) {
     }
 
     private companion object {
+        /** What the SIP core reports for a request nobody answered. */
+        const val NO_ANSWER = 408
+
         /** How long the credentials of a removed identity are kept if its unregistration stalls. */
         const val UNREGISTER_GRACE_MS = 40_000L
 

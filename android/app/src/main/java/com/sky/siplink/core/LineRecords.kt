@@ -25,9 +25,9 @@ internal class LineRecords(private val config: Config, private val onBackup: (St
         return LineAdapt.decode(config.getString(SECTION, keyOf(id, net, backup), null))
     }
 
-    fun store(id: String, network: String?, record: LineAdapt.Record) {
+    fun store(id: String, network: String?, record: LineAdapt.Record, backup: Boolean = onBackup(id)) {
         val net = network ?: return
-        val key = keyOf(id, net)
+        val key = keyOf(id, net, backup)
         if (record.isPlain) config.cleanEntry(SECTION, key) else config.setString(SECTION, key, LineAdapt.encode(record))
     }
 

@@ -18,11 +18,13 @@ import org.linphone.core.StreamType
  * listeners are.
  *
  * @param idOf the id of an account
+ * @param onBackup whether an account is on its backup server now
  * @param onFinished a call whose sound ran ended on an account, or a call out failed before it ran
  */
 internal class CallMediaWatch(
     private val core: Core,
     private val idOf: (Account) -> String,
+    private val onBackup: (Account) -> Boolean,
     private val onFinished: (Account, Finished) -> Unit,
 ) {
     /**
@@ -38,6 +40,7 @@ internal class CallMediaWatch(
      * @param iceOffered a call out offered ICE candidates: its account's NAT policy had ICE as it started
      * @param judged its sound tells something of the line ([CallTally.judged])
      * @param failedWith the SIP status of a call out that failed before its sound ran; null for one whose sound ran
+     * @param onBackup the call went through the account's backup server: the account was on it as the call began
      */
     class Finished(
         val summary: CallMediaSummary?,
@@ -48,6 +51,7 @@ internal class CallMediaWatch(
         val iceOffered: Boolean,
         val judged: Boolean,
         val failedWith: Int?,
+        val onBackup: Boolean,
     )
 
     /** A call whose sound runs: its counters, and what was known of it as its sound started. */
@@ -71,6 +75,9 @@ internal class CallMediaWatch(
 
     /** Whether the calls out offered ICE, from their start. */
     private val iceOffered = HashMap<Long, Boolean>()
+
+    /** Whether the calls went through the backup server of their account, from their start. */
+    private val throughBackup = HashMap<Long, Boolean>()
     private val last = HashMap<String, CallMediaSummary>()
 
     /** Calls placed again over the other server of their account ([CallRetry]): they count for nothing. */
@@ -80,10 +87,16 @@ internal class CallMediaWatch(
         superseded += call.nativePointer
     }
 
+    /** [call] was not placed again after all ([supersede]): it counts again. */
+    fun unsupersede(call: Call) {
+        superseded -= call.nativePointer
+    }
+
     private val listener = object : CoreListenerStub() {
         override fun onCallStateChanged(core: Core, call: Call, state: Call.State?, message: String) {
             val pointer = call.nativePointer
             if (pointer in superseded && (state == Call.State.End || state == Call.State.Error)) return
+            if (pointer !in throughBackup) call.params.account?.let { throughBackup[pointer] = onBackup(it) }
             when (state) {
                 Call.State.OutgoingInit -> {
                     startedOut[pointer] = SystemClock.elapsedRealtime()
@@ -99,6 +112,7 @@ internal class CallMediaWatch(
                     startedOut.remove(pointer)
                     setups.remove(pointer)
                     iceOffered.remove(pointer)
+                    throughBackup.remove(pointer)
                 }
                 else -> Unit
             }
@@ -152,13 +166,20 @@ internal class CallMediaWatch(
             // A call out that failed before its sound ran: that it offered ICE may be why.
             if (state == Call.State.Error && call.dir == Call.Dir.Outgoing) {
                 val code = call.errorInfo.protocolCode
-                onFinished(account, Finished(null, null, null, true, setups[pointer], iceOffered[pointer] == true, judged = false, failedWith = code))
+                failedOut(call, code)
             }
             return
         }
         val summary = summaryOf(call, entry)
         if (summary != null) last[idOf(account)] = summary
-        onFinished(account, Finished(summary, entry.contact, entry.recordRoute, entry.outgoing, entry.setupMs, entry.iceOffered, entry.tally.judged, failedWith = null))
+        onFinished(account, Finished(summary, entry.contact, entry.recordRoute, entry.outgoing, entry.setupMs, entry.iceOffered, entry.tally.judged, failedWith = null, throughBackup[pointer] ?: onBackup(account)))
+    }
+
+    /** A call out failed with SIP status [code] before its sound ran: that it offered ICE may be why. */
+    fun failedOut(call: Call, code: Int) {
+        val account = call.params.account ?: return
+        val pointer = call.nativePointer
+        onFinished(account, Finished(null, null, null, true, setups[pointer], iceOffered[pointer] == true, judged = false, failedWith = code, throughBackup[pointer] ?: onBackup(account)))
     }
 
     private fun summaryOf(call: Call, entry: Running): CallMediaSummary? {

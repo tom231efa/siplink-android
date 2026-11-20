@@ -133,6 +133,12 @@ internal class LineDoctor(
         superseded += call.nativePointer
     }
 
+    /** [call] could not be placed again after all: it is the call out that got no answer it is ([callTimedOut]). */
+    fun unsupersede(call: Call) {
+        superseded -= call.nativePointer
+        call.params.account?.let(::callTimedOut)
+    }
+
     private val calls = object : CoreListenerStub() {
         override fun onCallStateChanged(core: Core, call: Call, state: Call.State?, message: String) {
             // A call placed again over the other server ([CallRetry]) counts for nothing here.
@@ -659,13 +665,15 @@ internal class LineDoctor(
         Log.i(TAG, "Line $id: a call ${if (call.outgoing) "out, set up in ${call.setupMs} ms" else "in"}, sound ${call.summary?.flow}${if (call.judged) "" else " (not judged)"}, ICE ${call.summary?.ice}, failed ${call.failedWith}")
         var ice = MediaAdapt.Ice.NONE
         // A call not judged that ran tells nothing of ICE either, nor counts.
+        // Kept for the server the call went through: the account may have moved during the call.
+        val backup = call.onBackup
         if (enabled && (call.judged || call.failedWith != null)) {
-            val record = records.record(id, net) ?: LineAdapt.Record()
+            val record = records.record(id, net, backup) ?: LineAdapt.Record()
             val next = MediaAdapt.afterCall(record, flow, tookPart, call.setupMs, call.failedWith, System.currentTimeMillis())
             ice = next.ice
             if (next != record) {
                 if (next.ice != record.ice) Log.i(TAG, "Line $id on $net: ICE ${next.ice}")
-                records.store(id, net, next)
+                records.store(id, net, next, backup)
                 if (next.ice != record.ice) applyAll()
             }
         }
@@ -691,7 +699,7 @@ internal class LineDoctor(
             val address = NetAddress.coreOrder(addresses, ipv6, sixFirst).firstOrNull()
             val nat = if (askNat) natOf(address, port, target, asker, stun, local) else NatKind.UNKNOWN
             val unreachable = MediaAdapt.unreachableHop(hop, addresses + host, subnets)
-            handler.post { learn(id, net, flow, nat, hop.takeIf { unreachable }) }
+            handler.post { learn(id, net, backup, flow, nat, hop.takeIf { unreachable }) }
         }
     }
 
@@ -703,8 +711,12 @@ internal class LineDoctor(
         return LineVerdict.nat(local, probe.from?.let { LineVerdict.seen(probe.answer, it) }, probe.stun)
     }
 
-    /** After a call of line [id] on network [net]: ICE on trial where it may help; [unreachableHop]: the next hop its PBX named, which nothing reaches. */
-    private fun learn(id: String, net: String?, flow: MediaFlow?, nat: NatKind, unreachableHop: String?) {
+    /**
+     * After a call of line [id] on network [net] through its backup server ([backup]) or its
+     * first one: ICE on trial where it may help; [unreachableHop]: the next hop its PBX named,
+     * which nothing reaches.
+     */
+    private fun learn(id: String, net: String?, backup: Boolean, flow: MediaFlow?, nat: NatKind, unreachableHop: String?) {
         if ((unreachableHop != null) != pbxUnreachable(id)) {
             records.storePbxHop(id, unreachableHop)
             if (unreachableHop == null) {
@@ -716,10 +728,10 @@ internal class LineDoctor(
             find(id)?.let(onChanged)
         }
         if (!enabled) return
-        val record = records.record(id, net) ?: LineAdapt.Record()
+        val record = records.record(id, net, backup) ?: LineAdapt.Record()
         if (net == network && MediaAdapt.tryIce(flow, nat, MediaAdapt.stunServer(stunServer) != null, record.ice)) {
             Log.i(TAG, "Line $id on $net: ICE on trial ($flow, $nat)")
-            records.store(id, net, record.copy(ice = MediaAdapt.Ice.TRIAL, iceCalls = 0, usedAt = System.currentTimeMillis()))
+            records.store(id, net, record.copy(ice = MediaAdapt.Ice.TRIAL, iceCalls = 0, usedAt = System.currentTimeMillis()), backup)
             applyAll()
         }
     }
