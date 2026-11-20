@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Calls: what the commands answer, why a call ended, the PBX features. -->
+<resources>
+    <string name="call_busy_already">A call is already in progress</string>
+    <string name="call_none">No call</string>
+    <string name="call_two_already">Two calls are already up</string>
+    <string name="call_consult_after_connect">Consultation is possible once the call is connected</string>
+    <string name="call_enter_number">Enter a number</string>
+    <string name="call_add_account_first">Add a SIP account first</string>
+    <string name="call_line_off">Line disabled</string>
+    <string name="call_invalid_address">Invalid number or address</string>
+    <string name="call_failed">Call failed</string>
+    <string name="call_dtmf_in_call_only">Keys can only be sent during a call</string>
+    <string name="call_room_no_video">The conference room has no video</string>
+    <string name="call_no_pending_transfer">No transfer to complete</string>
+    <string name="call_room_after_connect">The conference room is possible once the call is connected</string>
+    <string name="call_room_transferring">Transfer in progress</string>
+    <string name="call_room_supervised">Supervision calls cannot join the conference room</string>
+    <string name="call_withheld">Anonymous</string>
+
+    <!-- Why a call ended -->
+    <string name="call_ended">Call ended</string>
+    <string name="call_hung_up">Hung up</string>
+    <string name="call_cancelled">Cancelled</string>
+    <string name="call_end_busy">Busy</string>
+    <string name="call_end_declined">Declined</string>
+    <string name="call_end_not_found">Number does not exist</string>
+    <string name="call_end_not_answered">No answer</string>
+    <string name="call_end_no_response">No response</string>
+    <string name="call_end_dnd">Do not disturb is on</string>
+    <string name="call_end_unavailable">Temporarily unavailable</string>
+    <string name="call_end_forbidden">Not allowed to call</string>
+    <string name="call_end_network">Network connection failed</string>
+    <string name="call_end_media">Media negotiation failed</string>
+    <string name="call_no_sound">No sound from the other side</string>
+    <string name="call_server_silent">Server not responding</string>
+
+    <!-- Transfer and park -->
+    <string name="call_transfer_after_connect">Transfer is possible once the call is connected</string>
+    <string name="call_enter_transfer_number">Enter the transfer number</string>
+    <string name="call_transfer_after_answer">Transfer is possible once the other side answers</string>
+    <string name="call_parked">Call parked</string>
+    <string name="call_transferred">Transferred</string>
+    <string name="call_transfer_send_failed">Transfer request could not be sent</string>
+
+    <!-- Video -->
+    <string name="call_video_after_connect">Video is possible once the call is connected</string>
+    <string name="call_video_not_supported">This call does not support video</string>
+    <string name="call_cannot_change">The call cannot be changed</string>
+    <string name="call_camera_after_connect">The camera is possible once the call is connected</string>
+    <string name="call_no_video">This call has no video</string>
+    <string name="call_camera_permission">Camera permission required</string>
+
+    <!-- PBX features reached by feature codes -->
+    <string name="feature_intercom">Intercom</string>
+    <string name="feature_listen">Listen</string>
+    <string name="feature_whisper">Whisper</string>
+    <string name="feature_barge">Barge</string>
+    <string name="feature_force_hang_up">Force hang-up</string>
+    <string name="feature_pickup">Directed pickup</string>
+    <string name="feature_voicemail">Voicemail</string>
+    <string name="feature_group_pickup">Group pickup</string>
+    <string name="feature_park">Park</string>
+    <string name="feature_dnd_on">DND on</string>
+    <string name="feature_dnd_off">DND off</string>
+    <string name="feature_to">%1$s %2$s</string>
+    <string name="feature_code_missing">No feature code set for %1$s</string>
+</resources>

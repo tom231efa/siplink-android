@@ -1,5 +1,8 @@
 package com.sky.siplink.core.model
 
+import androidx.annotation.StringRes
+import com.sky.siplink.R
+
 /**
  * What a shortcut key does, modelled on the function keys (DSS keys) of desk phones and cut
  * down to the kinds that behave differently from one another.
@@ -10,36 +13,42 @@ package com.sky.siplink.core.model
  *
  * @param hasNumber whether a key of this kind carries a number
  */
-enum class ShortcutAction(val label: String, val hasNumber: Boolean = true) {
+enum class ShortcutAction(@StringRes val label: Int, val hasNumber: Boolean = true) {
     /** Calls the number; during a call, holds that call and calls the number next to it. */
-    SPEED_DIAL("速拨"),
+    SPEED_DIAL(R.string.shortcut_type_speed),
 
     /** During a call, hands the other party to the number at once; otherwise calls it. */
-    BLIND_TRANSFER("盲转"),
+    BLIND_TRANSFER(R.string.shortcut_type_bxfer),
 
     /** During a call, calls the number first and transfers afterwards; otherwise calls it. */
-    ATTENDED_TRANSFER("咨询转"),
+    ATTENDED_TRANSFER(R.string.shortcut_type_axfer),
 
     /** Sends the digits into the call in progress. */
-    DTMF("发送按键"),
+    DTMF(R.string.shortcut_type_dtmf),
 
     /** Switches "forward every call to the number" on and off. */
-    FORWARD("呼叫前转"),
+    FORWARD(R.string.shortcut_type_forward),
 
     /** Switches do not disturb on and off. */
-    DND("免打扰", hasNumber = false),
+    DND(R.string.shortcut_type_dnd, hasNumber = false),
 }
 
 /**
  * Pictures a key can carry instead of the one of its type. The name in lower case is how an
  * icon is written in the CSV exchange format.
  */
-enum class ShortcutIcon(val label: String) {
-    PHONE("电话"), PERSON("个人"), GROUP("团队"), STAR("收藏"), HOME("家"), OFFICE("办公楼"), STORE("门店"),
-    RECEPTION("前台"), SUPPORT("客服"), SPEAKER("广播"), MEETING("会议"), DOOR("门"), LOCK("锁"), KEY("钥匙"),
-    GARAGE("车库"), CAR("车辆"), ELEVATOR("电梯"), SECURITY("保安"), CAMERA("监控"), BELL("门铃"), ALARM("报警"),
-    MEDICAL("医务"), FIRE("消防"), FOOD("餐厅"), HOTEL("客房"), WAREHOUSE("仓库"), FACTORY("车间"), SCHOOL("教室"),
-    REPAIR("维修"), COMPUTER("机房"), DELIVERY("物流"), LIGHT("照明"),
+enum class ShortcutIcon(@StringRes val label: Int) {
+    PHONE(R.string.shortcut_icon_phone), PERSON(R.string.shortcut_icon_person), GROUP(R.string.shortcut_icon_group),
+    STAR(R.string.shortcut_icon_star), HOME(R.string.shortcut_icon_home), OFFICE(R.string.shortcut_icon_office),
+    STORE(R.string.shortcut_icon_store), RECEPTION(R.string.shortcut_icon_reception), SUPPORT(R.string.shortcut_icon_support),
+    SPEAKER(R.string.shortcut_icon_speaker), MEETING(R.string.shortcut_icon_meeting), DOOR(R.string.shortcut_icon_door),
+    LOCK(R.string.shortcut_icon_lock), KEY(R.string.shortcut_icon_key), GARAGE(R.string.shortcut_icon_garage),
+    CAR(R.string.shortcut_icon_car), ELEVATOR(R.string.shortcut_icon_elevator), SECURITY(R.string.shortcut_icon_security),
+    CAMERA(R.string.shortcut_icon_camera), BELL(R.string.shortcut_icon_bell), ALARM(R.string.shortcut_icon_alarm),
+    MEDICAL(R.string.shortcut_icon_medical), FIRE(R.string.shortcut_icon_fire), FOOD(R.string.shortcut_icon_food),
+    HOTEL(R.string.shortcut_icon_hotel), WAREHOUSE(R.string.shortcut_icon_warehouse), FACTORY(R.string.shortcut_icon_factory),
+    SCHOOL(R.string.shortcut_icon_school), REPAIR(R.string.shortcut_icon_repair), COMPUTER(R.string.shortcut_icon_computer),
+    DELIVERY(R.string.shortcut_icon_delivery), LIGHT(R.string.shortcut_icon_light),
 }
 
 /** A programmable key, like the speed dial / function keys of a desk phone. */

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Remote configuration: the platform, its documents, its addresses. -->
+<resources>
+    <string name="remote_no_connection">Cannot reach the platform</string>
+    <string name="remote_pin_mismatch">Platform certificate does not match the QR code</string>
+    <string name="remote_untrusted">Platform certificate not trusted</string>
+    <string name="remote_unauthorized">Remote configuration authentication failed</string>
+    <string name="remote_qr_invalid">QR code invalid, used or expired</string>
+    <string name="remote_rate_limited">Too many requests, try again later</string>
+    <string name="remote_platform_unavailable">Platform temporarily unavailable (HTTP %1$s)</string>
+    <string name="remote_platform_error">Platform returned an error (HTTP %1$s)</string>
+    <string name="remote_answer_too_long">Platform answer too long</string>
+    <string name="remote_no_device_key">The platform returned no device key</string>
+    <string name="remote_loaded">Remote configuration loaded</string>
+    <string name="remote_removed">Remote configuration removed</string>
+    <string name="remote_removed_untold">Remote configuration removed (the platform could not be notified)</string>
+    <string name="remote_revoked">Remote configuration revoked by the platform</string>
+    <string name="remote_invalid">Invalid remote configuration: %1$s</string>
+    <string name="remote_partly_applied">Some settings could not be applied: %1$s</string>
+    <string name="remote_needs_update">Please update SipLink</string>
+    <string name="remote_no_audio_codec">No audio codec available; default codecs restored</string>
+    <string name="remote_keys_not_loaded">Shortcut keys not loaded yet; not updated</string>
+
+    <!-- Faults of a document -->
+    <string name="remote_error_json">The configuration is not valid JSON</string>
+    <string name="remote_error_json_object">The configuration is not a JSON object</string>
+    <string name="remote_error_field">%1$s: invalid format</string>
+    <string name="remote_error_ca">CA certificate %1$s: cannot be read</string>
+    <string name="remote_error_schema">Unsupported configuration format</string>
+    <string name="remote_error_no_version">The configuration has no version</string>
+    <string name="remote_error_password_hash">Invalid configuration password format</string>
+    <string name="remote_error_no_answer_range">No-answer forwarding wait must be %1$s–%2$s seconds</string>
+    <string name="remote_error_frame_rate">Video frame rate must be %1$s</string>
+    <string name="remote_error_codec_name">A codec has no name</string>
+    <string name="remote_error_account">Account “%1$s”: %2$s</string>
+    <string name="remote_error_directory">Directory “%1$s”: %2$s</string>
+    <string name="remote_error_key">Key “%1$s”: %2$s</string>
+    <string name="remote_error_key_missing">Missing key</string>
+    <string name="remote_error_key_twice">Duplicate key</string>
+
+    <!-- The address of a remote configuration -->
+    <string name="remote_address_invalid">Invalid address</string>
+    <string name="remote_address_scheme">The address must start with https://</string>
+    <string name="remote_address_not_enrollment">Not a remote configuration address</string>
+    <string name="remote_address_pin">Invalid certificate fingerprint in the address</string>
+</resources>

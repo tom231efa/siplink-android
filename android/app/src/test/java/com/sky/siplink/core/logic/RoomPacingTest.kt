@@ -1,6 +1,8 @@
 package com.sky.siplink.core.logic
 
 import com.sky.siplink.core.logic.RoomPacing.Failure
+import com.sky.siplink.core.model.Phrase
+import com.sky.siplink.zh
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -37,13 +39,13 @@ class RoomPacingTest {
 
     @Test
     fun `the labels are short`() {
-        assertEquals(listOf("线路已满", "PBX 拒绝", "忙", "暂时无法接通", "媒体协商失败"), Failure.entries.map { it.label })
+        assertEquals(listOf("线路已满", "PBX 拒绝", "忙", "暂时无法接通", "媒体协商失败"), Failure.entries.map { zh(Phrase.of(it.label)) })
     }
 
     @Test
     fun `a full line stops the calling at once`() {
-        assertEquals(RoomPacing.Verdict(stop = true, label = "线路已满"), RoomPacing.afterFailure(Failure.LINE_FULL, run = 1, connected = false))
-        assertEquals(RoomPacing.Verdict(stop = true, label = "线路已满"), RoomPacing.afterFailure(Failure.LINE_FULL, run = 1, connected = true))
+        assertEquals(RoomPacing.Verdict(stop = true, label = Failure.LINE_FULL.label), RoomPacing.afterFailure(Failure.LINE_FULL, run = 1, connected = false))
+        assertEquals(RoomPacing.Verdict(stop = true, label = Failure.LINE_FULL.label), RoomPacing.afterFailure(Failure.LINE_FULL, run = 1, connected = true))
     }
 
     @Test
@@ -59,11 +61,11 @@ class RoomPacingTest {
     @Test
     fun `busy or refused in a row while members talk is the line's limit of calls`() {
         val run = RoomPacing.FAILURES_TO_STOP
-        assertEquals("线路已满", RoomPacing.afterFailure(Failure.BUSY, run, connected = true).label)
-        assertEquals("线路已满", RoomPacing.afterFailure(Failure.REFUSED, run, connected = true).label)
+        assertEquals("线路已满", zh(RoomPacing.afterFailure(Failure.BUSY, run, connected = true).label?.let { Phrase.of(it) }))
+        assertEquals("线路已满", zh(RoomPacing.afterFailure(Failure.REFUSED, run, connected = true).label?.let { Phrase.of(it) }))
         // Not reachable or no common codec says nothing about how many calls the line has.
-        assertEquals("暂时无法接通", RoomPacing.afterFailure(Failure.UNAVAILABLE, run, connected = true).label)
-        assertEquals("媒体协商失败", RoomPacing.afterFailure(Failure.MEDIA, run, connected = true).label)
+        assertEquals("暂时无法接通", zh(RoomPacing.afterFailure(Failure.UNAVAILABLE, run, connected = true).label?.let { Phrase.of(it) }))
+        assertEquals("媒体协商失败", zh(RoomPacing.afterFailure(Failure.MEDIA, run, connected = true).label?.let { Phrase.of(it) }))
     }
 
     @Test

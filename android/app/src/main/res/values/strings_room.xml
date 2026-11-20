@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The conference room. -->
+<resources>
+    <string name="room_name">Conference room</string>
+    <plurals name="room_full">
+        <item quantity="one">Conference room full (at most %1$s member)</item>
+        <item quantity="other">Conference room full (at most %1$s members)</item>
+    </plurals>
+    <plurals name="room_free">
+        <item quantity="one">At most %1$s more member</item>
+        <item quantity="other">At most %1$s more members</item>
+    </plurals>
+    <string name="room_not_now">Try again in a moment</string>
+    <string name="room_retry_later">Try again later</string>
+    <string name="room_create_failed">The conference room could not be created</string>
+    <string name="room_rejoin_failed">Cannot return to the conference room</string>
+    <string name="room_join_failed">Cannot join the conference room</string>
+    <string name="room_already_in">Already in the conference room</string>
+
+    <!-- The state of a member -->
+    <string name="room_member_queued">Waiting</string>
+    <string name="room_member_calling">Calling</string>
+    <string name="room_member_ringing">Ringing</string>
+    <string name="room_member_connected">Connected</string>
+    <string name="room_member_held">On hold</string>
+    <string name="room_member_left">Left</string>
+    <string name="room_member_held_back">Not called</string>
+
+    <!-- Why a member was not called -->
+    <string name="room_line_full">Line full</string>
+    <string name="room_refused">Refused by PBX</string>
+    <string name="room_busy">Busy</string>
+    <string name="room_unavailable">Unavailable</string>
+</resources>

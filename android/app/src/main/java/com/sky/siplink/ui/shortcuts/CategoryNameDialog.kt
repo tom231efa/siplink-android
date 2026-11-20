@@ -18,8 +18,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import com.sky.siplink.core.logic.ShortcutRules
+import com.sky.siplink.ui.components.text
 
 /**
  * Asks for the name of a category: of a new one, or another name for one there is.
@@ -41,7 +43,8 @@ internal fun CategoryNameDialog(
     var name by remember { mutableStateOf(initial) }
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { focus.requestFocus() }
-    val problem = ShortcutRules.categoryNameError(name, taken)
+    val reserved = ShortcutRules.RESERVED_CATEGORIES.map { stringResource(it) }.toSet()
+    val problem = ShortcutRules.categoryNameError(name, taken, reserved)
 
     fun done() {
         if (problem == null) onConfirm(name.trim())
@@ -59,7 +62,7 @@ internal fun CategoryNameDialog(
                     .focusRequester(focus),
                 // An empty field says so by itself: the button stays off.
                 isError = problem != null && name.isNotBlank(),
-                supportingText = problem?.takeIf { name.isNotBlank() }?.let { { Text(it.message) } },
+                supportingText = problem?.takeIf { name.isNotBlank() }?.let { { Text(it.message.text()) } },
                 singleLine = true,
                 shape = MaterialTheme.shapes.medium,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),

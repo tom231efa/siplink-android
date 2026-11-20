@@ -1,12 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Texts every area uses. Areas: strings_call, strings_room, strings_account, strings_directory, strings_shortcut, strings_remote, strings_settings, strings_notification, strings_form. -->
 <resources>
-    <string name="app_name">SipLink</string>
-    <string name="channel_service_name">后台保持在线</string>
-    <string name="channel_service_desc">保持 SIP 账号注册以便接收来电</string>
-    <string name="channel_incoming_name">来电</string>
-    <string name="channel_incoming_desc">来电提醒与全屏来电界面</string>
-    <string name="channel_call_name">通话中</string>
-    <string name="channel_call_desc">正在进行的通话</string>
-    <string name="channel_missed_name">未接来电</string>
-    <string name="channel_missed_desc">未接来电提醒</string>
+    <string name="app_name" translatable="false">SipLink</string>
+    <string name="list_separator">"; "</string>
+    <string name="managed_notice">Managed remotely; cannot be changed on this device</string>
+    <string name="managed_locked">Managed remotely</string>
 </resources>

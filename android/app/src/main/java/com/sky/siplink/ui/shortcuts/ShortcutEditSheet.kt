@@ -41,6 +41,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.Dp
@@ -53,6 +55,7 @@ import com.sky.siplink.core.model.Shortcut
 import com.sky.siplink.core.model.ShortcutAction
 import com.sky.siplink.core.model.ShortcutIcon
 import com.sky.siplink.core.model.SipAccount
+import com.sky.siplink.core.render
 import com.sky.siplink.engine
 import com.sky.siplink.ui.components.AppBottomSheet
 import com.sky.siplink.ui.components.DropdownField
@@ -82,7 +85,9 @@ fun NewShortcutSheet(name: String, number: String, onDismiss: () -> Unit) {
  */
 @Composable
 internal fun ShortcutEditSheet(shortcut: Shortcut, onDismiss: () -> Unit) {
-    val engine = LocalContext.current.engine
+    val context = LocalContext.current
+    val resources = LocalResources.current
+    val engine = context.engine
     val manager = engine.shortcuts
     val all by manager.shortcuts.collectAsStateWithLifecycle()
     val accounts by engine.accounts.accounts.collectAsStateWithLifecycle()
@@ -117,7 +122,7 @@ internal fun ShortcutEditSheet(shortcut: Shortcut, onDismiss: () -> Unit) {
         else -> null
     }
 
-    fun error(vararg candidates: ShortcutRules.Error): String? = errors.firstOrNull { it in candidates }?.message
+    fun error(vararg candidates: ShortcutRules.Error): String? = errors.firstOrNull { it in candidates }?.message?.let(context::render)
 
     fun save() {
         val keepsLine = usesLine && fixedLine
@@ -139,7 +144,7 @@ internal fun ShortcutEditSheet(shortcut: Shortcut, onDismiss: () -> Unit) {
             onDismiss()
         } else {
             // What has no field of the sheet to stand under.
-            errors.firstOrNull { it == ShortcutRules.Error.MANAGED || it == ShortcutRules.Error.OWN_LIMIT_REACHED }?.let { messenger(it.full) }
+            errors.firstOrNull { it == ShortcutRules.Error.MANAGED || it == ShortcutRules.Error.OWN_LIMIT_REACHED }?.let { messenger(context.render(it.full)) }
         }
     }
 
@@ -186,10 +191,10 @@ internal fun ShortcutEditSheet(shortcut: Shortcut, onDismiss: () -> Unit) {
 
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     DropdownField(
-                        value = action.label,
+                        value = stringResource(action.label),
                         label = "类型",
                         options = ShortcutAction.entries,
-                        optionLabel = { it.label },
+                        optionLabel = { resources.getString(it.label) },
                         onSelect = {
                             action = it
                             errors = emptyList()
@@ -243,7 +248,7 @@ internal fun ShortcutEditSheet(shortcut: Shortcut, onDismiss: () -> Unit) {
                         IconChoice(shortcutIcon(action), "默认（随类型）", selected = icon == null, enabled = !locked) { icon = null }
                     }
                     items(ShortcutIcon.entries, key = { it.name }) { choice ->
-                        IconChoice(shortcutIcon(choice), choice.label, selected = icon == choice, enabled = !locked) { icon = choice }
+                        IconChoice(shortcutIcon(choice), stringResource(choice.label), selected = icon == choice, enabled = !locked) { icon = choice }
                     }
                 }
 

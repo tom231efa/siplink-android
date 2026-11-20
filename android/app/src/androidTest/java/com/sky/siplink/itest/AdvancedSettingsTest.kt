@@ -58,7 +58,7 @@ class AdvancedSettingsTest : ScreenTestBase("itest-advanced") {
 
         // A name the rule refuses says why and is not kept.
         typeInto(FIELD, " $CUSTOM")
-        see(UserAgent.Error.SPACE_AT_ENDS.message)
+        see(zh(UserAgent.Error.SPACE_AT_ENDS.message))
         assertEquals("", engine.settings.current.userAgent)
 
         // Without the app being started again, the PBX learns the new name with the next REGISTER.

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Settings: the language of the app, updates, CA certificates. -->
+<resources>
+    <string name="settings_language">Language</string>
+    <string name="settings_language_system">System default</string>
+
+    <!-- Updates -->
+    <string name="update_check_failed">Update check failed</string>
+    <string name="update_rate_limited">Too many requests</string>
+    <string name="update_downloading">Downloading %1$s</string>
+    <string name="update_downloaded">Downloaded %1$s</string>
+    <string name="update_checking">Checking…</string>
+    <string name="update_available">Update available: %1$s</string>
+    <string name="update_skipped">Skipped %1$s</string>
+    <string name="update_latest">Up to date</string>
+    <string name="update_tap_to_check">Tap to check for updates</string>
+
+    <!-- CA certificates -->
+    <string name="tls_invalid_file">Not a valid X.509 certificate file (PEM / CRT / CER / DER)</string>
+    <string name="tls_save_failed">The certificate could not be saved: %1$s</string>
+</resources>

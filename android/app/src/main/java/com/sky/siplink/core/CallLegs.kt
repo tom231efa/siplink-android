@@ -1,5 +1,6 @@
 package com.sky.siplink.core
 
+import com.sky.siplink.core.model.Phrase
 import com.sky.siplink.core.model.SupervisionMode
 import org.linphone.core.Call
 
@@ -32,6 +33,9 @@ internal class CallLegs {
     /** Set while the core reports OutgoingInit from inside the invite call, to tell our own call apart there. */
     var pending: Pending? = null
     var consulting = false
+
+    /** Why the call on screen ended, as its snapshot says it; kept to say it again in another language. */
+    var endReason: Phrase? = null
 
     /** Counts the scenarios on screen: a lingering end only clears the screen while no new one began. */
     var generation = 0

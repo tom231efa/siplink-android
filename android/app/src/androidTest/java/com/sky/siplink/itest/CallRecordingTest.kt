@@ -143,7 +143,7 @@ class CallRecordingTest : PbxTestBase() {
         Thread.sleep(3_000)
 
         // A sync brings a configuration without recording, as the platform sends it.
-        val document = (RemoteDocument.parse("""{"schema": 1, "version": "v1", "settings": {"callRecording": false}}""") as RemoteDocument.Parsed.Ok).document
+        val document = (RemoteDocument.parse("""{"schema": 1, "version": "v1", "settings": {"callRecording": false}}""", emptySet()) as RemoteDocument.Parsed.Ok).document
         onMain {
             engine.lock.setManaged(true)
             engine.lock.fromRemote { engine.updateSettings { RemotePlan.settings(document.settings, it) } }

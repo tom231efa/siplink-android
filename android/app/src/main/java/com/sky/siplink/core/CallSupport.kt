@@ -1,11 +1,13 @@
 package com.sky.siplink.core
 
+import com.sky.siplink.R
 import com.sky.siplink.core.logic.FeatureDial
 import com.sky.siplink.core.logic.IntercomHeaders
 import com.sky.siplink.core.model.AudioRoute
 import com.sky.siplink.core.model.CallPhase
 import com.sky.siplink.core.model.FeatureCodes
 import com.sky.siplink.core.model.MemberState
+import com.sky.siplink.core.model.Phrase
 import com.sky.siplink.core.model.SideCall
 import org.linphone.core.Account
 import org.linphone.core.Address
@@ -151,33 +153,39 @@ internal object CallSupport {
     }
 
     /** What the call screen says while no sound comes in, and after the SIP core ended a call for it. */
-    const val NO_SOUND = "未收到对方声音"
+    val NO_SOUND: Phrase = Phrase.of(R.string.call_no_sound)
 
     /** Why a call out ended that its server gave no answer, and that could not go over the other server. */
-    const val SERVER_SILENT = "服务器无响应"
+    val SERVER_SILENT: Phrase = Phrase.of(R.string.call_server_silent)
 
-    fun endReason(call: Call, callState: Call.State, wasConnected: Boolean, message: String): String {
+    /** Why a call ended; a reason the app has no words for is the server's own, as it sent it. */
+    fun endReason(call: Call, callState: Call.State, wasConnected: Boolean, message: String): Phrase {
         if (wasConnected && CallMediaWatch.mediaLost(call)) return NO_SOUND
         if (callState == Call.State.End) {
-            return when {
-                wasConnected -> "通话结束"
-                call.dir == Call.Dir.Incoming -> "已挂断"
-                else -> "已取消"
-            }
+            return Phrase.of(
+                when {
+                    wasConnected -> R.string.call_ended
+                    call.dir == Call.Dir.Incoming -> R.string.call_hung_up
+                    else -> R.string.call_cancelled
+                },
+            )
         }
         val error = call.errorInfo
-        return when (error.reason) {
-            Reason.Busy -> "对方正忙"
-            Reason.Declined -> "对方已拒绝"
-            Reason.NotFound -> "号码不存在"
-            Reason.NotAnswered -> "无人接听"
-            Reason.NoResponse -> "对方无响应"
-            Reason.DoNotDisturb -> "对方已开启免打扰"
-            Reason.TemporarilyUnavailable -> "对方暂时无法接通"
-            Reason.Forbidden, Reason.Unauthorized -> "无权呼叫"
-            Reason.IOError -> "网络连接失败"
-            Reason.NotAcceptable, Reason.UnsupportedContent -> "媒体协商失败"
-            else -> error.phrase?.takeIf { it.isNotBlank() } ?: message.ifBlank { "呼叫失败" }
+        val known = when (error.reason) {
+            Reason.Busy -> R.string.call_end_busy
+            Reason.Declined -> R.string.call_end_declined
+            Reason.NotFound -> R.string.call_end_not_found
+            Reason.NotAnswered -> R.string.call_end_not_answered
+            Reason.NoResponse -> R.string.call_end_no_response
+            Reason.DoNotDisturb -> R.string.call_end_dnd
+            Reason.TemporarilyUnavailable -> R.string.call_end_unavailable
+            Reason.Forbidden, Reason.Unauthorized -> R.string.call_end_forbidden
+            Reason.IOError -> R.string.call_end_network
+            Reason.NotAcceptable, Reason.UnsupportedContent -> R.string.call_end_media
+            else -> null
         }
+        if (known != null) return Phrase.of(known)
+        val said = error.phrase?.takeIf { it.isNotBlank() } ?: message.takeIf { it.isNotBlank() }
+        return said?.let(Phrase::plain) ?: Phrase.of(R.string.call_failed)
     }
 }

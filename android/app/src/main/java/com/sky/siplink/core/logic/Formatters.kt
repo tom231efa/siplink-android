@@ -1,14 +1,16 @@
 package com.sky.siplink.core.logic
 
+import java.util.Locale
+
 /** Small presentation helpers kept free of Android dependencies so they can be unit tested. */
 object Formatters {
-    /** 0:07, 12:34, 1:02:03 */
+    /** 0:07, 12:34, 1:02:03, with Western digits in every language. */
     fun duration(totalSeconds: Long): String {
         val seconds = totalSeconds.coerceAtLeast(0)
         val h = seconds / 3600
         val m = (seconds % 3600) / 60
         val s = seconds % 60
-        return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%d:%02d".format(m, s)
+        return if (h > 0) "%d:%02d:%02d".format(Locale.ROOT, h, m, s) else "%d:%02d".format(Locale.ROOT, m, s)
     }
 
     /** One or two characters shown inside an avatar. */

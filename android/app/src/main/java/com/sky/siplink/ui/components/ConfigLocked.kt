@@ -83,10 +83,11 @@ fun ConfigPasswordDialog(onDismiss: () -> Unit, onOpened: (String) -> Unit) {
 fun ManagedLock() {
     if (!LocalConfigLocked.current) return
     val messenger = LocalMessenger.current
-    IconButton(onClick = { messenger(ManagedConfig.NOTICE) }) {
+    val notice = ManagedConfig.NOTICE.text()
+    IconButton(onClick = { messenger(notice) }) {
         Icon(
             Icons.Rounded.Lock,
-            contentDescription = ManagedConfig.LOCKED,
+            contentDescription = ManagedConfig.LOCKED.text(),
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(20.dp),
         )

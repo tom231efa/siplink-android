@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The conference room. -->
+<resources>
+    <string name="room_name">会议室</string>
+    <plurals name="room_full">
+        <item quantity="other">会议室已满（最多 %1$s 方）</item>
+    </plurals>
+    <plurals name="room_free">
+        <item quantity="other">最多还可添加 %1$s 方</item>
+    </plurals>
+    <string name="room_not_now">请稍后再试</string>
+    <string name="room_retry_later">请稍后重试</string>
+    <string name="room_create_failed">无法创建会议室</string>
+    <string name="room_rejoin_failed">无法返回会议室</string>
+    <string name="room_join_failed">无法加入会议室</string>
+    <string name="room_already_in">已在会议室中</string>
+
+    <!-- The state of a member -->
+    <string name="room_member_queued">等待呼叫</string>
+    <string name="room_member_calling">呼叫中</string>
+    <string name="room_member_ringing">振铃</string>
+    <string name="room_member_connected">已接通</string>
+    <string name="room_member_held">已保留</string>
+    <string name="room_member_left">已离开</string>
+    <string name="room_member_held_back">未呼叫</string>
+
+    <!-- Why a member was not called -->
+    <string name="room_line_full">线路已满</string>
+    <string name="room_refused">PBX 拒绝</string>
+    <string name="room_busy">忙</string>
+    <string name="room_unavailable">暂时无法接通</string>
+</resources>

@@ -33,6 +33,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.sky.siplink.core.logic.Csv
+import com.sky.siplink.core.model.Phrase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -43,12 +44,12 @@ private const val MAX_IMPORT_BYTES = 512 * 1024
 data class ImportOutcome(val finished: Boolean, val message: String)
 
 /** The sentence about an import: how many were taken, how many did not fit, which lines failed. */
-fun importReport(created: Int, unit: String, skipped: Int, limit: Int, errors: List<Csv.LineError>): String = buildString {
+fun importReport(created: Int, unit: String, skipped: Int, limit: Int, errors: List<Csv.LineError>, render: (Phrase) -> String): String = buildString {
     append("已导入 $created 个$unit")
     if (skipped > 0) append("；$skipped 个因超过 $limit 个上限被跳过")
     if (errors.isNotEmpty()) {
         append("；${errors.size} 行有误：")
-        errors.take(8).forEach { append("\n第 ${it.line} 行：${it.reason}") }
+        errors.take(8).forEach { append("\n第 ${it.line} 行：${render(it.reason)}") }
         if (errors.size > 8) append("\n……")
     }
 }

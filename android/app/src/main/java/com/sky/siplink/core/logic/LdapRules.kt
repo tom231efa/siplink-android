@@ -1,7 +1,9 @@
 package com.sky.siplink.core.logic
 
+import com.sky.siplink.R
 import com.sky.siplink.core.model.LdapDirectory
 import com.sky.siplink.core.model.LdapSecurity
+import com.sky.siplink.core.model.Phrase
 
 /** Pure rules for the LDAP directories: what a valid one looks like, and what the SIP core is told about it. */
 object LdapRules {
@@ -13,32 +15,34 @@ object LdapRules {
     const val PLACEHOLDER = '%'
 
     /**
-     * @param subject what the error is about
-     * @param message what is wrong with it, as shown right under that field
+     * @param message what is wrong, as shown right under the field it is about
+     * @param full the error where no field stands next to it (in a notice, a list of import errors): it names the field
      */
-    enum class Error(val subject: String, val message: String) {
-        LIMIT_REACHED("", "最多 $MAX_DIRECTORIES 个通讯录"),
-        NAME_TAKEN("名称", "已存在"),
-        NAME_TOO_LONG("名称", "最多 $MAX_NAME_LENGTH 个字符"),
-        HOST_EMPTY("服务器地址", "必填"),
-        HOST_INVALID("服务器地址", "应为 主机[:端口]"),
-        HOST_LDAPS("服务器地址", "不支持 ldaps://，请使用 StartTLS"),
-        STARTTLS_NEEDS_HOST_NAME("服务器地址", "StartTLS 需使用域名"),
-        PORT_OUT_OF_RANGE("服务器地址", "端口应为 1–65535"),
-        PASSWORD_WITHOUT_USER("用户名", "必填（已填写密码）"),
-        BASE_DN_EMPTY("搜索基准", "必填"),
-        MAX_RESULTS_OUT_OF_RANGE("最大结果数", "应为 1–$MAX_RESULTS"),
-        NAME_ATTRIBUTES_EMPTY("姓名属性", "必填"),
-        NUMBER_ATTRIBUTES_EMPTY("号码属性", "必填"),
-        NAME_FILTER_NO_PLACEHOLDER("姓名过滤器", "需包含 %"),
-        NUMBER_FILTER_NO_PLACEHOLDER("号码过滤器", "需包含 %"),
+    enum class Error(val message: Phrase, full: Phrase? = null) {
+        LIMIT_REACHED(Phrase.count(R.plurals.directory_limit, MAX_DIRECTORIES)),
+        NAME_TAKEN(FormRules.TAKEN, Phrase.of(R.string.directory_error_name_taken)),
+        NAME_TOO_LONG(FormRules.maxChars(MAX_NAME_LENGTH), Phrase.count(R.plurals.directory_error_name_too_long, MAX_NAME_LENGTH)),
+        HOST_EMPTY(FormRules.REQUIRED, Phrase.of(R.string.directory_error_host_empty)),
+        HOST_INVALID(FormRules.HOST_PORT, Phrase.of(R.string.directory_error_host_invalid)),
+        HOST_LDAPS(Phrase.of(R.string.directory_error_ldaps), Phrase.of(R.string.directory_error_host_ldaps)),
+        STARTTLS_NEEDS_HOST_NAME(Phrase.of(R.string.directory_error_starttls_name), Phrase.of(R.string.directory_error_host_starttls_name)),
+        PORT_OUT_OF_RANGE(Phrase.of(R.string.directory_error_port_range), Phrase.of(R.string.directory_error_host_port_range)),
+        PASSWORD_WITHOUT_USER(Phrase.of(R.string.directory_error_user_for_password), Phrase.of(R.string.directory_error_user_for_password_full)),
+        BASE_DN_EMPTY(FormRules.REQUIRED, Phrase.of(R.string.directory_error_base_dn_empty)),
+        MAX_RESULTS_OUT_OF_RANGE(
+            Phrase.of(R.string.directory_error_max_results_range, MAX_RESULTS),
+            Phrase.of(R.string.directory_error_max_results_invalid, MAX_RESULTS),
+        ),
+        NAME_ATTRIBUTES_EMPTY(FormRules.REQUIRED, Phrase.of(R.string.directory_error_name_attributes_empty)),
+        NUMBER_ATTRIBUTES_EMPTY(FormRules.REQUIRED, Phrase.of(R.string.directory_error_number_attributes_empty)),
+        NAME_FILTER_NO_PLACEHOLDER(Phrase.of(R.string.directory_error_placeholder), Phrase.of(R.string.directory_error_name_filter_placeholder)),
+        NUMBER_FILTER_NO_PLACEHOLDER(Phrase.of(R.string.directory_error_placeholder), Phrase.of(R.string.directory_error_number_filter_placeholder)),
 
         /** Not a fault of the directory: the configuration is managed and takes no change from the phone. */
-        MANAGED("", ManagedConfig.NOTICE),
+        MANAGED(ManagedConfig.NOTICE),
         ;
 
-        /** The error where no field stands next to it: in a notice. */
-        val full: String get() = subject + message
+        val full: Phrase = full ?: message
     }
 
     private val schemes = listOf("ldap://", "ldaps://")

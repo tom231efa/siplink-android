@@ -1,5 +1,7 @@
 package com.sky.siplink.core.logic
 
+import com.sky.siplink.R
+import com.sky.siplink.core.model.Phrase
 import com.sky.siplink.core.model.SipTransport
 
 /**
@@ -278,5 +280,5 @@ object LineAdapt {
     fun networkOf(key: String): String = key.substringAfterLast(SEPARATOR)
 
     /** What the account list shows next to a line that runs on another transport than its own. */
-    fun label(transport: SipTransport): String = "${transport.name}（自动）"
+    fun label(transport: SipTransport): Phrase = Phrase.of(R.string.line_transport_auto, transport.name)
 }

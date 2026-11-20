@@ -5,11 +5,13 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import com.sky.siplink.BuildConfig
+import com.sky.siplink.R
 import com.sky.siplink.core.logic.CertificateTools
 import com.sky.siplink.core.logic.RemoteAddress
 import com.sky.siplink.core.logic.RemoteChecks
 import com.sky.siplink.core.logic.RemoteDocument
 import com.sky.siplink.core.logic.RemoteSync
+import com.sky.siplink.core.model.Phrase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -55,6 +57,10 @@ class RemoteConfig internal constructor(context: Context, private val engine: Si
     )
 
     private val store = RemoteConfigStore(context)
+    private val texts = engine.texts
+
+    /** What the screen says went wrong in place of the stored error of the last sync: a binding that failed, a revocation. */
+    private var notice: Phrase? = null
     private val applier = RemoteApplier(engine)
     private val handler = Handler(Looper.getMainLooper())
     private val worker = Executors.newSingleThreadExecutor { Thread(it, "remote-config") }
@@ -81,13 +87,18 @@ class RemoteConfig internal constructor(context: Context, private val engine: Si
 
     /** The network is back: a sync that failed is tried again at once. */
     fun onNetworkBack() {
-        if (store.enrolled && store.lastError.isNotEmpty()) sync()
+        if (store.enrolled && store.lastError != null) sync()
     }
 
     /** The user asked for a sync. */
     fun syncNow() = sync()
 
     fun parse(text: String): RemoteAddress.Parsed = RemoteAddress.parse(text, allowsHttp)
+
+    /** The language of the app changed: what went wrong is said again in it. */
+    fun onLanguageChanged() {
+        state.value = state.value.copy(lastError = (notice ?: store.lastError)?.let(texts::render).orEmpty())
+    }
 
     /** The user saw that the app has to restart for LDAP; it is not asked again for this change. */
     fun restartHandled() {
@@ -100,6 +111,7 @@ class RemoteConfig internal constructor(context: Context, private val engine: Si
      * @param onDone what to tell the user about it
      */
     fun enroll(enrollment: RemoteAddress.Enrollment, onDone: (String) -> Unit) {
+        val reserved = engine.shortcuts.reservedCategories()
         if (state.value.busy || store.enrolled) return
         markBusy()
         // Coming to the front right after the binding need not sync again.
@@ -108,9 +120,9 @@ class RemoteConfig internal constructor(context: Context, private val engine: Si
         val trust = enrollment.pin?.let { RemoteConfigClient.Trust.Pinned(it) } ?: RemoteConfigClient.Trust.System
         worker.execute {
             val result = request(enrollment.enrollUrl, body, null, trust)
-            val document = result.getOrNull()?.takeIf { it.status == 200 }?.let { RemoteDocument.parse(it.body) }
+            val document = result.getOrNull()?.takeIf { it.status == 200 }?.let { RemoteDocument.parse(it.body, reserved) }
             handler.post {
-                val answer = result.getOrElse { return@post finishEnrollment(it.message.orEmpty(), onDone) }
+                val answer = result.getOrElse { return@post finishEnrollment(reasonOf(it), onDone) }
                 when (RemoteSync.outcome(answer.status, enrolling = true)) {
                     RemoteSync.Outcome.DOCUMENT -> enrolled(enrollment, answer, document!!, onDone)
                     else -> finishEnrollment(RemoteSync.failureText(answer.status), onDone)
@@ -126,17 +138,18 @@ class RemoteConfig internal constructor(context: Context, private val engine: Si
         onDone: (String) -> Unit,
     ) {
         val deviceKey = RemoteDocument.deviceKeyOf(answer.body)
-        if (deviceKey.isEmpty()) return finishEnrollment("平台未返回设备密钥", onDone)
+        if (deviceKey.isEmpty()) return finishEnrollment(Phrase.of(R.string.remote_no_device_key), onDone)
         store.enroll(deviceKey, enrollment.syncUrl, answer.pinned?.let(CertificateTools::toPem).orEmpty())
         received(document) { error ->
             finished(error)
-            onDone(error.ifEmpty { "已载入远程配置" })
+            onDone(texts.render(error ?: Phrase.of(R.string.remote_loaded)))
         }
     }
 
-    private fun finishEnrollment(error: String, onDone: (String) -> Unit) {
-        state.value = state.value.copy(busy = false, lastError = error)
-        onDone(error)
+    private fun finishEnrollment(error: Phrase, onDone: (String) -> Unit) {
+        notice = error
+        state.value = state.value.copy(busy = false, lastError = texts.render(error))
+        onDone(texts.render(error))
     }
 
     /**
@@ -152,7 +165,7 @@ class RemoteConfig internal constructor(context: Context, private val engine: Si
         worker.execute {
             val told = request(url, RemoteSync.LEAVE_BODY, key, trust).getOrNull()?.status?.let { it in 200..299 || it == 401 || it == 410 } == true
             handler.post {
-                takeBack("") { onDone(if (told) "已删除远程配置" else "已删除远程配置（未能通知平台）") }
+                takeBack(null) { onDone(texts.get(if (told) R.string.remote_removed else R.string.remote_removed_untold)) }
             }
         }
     }
@@ -165,16 +178,17 @@ class RemoteConfig internal constructor(context: Context, private val engine: Si
         store.attempted(now)
         val body = RemoteSync.syncBody(store.version, device())
         val (url, key, trust) = Triple(store.syncUrl, store.deviceKey, trust())
+        val reserved = engine.shortcuts.reservedCategories()
         worker.execute {
             val result = request(url, body, key, trust)
             // The document is read here, off the main thread; it may be large.
-            val document = result.getOrNull()?.takeIf { it.status == 200 }?.let { RemoteDocument.parse(it.body) }
+            val document = result.getOrNull()?.takeIf { it.status == 200 }?.let { RemoteDocument.parse(it.body, reserved) }
             // Busy until it is all done: applying or taking back may wait for accounts to unregister.
             handler.post {
-                val answer = result.getOrElse { return@post finished(it.message.orEmpty(), retryAfter = null) }
+                val answer = result.getOrElse { return@post finished(reasonOf(it), retryAfter = null) }
                 when (RemoteSync.outcome(answer.status, enrolling = false)) {
                     RemoteSync.Outcome.DOCUMENT -> received(document!!) { error -> finished(error) }
-                    RemoteSync.Outcome.UNCHANGED -> finished("")
+                    RemoteSync.Outcome.UNCHANGED -> finished(null)
                     RemoteSync.Outcome.REVOKED -> takeBack(REVOKED)
                     else -> finished(RemoteSync.failureText(answer.status), answer.retryAfterSeconds)
                 }
@@ -182,8 +196,8 @@ class RemoteConfig internal constructor(context: Context, private val engine: Si
         }
     }
 
-    /** Applies a document that came, once the shortcut keys are read; [then] gets what went wrong (empty: nothing). */
-    private fun received(parsed: RemoteDocument.Parsed, then: (String) -> Unit) {
+    /** Applies a document that came, once the shortcut keys are read; [then] gets what went wrong (null: nothing). */
+    private fun received(parsed: RemoteDocument.Parsed, then: (Phrase?) -> Unit) {
         if (!engine.shortcuts.loaded.value) {
             handler.postDelayed({ received(parsed, then) }, WAIT_FOR_KEYS_MS)
             return
@@ -191,33 +205,33 @@ class RemoteConfig internal constructor(context: Context, private val engine: Si
         val at = RemoteSync.timestamp(System.currentTimeMillis())
         when (parsed) {
             is RemoteDocument.Parsed.Invalid -> {
-                store.tried("", at, parsed.errors.joinToString("；"))
+                store.tried("", at, parsed.errors)
                 val first = parsed.errors.first()
-                then(if (first == RemoteChecks.NEEDS_UPDATE) first else "远程配置无效：$first")
+                then(if (first == RemoteChecks.NEEDS_UPDATE) first else Phrase.of(R.string.remote_invalid, first))
             }
             is RemoteDocument.Parsed.Ok -> apply(parsed.document, at, then)
         }
     }
 
-    /** Applies [document]; [then] gets what went wrong (empty: nothing) once it is done. */
-    private fun apply(document: RemoteDocument, at: String, then: (String) -> Unit) {
+    /** Applies [document]; [then] gets what went wrong (null: nothing) once it is done. */
+    private fun apply(document: RemoteDocument, at: String, then: (Phrase?) -> Unit) {
         val syncUrl = document.syncUrl.takeIf { RemoteAddress.isPlatformUrl(it, allowsHttp) } ?: store.syncUrl
         store.describe(document.platformName, document.clientName, document.region, document.generatedAt, document.refreshMinutes, syncUrl)
-        if (store.applied && !RemoteSync.isNew(document.version, store.version)) return then("")
+        if (store.applied && !RemoteSync.isNew(document.version, store.version)) return then(null)
         applier.apply(document, store.accountIds, store.directoryIds) { outcome ->
             // Applied in part, the version is not kept: the next sync brings the document again.
             store.applied(if (outcome.errors.isEmpty()) document.version else "", outcome.accountIds, outcome.directoryIds)
-            store.tried(document.version, at, outcome.errors.joinToString("；"))
+            store.tried(document.version, at, outcome.errors)
             if (outcome.trustChanged && engine.directory.tlsChangeNeedsRestart) state.value = state.value.copy(restartNeeded = true)
-            then(outcome.errors.firstOrNull()?.let { "部分配置未能应用：$it" }.orEmpty())
+            then(outcome.errors.firstOrNull()?.let { Phrase.of(R.string.remote_partly_applied, it) })
         }
     }
 
-    /** A sync or binding ended with [error] (empty: it worked); the next one is planned. */
-    private fun finished(error: String, retryAfter: Long? = null) {
+    /** A sync or binding ended with [error] (null: it worked); the next one is planned. */
+    private fun finished(error: Phrase?, retryAfter: Long? = null) {
         store.synced(System.currentTimeMillis(), error)
         val refresh = store.refreshMinutes.takeIf { it > 0 } ?: RemoteDocument.DEFAULT_REFRESH_MINUTES
-        failures = if (error.isEmpty()) 0 else failures + 1
+        failures = if (error == null) 0 else failures + 1
         val delay = if (failures == 0) RemoteSync.refreshDelayMs(refresh) else RemoteSync.retryDelayMs(failures, refresh, retryAfter)
         handler.removeCallbacks(timer)
         if (store.enrolled) handler.postDelayed(timer, delay)
@@ -226,25 +240,29 @@ class RemoteConfig internal constructor(context: Context, private val engine: Si
 
     /**
      * The platform ended the binding, or the user did: what was handed out goes, and the phone is
-     * its own again. [notice] stays on the screen to say why; [then] runs once it is all done.
+     * its own again. [why] stays on the screen to say why (null: nothing); [then] runs once it is all done.
      */
-    private fun takeBack(notice: String, then: () -> Unit = {}) {
+    private fun takeBack(why: Phrase?, then: () -> Unit = {}) {
         if (!engine.shortcuts.loaded.value) {
-            handler.postDelayed({ takeBack(notice, then) }, WAIT_FOR_KEYS_MS)
+            handler.postDelayed({ takeBack(why, then) }, WAIT_FOR_KEYS_MS)
             return
         }
         handler.removeCallbacks(timer)
         val forget = {
             store.clear()
             failures = 0
-            state.value = Status(lastError = notice)
+            notice = why
+            state.value = Status(lastError = why?.let(texts::render).orEmpty())
             then()
         }
         // A binding whose document was never applied handed nothing out: what the phone has is its own.
         if (store.applied || engine.lock.managed.value) applier.wipe(forget) else forget()
     }
 
-    /** The answer of the platform, or a failure whose message is for the user. */
+    /** Why a request got no answer, for the user. */
+    private fun reasonOf(failure: Throwable): Phrase = (failure as? RemoteConfigClient.Failure)?.reason ?: RemoteSync.NO_CONNECTION
+
+    /** The answer of the platform, or a failure whose reason is for the user. */
     private fun request(url: String, body: String, deviceKey: String?, trust: RemoteConfigClient.Trust): Result<RemoteConfigClient.Answer> =
         try {
             Result.success(RemoteConfigClient.post(url, body, deviceKey, trust, System.currentTimeMillis()))
@@ -271,7 +289,8 @@ class RemoteConfig internal constructor(context: Context, private val engine: Si
             androidRelease = Build.VERSION.RELEASE,
             androidSdk = Build.VERSION.SDK_INT,
             model = "${Build.MANUFACTURER} ${Build.MODEL}",
-            applied = RemoteSync.Applied(store.appliedVersion, store.appliedAt, store.appliedError),
+            // What went wrong is told in the app's language of the moment, as the screen tells it.
+            applied = RemoteSync.Applied(store.appliedVersion, store.appliedAt, store.appliedErrors.joinToString(texts.get(R.string.list_separator), transform = texts::render)),
             registrations = engine.accounts.accounts.value.mapNotNull { account ->
                 keys[account.id]?.let { RemoteSync.Registration(it, account.state.name, account.error.orEmpty()) }
             },
@@ -287,6 +306,7 @@ class RemoteConfig internal constructor(context: Context, private val engine: Si
 
     /** Shows what the store holds; nothing is on its way any more. */
     private fun publish() {
+        notice = null
         state.value = state.value.copy(
             busy = false,
             enrolled = store.enrolled,
@@ -296,7 +316,7 @@ class RemoteConfig internal constructor(context: Context, private val engine: Si
             host = RemoteAddress.hostOf(store.syncUrl),
             generatedAt = store.generatedAt,
             lastSyncMs = store.lastSyncMs,
-            lastError = store.lastError,
+            lastError = store.lastError?.let(texts::render).orEmpty(),
             version = store.version,
             refreshMinutes = store.refreshMinutes.takeIf { it > 0 } ?: RemoteDocument.DEFAULT_REFRESH_MINUTES,
             pinned = store.platformCa.isNotEmpty(),
@@ -307,6 +327,6 @@ class RemoteConfig internal constructor(context: Context, private val engine: Si
         /** How often a document that came before the shortcut keys were read looks again. */
         const val WAIT_FOR_KEYS_MS = 100L
 
-        const val REVOKED = "远程配置已被平台收回"
+        val REVOKED = Phrase.of(R.string.remote_revoked)
     }
 }

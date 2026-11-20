@@ -1,5 +1,7 @@
 package com.sky.siplink.core.logic
 
+import com.sky.siplink.R
+import com.sky.siplink.core.model.Phrase
 import com.sky.siplink.core.model.Shortcut
 import com.sky.siplink.core.model.ShortcutAction
 import com.sky.siplink.core.model.ShortcutIcon
@@ -16,11 +18,12 @@ object ShortcutRules {
     const val MAX_LINE_LENGTH = 160
 
     /**
-     * One key per line. The type is a word of [typeWords]; the line is an account name or
-     * user@domain, without one the key asks for its line whenever it calls out; the icon is a
-     * word of [iconWords], without one the key shows the icon of its type.
+     * One key per line: name, number[, type[, category[, line[, icon]]]]. The type is a word of
+     * [typeWords]; the line is an account name or user@domain, without one the key asks for its
+     * line whenever it calls out; the icon is a word of [iconWords], without one the key shows
+     * the icon of its type.
      */
-    const val FORMAT_HINT = "名称,号码[,类型[,分类[,线路[,图标]]]]"
+    val FORMAT: Phrase = Phrase.of(R.string.shortcut_csv_format)
 
     /** The icons of the CSV format, in the order of [ShortcutIcon]. */
     val iconWords: List<String> = ShortcutIcon.entries.map { it.name.lowercase() }
@@ -38,28 +41,27 @@ object ShortcutRules {
     }
 
     /**
-     * @param subject what the error is about
-     * @param message what is wrong with it, as shown right under that field
+     * @param message what is wrong, as shown right under the field it is about
+     * @param full the error where no field stands next to it, in a list of import errors: it names the field
      */
-    enum class Error(val subject: String, val message: String) {
-        LIMIT_REACHED("", "最多 $MAX_SHORTCUTS 个快捷键"),
-        OWN_LIMIT_REACHED("", "最多自建 $MAX_OWN 个快捷键"),
-        NUMBER_EMPTY("号码", "必填"),
-        NUMBER_INVALID("号码", "不能包含空格"),
-        DTMF_INVALID("按键", "仅限 0-9 * #"),
-        NUMBER_TOO_LONG("号码", "最多 $MAX_NUMBER_LENGTH 个字符"),
-        LABEL_TOO_LONG("名称", "最多 $MAX_LABEL_LENGTH 个字符"),
-        CATEGORY_TOO_LONG("分类", "最多 $MAX_CATEGORY_LENGTH 个字符"),
-        CATEGORY_EMPTY("分类", "必填"),
-        CATEGORY_RESERVED("分类", "名称不可用"),
-        CATEGORY_TAKEN("分类", "已存在"),
+    enum class Error(val message: Phrase, full: Phrase? = null) {
+        LIMIT_REACHED(Phrase.count(R.plurals.shortcut_limit, MAX_SHORTCUTS)),
+        OWN_LIMIT_REACHED(Phrase.count(R.plurals.shortcut_own_limit, MAX_OWN)),
+        NUMBER_EMPTY(Phrase.of(R.string.form_required), Phrase.of(R.string.shortcut_error_number_empty)),
+        NUMBER_INVALID(Phrase.of(R.string.shortcut_error_spaces), Phrase.of(R.string.shortcut_error_number_spaces)),
+        DTMF_INVALID(Phrase.of(R.string.shortcut_error_dtmf), Phrase.of(R.string.shortcut_error_dtmf_full)),
+        NUMBER_TOO_LONG(FormRules.maxChars(MAX_NUMBER_LENGTH), Phrase.count(R.plurals.shortcut_error_number_too_long, MAX_NUMBER_LENGTH)),
+        LABEL_TOO_LONG(FormRules.maxChars(MAX_LABEL_LENGTH), Phrase.count(R.plurals.shortcut_error_name_too_long, MAX_LABEL_LENGTH)),
+        CATEGORY_TOO_LONG(FormRules.maxChars(MAX_CATEGORY_LENGTH), Phrase.count(R.plurals.shortcut_error_category_too_long, MAX_CATEGORY_LENGTH)),
+        CATEGORY_EMPTY(Phrase.of(R.string.form_required), Phrase.of(R.string.shortcut_error_category_empty)),
+        CATEGORY_RESERVED(Phrase.of(R.string.shortcut_error_reserved), Phrase.of(R.string.shortcut_error_category_reserved)),
+        CATEGORY_TAKEN(Phrase.of(R.string.form_taken), Phrase.of(R.string.shortcut_error_category_taken)),
 
         /** Not a fault of the key: the configuration is managed and takes no change from the phone. */
-        MANAGED("", ManagedConfig.NOTICE),
+        MANAGED(ManagedConfig.NOTICE),
         ;
 
-        /** The error where no field stands next to it: in a list of import errors. */
-        val full: String get() = subject + message
+        val full: Phrase = full ?: message
     }
 
     fun canAdd(count: Int): Boolean = count < MAX_SHORTCUTS
@@ -140,12 +142,12 @@ object ShortcutRules {
 
     /**
      * Trims every field and drops the number of a type that has none. A key without a name is
-     * called by its number, or by its type when it has no number either.
+     * called by its number; without a number either it keeps no name and is called by its type ([title]).
      */
     fun normalize(shortcut: Shortcut): Shortcut {
         val number = if (shortcut.action.hasNumber) shortcut.number.trim() else ""
         return shortcut.copy(
-            label = shortcut.label.trim().ifEmpty { number.take(MAX_LABEL_LENGTH).ifEmpty { shortcut.action.label } },
+            label = shortcut.label.trim().ifEmpty { number.take(MAX_LABEL_LENGTH) },
             number = number,
             category = shortcut.category.trim(),
             // Kept for every type that may call out, whatever the do not disturb mode is right now.
@@ -153,8 +155,14 @@ object ShortcutRules {
         )
     }
 
-    /** @param shortcut already normalized */
-    fun validate(shortcut: Shortcut): List<Error> = buildList {
+    /** What a key is called: its name, or the name of its type when it has none. */
+    fun title(shortcut: Shortcut): Phrase = if (shortcut.label.isEmpty()) Phrase.of(shortcut.action.label) else Phrase.plain(shortcut.label)
+
+    /**
+     * @param shortcut already normalized
+     * @param reserved the names of the category lists of the moment ([RESERVED_CATEGORIES])
+     */
+    fun validate(shortcut: Shortcut, reserved: Set<String>): List<Error> = buildList {
         val number = shortcut.number
         when {
             number.isEmpty() -> if (shortcut.action.hasNumber) add(Error.NUMBER_EMPTY)
@@ -164,27 +172,29 @@ object ShortcutRules {
         if (number.length > MAX_NUMBER_LENGTH) add(Error.NUMBER_TOO_LONG)
         if (shortcut.label.length > MAX_LABEL_LENGTH) add(Error.LABEL_TOO_LONG)
         if (shortcut.category.length > MAX_CATEGORY_LENGTH) add(Error.CATEGORY_TOO_LONG)
-        if (shortcut.category in reservedCategories) add(Error.CATEGORY_RESERVED)
+        if (shortcut.category in reserved) add(Error.CATEGORY_RESERVED)
     }
 
     /**
      * What the lists call every key, the keys without a category, and the way to make a
-     * category: a category of that name could not be told from them.
+     * category: a category of that name could not be told from them. Reserved by their names in
+     * the language of the moment.
      */
-    private val reservedCategories = setOf("全部", "未分类", "新建分类")
+    val RESERVED_CATEGORIES = listOf(R.string.shortcut_category_all, R.string.shortcut_category_none, R.string.shortcut_category_new)
 
     /**
      * What keeps [name] from being the name of a category, null when nothing does. Upper and
      * lower case do not make two categories.
      *
      * @param taken the names of the other categories
+     * @param reserved as for [validate]
      */
-    fun categoryNameError(name: String, taken: Collection<String>): Error? {
+    fun categoryNameError(name: String, taken: Collection<String>, reserved: Set<String>): Error? {
         val trimmed = name.trim()
         return when {
             trimmed.isEmpty() -> Error.CATEGORY_EMPTY
             trimmed.length > MAX_CATEGORY_LENGTH -> Error.CATEGORY_TOO_LONG
-            trimmed in reservedCategories -> Error.CATEGORY_RESERVED
+            trimmed in reserved -> Error.CATEGORY_RESERVED
             taken.any { it.equals(trimmed, ignoreCase = true) } -> Error.CATEGORY_TAKEN
             else -> null
         }
@@ -205,15 +215,15 @@ object ShortcutRules {
 
     /**
      * The keys of [category] (null: every category) whose name, number, category or type
-     * contains [query], in their stored order.
+     * contains [query], in their stored order. [typeName] is the name of a type in the language of the moment.
      */
-    fun filter(all: List<Shortcut>, query: String, category: String?): List<Shortcut> {
+    fun filter(all: List<Shortcut>, query: String, category: String?, typeName: (ShortcutAction) -> String): List<Shortcut> {
         val text = query.trim()
         if (text.isEmpty() && category == null) return all
         return all.filter {
             (category == null || it.category == category) &&
                 (text.isEmpty() || it.label.contains(text, true) || it.number.contains(text, true) ||
-                    it.category.contains(text, true) || it.action.label.contains(text, true))
+                    it.category.contains(text, true) || typeName(it.action).contains(text, true))
         }
     }
 
@@ -228,40 +238,62 @@ object ShortcutRules {
     fun parseAction(value: String): ShortcutAction? {
         val word = value.trim()
         if (word.isEmpty()) return ShortcutAction.SPEED_DIAL
-        return ShortcutAction.entries.firstOrNull { typeWord(it).equals(word, ignoreCase = true) || it.label == word }
+        return ShortcutAction.entries.firstOrNull { typeWord(it).equals(word, ignoreCase = true) } ?: CHINESE_TYPES[word]
     }
 
     /** The icon behind a word of the CSV format ([iconWords], or its Chinese name). */
     fun parseIcon(value: String): ShortcutIcon? {
         val word = value.trim()
-        return ShortcutIcon.entries.firstOrNull { it.name.equals(word, ignoreCase = true) || it.label == word }
+        return ShortcutIcon.entries.firstOrNull { it.name.equals(word, ignoreCase = true) } ?: CHINESE_ICONS[word]
     }
+
+    /**
+     * The Chinese names of the types and icons, which the CSV format takes besides its words
+     * (files written before the app had other languages use them). Part of the format: they are
+     * data and stay as they are in every language.
+     */
+    private val CHINESE_TYPES = mapOf(
+        "速拨" to ShortcutAction.SPEED_DIAL, "盲转" to ShortcutAction.BLIND_TRANSFER, "咨询转" to ShortcutAction.ATTENDED_TRANSFER,
+        "发送按键" to ShortcutAction.DTMF, "呼叫前转" to ShortcutAction.FORWARD, "免打扰" to ShortcutAction.DND,
+    )
+    private val CHINESE_ICONS = mapOf(
+        "电话" to ShortcutIcon.PHONE, "个人" to ShortcutIcon.PERSON, "团队" to ShortcutIcon.GROUP, "收藏" to ShortcutIcon.STAR,
+        "家" to ShortcutIcon.HOME, "办公楼" to ShortcutIcon.OFFICE, "门店" to ShortcutIcon.STORE, "前台" to ShortcutIcon.RECEPTION,
+        "客服" to ShortcutIcon.SUPPORT, "广播" to ShortcutIcon.SPEAKER, "会议" to ShortcutIcon.MEETING, "门" to ShortcutIcon.DOOR,
+        "锁" to ShortcutIcon.LOCK, "钥匙" to ShortcutIcon.KEY, "车库" to ShortcutIcon.GARAGE, "车辆" to ShortcutIcon.CAR,
+        "电梯" to ShortcutIcon.ELEVATOR, "保安" to ShortcutIcon.SECURITY, "监控" to ShortcutIcon.CAMERA, "门铃" to ShortcutIcon.BELL,
+        "报警" to ShortcutIcon.ALARM, "医务" to ShortcutIcon.MEDICAL, "消防" to ShortcutIcon.FIRE, "餐厅" to ShortcutIcon.FOOD,
+        "客房" to ShortcutIcon.HOTEL, "仓库" to ShortcutIcon.WAREHOUSE, "车间" to ShortcutIcon.FACTORY, "教室" to ShortcutIcon.SCHOOL,
+        "维修" to ShortcutIcon.REPAIR, "机房" to ShortcutIcon.COMPUTER, "物流" to ShortcutIcon.DELIVERY, "照明" to ShortcutIcon.LIGHT,
+    )
 
     data class Parsed(val shortcuts: List<Shortcut>, val errors: List<Csv.LineError>, val skippedForLimit: Int)
 
     /**
-     * Reads keys from CSV text ([FORMAT_HINT]).
+     * Reads keys from CSV text ([FORMAT]).
      *
      * @param room how many keys still fit under the limit
      * @param firstId id of the first key read; the following ones count up from it
+     * @param reserved as for [validate]
      */
-    fun decode(text: String, room: Int = MAX_SHORTCUTS, firstId: Long = 1): Parsed {
+    fun decode(text: String, room: Int = MAX_SHORTCUTS, firstId: Long = 1, reserved: Set<String>): Parsed {
         val shortcuts = ArrayList<Shortcut>()
         val errors = ArrayList<Csv.LineError>()
         var skipped = 0
         for ((line, fields) in Csv.rows(text)) {
-            val action = fields?.let { parseAction(it.getOrElse(2) { "" }) }
-            val iconWord = fields?.getOrElse(5) { "" }.orEmpty().trim()
-            val icon = parseIcon(iconWord)
-            val error = when {
-                fields == null -> "引号未闭合"
-                fields.size < 2 -> "字段不足，格式：$FORMAT_HINT"
-                action == null -> "未知的类型“${fields[2]}”，可选 ${typeWords.joinToString(" / ")}"
-                iconWord.isNotEmpty() && icon == null -> "未知的图标“$iconWord”，可选 ${iconWords.joinToString(" / ")}"
-                else -> null
+            if (fields == null || fields.size < 2) {
+                errors += Csv.LineError(line, Csv.shapeError(fields, FORMAT))
+                continue
             }
-            if (fields == null || action == null || error != null) {
-                errors += Csv.LineError(line, error.orEmpty())
+            val action = parseAction(fields.getOrElse(2) { "" })
+            if (action == null) {
+                errors += Csv.LineError(line, Phrase.of(R.string.csv_unknown_type, fields[2], typeWords.joinToString(" / ")))
+                continue
+            }
+            val iconWord = fields.getOrElse(5) { "" }.trim()
+            val icon = parseIcon(iconWord)
+            if (iconWord.isNotEmpty() && icon == null) {
+                errors += Csv.LineError(line, Phrase.of(R.string.csv_unknown_icon, iconWord, iconWords.joinToString(" / ")))
                 continue
             }
             val shortcut = normalize(
@@ -275,7 +307,7 @@ object ShortcutRules {
                     icon = icon,
                 ),
             )
-            val problems = validate(shortcut)
+            val problems = validate(shortcut, reserved)
             when {
                 problems.isNotEmpty() -> errors += Csv.LineError(line, problems.first().full)
                 shortcuts.size >= room -> skipped++

@@ -1,6 +1,8 @@
 package com.sky.siplink.core.logic
 
+import com.sky.siplink.R
 import com.sky.siplink.core.model.AccountDraft
+import com.sky.siplink.core.model.Phrase
 import com.sky.siplink.core.model.SipTransport
 
 /** Pure validation / formatting rules for SIP accounts (no Android or SIP core dependency). */
@@ -11,37 +13,42 @@ object AccountRules {
     const val MAX_NAME_LENGTH = 30
 
     /**
-     * @param subject what the error is about
-     * @param message what is wrong with it, as shown right under that field
+     * @param message what is wrong, as shown right under the field it is about
+     * @param full the error where no field stands next to it (in a notice, a list of import errors): it names the field
      */
-    enum class Error(val subject: String, val message: String) {
-        LIMIT_REACHED("", "最多 $MAX_ACCOUNTS 个账号"),
-        NAME_TOO_LONG("账号名称", "最多 $MAX_NAME_LENGTH 个字符"),
-        NAME_TAKEN("账号名称", "已存在"),
-        USERNAME_EMPTY("用户名", "必填"),
-        USERNAME_INVALID("用户名", "含无效字符"),
-        DOMAIN_EMPTY("域名", "必填"),
-        DOMAIN_INVALID("域名", "格式不正确"),
-        PORT_INVALID("端口", "应为 1–65535"),
-        SERVER_INVALID("代理服务器", "应为 主机[:端口]"),
-        BACKUP_INVALID("备用代理服务器", "应为 主机[:端口]"),
-        BACKUP_SAME("备用代理服务器", "与代理服务器相同"),
-        DNS_INVALID("DNS 服务器", "应为 IP[:端口]"),
-        TIMEOUT_INVALID("快速超时", "应为 ${ServerChoice.MIN_TIMEOUT_MS}–${ServerChoice.MAX_TIMEOUT_MS} 毫秒"),
-        EXPIRES_OUT_OF_RANGE("注册有效期", "应为 $MIN_EXPIRES–$MAX_EXPIRES 秒"),
-        DUPLICATE("", "账号已存在"),
+    enum class Error(val message: Phrase, full: Phrase? = null) {
+        LIMIT_REACHED(Phrase.count(R.plurals.account_limit, MAX_ACCOUNTS)),
+        NAME_TOO_LONG(FormRules.maxChars(MAX_NAME_LENGTH), Phrase.count(R.plurals.account_error_name_too_long, MAX_NAME_LENGTH)),
+        NAME_TAKEN(FormRules.TAKEN, Phrase.of(R.string.account_error_name_taken)),
+        USERNAME_EMPTY(FormRules.REQUIRED, Phrase.of(R.string.account_error_username_empty)),
+        USERNAME_INVALID(Phrase.of(R.string.account_error_invalid_chars), Phrase.of(R.string.account_error_username_invalid)),
+        DOMAIN_EMPTY(FormRules.REQUIRED, Phrase.of(R.string.account_error_domain_empty)),
+        DOMAIN_INVALID(Phrase.of(R.string.form_invalid), Phrase.of(R.string.account_error_domain_invalid)),
+        PORT_INVALID(FormRules.PORT_RANGE, Phrase.of(R.string.account_error_port_invalid)),
+        SERVER_INVALID(FormRules.HOST_PORT, Phrase.of(R.string.account_error_server_invalid)),
+        BACKUP_INVALID(FormRules.HOST_PORT, Phrase.of(R.string.account_error_backup_invalid)),
+        BACKUP_SAME(Phrase.of(R.string.account_error_same_as_proxy), Phrase.of(R.string.account_error_backup_same)),
+        DNS_INVALID(Phrase.of(R.string.account_error_dns_format), Phrase.of(R.string.account_error_dns_invalid)),
+        TIMEOUT_INVALID(
+            Phrase.of(R.string.account_error_timeout_range, ServerChoice.MIN_TIMEOUT_MS, ServerChoice.MAX_TIMEOUT_MS),
+            Phrase.of(R.string.account_error_timeout_invalid, ServerChoice.MIN_TIMEOUT_MS, ServerChoice.MAX_TIMEOUT_MS),
+        ),
+        EXPIRES_OUT_OF_RANGE(
+            Phrase.of(R.string.account_error_expires_range, MIN_EXPIRES, MAX_EXPIRES),
+            Phrase.of(R.string.account_error_expires_invalid, MIN_EXPIRES, MAX_EXPIRES),
+        ),
+        DUPLICATE(Phrase.of(R.string.account_error_duplicate)),
 
         /** No password is saved to go along, only a digest that belongs to the user name and domain it was made for. */
-        PASSWORD_REQUIRED("密码", "必填（用户名、域名或端口已更改）"),
-        ADDRESS_REJECTED("", "地址无法解析"),
-        NOT_FOUND("", "账号不存在"),
+        PASSWORD_REQUIRED(Phrase.of(R.string.account_error_password_required), Phrase.of(R.string.account_error_password_required_full)),
+        ADDRESS_REJECTED(Phrase.of(R.string.account_error_address_rejected)),
+        NOT_FOUND(Phrase.of(R.string.account_error_not_found)),
 
         /** Not a fault of the account: the configuration is managed and takes no change from the phone. */
-        MANAGED("", ManagedConfig.NOTICE),
+        MANAGED(ManagedConfig.NOTICE),
         ;
 
-        /** The error where no field stands next to it: in a notice, or in a list of import errors. */
-        val full: String get() = subject + message
+        val full: Phrase = full ?: message
     }
 
     private val userRegex = Regex("^[A-Za-z0-9\\-_.!~*'()&=+$,?/%]+$")

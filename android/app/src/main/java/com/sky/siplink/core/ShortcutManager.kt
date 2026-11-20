@@ -27,7 +27,7 @@ import java.util.concurrent.Executors
  * The order of [shortcuts] is the order of every list of keys, and is stored with them: the
  * user's own keys first, then those that were handed out ([ShortcutRules.ownFirst]).
  */
-class ShortcutManager(private val file: File, private val lock: ConfigLock) {
+class ShortcutManager(private val file: File, private val lock: ConfigLock, private val texts: AppTexts) {
     private val state = MutableStateFlow<List<Shortcut>>(emptyList())
     val shortcuts: StateFlow<List<Shortcut>> = state.asStateFlow()
 
@@ -59,7 +59,8 @@ class ShortcutManager(private val file: File, private val lock: ConfigLock) {
     }
 
     private fun read(from: File, firstId: Long): List<Shortcut> =
-        runCatching { if (from.isFile) ShortcutRules.decode(from.readText(), firstId = firstId).shortcuts else emptyList() }
+        // What was stored passed the rules when it was stored: no category is refused for a name of the lists of the moment.
+        runCatching { if (from.isFile) ShortcutRules.decode(from.readText(), firstId = firstId, reserved = emptySet()).shortcuts else emptyList() }
             .onFailure { Log.e(TAG, "Unable to read the shortcut keys of ${from.name}", it) }
             .getOrDefault(emptyList())
 
@@ -73,7 +74,7 @@ class ShortcutManager(private val file: File, private val lock: ConfigLock) {
         if (own && !ShortcutRules.canAddOwn(state.value)) return listOf(ShortcutRules.Error.OWN_LIMIT_REACHED)
         if (!ShortcutRules.canAdd(state.value.size)) return listOf(ShortcutRules.Error.LIMIT_REACHED)
         val shortcut = ShortcutRules.normalize(draft).copy(id = nextId, own = own)
-        val errors = ShortcutRules.validate(shortcut)
+        val errors = ShortcutRules.validate(shortcut, reservedCategories())
         if (errors.isNotEmpty()) return errors
         nextId++
         publish(state.value + ShortcutRules.joinCategories(listOf(shortcut), state.value))
@@ -86,7 +87,7 @@ class ShortcutManager(private val file: File, private val lock: ConfigLock) {
         if (lock.refuses && stored?.own != true) return listOf(ShortcutRules.Error.MANAGED)
         // Whose key it is does not change with it.
         val normalized = ShortcutRules.normalize(changed).copy(own = stored?.own == true)
-        val errors = ShortcutRules.validate(normalized)
+        val errors = ShortcutRules.validate(normalized, reservedCategories())
         if (errors.isNotEmpty()) return errors
         val shortcut = ShortcutRules.joinCategories(listOf(normalized), state.value.filter { it.id != normalized.id }).single()
         publish(state.value.map { if (it.id == shortcut.id) shortcut else it })
@@ -175,20 +176,23 @@ class ShortcutManager(private val file: File, private val lock: ConfigLock) {
     }
 
     /**
-     * Adds the keys of a CSV text ([ShortcutRules.FORMAT_HINT]) as far as the limit allows.
+     * Adds the keys of a CSV text ([ShortcutRules.FORMAT]) as far as the limit allows.
      *
      * @return what was read and added; null when the configuration is managed, and nothing was
      */
     fun import(text: String): ShortcutRules.Parsed? {
         if (lock.refuses) return null
         if (!ready.value) return ShortcutRules.Parsed(emptyList(), emptyList(), 0)
-        val parsed = ShortcutRules.decode(text, ShortcutRules.MAX_SHORTCUTS - state.value.size, nextId)
+        val parsed = ShortcutRules.decode(text, ShortcutRules.MAX_SHORTCUTS - state.value.size, nextId, reservedCategories())
         if (parsed.shortcuts.isNotEmpty()) {
             nextId += parsed.shortcuts.size
             publish(state.value + ShortcutRules.joinCategories(parsed.shortcuts, state.value))
         }
         return parsed
     }
+
+    /** The names a category may not have: those of the category lists, in the language of the moment. */
+    fun reservedCategories(): Set<String> = ShortcutRules.RESERVED_CATEGORIES.mapTo(HashSet()) { texts.get(it) }
 
     /** Every key as CSV text, the format [import] reads. */
     fun export(): String = ShortcutRules.encode(state.value)

@@ -1,5 +1,6 @@
 package com.sky.siplink.core.logic
 
+import com.sky.siplink.zh
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -160,21 +161,21 @@ class UpdateRulesTest {
     @Test
     fun theRowSaysWhatIsKnownInGeneralWords() {
         val installed = "0.1.2"
-        assertEquals("点按检查更新", UpdateRules.status(UpdateState(), installed))
-        assertEquals("正在检查…", UpdateRules.status(UpdateState(checking = true, latest = found), installed))
+        assertEquals("点按检查更新", zh(UpdateRules.status(UpdateState(), installed)))
+        assertEquals("正在检查…", zh(UpdateRules.status(UpdateState(checking = true, latest = found), installed)))
         val checked = UpdateState(latest = found, lastAttempt = 1, lastSuccess = 1)
-        assertEquals("有新版本 0.2.0", UpdateRules.status(checked, installed))
-        assertEquals("已跳过 0.2.0", UpdateRules.status(checked.copy(skipped = "0.2.0"), installed))
-        assertEquals("已是最新版本", UpdateRules.status(checked, "0.2.0"))
-        assertEquals("已是最新版本", UpdateRules.status(checked.copy(latest = found.copy(version = "0.3.0-beta")), installed))
+        assertEquals("有新版本 0.2.0", zh(UpdateRules.status(checked, installed)))
+        assertEquals("已跳过 0.2.0", zh(UpdateRules.status(checked.copy(skipped = "0.2.0"), installed)))
+        assertEquals("已是最新版本", zh(UpdateRules.status(checked, "0.2.0")))
+        assertEquals("已是最新版本", zh(UpdateRules.status(checked.copy(latest = found.copy(version = "0.3.0-beta")), installed)))
         // A failure is named in two plain ways, and a newer version found before still counts more.
-        assertEquals("更新检查失败", UpdateRules.status(checked.copy(failure = UpdateFailure.CHECK_FAILED), "0.2.0"))
-        assertEquals("请求过于频繁", UpdateRules.status(UpdateState(failure = UpdateFailure.RATE_LIMITED), installed))
-        assertEquals("有新版本 0.2.0", UpdateRules.status(checked.copy(failure = UpdateFailure.CHECK_FAILED), installed))
+        assertEquals("更新检查失败", zh(UpdateRules.status(checked.copy(failure = UpdateFailure.CHECK_FAILED), "0.2.0")))
+        assertEquals("请求过于频繁", zh(UpdateRules.status(UpdateState(failure = UpdateFailure.RATE_LIMITED), installed)))
+        assertEquals("有新版本 0.2.0", zh(UpdateRules.status(checked.copy(failure = UpdateFailure.CHECK_FAILED), installed)))
         // A download of the version offered says how far it is.
-        assertEquals("正在下载 25%", UpdateRules.status(checked, installed, DownloadState.Running("0.2.0", 25, 100)))
-        assertEquals("已下载 0.2.0", UpdateRules.status(checked, installed, DownloadState.Ready("0.2.0", "/x.apk")))
-        assertEquals("有新版本 0.2.0", UpdateRules.status(checked, installed, DownloadState.Ready("0.1.9", "/x.apk")))
+        assertEquals("正在下载 25%", zh(UpdateRules.status(checked, installed, DownloadState.Running("0.2.0", 25, 100))))
+        assertEquals("已下载 0.2.0", zh(UpdateRules.status(checked, installed, DownloadState.Ready("0.2.0", "/x.apk"))))
+        assertEquals("有新版本 0.2.0", zh(UpdateRules.status(checked, installed, DownloadState.Ready("0.1.9", "/x.apk"))))
         assertEquals("512 KB", UpdateRules.percent(DownloadState.Running("0.2.0", 512 * 1024, 0)))
     }
 }

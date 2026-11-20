@@ -32,6 +32,7 @@ import com.sky.siplink.core.logic.LdapRules
 import com.sky.siplink.core.model.LdapDirectory
 import com.sky.siplink.core.model.LdapSecurity
 import com.sky.siplink.core.model.SipAccount
+import com.sky.siplink.core.render
 import com.sky.siplink.engine
 import com.sky.siplink.ui.components.ChoiceRow
 import com.sky.siplink.ui.components.ConfigPasswordDialog
@@ -64,7 +65,8 @@ private val advancedErrors = setOf(
  */
 @Composable
 fun LdapEditScreen(directoryId: String?, onBack: () -> Unit, onOpenTls: () -> Unit) {
-    val engine = LocalContext.current.engine
+    val context = LocalContext.current
+    val engine = context.engine
     val manager = engine.directory
     val messenger = LocalMessenger.current
     val locked = LocalConfigLocked.current
@@ -100,7 +102,7 @@ fun LdapEditScreen(directoryId: String?, onBack: () -> Unit, onOpenTls: () -> Un
     var userMissing by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
 
-    fun error(vararg candidates: LdapRules.Error): String? = errors.firstOrNull { it in candidates }?.message
+    fun error(vararg candidates: LdapRules.Error): String? = errors.firstOrNull { it in candidates }?.message?.let(context::render)
 
     fun save() {
         userMissing = logsIn && bindDn.isBlank()
@@ -134,7 +136,7 @@ fun LdapEditScreen(directoryId: String?, onBack: () -> Unit, onOpenTls: () -> Un
             onBack()
         } else {
             if (errors.any { it in advancedErrors }) advancedOpen = true
-            messenger(errors.first().full)
+            messenger(context.render(errors.first().full))
         }
     }
 

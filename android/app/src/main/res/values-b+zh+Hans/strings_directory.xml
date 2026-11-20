@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- LDAP directories. -->
+<resources>
+    <plurals name="directory_limit">
+        <item quantity="other">最多 %1$s 个通讯录</item>
+    </plurals>
+    <string name="directory_error_name_taken">名称已存在</string>
+    <plurals name="directory_error_name_too_long">
+        <item quantity="other">名称最多 %1$s 个字符</item>
+    </plurals>
+    <string name="directory_error_host_empty">服务器地址必填</string>
+    <string name="directory_error_host_invalid">服务器地址应为 主机[:端口]</string>
+    <string name="directory_error_ldaps">不支持 ldaps://，请使用 StartTLS</string>
+    <string name="directory_error_host_ldaps">服务器地址不支持 ldaps://，请使用 StartTLS</string>
+    <string name="directory_error_starttls_name">StartTLS 需使用域名</string>
+    <string name="directory_error_host_starttls_name">服务器地址StartTLS 需使用域名</string>
+    <string name="directory_error_port_range">端口应为 1–65535</string>
+    <string name="directory_error_host_port_range">服务器地址端口应为 1–65535</string>
+    <string name="directory_error_user_for_password">必填（已填写密码）</string>
+    <string name="directory_error_user_for_password_full">用户名必填（已填写密码）</string>
+    <string name="directory_error_base_dn_empty">搜索基准必填</string>
+    <string name="directory_error_max_results_range">应为 1–%1$s</string>
+    <string name="directory_error_max_results_invalid">最大结果数应为 1–%1$s</string>
+    <string name="directory_error_name_attributes_empty">姓名属性必填</string>
+    <string name="directory_error_number_attributes_empty">号码属性必填</string>
+    <string name="directory_error_placeholder">需包含 %</string>
+    <string name="directory_error_name_filter_placeholder">姓名过滤器需包含 %</string>
+    <string name="directory_error_number_filter_placeholder">号码过滤器需包含 %</string>
+</resources>

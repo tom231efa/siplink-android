@@ -3,6 +3,7 @@ package com.sky.siplink.core.logic
 import com.sky.siplink.core.model.MemberState
 import com.sky.siplink.core.model.RoomInfo
 import com.sky.siplink.core.model.RoomMember
+import com.sky.siplink.zh
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -12,14 +13,14 @@ import org.junit.Test
 class RoomRulesTest {
     @Test
     fun `members fit up to the limit`() {
-        assertNull(RoomRules.refusal(present = 0, adding = 30, limit = 30))
-        assertNull(RoomRules.refusal(present = 29, adding = 1, limit = 30))
-        assertEquals("会议室已满（最多 30 方）", RoomRules.refusal(present = 30, adding = 1, limit = 30))
+        assertNull(zh(RoomRules.refusal(present = 0, adding = 30, limit = 30)))
+        assertNull(zh(RoomRules.refusal(present = 29, adding = 1, limit = 30)))
+        assertEquals("会议室已满（最多 30 方）", zh(RoomRules.refusal(present = 30, adding = 1, limit = 30)))
     }
 
     @Test
     fun `more than fit are refused with how many still do`() {
-        assertEquals("最多还可添加 2 方", RoomRules.refusal(present = 28, adding = 3, limit = 30))
+        assertEquals("最多还可添加 2 方", zh(RoomRules.refusal(present = 28, adding = 3, limit = 30)))
         assertEquals(2, RoomRules.free(28, 30))
         assertEquals(0, RoomRules.free(31, 30))
     }
@@ -53,13 +54,13 @@ class RoomRulesTest {
 
     @Test
     fun `the state of a member reads plainly, a member that left shows why`() {
-        assertEquals("呼叫中", RoomRules.stateLabel(MemberState.CALLING, null))
-        assertEquals("振铃", RoomRules.stateLabel(MemberState.RINGING, null))
-        assertEquals("已接通", RoomRules.stateLabel(MemberState.CONNECTED, null))
-        assertEquals("对方正忙", RoomRules.stateLabel(MemberState.LEFT, "对方正忙"))
-        assertEquals("已离开", RoomRules.stateLabel(MemberState.LEFT, null))
-        assertEquals("等待呼叫", RoomRules.stateLabel(MemberState.QUEUED, null))
-        assertEquals("线路已满", RoomRules.stateLabel(MemberState.HELD_BACK, "线路已满"))
+        assertEquals("呼叫中", zh(RoomRules.stateLabel(MemberState.CALLING, null)))
+        assertEquals("振铃", zh(RoomRules.stateLabel(MemberState.RINGING, null)))
+        assertEquals("已接通", zh(RoomRules.stateLabel(MemberState.CONNECTED, null)))
+        assertEquals("对方正忙", zh(RoomRules.stateLabel(MemberState.LEFT, "对方正忙")))
+        assertEquals("已离开", zh(RoomRules.stateLabel(MemberState.LEFT, null)))
+        assertEquals("等待呼叫", zh(RoomRules.stateLabel(MemberState.QUEUED, null)))
+        assertEquals("线路已满", zh(RoomRules.stateLabel(MemberState.HELD_BACK, "线路已满")))
     }
 
     @Test
@@ -88,7 +89,7 @@ class RoomRulesTest {
         assertEquals(12, RoomRules.limitOf(12))
         assertEquals(RoomRules.LIMIT, RoomRules.limitOf(30))
         assertEquals(RoomRules.LIMIT, RoomRules.limitOf(500))
-        assertEquals("会议室已满（最多 5 方）", RoomRules.refusal(present = 5, adding = 1, limit = RoomRules.limitOf(5)))
+        assertEquals("会议室已满（最多 5 方）", zh(RoomRules.refusal(present = 5, adding = 1, limit = RoomRules.limitOf(5))))
     }
 
     @Test

@@ -1,5 +1,8 @@
 package com.sky.siplink.core.logic
 
+import androidx.annotation.StringRes
+import com.sky.siplink.R
+import com.sky.siplink.core.model.Phrase
 import java.net.URI
 
 /**
@@ -21,11 +24,11 @@ data class Release(val tag: String, val pageUrl: String, val notes: String, val 
 data class FoundRelease(val version: String, val notes: String, val pageUrl: String, val apk: ReleaseAsset?)
 
 /** Why the last check found nothing, in the general words the version row shows. */
-enum class UpdateFailure(val text: String) {
-    CHECK_FAILED("更新检查失败"),
+enum class UpdateFailure(@StringRes val text: Int) {
+    CHECK_FAILED(R.string.update_check_failed),
 
     /** GitHub's limit for requests without an account was reached. */
-    RATE_LIMITED("请求过于频繁"),
+    RATE_LIMITED(R.string.update_rate_limited),
 }
 
 /**
@@ -172,18 +175,18 @@ object UpdateRules {
         state.latest?.takeIf { isNewer(it.version, installed) && it.version != state.skipped }
 
     /** What the row of the version says under it. */
-    fun status(state: UpdateState, installed: String, download: DownloadState = DownloadState.Idle): String {
+    fun status(state: UpdateState, installed: String, download: DownloadState = DownloadState.Idle): Phrase {
         val latest = state.latest?.takeIf { isNewer(it.version, installed) }
         val offered = offered(state, installed)
         return when {
-            download is DownloadState.Running && download.version == offered?.version -> "正在下载 ${percent(download)}"
-            download is DownloadState.Ready && download.version == offered?.version -> "已下载 ${download.version}"
-            state.checking -> "正在检查…"
-            offered != null -> "有新版本 ${offered.version}"
-            state.failure != null -> state.failure.text
-            latest != null -> "已跳过 ${latest.version}"
-            state.lastSuccess > 0 -> "已是最新版本"
-            else -> "点按检查更新"
+            download is DownloadState.Running && download.version == offered?.version -> Phrase.of(R.string.update_downloading, percent(download))
+            download is DownloadState.Ready && download.version == offered?.version -> Phrase.of(R.string.update_downloaded, download.version)
+            state.checking -> Phrase.of(R.string.update_checking)
+            offered != null -> Phrase.of(R.string.update_available, offered.version)
+            state.failure != null -> Phrase.of(state.failure.text)
+            latest != null -> Phrase.of(R.string.update_skipped, latest.version)
+            state.lastSuccess > 0 -> Phrase.of(R.string.update_latest)
+            else -> Phrase.of(R.string.update_tap_to_check)
         }
     }
 

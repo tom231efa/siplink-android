@@ -4,6 +4,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.sky.siplink.core.logic.Json
 import com.sky.siplink.core.logic.ManagedConfig
 import com.sky.siplink.core.logic.RemoteAddress
+import com.sky.siplink.core.model.Phrase
 import com.sky.siplink.core.model.Shortcut
 import com.sky.siplink.core.model.SipTransport
 import com.sky.siplink.core.model.ThemeMode
@@ -169,7 +170,7 @@ class RemoteConfigTest : ScreenTestBase(PICTURES) {
 
         // The screens are locked; the remote configuration screen itself is the user's.
         back()
-        see(ManagedConfig.LOCKED)
+        see(zh(ManagedConfig.LOCKED))
         locked("视频通话")
         usable("免打扰", "深色")
         tap("关于")
@@ -293,7 +294,7 @@ class RemoteConfigTest : ScreenTestBase(PICTURES) {
         tap("输入地址")
         type("${platform.origin}/settings")
         tap("下一步")
-        see(RemoteAddress.Error.NOT_ENROLLMENT.message)
+        see(zh(Phrase.of(RemoteAddress.Error.NOT_ENROLLMENT.message)))
         assertEquals(asked, platform.requests.size)
     }
 

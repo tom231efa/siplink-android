@@ -3,6 +3,7 @@ package com.sky.siplink.core
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import com.sky.siplink.R
 import com.sky.siplink.core.CallSupport.isEnded
 import com.sky.siplink.core.logic.DialTarget
 import com.sky.siplink.core.logic.Formatters
@@ -11,6 +12,7 @@ import com.sky.siplink.core.logic.RoomPacing
 import com.sky.siplink.core.logic.RoomRules
 import com.sky.siplink.core.model.AudioRoute
 import com.sky.siplink.core.model.MemberState
+import com.sky.siplink.core.model.Phrase
 import com.sky.siplink.core.model.RoomInfo
 import com.sky.siplink.core.model.RoomMember
 import com.sky.siplink.core.model.RoomReadings
@@ -36,6 +38,7 @@ import org.linphone.core.Core
  * @param party who the other side of a call is, as the call screen names it
  * @param limit how many members the room holds at most besides the user (a setting)
  * @param lineOn whether calls may go out on a line: it is switched on
+ * @param render a text in the app's language, for the snapshot ([snapshot])
  * @param onChanged what the call screen shows of the room changed
  */
 internal class ConferenceRoom(
@@ -44,6 +47,7 @@ internal class ConferenceRoom(
     private val party: (Call) -> SideCall,
     private val limit: () -> Int,
     private val lineOn: (Account) -> Boolean,
+    private val render: (Phrase) -> String,
     private val onChanged: () -> Unit,
 ) {
     private class Member(val id: Long, var call: Call?, var side: SideCall) {
@@ -51,7 +55,7 @@ internal class ConferenceRoom(
         var sideStale = false
 
         /** Why the call ended; set from its End or Error. */
-        var endReason: String? = null
+        var endReason: Phrase? = null
 
         /** The member's call that this one takes the place of ([replace]); it ends once this one is up. */
         var replaces: Call? = null
@@ -69,7 +73,7 @@ internal class ConferenceRoom(
         var queued = false
 
         /** Not called after the PBX had had enough: why, until the user calls it again. */
-        var heldBack: String? = null
+        var heldBack: Phrase? = null
 
         /** SystemClock.elapsedRealtime() before which a held back member is not called again (Retry-After). */
         var retryAt = 0L
@@ -137,10 +141,10 @@ internal class ConferenceRoom(
      *
      * @return a user readable error, or null
      */
-    fun rejoin(): String? {
+    fun rejoin(): Phrase? {
         val conference = conference ?: return FAILED
         if (conference.isIn) return null
-        return if (conference.enter() == 0) null else "无法返回会议室"
+        return if (conference.enter() == 0) null else Phrase.of(R.string.room_rejoin_failed)
     }
 
     /** The route the room's sound is played on; null while it is not known. */
@@ -153,9 +157,9 @@ internal class ConferenceRoom(
     private fun line(): Account? = conference?.account ?: core.defaultAccount
 
     /** Null when calls may go out on [line]; else why not, as CallManager says it. */
-    private fun lineRefusal(line: Account?): String? = when {
-        line == null -> "请先添加 SIP 账号"
-        !lineOn(line) -> "线路已停用"
+    private fun lineRefusal(line: Account?): Phrase? = when {
+        line == null -> Phrase.of(R.string.call_add_account_first)
+        !lineOn(line) -> Phrase.of(R.string.call_line_off)
         else -> null
     }
 
@@ -164,10 +168,10 @@ internal class ConferenceRoom(
      *
      * @return a user readable error, or null when the room is open
      */
-    fun open(calls: List<Call>, muted: Boolean): String? {
+    fun open(calls: List<Call>, muted: Boolean): Phrase? {
         if (conference != null) return null
         // Asked first, so that nothing has to be undone: the SDK takes a call that is up in these states only.
-        if (calls.any { it.state !in JOINABLE }) return "请稍后再试"
+        if (calls.any { it.state !in JOINABLE }) return Phrase.of(R.string.room_not_now)
         val params = core.createConferenceParams(null)
         params.isVideoEnabled = false
         // A room is a room: it stays with a single member, to whom the user can add more.
@@ -215,16 +219,16 @@ internal class ConferenceRoom(
      *
      * @return a user readable error, or null when the members were taken in
      */
-    fun invite(targets: List<String>): String? {
+    fun invite(targets: List<String>): Phrase? {
         if (conference == null) return FAILED
         val taken = members.filter { it.queued || it.call?.let(::isEnded) == false }
             .mapNotNull { member -> member.call?.remoteAddress?.username ?: member.target?.let(Formatters::userPart) }
         val wanted = RoomRules.newTargets(targets, taken)
-        if (wanted.isEmpty()) return if (targets.any { it.isNotBlank() }) "已在会议室中" else "请输入号码"
+        if (wanted.isEmpty()) return Phrase.of(if (targets.any { it.isNotBlank() }) R.string.room_already_in else R.string.call_enter_number)
         RoomRules.refusal(present, wanted.size, limit())?.let { return it }
         val account = line()
         lineRefusal(account)?.let { return it }
-        if (wanted.any { account?.normalizeSipUri(DialTarget.of(it)) == null }) return "号码或地址无效"
+        if (wanted.any { account?.normalizeSipUri(DialTarget.of(it)) == null }) return Phrase.of(R.string.call_invalid_address)
         // One that was held back is called again in its own row, once its Retry-After has passed.
         val rows = wanted.associateWith { target ->
             members.firstOrNull { it.heldBack != null && it.call == null && it.target?.let(Formatters::userPart) == Formatters.userPart(target) }
@@ -254,7 +258,7 @@ internal class ConferenceRoom(
      *
      * @return a user readable error, or null
      */
-    fun retry(id: Long): String? {
+    fun retry(id: Long): Phrase? {
         val member = members.firstOrNull { it.id == id && it.heldBack != null && it.call == null } ?: return null
         if (SystemClock.elapsedRealtime() < member.retryAt) return RETRY_LATER
         RoomRules.refusal(present, 1, limit())?.let { return it }
@@ -294,7 +298,7 @@ internal class ConferenceRoom(
         // The SDK has no answer for a call the core refuses while it invites: it must not come to that.
         val full = params == null || core.callsNb + 1 >= core.maxCalls
         if (account == null || !lineOn(account) || address == null || params == null || full) {
-            member.heldBack = lineRefusal(account) ?: if (address == null) "号码或地址无效" else RoomPacing.Failure.LINE_FULL.label
+            member.heldBack = lineRefusal(account) ?: Phrase.of(if (address == null) R.string.call_invalid_address else RoomPacing.Failure.LINE_FULL.label)
             return
         }
         params.account = account
@@ -309,7 +313,7 @@ internal class ConferenceRoom(
             placing = null
         }
         // No call came of it, whatever the SDK answered: the row stays, to be called again or taken off.
-        if (member.call == null) member.heldBack = "呼叫失败"
+        if (member.call == null) member.heldBack = Phrase.of(R.string.call_failed)
     }
 
     /**
@@ -340,12 +344,12 @@ internal class ConferenceRoom(
                 val failure = RoomPacing.failureOf(call.errorInfo.protocolCode)
                 if (failure != null) {
                     val retryAt = RoomPacing.retryAt(SystemClock.elapsedRealtime(), call.errorInfo.retryAfter)
-                    member.heldBack = failure.label
+                    member.heldBack = Phrase.of(failure.label)
                     member.retryAt = retryAt
                     failureRun++
                     val connected = members.any { it.call?.state == Call.State.StreamsRunning }
                     val verdict = RoomPacing.afterFailure(failure, failureRun, connected)
-                    if (verdict.stop) holdBack(verdict.label ?: failure.label, retryAt)
+                    if (verdict.stop) holdBack(Phrase.of(verdict.label ?: failure.label), retryAt)
                 }
             }
             else -> return
@@ -379,7 +383,7 @@ internal class ConferenceRoom(
         lastShortAt = now
         member.endedShort = true
         if (RoomPacing.lineFullAfter(shortRun)) {
-            val label = RoomPacing.Failure.LINE_FULL.label
+            val label = Phrase.of(RoomPacing.Failure.LINE_FULL.label)
             members.filter { it.endedShort && it.heldBack == null }.forEach { it.heldBack = label }
             holdBack(label, retryAt = 0L)
         } else {
@@ -399,7 +403,7 @@ internal class ConferenceRoom(
     }
 
     /** Nobody else is called: those still waiting keep [label] until the user calls them again. */
-    private fun holdBack(label: String, retryAt: Long) {
+    private fun holdBack(label: Phrase, retryAt: Long) {
         members.filter { it.queued }.forEach {
             it.queued = false
             it.heldBack = label
@@ -423,11 +427,11 @@ internal class ConferenceRoom(
      *
      * @return a user readable error, or null when it was answered
      */
-    fun join(call: Call): String? {
+    fun join(call: Call): Phrase? {
         val conference = conference ?: return FAILED
         RoomRules.refusal(present, 1, limit())?.let { return it }
         // Taken into the room first: answered then, it does not take the user out of the room.
-        if (conference.addParticipant(call) != 0) return "无法加入会议室"
+        if (conference.addParticipant(call) != 0) return Phrase.of(R.string.room_join_failed)
         add(call)
         val params = core.createCallParams(call)
         if (params == null) {
@@ -516,7 +520,7 @@ internal class ConferenceRoom(
     fun onSidesChanged() = members.forEach { it.sideStale = true }
 
     /** A member's [call] ended for [reason]. */
-    fun onEnded(call: Call, reason: String?) {
+    fun onEnded(call: Call, reason: Phrase?) {
         find(call)?.endReason = reason
     }
 
@@ -583,7 +587,7 @@ internal class ConferenceRoom(
                         call == null -> MemberState.LEFT
                         else -> CallSupport.memberStateOf(call)
                     },
-                    endReason = member.heldBack ?: member.endReason,
+                    endReason = (member.heldBack ?: member.endReason)?.let(render),
                     poorLink = member.id in poor,
                     signal = RoomHealth.signalBars(sample?.links?.get(member.id)?.quality),
                 )
@@ -619,8 +623,8 @@ internal class ConferenceRoom(
     }
 
     private companion object {
-        const val FAILED = "无法创建会议室"
-        const val RETRY_LATER = "请稍后重试"
+        val FAILED = Phrase.of(R.string.room_create_failed)
+        val RETRY_LATER = Phrase.of(R.string.room_retry_later)
 
         /**
          * The states of a call that is up in which the SDK takes it into a conference

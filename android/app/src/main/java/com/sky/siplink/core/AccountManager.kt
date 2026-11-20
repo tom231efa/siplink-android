@@ -2,6 +2,7 @@ package com.sky.siplink.core
 
 import android.os.Handler
 import android.os.Looper
+import com.sky.siplink.R
 import com.sky.siplink.core.logic.AccountRows
 import com.sky.siplink.core.logic.AccountRules
 import com.sky.siplink.core.model.AccountDraft
@@ -32,7 +33,7 @@ import java.util.UUID
  * each function reports in its own way; where it has a password of its own, theirs are handed
  * out only to who typed it.
  */
-class AccountManager(private val core: Core, private val lock: ConfigLock) {
+class AccountManager(private val core: Core, private val lock: ConfigLock, private val texts: AppTexts) {
     private val state = MutableStateFlow<List<SipAccount>>(emptyList())
     val accounts: StateFlow<List<SipAccount>> = state.asStateFlow()
 
@@ -104,6 +105,9 @@ class AccountManager(private val core: Core, private val lock: ConfigLock) {
             doctor.reapply()
         }
     }
+
+    /** The language of the app changed: the list says why a registration failed in it. */
+    fun onLanguageChanged() = refresh()
 
     fun refresh() {
         handler.removeCallbacks(publisher)
@@ -580,7 +584,7 @@ class AccountManager(private val core: Core, private val lock: ConfigLock) {
             isDefault = id == defaultId,
             error = when {
                 state != RegState.FAILED -> null
-                route?.dnsFailed == true -> "DNS 解析失败"
+                route?.dnsFailed == true -> texts.get(R.string.account_dns_failed)
                 else -> describeError(account)
             },
             name = core.config.getString(NAMES_SECTION, id, null).orEmpty(),
@@ -600,7 +604,7 @@ class AccountManager(private val core: Core, private val lock: ConfigLock) {
             code > 0 && phrase.isNotEmpty() -> "$code $phrase"
             phrase.isNotEmpty() -> phrase
             code > 0 -> code.toString()
-            else -> "注册失败"
+            else -> texts.get(R.string.account_register_failed)
         }
     }
 

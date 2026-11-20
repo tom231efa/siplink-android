@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Shortcut keys: their types and icons, their rules, their CSV format. -->
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="shortcut_type_speed">Speed dial</string>
+    <string name="shortcut_type_bxfer">Blind transfer</string>
+    <string name="shortcut_type_axfer">Attended transfer</string>
+    <string name="shortcut_type_dtmf">Send DTMF</string>
+    <string name="shortcut_type_forward">Call forwarding</string>
+    <string name="shortcut_type_dnd">Do not disturb</string>
+
+    <!-- Category lists: their names are reserved -->
+    <string name="shortcut_category_all">All</string>
+    <string name="shortcut_category_none">Uncategorized</string>
+    <string name="shortcut_category_new">New category</string>
+
+    <!-- Rules -->
+    <plurals name="shortcut_limit">
+        <item quantity="one">At most %1$s key</item>
+        <item quantity="other">At most %1$s keys</item>
+    </plurals>
+    <plurals name="shortcut_own_limit">
+        <item quantity="one">At most %1$s own key</item>
+        <item quantity="other">At most %1$s own keys</item>
+    </plurals>
+    <string name="shortcut_error_number_empty">Number is required</string>
+    <string name="shortcut_error_spaces">Must not contain spaces</string>
+    <string name="shortcut_error_number_spaces">Number must not contain spaces</string>
+    <string name="shortcut_error_dtmf" tools:ignore="TypographyDashes">Only 0-9 * #</string>
+    <string name="shortcut_error_dtmf_full" tools:ignore="TypographyDashes">Keys: only 0-9 * #</string>
+    <plurals name="shortcut_error_number_too_long">
+        <item quantity="one">Number: at most %1$s character</item>
+        <item quantity="other">Number: at most %1$s characters</item>
+    </plurals>
+    <plurals name="shortcut_error_name_too_long">
+        <item quantity="one">Name: at most %1$s character</item>
+        <item quantity="other">Name: at most %1$s characters</item>
+    </plurals>
+    <plurals name="shortcut_error_category_too_long">
+        <item quantity="one">Category: at most %1$s character</item>
+        <item quantity="other">Category: at most %1$s characters</item>
+    </plurals>
+    <string name="shortcut_error_category_empty">Category is required</string>
+    <string name="shortcut_error_reserved">Name not available</string>
+    <string name="shortcut_error_category_reserved">This category name cannot be used</string>
+    <string name="shortcut_error_category_taken">Category already exists</string>
+    <string name="shortcut_csv_format">name,number[,type[,category[,line[,icon]]]]</string>
+
+    <!-- Icons -->
+    <string name="shortcut_icon_phone">Phone</string>
+    <string name="shortcut_icon_person">Person</string>
+    <string name="shortcut_icon_group">Team</string>
+    <string name="shortcut_icon_star">Favourite</string>
+    <string name="shortcut_icon_home">Home</string>
+    <string name="shortcut_icon_office">Office</string>
+    <string name="shortcut_icon_store">Store</string>
+    <string name="shortcut_icon_reception">Reception</string>
+    <string name="shortcut_icon_support">Support</string>
+    <string name="shortcut_icon_speaker">Broadcast</string>
+    <string name="shortcut_icon_meeting">Meeting</string>
+    <string name="shortcut_icon_door">Door</string>
+    <string name="shortcut_icon_lock">Lock</string>
+    <string name="shortcut_icon_key">Key</string>
+    <string name="shortcut_icon_garage">Garage</string>
+    <string name="shortcut_icon_car">Vehicle</string>
+    <string name="shortcut_icon_elevator">Elevator</string>
+    <string name="shortcut_icon_security">Security</string>
+    <string name="shortcut_icon_camera">Camera</string>
+    <string name="shortcut_icon_bell">Doorbell</string>
+    <string name="shortcut_icon_alarm">Alarm</string>
+    <string name="shortcut_icon_medical">Medical</string>
+    <string name="shortcut_icon_fire">Fire</string>
+    <string name="shortcut_icon_food">Restaurant</string>
+    <string name="shortcut_icon_hotel">Guest room</string>
+    <string name="shortcut_icon_warehouse">Warehouse</string>
+    <string name="shortcut_icon_factory">Workshop</string>
+    <string name="shortcut_icon_school">Classroom</string>
+    <string name="shortcut_icon_repair">Repair</string>
+    <string name="shortcut_icon_computer">Server room</string>
+    <string name="shortcut_icon_delivery">Delivery</string>
+    <string name="shortcut_icon_light">Lighting</string>
+</resources>

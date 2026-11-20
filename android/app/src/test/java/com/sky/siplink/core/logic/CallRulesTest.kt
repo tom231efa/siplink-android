@@ -1,7 +1,9 @@
 package com.sky.siplink.core.logic
 
 import com.sky.siplink.core.model.FeatureCodes
+import com.sky.siplink.core.model.Phrase
 import com.sky.siplink.core.model.SupervisionMode
+import com.sky.siplink.zh
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -20,24 +22,24 @@ class CallRulesTest {
 
     @Test
     fun `a supervised call or a transfer under way keeps the calls out of the room`() {
-        assertNull(CallRules.roomRefusal(supervised = false, transferring = false))
-        assertEquals("监听通话不能加入会议室", CallRules.roomRefusal(supervised = true, transferring = false))
-        assertEquals("监听通话不能加入会议室", CallRules.roomRefusal(supervised = true, transferring = true))
-        assertEquals("转接进行中", CallRules.roomRefusal(supervised = false, transferring = true))
+        assertNull(zh(CallRules.roomRefusal(supervised = false, transferring = false)?.let { Phrase.of(it) }))
+        assertEquals("监听通话不能加入会议室", zh(CallRules.roomRefusal(supervised = true, transferring = false)?.let { Phrase.of(it) }))
+        assertEquals("监听通话不能加入会议室", zh(CallRules.roomRefusal(supervised = true, transferring = true)?.let { Phrase.of(it) }))
+        assertEquals("转接进行中", zh(CallRules.roomRefusal(supervised = false, transferring = true)?.let { Phrase.of(it) }))
     }
 
     @Test
     fun `supervision and force hang up codes are not called into the room`() {
         for (code in listOf(codes.listen, codes.whisper, codes.barge, codes.forceHangUp)) {
-            assertEquals(code, "监听通话不能加入会议室", CallRules.memberRefusal("${code}1005", codes))
+            assertEquals(code, "监听通话不能加入会议室", zh(CallRules.memberRefusal("${code}1005", codes)?.let { Phrase.of(it) }))
         }
-        assertNull(CallRules.memberRefusal("1005", codes))
-        assertNull("Intercom into the room is fine", CallRules.memberRefusal("${codes.intercom}1005", codes))
-        assertNull(CallRules.memberRefusal("sip:1005@pbx.example", codes))
-        assertEquals("监听通话不能加入会议室", CallRules.memberRefusal("sip:${codes.barge}1005@pbx.example", codes))
+        assertNull(zh(CallRules.memberRefusal("1005", codes)?.let { Phrase.of(it) }))
+        assertNull("Intercom into the room is fine", zh(CallRules.memberRefusal("${codes.intercom}1005", codes)?.let { Phrase.of(it) }))
+        assertNull(zh(CallRules.memberRefusal("sip:1005@pbx.example", codes)?.let { Phrase.of(it) }))
+        assertEquals("监听通话不能加入会议室", zh(CallRules.memberRefusal("sip:${codes.barge}1005@pbx.example", codes)?.let { Phrase.of(it) }))
         // Escaped as a URI may carry it, the PBX still gets the code.
-        assertEquals("监听通话不能加入会议室", CallRules.memberRefusal("sip:%2A911005@pbx.example", codes))
-        assertEquals("监听通话不能加入会议室", CallRules.memberRefusal("sip:%2a%39%311005@pbx.example", codes))
+        assertEquals("监听通话不能加入会议室", zh(CallRules.memberRefusal("sip:%2A911005@pbx.example", codes)?.let { Phrase.of(it) }))
+        assertEquals("监听通话不能加入会议室", zh(CallRules.memberRefusal("sip:%2a%39%311005@pbx.example", codes)?.let { Phrase.of(it) }))
     }
 
     @Test

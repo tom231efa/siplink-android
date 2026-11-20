@@ -1,5 +1,6 @@
 package com.sky.siplink.core.logic
 
+import com.sky.siplink.R
 import com.sky.siplink.core.model.AccountDraft
 import com.sky.siplink.core.model.DndMode
 import com.sky.siplink.core.model.DtmfMode
@@ -7,6 +8,7 @@ import com.sky.siplink.core.model.FeatureCodes
 import com.sky.siplink.core.model.LdapDirectory
 import com.sky.siplink.core.model.LdapSecurity
 import com.sky.siplink.core.model.MediaSecurity
+import com.sky.siplink.core.model.Phrase
 import com.sky.siplink.core.model.Settings
 import com.sky.siplink.core.model.Shortcut
 import com.sky.siplink.core.model.ShortcutAction
@@ -62,7 +64,7 @@ data class RemoteDocument(
     /** A result of [parse]: the document, or every reason it was refused. */
     sealed interface Parsed {
         data class Ok(val document: RemoteDocument) : Parsed
-        data class Invalid(val errors: List<String>) : Parsed
+        data class Invalid(val errors: List<Phrase>) : Parsed
     }
 
     companion object {
@@ -75,18 +77,20 @@ data class RemoteDocument(
         /**
          * Reads and checks a document ([RemoteChecks]). Nothing of a document that has a fault
          * may be applied, so every fault is reported at once.
+         *
+         * @param reserved the names a category of keys may not have ([ShortcutRules.RESERVED_CATEGORIES])
          */
-        fun parse(text: String): Parsed {
+        fun parse(text: String, reserved: Set<String>): Parsed {
             val root = try {
                 Json.parse(text)
             } catch (e: Json.SyntaxException) {
-                return Parsed.Invalid(listOf("配置不是有效的 JSON"))
+                return Parsed.Invalid(listOf(Phrase.of(R.string.remote_error_json)))
             }
-            if (root !is Map<*, *>) return Parsed.Invalid(listOf("配置不是 JSON 对象"))
-            val errors = ArrayList<String>()
+            if (root !is Map<*, *>) return Parsed.Invalid(listOf(Phrase.of(R.string.remote_error_json_object)))
+            val errors = ArrayList<Phrase>()
             val document = read(Fields(root, "", errors), errors)
             if (errors.isNotEmpty()) return Parsed.Invalid(errors)
-            return RemoteChecks.check(document)
+            return RemoteChecks.check(document, reserved)
         }
 
         /**
@@ -96,7 +100,7 @@ data class RemoteDocument(
         fun deviceKeyOf(text: String): String =
             ((runCatching { Json.parse(text) }.getOrNull() as? Map<*, *>)?.get("deviceKey") as? String).orEmpty()
 
-        private fun read(top: Fields, errors: MutableList<String>): RemoteDocument {
+        private fun read(top: Fields, errors: MutableList<Phrase>): RemoteDocument {
             val platform = top.obj("platform")
             val client = top.obj("client")
             return RemoteDocument(
@@ -116,7 +120,7 @@ data class RemoteDocument(
                 codecs = top.obj("codecs")?.let { RemoteCodecs(codecs(it, "audio"), codecs(it, "video")) },
                 caCertificates = top.strings("caCertificates").flatMapIndexed { index, pem ->
                     runCatching { CertificateTools.parse(pem.toByteArray()) }.getOrNull()
-                        ?: emptyList<X509Certificate>().also { errors += "CA 证书 ${index + 1}：无法解析" }
+                        ?: emptyList<X509Certificate>().also { errors += Phrase.of(R.string.remote_error_ca, index + 1) }
                 },
                 directories = top.objects("directories").map(::directory),
                 shortcuts = top.objects("shortcuts").map(::shortcut),
@@ -253,7 +257,7 @@ data class RemoteDocument(
  * The fields of one JSON object of the document, read with a type each. A field that is missing
  * or null gives the default; one of another type is reported to [errors] as a fault of [where].
  */
-private class Fields(private val map: Map<*, *>, private val where: String, private val errors: MutableList<String>) {
+private class Fields(private val map: Map<*, *>, private val where: String, private val errors: MutableList<Phrase>) {
     fun string(name: String, default: String = ""): String = typed(name, default)
 
     fun bool(name: String, default: Boolean): Boolean = typed(name, default)
@@ -280,7 +284,7 @@ private class Fields(private val map: Map<*, *>, private val where: String, priv
 
     /** Reports [name] as a field of the wrong type or value; null, for the caller to go on with a default. */
     fun fault(name: String): Nothing? {
-        errors += "$where$name 格式不正确"
+        errors += Phrase.of(R.string.remote_error_field, "$where$name")
         return null
     }
 

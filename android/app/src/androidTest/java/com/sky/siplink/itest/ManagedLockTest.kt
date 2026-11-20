@@ -359,7 +359,7 @@ class ManagedLockTest : PbxTestBase() {
             ownFile.isFile && CHANGED_KEY in ownFile.readText() && "自用" in ownFile.readText() && REMOTE_KEY in mainFile.readText()
         }
         assertFalse("A key of the user's own is in the file of those handed out", CHANGED_KEY in mainFile.readText())
-        val restarted = onMain { ShortcutManager(mainFile, engine.lock) }
+        val restarted = onMain { ShortcutManager(mainFile, engine.lock, engine.texts) }
         await("the keys to be read again") { restarted.loaded.value }
         fun List<Shortcut>.withoutIds() = map { it.copy(id = 0) }.toSet()
         assertEquals(shortcuts.withoutIds(), restarted.shortcuts.value.withoutIds())
@@ -375,7 +375,7 @@ class ManagedLockTest : PbxTestBase() {
 
         // Keys of the user's own that are found without a managed configuration, left behind by one, are not taken up.
         ownFile.writeText("遗留,$AGENT,speed")
-        val later = onMain { ShortcutManager(mainFile, engine.lock) }
+        val later = onMain { ShortcutManager(mainFile, engine.lock, engine.texts) }
         await("the keys to be read once more") { later.loaded.value }
         assertTrue(later.shortcuts.value.none { it.label == "遗留" || it.own })
         await("the file that was left behind to be gone") { !ownFile.exists() }
@@ -417,7 +417,7 @@ class ManagedLockTest : PbxTestBase() {
         await("the keys to be written in their order") {
             ownFile.isFile && labelsIn(ownFile) == listOf("自建乙", "自建甲", "自建丙") && labelsIn(mainFile) == listOf(REMOTE_KEY, key.label)
         }
-        val restarted = onMain { ShortcutManager(mainFile, engine.lock) }
+        val restarted = onMain { ShortcutManager(mainFile, engine.lock, engine.texts) }
         await("the keys to be read again") { restarted.loaded.value }
         assertEquals(labels(), restarted.shortcuts.value.map { it.label })
     }

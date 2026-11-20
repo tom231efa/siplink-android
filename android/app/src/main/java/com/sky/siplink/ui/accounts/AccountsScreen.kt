@@ -71,6 +71,7 @@ import com.sky.siplink.core.logic.LineAdapt
 import com.sky.siplink.core.model.RegState
 import com.sky.siplink.core.model.SipAccount
 import com.sky.siplink.core.model.SipTransport
+import com.sky.siplink.core.render
 import com.sky.siplink.engine
 import com.sky.siplink.ui.Motion
 import com.sky.siplink.ui.components.Avatar
@@ -111,7 +112,7 @@ fun AccountsScreen(onBack: () -> Unit, onAdd: () -> Unit, onEdit: (String) -> Un
     val searchOpen = searching && accounts.isNotEmpty()
 
     fun add() {
-        if (full) messenger(AccountRules.Error.LIMIT_REACHED.message) else onAdd()
+        if (full) messenger(context.render(AccountRules.Error.LIMIT_REACHED.message)) else onAdd()
     }
 
     fun openSearch() {
@@ -138,7 +139,7 @@ fun AccountsScreen(onBack: () -> Unit, onAdd: () -> Unit, onEdit: (String) -> Un
                 actions = {
                     ManagedLock()
                     if (!locked) {
-                        IconButton(onClick = { if (full) messenger(AccountRules.Error.LIMIT_REACHED.message) else importOpen = true }) {
+                        IconButton(onClick = { if (full) messenger(context.render(AccountRules.Error.LIMIT_REACHED.message)) else importOpen = true }) {
                             Icon(Icons.Rounded.UploadFile, contentDescription = "批量导入账号")
                         }
                     }

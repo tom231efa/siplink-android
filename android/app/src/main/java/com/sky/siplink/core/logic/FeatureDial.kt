@@ -1,17 +1,20 @@
 package com.sky.siplink.core.logic
 
+import androidx.annotation.StringRes
+import com.sky.siplink.R
 import com.sky.siplink.core.model.FeatureCodes
+import com.sky.siplink.core.model.Phrase
 import com.sky.siplink.core.model.SupervisionMode
 
 /** Builds the dial strings of the PBX features that act on an extension: a feature code followed by it. */
 object FeatureDial {
-    enum class Action(val label: String) {
-        INTERCOM("对讲"),
-        LISTEN("监听"),
-        WHISPER("耳语"),
-        BARGE("强插"),
-        FORCE_HANG_UP("强拆"),
-        PICKUP("代接"),
+    enum class Action(@StringRes val label: Int) {
+        INTERCOM(R.string.feature_intercom),
+        LISTEN(R.string.feature_listen),
+        WHISPER(R.string.feature_whisper),
+        BARGE(R.string.feature_barge),
+        FORCE_HANG_UP(R.string.feature_force_hang_up),
+        PICKUP(R.string.feature_pickup),
     }
 
     /**
@@ -52,13 +55,14 @@ object FeatureDial {
         ?.let { (action, code) -> action to number.drop(code.length) }
 
     /** What a number that is dialled as it is stands for, null when it is none of those codes. */
-    fun plainLabel(number: String, codes: FeatureCodes): String? = when (number) {
+    @StringRes
+    fun plainLabel(number: String, codes: FeatureCodes): Int? = when (number) {
         "" -> null
-        codes.voicemail.trim() -> "语音信箱"
-        codes.groupPickup.trim() -> "同组代接"
-        codes.park.trim() -> "驻留"
-        codes.dndOn.trim() -> "开启免打扰"
-        codes.dndOff.trim() -> "关闭免打扰"
+        codes.voicemail.trim() -> R.string.feature_voicemail
+        codes.groupPickup.trim() -> R.string.feature_group_pickup
+        codes.park.trim() -> R.string.feature_park
+        codes.dndOn.trim() -> R.string.feature_dnd_on
+        codes.dndOff.trim() -> R.string.feature_dnd_off
         else -> null
     }
 
@@ -69,7 +73,7 @@ object FeatureDial {
     fun serverDndConfigured(codes: FeatureCodes): Boolean = codes.dndOn.isNotBlank() && codes.dndOff.isNotBlank()
 
     /** What a tap on a feature without a code is answered with; [label] is the name of the feature. */
-    fun missingCode(label: String): String = "未配置“$label”功能码"
+    fun missingCode(label: Phrase): Phrase = Phrase.of(R.string.feature_code_missing, label)
 
     /** Supervision mode a call starts in, null for actions that are not supervision calls. */
     fun supervisionOf(action: Action): SupervisionMode? = when (action) {

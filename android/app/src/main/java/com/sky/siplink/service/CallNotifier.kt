@@ -8,6 +8,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.SystemClock
+import androidx.annotation.StringRes
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -16,12 +17,19 @@ import androidx.core.content.ContextCompat
 import com.sky.siplink.CallActivity
 import com.sky.siplink.MainActivity
 import com.sky.siplink.R
+import com.sky.siplink.core.AppLanguage
 import com.sky.siplink.core.logic.CallRules
 import com.sky.siplink.core.model.CallInfo
+import com.sky.siplink.core.model.Phrase
+import com.sky.siplink.core.render
 
-/** Builds and posts every notification of the app. */
-class CallNotifier(private val context: Context) {
+/** Builds and posts every notification of the app, in the app's language ([AppLanguage]). */
+class CallNotifier(private val context: Context, private val language: AppLanguage) {
     private val manager = NotificationManagerCompat.from(context)
+
+    private fun text(phrase: Phrase): String = language.localized().render(phrase)
+
+    private fun text(@StringRes id: Int): String = language.localized().getString(id)
 
     /** Whether the incoming call notification is up (the app was not visible when the call came in). */
     private var incomingShown = false
@@ -33,9 +41,13 @@ class CallNotifier(private val context: Context) {
     fun keepAlive(registered: Int, enabled: Int): Notification =
         NotificationCompat.Builder(context, CHANNEL_SERVICE)
             .setSmallIcon(R.drawable.ic_stat_call)
-            .setContentTitle("SipLink 运行中")
+            .setContentTitle(text(R.string.notification_running))
             .setContentText(
-                if (enabled == 0) "无已启用的 SIP 账号" else "$registered / $enabled 个账号已注册",
+                if (enabled == 0) {
+                    text(R.string.notification_no_accounts)
+                } else {
+                    text(Phrase.Count(R.plurals.notification_registered, enabled, listOf(registered, enabled)))
+                },
             )
             .setContentIntent(activity(MainActivity::class.java, null, REQUEST_MAIN))
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
@@ -49,7 +61,7 @@ class CallNotifier(private val context: Context) {
         val builder = NotificationCompat.Builder(context, CHANNEL_CALL)
             .setSmallIcon(R.drawable.ic_stat_call)
             .setContentTitle(info.remoteName)
-            .setContentText(if (info.connectedAt == null) "正在呼叫…" else info.remoteAddress)
+            .setContentText(if (info.connectedAt == null) text(R.string.notification_calling) else info.remoteAddress)
             .setStyle(NotificationCompat.CallStyle.forOngoingCall(person(info), hangUp(info)))
             .setContentIntent(activity(CallActivity::class.java, null, REQUEST_CALL))
             .setCategory(NotificationCompat.CATEGORY_CALL)
@@ -85,7 +97,7 @@ class CallNotifier(private val context: Context) {
         val notification = NotificationCompat.Builder(context, CHANNEL_INCOMING)
             .setSmallIcon(R.drawable.ic_stat_call)
             .setContentTitle(info.remoteName)
-            .setContentText("${incomingLabel(info)} · ${info.remoteAddress}")
+            .setContentText(text(Phrase.of(R.string.notification_incoming_text, Phrase.of(incomingLabel(info)), info.remoteAddress)))
             .setStyle(
                 NotificationCompat.CallStyle.forIncomingCall(
                     person(info),
@@ -106,10 +118,11 @@ class CallNotifier(private val context: Context) {
         post(ID_INCOMING, notification)
     }
 
-    private fun incomingLabel(info: CallInfo): String = when {
-        info.intercom -> "对讲呼叫"
-        info.videoOffer -> "视频来电"
-        else -> "来电"
+    @StringRes
+    private fun incomingLabel(info: CallInfo): Int = when {
+        info.intercom -> R.string.notification_intercom
+        info.videoOffer -> R.string.notification_video_call
+        else -> R.string.notification_incoming
     }
 
     fun cancelIncomingCall() {
@@ -120,8 +133,8 @@ class CallNotifier(private val context: Context) {
     fun showMissedCall(name: String, address: String) {
         val notification = NotificationCompat.Builder(context, CHANNEL_MISSED)
             .setSmallIcon(R.drawable.ic_stat_call)
-            .setContentTitle("未接来电")
-            .setContentText(if (name == address || address.isEmpty()) name else "$name（$address）")
+            .setContentTitle(text(R.string.notification_missed))
+            .setContentText(if (name == address || address.isEmpty()) name else text(Phrase.of(R.string.notification_missed_text, name, address)))
             .setContentIntent(activity(MainActivity::class.java, null, REQUEST_MAIN))
             .setCategory(NotificationCompat.CATEGORY_MISSED_CALL)
             .setAutoCancel(true)
@@ -155,28 +168,32 @@ class CallNotifier(private val context: Context) {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
 
+    /** The language of the app changed: the channels are named in it. */
+    fun onLanguageChanged() = createChannels()
+
+    /** Creates the channels, or names them anew: the system keeps everything of a channel but its name and description. */
     private fun createChannels() {
         val channels = listOf(
             NotificationChannelCompat.Builder(CHANNEL_SERVICE, NotificationManagerCompat.IMPORTANCE_LOW)
-                .setName(context.getString(R.string.channel_service_name))
-                .setDescription(context.getString(R.string.channel_service_desc))
+                .setName(text(R.string.notification_channel_service_name))
+                .setDescription(text(R.string.notification_channel_service_desc))
                 .setShowBadge(false)
                 .build(),
             // Ringtone and vibration are played by the SIP core itself, so the channel stays silent.
             NotificationChannelCompat.Builder(CHANNEL_INCOMING, NotificationManagerCompat.IMPORTANCE_HIGH)
-                .setName(context.getString(R.string.channel_incoming_name))
-                .setDescription(context.getString(R.string.channel_incoming_desc))
+                .setName(text(R.string.notification_channel_incoming_name))
+                .setDescription(text(R.string.notification_channel_incoming_desc))
                 .setSound(null, null)
                 .setVibrationEnabled(false)
                 .build(),
             NotificationChannelCompat.Builder(CHANNEL_CALL, NotificationManagerCompat.IMPORTANCE_LOW)
-                .setName(context.getString(R.string.channel_call_name))
-                .setDescription(context.getString(R.string.channel_call_desc))
+                .setName(text(R.string.notification_channel_call_name))
+                .setDescription(text(R.string.notification_channel_call_desc))
                 .setShowBadge(false)
                 .build(),
             NotificationChannelCompat.Builder(CHANNEL_MISSED, NotificationManagerCompat.IMPORTANCE_DEFAULT)
-                .setName(context.getString(R.string.channel_missed_name))
-                .setDescription(context.getString(R.string.channel_missed_desc))
+                .setName(text(R.string.notification_channel_missed_name))
+                .setDescription(text(R.string.notification_channel_missed_desc))
                 .build(),
         )
         manager.createNotificationChannelsCompat(channels)

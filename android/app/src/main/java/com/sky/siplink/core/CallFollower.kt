@@ -2,6 +2,7 @@ package com.sky.siplink.core
 
 import android.os.Handler
 import android.os.SystemClock
+import com.sky.siplink.R
 import com.sky.siplink.core.CallLegs.Companion.live
 import com.sky.siplink.core.CallLegs.Companion.same
 import com.sky.siplink.core.CallSupport.isEnded
@@ -14,6 +15,7 @@ import com.sky.siplink.core.logic.VideoRules
 import com.sky.siplink.core.model.AudioRoute
 import com.sky.siplink.core.model.CallInfo
 import com.sky.siplink.core.model.CallPhase
+import com.sky.siplink.core.model.Phrase
 import org.linphone.core.Call
 import org.linphone.core.Core
 import org.linphone.core.Factory
@@ -41,6 +43,7 @@ internal interface CallFeed {
 internal class CallFollower(
     private val core: Core,
     private val settings: SettingsStore,
+    private val texts: AppTexts,
     private val legs: CallLegs,
     private val feed: CallFeed,
     private val handler: Handler,
@@ -309,11 +312,12 @@ internal class CallFollower(
         legs.current = null
         legs.other = null
         legs.referredFrom = null
-        val reason = transfer.endReason() ?: meta?.endReason ?: last?.endReason ?: "通话结束"
+        val reason = transfer.endReason() ?: meta?.endReason ?: legs.endReason ?: Phrase.of(R.string.call_ended)
+        legs.endReason = reason
         resetScenario()
         feed.shown = last?.copy(
             phase = CallPhase.ENDED,
-            endReason = reason,
+            endReason = texts.render(reason),
             heldCall = null,
             waitingCall = null,
             consulting = false,
@@ -322,6 +326,12 @@ internal class CallFollower(
         host?.onCallActivityChanged()
         val token = ++legs.generation
         handler.postDelayed({ if (token == legs.generation && legs.current == null) feed.shown = null }, END_LINGER_MS)
+    }
+
+    /** The language of the app changed: an ended call that lingers on screen says why in it. */
+    fun onLanguageChanged() {
+        val shown = feed.shown?.takeIf { it.phase == CallPhase.ENDED } ?: return
+        feed.shown = shown.copy(endReason = legs.endReason?.let(texts::render))
     }
 
     /** A new scenario starts on screen: no transfer, consultation or auto answer of the last one carries over. */

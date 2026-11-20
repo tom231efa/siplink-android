@@ -1,5 +1,8 @@
 package com.sky.siplink.core.logic
 
+import androidx.annotation.StringRes
+import com.sky.siplink.R
+
 /**
  * How the conference room calls its members without overrunning the PBX: a few call set-ups at
  * a time ([AT_ONCE]), the next one as soon as an earlier one has an answer (ringing, early media,
@@ -20,21 +23,21 @@ object RoomPacing {
     const val FAILURES_TO_STOP = 3
 
     /** What a final answer of the PBX to a set-up says, by its SIP status. */
-    enum class Failure(val label: String) {
+    enum class Failure(@StringRes val label: Int) {
         /** 503: the PBX or the line takes no more calls now. */
-        LINE_FULL("线路已满"),
+        LINE_FULL(R.string.room_line_full),
 
         /** 403: the PBX does not let this line make the call. */
-        REFUSED("PBX 拒绝"),
+        REFUSED(R.string.room_refused),
 
         /** 486, 600: busy. */
-        BUSY("忙"),
+        BUSY(R.string.room_busy),
 
         /** 480: not reachable now. */
-        UNAVAILABLE("暂时无法接通"),
+        UNAVAILABLE(R.string.room_unavailable),
 
         /** 488: no common codec. */
-        MEDIA("媒体协商失败"),
+        MEDIA(R.string.call_end_media),
     }
 
     /** The kind of a final failure of a set-up; null for answers that say nothing about the PBX (404, a cancel, ...). */
@@ -52,7 +55,7 @@ object RoomPacing {
      *
      * @param stop nobody else is called; those still waiting keep [label]
      */
-    data class Verdict(val stop: Boolean, val label: String?)
+    data class Verdict(val stop: Boolean, @StringRes val label: Int?)
 
     /**
      * @param failure the kind of this failure

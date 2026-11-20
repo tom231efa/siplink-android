@@ -16,6 +16,7 @@ import com.sky.siplink.core.model.DeviceReadings
 import com.sky.siplink.core.model.LinkReadings
 import org.linphone.core.Call
 import java.io.File
+import java.util.Locale
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
@@ -147,7 +148,7 @@ class RoomMonitor(context: Context) {
         )
     }
 
-    private fun one(value: Float): String = "%.1f".format(value)
+    private fun one(value: Float): String = "%.1f".format(Locale.ROOT, value)
 
     private companion object {
         const val TAG = "SipLinkRoom"

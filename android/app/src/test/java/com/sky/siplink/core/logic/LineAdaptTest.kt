@@ -5,6 +5,7 @@ import com.sky.siplink.core.logic.LineAdapt.Record
 import com.sky.siplink.core.model.SipTransport.TCP
 import com.sky.siplink.core.model.SipTransport.TLS
 import com.sky.siplink.core.model.SipTransport.UDP
+import com.sky.siplink.zh
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -182,6 +183,6 @@ class LineAdaptTest {
         val key = LineAdapt.key("sip:1001@pbx", "0123456789abcdef")
         assertEquals("sip:1001@pbx", LineAdapt.accountOf(key))
         assertEquals("0123456789abcdef", LineAdapt.networkOf(key))
-        assertEquals("TCP（自动）", LineAdapt.label(TCP))
+        assertEquals("TCP（自动）", zh(LineAdapt.label(TCP)))
     }
 }

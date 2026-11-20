@@ -13,6 +13,8 @@ import com.sky.siplink.core.model.ShortcutAction
 import com.sky.siplink.core.model.ShortcutIcon
 import com.sky.siplink.core.model.SipTransport
 import com.sky.siplink.core.model.VideoSize
+import com.sky.siplink.zh
+import com.sky.siplink.zhReserved
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -30,15 +32,16 @@ class RemoteDocumentTest {
         .replace("\"@CA@\"", Json.write(CertificateTools.toPem(ca.certificate)))
 
     private fun parsed(text: String): RemoteDocument {
-        val result = RemoteDocument.parse(text)
+        val result = RemoteDocument.parse(text, zhReserved)
         assertTrue("Refused: $result", result is RemoteDocument.Parsed.Ok)
         return (result as RemoteDocument.Parsed.Ok).document
     }
 
-    private fun errors(text: String): List<String> {
-        val result = RemoteDocument.parse(text)
+    /** What is wrong with [text], in the user's Chinese texts. */
+    private fun errors(text: String): List<String?> {
+        val result = RemoteDocument.parse(text, zhReserved)
         assertTrue("Taken: $result", result is RemoteDocument.Parsed.Invalid)
-        return (result as RemoteDocument.Parsed.Invalid).errors
+        return (result as RemoteDocument.Parsed.Invalid).errors.map(::zh)
     }
 
     /** The fixture with the value at [path] (keys of objects inside each other) replaced by [json]. */
@@ -267,8 +270,8 @@ class RemoteDocumentTest {
 
     @Test
     fun aUserAgentTheRuleRefusesRefusesTheDocument() {
-        assertEquals(listOf(UserAgent.Error.SPACE_AT_ENDS.full), errors(with("\" Example\"", "settings", "userAgent")))
-        assertEquals(listOf(UserAgent.Error.NOT_PRINTABLE_ASCII.full), errors(with("\"话机\"", "settings", "userAgent")))
+        assertEquals(listOf(zh(UserAgent.Error.SPACE_AT_ENDS.full)), errors(with("\" Example\"", "settings", "userAgent")))
+        assertEquals(listOf(zh(UserAgent.Error.NOT_PRINTABLE_ASCII.full)), errors(with("\"话机\"", "settings", "userAgent")))
         assertEquals(listOf("settings.ipv6 格式不正确"), errors(with("\"yes\"", "settings", "ipv6")))
     }
 
@@ -285,7 +288,7 @@ class RemoteDocumentTest {
 
     @Test
     fun aLaterSchemaAsksForAnUpdateAndAnEarlierOneIsRefused() {
-        assertEquals(listOf(RemoteChecks.NEEDS_UPDATE), errors(with("2", "schema")))
+        assertEquals(listOf(zh(RemoteChecks.NEEDS_UPDATE)), errors(with("2", "schema")))
         assertEquals(listOf("不支持的配置格式"), errors(with("0", "schema")))
         assertEquals(listOf("不支持的配置格式"), errors("""{"version": "v1"}"""))
         assertEquals(listOf("配置缺少版本"), errors("""{"schema": 1}"""))
@@ -313,19 +316,19 @@ class RemoteDocumentTest {
     @Test
     fun theAccountsHaveToPassTheAppsRules() {
         val duplicate = errors(withElement("accounts", 1) { it["username"] = "1001"; it["domain"] = "PBX.example.com:5061" })
-        assertEquals(listOf("账号“1001”：" + AccountRules.Error.DUPLICATE.full), duplicate)
+        assertEquals(listOf("账号“1001”：" + zh(AccountRules.Error.DUPLICATE.full)), duplicate)
         assertEquals(
-            listOf("账号“总机”：" + AccountRules.Error.NAME_TAKEN.full),
+            listOf("账号“总机”：" + zh(AccountRules.Error.NAME_TAKEN.full)),
             errors(withElement("accounts", 1) { it["name"] = "总机" }),
         )
         assertEquals(
-            listOf("账号“20 01”：" + AccountRules.Error.USERNAME_INVALID.full),
+            listOf("账号“20 01”：" + zh(AccountRules.Error.USERNAME_INVALID.full)),
             errors(withElement("accounts", 1) { it["username"] = "20 01" }),
         )
         assertEquals(listOf("账号“2001”：key 重复"), errors(withElement("accounts", 1) { it["key"] = "p1" }))
         assertEquals(listOf("账号“2001”：缺少 key"), errors(withElement("accounts", 1) { it.remove("key") }))
         assertEquals(
-            listOf("账号“总机”：" + AccountRules.Error.EXPIRES_OUT_OF_RANGE.full),
+            listOf("账号“总机”：" + zh(AccountRules.Error.EXPIRES_OUT_OF_RANGE.full)),
             errors(withElement("accounts", 0) { it["expires"] = 30L }),
         )
     }
@@ -333,19 +336,19 @@ class RemoteDocumentTest {
     @Test
     fun theDirectoriesHaveToPassTheAppsRules() {
         assertEquals(
-            listOf("通讯录“192.0.2.20”：" + LdapRules.Error.STARTTLS_NEEDS_HOST_NAME.full),
+            listOf("通讯录“192.0.2.20”：" + zh(LdapRules.Error.STARTTLS_NEEDS_HOST_NAME.full)),
             errors(withElement("directories", 1) { it["security"] = "START_TLS" }),
         )
         assertEquals(
-            listOf("通讯录“总部”：" + LdapRules.Error.HOST_LDAPS.full),
+            listOf("通讯录“总部”：" + zh(LdapRules.Error.HOST_LDAPS.full)),
             errors(withElement("directories", 0) { it["host"] = "ldaps://ldap.example.com" }),
         )
         assertEquals(
-            listOf("通讯录“总部”：" + LdapRules.Error.NUMBER_FILTER_NO_PLACEHOLDER.full),
+            listOf("通讯录“总部”：" + zh(LdapRules.Error.NUMBER_FILTER_NO_PLACEHOLDER.full)),
             errors(withElement("directories", 0) { it["numberFilter"] = "(telephoneNumber=1)" }),
         )
         assertEquals(
-            listOf("通讯录“总部”：" + LdapRules.Error.NAME_TAKEN.full),
+            listOf("通讯录“总部”：" + zh(LdapRules.Error.NAME_TAKEN.full)),
             errors(withElement("directories", 1) { it["name"] = "总部" }),
         )
     }
@@ -353,15 +356,15 @@ class RemoteDocumentTest {
     @Test
     fun theShortcutKeysHaveToPassTheAppsRules() {
         assertEquals(
-            listOf("快捷键“会议密码”：" + ShortcutRules.Error.DTMF_INVALID.full),
+            listOf("快捷键“会议密码”：" + zh(ShortcutRules.Error.DTMF_INVALID.full)),
             errors(withElement("shortcuts", 3) { it["number"] = "12a" }),
         )
         assertEquals(
-            listOf("快捷键“前台”：" + ShortcutRules.Error.CATEGORY_RESERVED.full),
+            listOf("快捷键“前台”：" + zh(ShortcutRules.Error.CATEGORY_RESERVED.full)),
             errors(withElement("shortcuts", 0) { it["category"] = "全部" }),
         )
         val many = (0..ShortcutRules.MAX_SHORTCUTS).joinToString(",", "[", "]") { """{"label":"k$it","number":"$it"}""" }
-        assertEquals(listOf(ShortcutRules.Error.LIMIT_REACHED.full), errors(with(many, "shortcuts")))
+        assertEquals(listOf(zh(ShortcutRules.Error.LIMIT_REACHED.full)), errors(with(many, "shortcuts")))
     }
 
     @Test
@@ -379,7 +382,7 @@ class RemoteDocumentTest {
         @Suppress("UNCHECKED_CAST")
         val both = withElement("accounts", 1) { it["username"] = "" }.let { Json.parse(it) as MutableMap<String, Any?> }
             .also { it["configPasswordHash"] = "xyz" }.let(Json::write)
-        assertEquals(listOf("配置密码格式不正确", "账号“p2”：" + AccountRules.Error.USERNAME_EMPTY.full), errors(both))
+        assertEquals(listOf("配置密码格式不正确", "账号“p2”：" + zh(AccountRules.Error.USERNAME_EMPTY.full)), errors(both))
     }
 
     @Test

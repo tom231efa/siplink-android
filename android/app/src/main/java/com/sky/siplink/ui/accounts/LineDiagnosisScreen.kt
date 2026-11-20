@@ -44,6 +44,7 @@ import com.sky.siplink.ui.components.Personal
 import com.sky.siplink.ui.components.SectionCard
 import com.sky.siplink.ui.components.SubScreen
 import com.sky.siplink.ui.components.regStateLabel
+import com.sky.siplink.ui.components.text
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -224,7 +225,7 @@ private fun ServersCard(servers: ServerReport) {
 private fun RegistrationCard(report: LineReport) {
     SectionCard(title = "注册") {
         ValueRow("状态", report.error ?: regStateLabel(report.registration), error = report.error != null)
-        ValueRow("传输协议", report.adaptedTransport?.let(LineAdapt::label) ?: report.transport.name)
+        ValueRow("传输协议", report.adaptedTransport?.let { LineAdapt.label(it).text() } ?: report.transport.name)
         ValueRow("Contact", report.contact ?: NONE)
         ValueRow("有效期", "${report.expires} 秒")
     }
@@ -248,7 +249,7 @@ private fun LastCallCard(report: LineReport) {
         ValueRow("抖动", "${call.jitterMs.toInt()} ms")
         ValueRow("往返", "${call.roundTripMs.toInt()} ms")
         if (call.ice.isNotEmpty()) ValueRow("ICE", call.ice)
-        if (call.mediaLost) ValueRow("结束", CallSupport.NO_SOUND, error = true)
+        if (call.mediaLost) ValueRow("结束", CallSupport.NO_SOUND.text(), error = true)
     }
 }
 

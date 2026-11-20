@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -13,10 +14,12 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
+import com.sky.siplink.R
 import com.sky.siplink.core.SipEngine
 import com.sky.siplink.core.logic.FeatureDial
 import com.sky.siplink.core.model.DndMode
 import com.sky.siplink.core.model.FeatureCodes
+import com.sky.siplink.core.model.Phrase
 import com.sky.siplink.core.model.SupervisionMode
 import com.sky.siplink.engine
 import com.sky.siplink.openCallScreen
@@ -44,7 +47,7 @@ class CallLauncher(
         }
         val code = (if (on) settings.features.dndOn else settings.features.dndOff).trim()
         if (code.isEmpty()) {
-            notify(FeatureDial.missingCode(if (on) "开启免打扰" else "关闭免打扰"))
+            say(FeatureDial.missingCode(Phrase.of(if (on) R.string.feature_dnd_on else R.string.feature_dnd_off)))
         } else {
             // The switch follows once the call to the code is on its way.
             launch(CallRequest(code, accountId, onStarted = { engine.updateSettings { it.copy(doNotDisturb = on) } }))
@@ -55,21 +58,23 @@ class CallLauncher(
     fun feature(action: FeatureDial.Action, target: String, accountId: String? = null) {
         val number = FeatureDial.compose(action, target, codes())
         if (number == null) {
-            notify(FeatureDial.missingCode(action.label))
+            say(FeatureDial.missingCode(Phrase.of(action.label)))
         } else {
             launch(CallRequest(number, accountId, supervision = FeatureDial.supervisionOf(action)))
         }
     }
 
     /** Dials the group pickup code: answers a call ringing somewhere in our pickup group. */
-    fun groupPickup(accountId: String? = null) = code(codes().groupPickup, "同组代接", accountId)
+    fun groupPickup(accountId: String? = null) = code(codes().groupPickup, R.string.feature_group_pickup, accountId)
 
     /** Calls the voicemail box. */
-    fun voicemail(accountId: String? = null) = code(codes().voicemail, "语音信箱", accountId)
+    fun voicemail(accountId: String? = null) = code(codes().voicemail, R.string.feature_voicemail, accountId)
 
-    private fun code(code: String, label: String, accountId: String?) {
-        if (code.isBlank()) notify(FeatureDial.missingCode(label)) else launch(CallRequest(code.trim(), accountId))
+    private fun code(code: String, @StringRes label: Int, accountId: String?) {
+        if (code.isBlank()) say(FeatureDial.missingCode(Phrase.of(label))) else launch(CallRequest(code.trim(), accountId))
     }
+
+    private fun say(phrase: Phrase) = notify(engine.texts.render(phrase))
 }
 
 /** @param onStarted called once the call is on its way */

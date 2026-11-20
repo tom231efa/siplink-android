@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Notifications and their channels. -->
+<resources>
+    <string name="notification_running">SipLink is running</string>
+    <string name="notification_no_accounts">No SIP account enabled</string>
+    <plurals name="notification_registered">
+        <item quantity="one">%1$s / %2$s account registered</item>
+        <item quantity="other">%1$s / %2$s accounts registered</item>
+    </plurals>
+    <string name="notification_calling">Calling…</string>
+    <string name="notification_intercom">Intercom call</string>
+    <string name="notification_video_call">Incoming video call</string>
+    <string name="notification_incoming">Incoming call</string>
+    <string name="notification_incoming_text">%1$s · %2$s</string>
+    <string name="notification_missed">Missed call</string>
+    <string name="notification_missed_text">%1$s (%2$s)</string>
+
+    <!-- Channels -->
+    <string name="notification_channel_service_name">Stay online in background</string>
+    <string name="notification_channel_service_desc">Keeps SIP accounts registered to receive calls</string>
+    <string name="notification_channel_incoming_name">Incoming calls</string>
+    <string name="notification_channel_incoming_desc">Incoming call alerts and the full-screen call screen</string>
+    <string name="notification_channel_call_name">Ongoing calls</string>
+    <string name="notification_channel_call_desc">Calls in progress</string>
+    <string name="notification_channel_missed_name">Missed calls</string>
+    <string name="notification_channel_missed_desc">Missed call alerts</string>
+</resources>

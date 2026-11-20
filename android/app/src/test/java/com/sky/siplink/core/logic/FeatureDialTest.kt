@@ -2,7 +2,9 @@ package com.sky.siplink.core.logic
 
 import com.sky.siplink.core.logic.FeatureDial.Action
 import com.sky.siplink.core.model.FeatureCodes
+import com.sky.siplink.core.model.Phrase
 import com.sky.siplink.core.model.SupervisionMode
+import com.sky.siplink.zh
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -37,8 +39,8 @@ class FeatureDialTest {
 
     @Test
     fun `a code dialled as it is has a name`() {
-        assertEquals("语音信箱", FeatureDial.plainLabel("*97", codes))
-        assertEquals("驻留", FeatureDial.plainLabel("700", codes))
+        assertEquals("语音信箱", zh(FeatureDial.plainLabel("*97", codes)?.let { Phrase.of(it) }))
+        assertEquals("驻留", zh(FeatureDial.plainLabel("700", codes)?.let { Phrase.of(it) }))
         assertNull(FeatureDial.plainLabel("701", codes))
         assertNull(FeatureDial.plainLabel("", codes.copy(voicemail = "")))
     }

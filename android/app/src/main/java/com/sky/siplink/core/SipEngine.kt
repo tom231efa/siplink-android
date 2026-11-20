@@ -34,6 +34,10 @@ class SipEngine(context: Context) {
     private val appContext: Context = context.applicationContext
     val core: Core
 
+    /** The language of the app ([AppLanguage]), and the texts of the core in it. */
+    val language = AppLanguage(appContext)
+    val texts = AppTexts(language)
+
     /** Whether the configuration is managed, and with that closed to changes made on the phone. */
     val lock: ConfigLock
     val settings: SettingsStore
@@ -144,22 +148,33 @@ class SipEngine(context: Context) {
         CallVideoSupport.setQuality(core, settings.current.videoSize, settings.current.videoFrameRate)
         tls = TlsManager(appContext, core, lock)
         tls.applySettings(settings.current)
-        accounts = AccountManager(core, lock)
+        accounts = AccountManager(core, lock, texts)
         applyNetworkOptions(settings.current)
         // Its far end is often muted, or sends alone: its silence says nothing of the line.
         accounts.media.isIntercom = { call -> CallSupport.isIntercom(call, settings.current.features) }
         recordings = RecordingStore(File(appContext.filesDir, RecordingStore.DIRECTORY)) { settings.current.recordingsKept }
-        calls = CallManager(core, settings, accounts, names, recordings, RoomMonitor(appContext))
-        history = HistoryManager(core, names) { settings.current.features }
+        calls = CallManager(core, settings, accounts, names, texts, recordings, RoomMonitor(appContext))
+        history = HistoryManager(core, names, texts) { settings.current.features }
         // A call placed again over the other server is one call in the history.
         calls.onSuperseded = history::remove
-        shortcuts = ShortcutManager(File(appContext.filesDir, SHORTCUTS_FILE), lock)
+        shortcuts = ShortcutManager(File(appContext.filesDir, SHORTCUTS_FILE), lock, texts)
         accounts.onEdited = ::onAccountsEdited
         lock.onReleased = shortcuts::dropOwn
 
         core.addListener(listener)
         core.start()
         networkWatch = NetworkWatch(appContext)
+    }
+
+    /**
+     * The language of the app changed: what the managers published, rendered in the language
+     * before, is published again. The notifications follow through the app ([com.sky.siplink.SipLinkApp]).
+     */
+    fun onLanguageChanged() {
+        accounts.onLanguageChanged()
+        calls.onLanguageChanged()
+        history.onLanguageChanged()
+        remote.onLanguageChanged()
     }
 
     /** What refers to an account follows after the user changed, switched off or removed one. */

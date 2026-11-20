@@ -47,6 +47,7 @@ import com.sky.siplink.core.TlsManager
 import com.sky.siplink.core.logic.ManagedConfig
 import com.sky.siplink.core.model.CertInfo
 import com.sky.siplink.core.model.MediaSecurity
+import com.sky.siplink.core.render
 import com.sky.siplink.engine
 import com.sky.siplink.ui.components.ChoiceRow
 import com.sky.siplink.ui.components.FadingText
@@ -107,8 +108,8 @@ fun TlsScreen(onBack: () -> Unit) {
                         "已导入 ${result.count} 个证书，正在重新注册账号"
                     }
                     TlsManager.ImportResult.AlreadyTrusted -> "证书已存在"
-                    is TlsManager.ImportResult.Invalid -> result.reason
-                    TlsManager.ImportResult.Managed -> ManagedConfig.NOTICE
+                    is TlsManager.ImportResult.Invalid -> context.render(result.reason)
+                    TlsManager.ImportResult.Managed -> context.render(ManagedConfig.NOTICE)
                 }
             }
             messenger(message)

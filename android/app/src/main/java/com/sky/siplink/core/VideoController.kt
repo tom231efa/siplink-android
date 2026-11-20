@@ -2,8 +2,10 @@ package com.sky.siplink.core
 
 import android.os.Handler
 import android.os.Looper
+import com.sky.siplink.R
 import com.sky.siplink.core.CallSupport.isEnded
 import com.sky.siplink.core.logic.VideoRules
+import com.sky.siplink.core.model.Phrase
 import org.linphone.core.Call
 import org.linphone.core.CallListenerStub
 import org.linphone.core.CallParams
@@ -53,10 +55,10 @@ internal class VideoController(
     fun isRequesting(call: Call): Boolean = request?.nativePointer == call.nativePointer
 
     /** Adds video to [call], or ends it (re-INVITE). */
-    fun toggleVideo(call: Call?): String? {
-        if (call?.state != Call.State.StreamsRunning) return "通话接通后方可开启视频"
-        if (!allowed) return "此通话不支持视频"
-        val params = core.createCallParams(call) ?: return "无法更改通话"
+    fun toggleVideo(call: Call?): Phrase? {
+        if (call?.state != Call.State.StreamsRunning) return Phrase.of(R.string.call_video_after_connect)
+        if (!allowed) return Phrase.of(R.string.call_video_not_supported)
+        val params = core.createCallParams(call) ?: return Phrase.of(R.string.call_cannot_change)
         val on = !CallVideoSupport.hasVideo(call)
         CallVideoSupport.apply(params, on, cameraPermitted())
         if (on) CallVideoSupport.useStartCamera(core)
@@ -65,11 +67,11 @@ internal class VideoController(
     }
 
     /** Stops or starts sending the own camera in [call]; the picture of the other side keeps coming. */
-    fun toggleCamera(call: Call?): String? {
-        if (call?.state != Call.State.StreamsRunning) return "通话接通后方可使用摄像头"
-        val video = CallVideoSupport.stateOf(call) ?: return "此通话无视频"
-        if (!video.sending && !cameraPermitted()) return "需要摄像头权限"
-        val params = core.createCallParams(call) ?: return "无法更改通话"
+    fun toggleCamera(call: Call?): Phrase? {
+        if (call?.state != Call.State.StreamsRunning) return Phrase.of(R.string.call_camera_after_connect)
+        val video = CallVideoSupport.stateOf(call) ?: return Phrase.of(R.string.call_no_video)
+        if (!video.sending && !cameraPermitted()) return Phrase.of(R.string.call_camera_permission)
+        val params = core.createCallParams(call) ?: return Phrase.of(R.string.call_cannot_change)
         CallVideoSupport.apply(params, video = true, camera = !video.sending)
         call.update(params)
         return null

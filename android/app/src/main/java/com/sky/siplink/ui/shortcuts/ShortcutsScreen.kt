@@ -40,6 +40,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sky.siplink.core.logic.ManagedConfig
 import com.sky.siplink.core.logic.ShortcutRules
 import com.sky.siplink.core.model.Shortcut
+import com.sky.siplink.core.render
 import com.sky.siplink.engine
 import com.sky.siplink.openCallScreen
 import com.sky.siplink.ui.components.CsvImportSheet
@@ -87,7 +88,7 @@ fun ShortcutsScreen(accountId: String?, onBack: () -> Unit) {
     var renaming by remember { mutableStateOf<String?>(null) }
     val newKey = {
         if (locked && !ShortcutRules.canAddOwn(all)) {
-            messenger(ShortcutRules.Error.OWN_LIMIT_REACHED.full)
+            messenger(context.render(ShortcutRules.Error.OWN_LIMIT_REACHED.full))
         } else {
             edited = Shortcut(id = NEW_KEY, label = "", category = category.orEmpty())
         }
@@ -177,7 +178,7 @@ fun ShortcutsScreen(accountId: String?, onBack: () -> Unit) {
                     when {
                         !editing -> runner(key)
                         // A key that was handed out is not the user's to open.
-                        locked && !key.own -> messenger(ManagedConfig.NOTICE)
+                        locked && !key.own -> messenger(context.render(ManagedConfig.NOTICE))
                         else -> edited = key
                     }
                 },
@@ -192,7 +193,7 @@ fun ShortcutsScreen(accountId: String?, onBack: () -> Unit) {
     if (importOpen && !locked) {
         CsvImportSheet(
             title = "批量导入快捷键",
-            formatHint = ShortcutRules.FORMAT_HINT +
+            formatHint = context.render(ShortcutRules.FORMAT) +
                 "\n类型：" + ShortcutRules.typeWords.joinToString(" / ") +
                 "\n线路：账号名称或 user@domain；留空则拨出时选择" +
                 "\n图标：" + ShortcutRules.iconWords.joinToString(" / ") + "；留空则随类型",
@@ -200,7 +201,7 @@ fun ShortcutsScreen(accountId: String?, onBack: () -> Unit) {
             onImport = { text ->
                 val result = manager.import(text)
                 if (result == null) {
-                    ImportOutcome(finished = false, message = ManagedConfig.NOTICE)
+                    ImportOutcome(finished = false, message = context.render(ManagedConfig.NOTICE))
                 } else {
                     ImportOutcome(
                         finished = result.errors.isEmpty() && result.skippedForLimit == 0 && result.shortcuts.isNotEmpty(),
@@ -210,6 +211,7 @@ fun ShortcutsScreen(accountId: String?, onBack: () -> Unit) {
                             result.skippedForLimit,
                             ShortcutRules.MAX_SHORTCUTS,
                             result.errors,
+                            context::render,
                         ),
                     )
                 }

@@ -1,11 +1,11 @@
 package com.sky.siplink.core.logic
 
+import com.sky.siplink.R
 import com.sky.siplink.core.model.FeatureCodes
+import com.sky.siplink.core.model.Phrase
 
 /** What the other side of a call is called on the screen and in the call log. */
 object PartyName {
-    const val WITHHELD = "匿名来电"
-
     /**
      * In this order: what a feature code we dialled stands for, the name of the number in the
      * directory, what the far end calls itself, its number.
@@ -15,21 +15,21 @@ object PartyName {
      * @param outgoing we placed the call, so its number may be one of our feature codes
      * @param directory the name of a number or address in the directory, null when it has none
      */
-    fun of(shown: String, address: String, outgoing: Boolean, codes: FeatureCodes, directory: (String) -> String?): String {
+    fun of(shown: String, address: String, outgoing: Boolean, codes: FeatureCodes, directory: (String) -> String?): Phrase {
         val number = Formatters.userPart(address)
         if (outgoing) {
-            FeatureDial.plainLabel(number, codes)?.let { return it }
+            FeatureDial.plainLabel(number, codes)?.let { return Phrase.of(it) }
             // "*801005" is the intercom to 1005: named after whoever 1005 is.
             FeatureDial.parse(number, codes)?.let { (action, extension) ->
-                return "${action.label} ${directory(extension) ?: extension}"
+                return Phrase.of(R.string.feature_to, Phrase.of(action.label), directory(extension) ?: extension)
             }
         }
-        directory(address)?.let { return it }
+        directory(address)?.let { return Phrase.plain(it) }
         val named = shown.isNotBlank() && shown != number && !NameLookup.isWithheld(shown)
         return when {
-            named -> shown
-            NameLookup.isWithheld(number) -> WITHHELD
-            else -> number.ifEmpty { address }
+            named -> Phrase.plain(shown)
+            NameLookup.isWithheld(number) -> Phrase.of(R.string.call_withheld)
+            else -> Phrase.plain(number.ifEmpty { address })
         }
     }
 }

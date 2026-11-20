@@ -1,5 +1,7 @@
 package com.sky.siplink.core.logic
 
+import androidx.annotation.StringRes
+import com.sky.siplink.R
 import java.net.URI
 import java.net.URISyntaxException
 import java.util.Base64
@@ -22,11 +24,11 @@ object RemoteAddress {
     private const val PIN_BYTES = 32
     private val token = Regex("^[A-Za-z0-9_-]+$")
 
-    enum class Error(val message: String) {
-        NOT_AN_ADDRESS("无效的地址"),
-        SCHEME("地址须以 https:// 开头"),
-        NOT_ENROLLMENT("非远程配置地址"),
-        PIN_INVALID("地址中的证书指纹无效"),
+    enum class Error(@StringRes val message: Int) {
+        NOT_AN_ADDRESS(R.string.remote_address_invalid),
+        SCHEME(R.string.remote_address_scheme),
+        NOT_ENROLLMENT(R.string.remote_address_not_enrollment),
+        PIN_INVALID(R.string.remote_address_pin),
     }
 
     /**

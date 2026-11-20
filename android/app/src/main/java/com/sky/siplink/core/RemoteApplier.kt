@@ -1,7 +1,9 @@
 package com.sky.siplink.core
 
+import com.sky.siplink.R
 import com.sky.siplink.core.logic.RemoteDocument
 import com.sky.siplink.core.logic.RemotePlan
+import com.sky.siplink.core.model.Phrase
 import java.util.UUID
 
 /**
@@ -19,7 +21,7 @@ internal class RemoteApplier(private val engine: SipEngine) {
     class Outcome(
         val accountIds: Map<String, String>,
         val directoryIds: Map<String, String>,
-        val errors: List<String>,
+        val errors: List<Phrase>,
         val trustChanged: Boolean,
     )
 
@@ -55,7 +57,7 @@ internal class RemoteApplier(private val engine: SipEngine) {
 
     /** Everything of [document] but the removal of the accounts it no longer has. */
     private fun applyRest(document: RemoteDocument, planned: Map<String, String>, knownDirectories: Map<String, String>): Outcome {
-        val errors = ArrayList<String>()
+        val errors = ArrayList<Phrase>()
         engine.updateSettings { RemotePlan.settings(document.settings, it) }
 
         val accounts = engine.accounts
@@ -68,7 +70,7 @@ internal class RemoteApplier(private val engine: SipEngine) {
                 if (refused.isEmpty()) {
                     accountIds[account.key] = id
                 } else {
-                    errors += refused.map { "账号“${account.draft.name.ifEmpty { account.draft.username }}”：${it.full}" }
+                    errors += refused.map { Phrase.of(R.string.remote_error_account, account.draft.name.ifEmpty { account.draft.username }, it.full) }
                 }
             }
             accountIds[document.defaultAccount]?.let(accounts::setDefault)
@@ -80,7 +82,7 @@ internal class RemoteApplier(private val engine: SipEngine) {
         if (codecs == null) {
             engine.codecs.restoreDefaults()
         } else if (!engine.codecs.apply(codecs.audio, codecs.video)) {
-            errors += "无可用的音频编码，已恢复默认编码"
+            errors += Phrase.of(R.string.remote_no_audio_codec)
         }
 
         val directories = engine.directory
@@ -91,7 +93,7 @@ internal class RemoteApplier(private val engine: SipEngine) {
             RemotePlan.directoryPasswords(document.directories, directoryIds),
         )
 
-        if (!engine.shortcuts.replaceHandedOut(document.shortcuts)) errors += "快捷键尚未加载，未能更新"
+        if (!engine.shortcuts.replaceHandedOut(document.shortcuts)) errors += Phrase.of(R.string.remote_keys_not_loaded)
         return Outcome(accountIds, directoryIds, errors, trustChanged)
     }
 

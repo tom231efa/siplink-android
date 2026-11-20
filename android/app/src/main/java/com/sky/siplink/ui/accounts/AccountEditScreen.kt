@@ -39,6 +39,7 @@ import com.sky.siplink.core.logic.AccountRules
 import com.sky.siplink.core.logic.ShortcutLines
 import com.sky.siplink.core.model.AccountDraft
 import com.sky.siplink.core.model.SipTransport
+import com.sky.siplink.core.render
 import com.sky.siplink.engine
 import com.sky.siplink.ui.components.ChoiceRow
 import com.sky.siplink.ui.components.ConfigPasswordDialog
@@ -110,7 +111,7 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
     var errors by remember { mutableStateOf(emptyList<AccountRules.Error>()) }
     var confirmDelete by remember { mutableStateOf(false) }
 
-    fun error(vararg candidates: AccountRules.Error): String? = errors.firstOrNull { it in candidates }?.message
+    fun error(vararg candidates: AccountRules.Error): String? = errors.firstOrNull { it in candidates }?.message?.let(context::render)
 
     fun save() {
         val draft = AccountDraft(
@@ -141,7 +142,7 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
             messenger(if (existing == null) "账号已添加" else "账号已保存")
             onBack()
         } else {
-            messenger(errors.first().full)
+            messenger(context.render(errors.first().full))
         }
     }
 

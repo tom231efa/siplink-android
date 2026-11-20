@@ -89,6 +89,7 @@ import com.sky.siplink.core.model.CallPhase
 import com.sky.siplink.core.model.TransferStatus
 import com.sky.siplink.engine
 import com.sky.siplink.ui.components.FadingText
+import com.sky.siplink.ui.components.text
 import com.sky.siplink.ui.theme.Brand
 import kotlinx.coroutines.delay
 
@@ -652,7 +653,8 @@ private fun transferLabel(info: CallInfo): String? = when (info.transfer) {
     null -> null
 }
 
-private fun noSoundLabel(info: CallInfo): String? = CallSupport.NO_SOUND.takeIf { info.noSound && info.phase == CallPhase.CONNECTED }
+@Composable
+private fun noSoundLabel(info: CallInfo): String? = CallSupport.NO_SOUND.text().takeIf { info.noSound && info.phase == CallPhase.CONNECTED }
 
 @Composable
 internal fun NoticeLine(text: String?) {

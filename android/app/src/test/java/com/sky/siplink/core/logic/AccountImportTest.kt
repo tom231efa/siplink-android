@@ -1,6 +1,7 @@
 package com.sky.siplink.core.logic
 
 import com.sky.siplink.core.model.SipTransport
+import com.sky.siplink.zh
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -80,7 +81,7 @@ class AccountImportTest {
         val result = AccountImport.parse(text, emptyList(), existingNames = listOf("前台"))
         assertEquals(listOf("1002", "1004"), result.drafts.map { it.username })
         assertEquals(listOf(1, 3), result.errors.map { it.line })
-        assertEquals("账号名称已存在", result.errors.first().reason)
+        assertEquals("账号名称已存在", zh(result.errors.first().reason))
     }
 
     @Test

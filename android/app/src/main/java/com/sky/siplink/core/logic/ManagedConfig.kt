@@ -1,7 +1,10 @@
 package com.sky.siplink.core.logic
 
+import com.sky.siplink.R
+import com.sky.siplink.core.model.Phrase
 import com.sky.siplink.core.model.Settings
 import java.security.MessageDigest
+import java.util.Locale
 
 /**
  * Rules of a managed configuration: one that a remote side hands out, and that can be looked at
@@ -9,10 +12,10 @@ import java.security.MessageDigest
  */
 object ManagedConfig {
     /** What a change tried on the phone is answered with, and what the lock of a locked screen says when tapped. */
-    const val NOTICE = "配置由远程下发，不能在本机修改"
+    val NOTICE: Phrase = Phrase.of(R.string.managed_notice)
 
     /** What the lock in the top bar of a locked screen is called. */
-    const val LOCKED = "配置由远程下发"
+    val LOCKED: Phrase = Phrase.of(R.string.managed_locked)
 
     /**
      * What a settings change made on the phone comes to while the configuration is managed. The
@@ -44,7 +47,7 @@ object ManagedConfig {
         val expected = hash.trim().lowercase()
         if (expected.isEmpty()) return false
         val actual = MessageDigest.getInstance("SHA-256").digest(typed.toByteArray())
-            .joinToString("") { byte -> "%02x".format(byte) }
+            .joinToString("") { byte -> "%02x".format(Locale.ROOT, byte) }
         return MessageDigest.isEqual(expected.toByteArray(), actual.toByteArray())
     }
 }

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SIP accounts (lines): their rules, their registration, their CSV import. -->
+<resources>
+    <plurals name="account_limit">
+        <item quantity="one">At most %1$s account</item>
+        <item quantity="other">At most %1$s accounts</item>
+    </plurals>
+    <plurals name="account_error_name_too_long">
+        <item quantity="one">Account name: at most %1$s character</item>
+        <item quantity="other">Account name: at most %1$s characters</item>
+    </plurals>
+    <string name="account_error_name_taken">Account name already exists</string>
+    <string name="account_error_username_empty">User name is required</string>
+    <string name="account_error_invalid_chars">Contains invalid characters</string>
+    <string name="account_error_username_invalid">User name contains invalid characters</string>
+    <string name="account_error_domain_empty">Domain is required</string>
+    <string name="account_error_domain_invalid">Domain is not valid</string>
+    <string name="account_error_port_invalid">Port must be 1–65535</string>
+    <string name="account_error_server_invalid">Proxy must be host[:port]</string>
+    <string name="account_error_backup_invalid">Backup proxy must be host[:port]</string>
+    <string name="account_error_same_as_proxy">Same as the proxy</string>
+    <string name="account_error_backup_same">Backup proxy is the same as the proxy</string>
+    <string name="account_error_dns_format">Must be IP[:port]</string>
+    <string name="account_error_dns_invalid">DNS server must be IP[:port]</string>
+    <string name="account_error_timeout_range">Must be %1$s–%2$s ms</string>
+    <string name="account_error_timeout_invalid">Fast timeout must be %1$s–%2$s ms</string>
+    <string name="account_error_expires_range">Must be %1$s–%2$s seconds</string>
+    <string name="account_error_expires_invalid">Registration expiry must be %1$s–%2$s seconds</string>
+    <string name="account_error_duplicate">The account already exists</string>
+    <string name="account_error_password_required">Required (user name, domain or port changed)</string>
+    <string name="account_error_password_required_full">Password is required (user name, domain or port changed)</string>
+    <string name="account_error_address_rejected">The address cannot be resolved</string>
+    <string name="account_error_not_found">The account does not exist</string>
+    <string name="account_csv_format">user name,password,domain[,transport[,display name[,proxy[,account name]]]]</string>
+
+    <!-- Registration -->
+    <string name="account_dns_failed">DNS lookup failed</string>
+    <string name="account_register_failed">Registration failed</string>
+    <string name="line_transport_auto">%1$s (auto)</string>
+
+    <!-- The client name (User-Agent) -->
+    <plurals name="user_agent_error_too_long">
+        <item quantity="one">Client name (User-Agent): at most %1$s character</item>
+        <item quantity="other">Client name (User-Agent): at most %1$s characters</item>
+    </plurals>
+    <string name="user_agent_error_ascii">Printable ASCII characters only</string>
+    <string name="user_agent_error_ascii_full">Client name (User-Agent): printable ASCII characters only</string>
+    <string name="user_agent_error_spaces">No spaces at the start or end</string>
+    <string name="user_agent_error_spaces_full">Client name (User-Agent) must not start or end with a space</string>
+</resources>

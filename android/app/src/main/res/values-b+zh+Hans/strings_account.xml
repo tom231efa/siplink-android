@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SIP accounts (lines): their rules, their registration, their CSV import. -->
+<resources>
+    <plurals name="account_limit">
+        <item quantity="other">最多 %1$s 个账号</item>
+    </plurals>
+    <plurals name="account_error_name_too_long">
+        <item quantity="other">账号名称最多 %1$s 个字符</item>
+    </plurals>
+    <string name="account_error_name_taken">账号名称已存在</string>
+    <string name="account_error_username_empty">用户名必填</string>
+    <string name="account_error_invalid_chars">含无效字符</string>
+    <string name="account_error_username_invalid">用户名含无效字符</string>
+    <string name="account_error_domain_empty">域名必填</string>
+    <string name="account_error_domain_invalid">域名格式不正确</string>
+    <string name="account_error_port_invalid">端口应为 1–65535</string>
+    <string name="account_error_server_invalid">代理服务器应为 主机[:端口]</string>
+    <string name="account_error_backup_invalid">备用代理服务器应为 主机[:端口]</string>
+    <string name="account_error_same_as_proxy">与代理服务器相同</string>
+    <string name="account_error_backup_same">备用代理服务器与代理服务器相同</string>
+    <string name="account_error_dns_format">应为 IP[:端口]</string>
+    <string name="account_error_dns_invalid">DNS 服务器应为 IP[:端口]</string>
+    <string name="account_error_timeout_range">应为 %1$s–%2$s 毫秒</string>
+    <string name="account_error_timeout_invalid">快速超时应为 %1$s–%2$s 毫秒</string>
+    <string name="account_error_expires_range">应为 %1$s–%2$s 秒</string>
+    <string name="account_error_expires_invalid">注册有效期应为 %1$s–%2$s 秒</string>
+    <string name="account_error_duplicate">账号已存在</string>
+    <string name="account_error_password_required">必填（用户名、域名或端口已更改）</string>
+    <string name="account_error_password_required_full">密码必填（用户名、域名或端口已更改）</string>
+    <string name="account_error_address_rejected">地址无法解析</string>
+    <string name="account_error_not_found">账号不存在</string>
+    <string name="account_csv_format">用户名,密码,域名[,传输协议[,显示名称[,代理服务器[,账号名称]]]]</string>
+
+    <!-- Registration -->
+    <string name="account_dns_failed">DNS 解析失败</string>
+    <string name="account_register_failed">注册失败</string>
+    <string name="line_transport_auto">%1$s（自动）</string>
+
+    <!-- The client name (User-Agent) -->
+    <plurals name="user_agent_error_too_long">
+        <item quantity="other">客户端名称（User-Agent）最多 %1$s 个字符</item>
+    </plurals>
+    <string name="user_agent_error_ascii">仅限可打印的 ASCII 字符</string>
+    <string name="user_agent_error_ascii_full">客户端名称（User-Agent）仅限可打印的 ASCII 字符</string>
+    <string name="user_agent_error_spaces">首尾不能包含空格</string>
+    <string name="user_agent_error_spaces_full">客户端名称（User-Agent）首尾不能包含空格</string>
+</resources>

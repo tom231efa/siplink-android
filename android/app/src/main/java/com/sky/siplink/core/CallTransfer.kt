@@ -2,11 +2,13 @@ package com.sky.siplink.core
 
 import android.os.Handler
 import android.os.Looper
+import com.sky.siplink.R
 import com.sky.siplink.core.CallSupport.isEnded
 import com.sky.siplink.core.CallSupport.phaseOf
 import com.sky.siplink.core.logic.DialTarget
 import com.sky.siplink.core.logic.FeatureDial
 import com.sky.siplink.core.model.CallPhase
+import com.sky.siplink.core.model.Phrase
 import com.sky.siplink.core.model.TransferStatus
 import org.linphone.core.Call
 import org.linphone.core.Core
@@ -37,31 +39,31 @@ internal class CallTransfer(
     val moving: Boolean get() = status == TransferStatus.IN_PROGRESS || status == TransferStatus.SUCCEEDED
 
     /** Blind transfer: the PBX connects the other party of [call] to [target] and releases us. */
-    fun blind(call: Call?, target: String): String? {
-        call ?: return "当前无通话"
+    fun blind(call: Call?, target: String): Phrase? {
+        call ?: return Phrase.of(R.string.call_none)
         val phase = phaseOf(call)
-        if (phase != CallPhase.CONNECTED && phase != CallPhase.HELD) return "通话接通后方可转接"
+        if (phase != CallPhase.CONNECTED && phase != CallPhase.HELD) return Phrase.of(R.string.call_transfer_after_connect)
         val cleaned = DialTarget.of(target)
-        if (cleaned.isEmpty()) return "请输入转接号码"
+        if (cleaned.isEmpty()) return Phrase.of(R.string.call_enter_transfer_number)
         val address = (call.params.account ?: core.defaultAccount)?.normalizeSipUri(cleaned)
-            ?: return "号码或地址无效"
+            ?: return Phrase.of(R.string.call_invalid_address)
         attended = false
         parking = false
         return request { call.transferTo(address) }
     }
 
     /** Parks [call]: a blind transfer to the parking extension of the PBX. */
-    fun park(call: Call?): String? {
+    fun park(call: Call?): Phrase? {
         val extension = settings.current.features.park.trim()
-        if (extension.isEmpty()) return FeatureDial.missingCode("驻留")
+        if (extension.isEmpty()) return FeatureDial.missingCode(Phrase.of(R.string.feature_park))
         val error = blind(call, extension)
         parking = error == null
         return error
     }
 
     /** Second step of an attended transfer: connects the [held] party with the [consulted] one. */
-    fun complete(consulted: Call, held: Call): String? {
-        if (phaseOf(consulted) != CallPhase.CONNECTED) return "对方接听后方可转接"
+    fun complete(consulted: Call, held: Call): Phrase? {
+        if (phaseOf(consulted) != CallPhase.CONNECTED) return Phrase.of(R.string.call_transfer_after_answer)
         attended = true
         return request { held.transferToAnother(consulted) }
     }
@@ -100,10 +102,10 @@ internal class CallTransfer(
     }
 
     /** A completed transfer or parking explains the end of the call better than the SIP reason. */
-    fun endReason(): String? = when {
+    fun endReason(): Phrase? = when {
         status != TransferStatus.SUCCEEDED -> null
-        parking -> "通话已驻留"
-        else -> "转接成功"
+        parking -> Phrase.of(R.string.call_parked)
+        else -> Phrase.of(R.string.call_transferred)
     }
 
     fun reset() {
@@ -112,7 +114,7 @@ internal class CallTransfer(
         parking = false
     }
 
-    private fun request(send: () -> Int): String? {
+    private fun request(send: () -> Int): Phrase? {
         status = TransferStatus.IN_PROGRESS
         val sent = send() == 0
         if (!sent) {
@@ -120,7 +122,7 @@ internal class CallTransfer(
             status = TransferStatus.FAILED
         }
         onChanged()
-        return if (sent) null else "转接请求发送失败"
+        return if (sent) null else Phrase.of(R.string.call_transfer_send_failed)
     }
 
     private companion object {

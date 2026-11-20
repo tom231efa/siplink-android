@@ -61,6 +61,7 @@ import com.sky.siplink.engine
 import com.sky.siplink.ui.components.AccountPickerSheet
 import com.sky.siplink.ui.components.CallLauncher
 import com.sky.siplink.ui.components.rememberCallLauncher
+import com.sky.siplink.ui.components.text
 
 fun shortcutIcon(action: ShortcutAction): ImageVector = when (action) {
     ShortcutAction.SPEED_DIAL -> Icons.Rounded.Call
@@ -155,7 +156,7 @@ fun rememberShortcutRunner(accountId: String?, onOutcome: (ShortcutOutcome) -> U
                 report(press(engine, launcher, ask.shortcut, id))
             },
             onDismiss = { asking = null },
-            title = "${ask.shortcut.label} · 选择出局线路",
+            title = "${ShortcutRules.title(ask.shortcut).text()} · 选择出局线路",
             defaultTitle = null,
             pinnedId = preferred,
             note = ask.lost?.let { "固定线路“$it”不可用" },
@@ -206,7 +207,7 @@ private fun press(engine: SipEngine, launcher: CallLauncher, shortcut: Shortcut,
         ShortcutAction.FORWARD -> {
             val on = engine.settings.current.forwardAlways != number
             // Forwarding is part of a managed configuration: the key then has nothing to switch.
-            if (!engine.updateSettings { it.copy(forwardAlways = if (on) number else "") }) return ShortcutOutcome(ManagedConfig.NOTICE)
+            if (!engine.updateSettings { it.copy(forwardAlways = if (on) number else "") }) return ShortcutOutcome(engine.texts.render(ManagedConfig.NOTICE))
             return ShortcutOutcome(if (on) "全部来电将前转到 $number" else "已关闭呼叫前转")
         }
         ShortcutAction.DND -> {

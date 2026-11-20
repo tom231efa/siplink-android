@@ -1,6 +1,8 @@
 package com.sky.siplink.core.logic
 
+import com.sky.siplink.R
 import com.sky.siplink.core.model.AccountDraft
+import com.sky.siplink.core.model.Phrase
 
 /**
  * Bulk account import from CSV text. One account per line:
@@ -11,7 +13,7 @@ import com.sky.siplink.core.model.AccountDraft
  * (use `""` for a literal quote) so passwords can contain commas.
  */
 object AccountImport {
-    const val FORMAT_HINT = "用户名,密码,域名[,传输协议[,显示名称[,代理服务器[,账号名称]]]]"
+    val FORMAT: Phrase = Phrase.of(R.string.account_csv_format)
 
     data class Result(
         val drafts: List<AccountDraft>,
@@ -32,15 +34,12 @@ object AccountImport {
         var skipped = 0
 
         for ((line, fields) in Csv.rows(text)) {
-            val error = when {
-                fields == null -> "引号未闭合"
-                fields.size < 3 -> "字段不足，格式：$FORMAT_HINT"
-                AccountRules.parseTransport(fields.getOrElse(3) { "" }) == null ->
-                    "未知的传输协议“${fields[3]}”，可选 udp / tcp / tls"
-                else -> null
+            if (fields == null || fields.size < 3) {
+                errors += Csv.LineError(line, Csv.shapeError(fields, FORMAT))
+                continue
             }
-            if (fields == null || error != null) {
-                errors += Csv.LineError(line, error.orEmpty())
+            if (AccountRules.parseTransport(fields.getOrElse(3) { "" }) == null) {
+                errors += Csv.LineError(line, Phrase.of(R.string.csv_unknown_transport, fields[3], "udp / tcp / tls"))
                 continue
             }
             val draft = AccountRules.normalize(

@@ -1,8 +1,11 @@
 package com.sky.siplink.core
 
+import android.annotation.SuppressLint
 import android.content.Context
 import androidx.core.content.edit
 import com.sky.siplink.core.logic.Json
+import com.sky.siplink.core.logic.PhraseCodec
+import com.sky.siplink.core.model.Phrase
 import java.util.UUID
 
 /**
@@ -14,6 +17,14 @@ import java.util.UUID
  */
 internal class RemoteConfigStore(context: Context) {
     private val preferences = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+
+    /** The errors are kept as phrases, by the names of their resources, and shown in the language of the moment. */
+    @SuppressLint("DiscouragedApi") // Looked up by name on purpose: the ids of the resources change from build to build.
+    private val codec = context.resources.let { resources ->
+        PhraseCodec(resources::getResourceEntryName) { name, plural ->
+            resources.getIdentifier(name, if (plural) "plurals" else "string", context.packageName).takeIf { it != 0 }
+        }
+    }
 
     /** Made once per installation and sent when the phone binds itself; it outlives the configurations. */
     val installId: String
@@ -44,13 +55,13 @@ internal class RemoteConfigStore(context: Context) {
     val lastAttemptMs: Long get() = preferences.getLong(KEY_LAST_ATTEMPT, 0)
     val lastSyncMs: Long get() = preferences.getLong(KEY_LAST_SYNC, 0)
 
-    /** What went wrong with the last sync; empty: it worked. */
-    val lastError: String get() = text(KEY_LAST_ERROR)
+    /** What went wrong with the last sync; null: it worked. */
+    val lastError: Phrase? get() = codec.decode(text(KEY_LAST_ERROR))?.first()
 
     /** The last document the phone tried: its version, when, and why it was refused (empty: it was not). */
     val appliedVersion: String get() = text(KEY_APPLIED_VERSION)
     val appliedAt: String get() = text(KEY_APPLIED_AT)
-    val appliedError: String get() = text(KEY_APPLIED_ERROR)
+    val appliedErrors: List<Phrase> get() = codec.decode(text(KEY_APPLIED_ERROR)).orEmpty()
 
     /** Local ids of the handed-out accounts and directories, by their keys in the document. */
     val accountIds: Map<String, String> get() = map(KEY_ACCOUNT_IDS)
@@ -82,18 +93,18 @@ internal class RemoteConfigStore(context: Context) {
         putString(KEY_DIRECTORY_IDS, Json.write(directoryIds))
     }
 
-    fun tried(version: String, at: String, error: String) = preferences.edit {
+    fun tried(version: String, at: String, errors: List<Phrase>) = preferences.edit {
         putString(KEY_APPLIED_VERSION, version)
         putString(KEY_APPLIED_AT, at)
-        putString(KEY_APPLIED_ERROR, error)
+        putString(KEY_APPLIED_ERROR, if (errors.isEmpty()) "" else codec.encode(errors))
     }
 
     fun attempted(atMs: Long) = preferences.edit { putLong(KEY_LAST_ATTEMPT, atMs) }
 
-    /** The result of a sync that ended at [atMs]: empty [error] for one that worked. */
-    fun synced(atMs: Long, error: String) = preferences.edit {
-        if (error.isEmpty()) putLong(KEY_LAST_SYNC, atMs)
-        putString(KEY_LAST_ERROR, error)
+    /** The result of a sync that ended at [atMs]: null [error] for one that worked. */
+    fun synced(atMs: Long, error: Phrase?) = preferences.edit {
+        if (error == null) putLong(KEY_LAST_SYNC, atMs)
+        putString(KEY_LAST_ERROR, error?.let { codec.encode(listOf(it)) }.orEmpty())
     }
 
     /** Forgets the remote configuration; the installation id stays. */

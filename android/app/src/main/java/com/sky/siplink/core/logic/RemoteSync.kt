@@ -1,5 +1,7 @@
 package com.sky.siplink.core.logic
 
+import com.sky.siplink.R
+import com.sky.siplink.core.model.Phrase
 import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.ZoneId
@@ -17,10 +19,10 @@ object RemoteSync {
     /** Coming to the front syncs, but not again within this time. */
     const val FRONT_MIN_GAP_MS = MINUTE_MS
 
-    const val NO_CONNECTION = "无法连接平台"
-    const val PIN_MISMATCH = "平台证书与二维码不符"
-    const val UNTRUSTED = "平台证书不受信任"
-    const val UNAUTHORIZED = "远程配置认证失败"
+    val NO_CONNECTION: Phrase = Phrase.of(R.string.remote_no_connection)
+    val PIN_MISMATCH: Phrase = Phrase.of(R.string.remote_pin_mismatch)
+    val UNTRUSTED: Phrase = Phrase.of(R.string.remote_untrusted)
+    val UNAUTHORIZED: Phrase = Phrase.of(R.string.remote_unauthorized)
 
     /** What an answer of the platform means for the phone. */
     enum class Outcome {
@@ -49,12 +51,12 @@ object RemoteSync {
     }
 
     /** What the user is told about an answer with [status] that brought no configuration. */
-    fun failureText(status: Int): String = when {
+    fun failureText(status: Int): Phrase = when {
         status == 401 -> UNAUTHORIZED
-        status == 404 -> "二维码无效、已使用或已过期"
-        status == 429 -> "请求过于频繁，请稍后重试"
-        status >= 500 -> "平台暂时不可用（HTTP $status）"
-        else -> "平台返回错误（HTTP $status）"
+        status == 404 -> Phrase.of(R.string.remote_qr_invalid)
+        status == 429 -> Phrase.of(R.string.remote_rate_limited)
+        status >= 500 -> Phrase.of(R.string.remote_platform_unavailable, status)
+        else -> Phrase.of(R.string.remote_platform_error, status)
     }
 
     /** How long to wait after a sync that worked: the interval of the document. */

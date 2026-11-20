@@ -1,8 +1,15 @@
 package com.sky.siplink.core.logic
 
+import com.sky.siplink.R
+import com.sky.siplink.core.model.Phrase
+
 /** One line of comma separated text, with double quotes around fields that need them. */
 object Csv {
-    data class LineError(val line: Int, val reason: String)
+    data class LineError(val line: Int, val reason: Phrase)
+
+    /** What is wrong with a line whose fields cannot be read: a quote left open ([fields] null), or too few fields for [format]. */
+    fun shapeError(fields: List<String>?, format: Phrase): Phrase =
+        if (fields == null) Phrase.of(R.string.csv_unclosed_quote) else Phrase.of(R.string.csv_too_few_fields, format)
 
     /**
      * The rows of a text: line number and fields, null fields when a quote is left open. Blank

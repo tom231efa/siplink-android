@@ -50,7 +50,7 @@ class ShortcutStoreTest {
 
     /** A manager on the test file, as the app creates one at start. */
     private fun open(): ShortcutManager {
-        val manager = onMain { ShortcutManager(file, (context.applicationContext as SipLinkApp).engine.lock) }
+        val manager = onMain { ShortcutManager(file, (context.applicationContext as SipLinkApp).engine.lock, (context.applicationContext as SipLinkApp).engine.texts) }
         await("the shortcut keys to be read") { manager.loaded.value }
         return manager
     }
@@ -118,9 +118,9 @@ class ShortcutStoreTest {
         assertEquals(ShortcutRules.MAX_SHORTCUTS, manager.shortcuts.value.size)
 
         // Searching and grouping the full board.
-        assertEquals(listOf("键1999"), ShortcutRules.filter(manager.shortcuts.value, "11999", null).map { it.label })
+        assertEquals(listOf("键1999"), ShortcutRules.filter(manager.shortcuts.value, "11999", null) { context.getString(it.label) }.map { it.label })
         assertEquals(20, ShortcutRules.categories(manager.shortcuts.value).size)
-        assertEquals(100, ShortcutRules.filter(manager.shortcuts.value, "", "组7").size)
+        assertEquals(100, ShortcutRules.filter(manager.shortcuts.value, "", "组7") { context.getString(it.label) }.size)
 
         awaitStored(ShortcutRules.MAX_SHORTCUTS)
         assertEquals(keys(manager), keys(open()))

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- What forms say under their fields, and the CSV imports. -->
+<resources>
+    <string name="form_required">Required</string>
+    <string name="form_taken">Already exists</string>
+    <string name="form_invalid">Invalid format</string>
+    <string name="form_host_port">Must be host[:port]</string>
+    <string name="form_port_range">Must be 1–65535</string>
+    <plurals name="form_max_chars">
+        <item quantity="one">At most %1$s character</item>
+        <item quantity="other">At most %1$s characters</item>
+    </plurals>
+
+    <!-- CSV import -->
+    <string name="csv_unclosed_quote">Unclosed quote</string>
+    <string name="csv_too_few_fields">Too few fields; format: %1$s</string>
+    <string name="csv_unknown_type">Unknown type “%1$s”; available: %2$s</string>
+    <string name="csv_unknown_icon">Unknown icon “%1$s”; available: %2$s</string>
+    <string name="csv_unknown_transport">Unknown transport “%1$s”; available: %2$s</string>
+</resources>

@@ -1,6 +1,7 @@
 package com.sky.siplink.core.logic
 
 import com.sky.siplink.core.model.FeatureCodes
+import com.sky.siplink.zh
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -9,7 +10,7 @@ class PartyNameTest {
     private val directory = mapOf("1005" to "王芳", "1005@pbx.example.com" to "王芳", "+8613800138000@pbx.example.com" to "张伟")
 
     private fun name(shown: String, address: String, outgoing: Boolean = false) =
-        PartyName.of(shown, address, outgoing, codes) { directory[it] }
+        zh(PartyName.of(shown, address, outgoing, codes) { directory[it] })
 
     @Test
     fun `the directory knows better than the far end`() {
@@ -32,9 +33,9 @@ class PartyNameTest {
 
     @Test
     fun `a caller who withholds the number is called so`() {
-        assertEquals(PartyName.WITHHELD, name("anonymous", "anonymous@anonymous.invalid"))
-        assertEquals(PartyName.WITHHELD, name("Anonymous", "anonymous@anonymous.invalid"))
-        assertEquals(PartyName.WITHHELD, name("Unknown", "unknown@pbx.example.com"))
+        assertEquals("匿名来电", name("anonymous", "anonymous@anonymous.invalid"))
+        assertEquals("匿名来电", name("Anonymous", "anonymous@anonymous.invalid"))
+        assertEquals("匿名来电", name("Unknown", "unknown@pbx.example.com"))
         // A PBX that withholds the number may still pass a name on.
         assertEquals("门口保安", name("门口保安", "anonymous@pbx.example.com"))
         // And one that passes the number may call it "Anonymous".
@@ -60,8 +61,8 @@ class PartyNameTest {
         assertEquals("*801005", name("*801005", "*801005@pbx.example.com", outgoing = false))
         // A code that is not configured stands for nothing.
         val none = FeatureCodes(intercom = "", voicemail = "")
-        assertEquals("*801005", PartyName.of("*801005", "*801005@pbx.example.com", true, none) { null })
-        assertEquals("*97", PartyName.of("*97", "*97@pbx.example.com", true, none) { null })
+        assertEquals("*801005", zh(PartyName.of("*801005", "*801005@pbx.example.com", true, none) { null }))
+        assertEquals("*97", zh(PartyName.of("*97", "*97@pbx.example.com", true, none) { null }))
         // A code followed by something that is no extension.
         assertEquals("*80abc", name("*80abc", "*80abc@pbx.example.com", outgoing = true))
     }

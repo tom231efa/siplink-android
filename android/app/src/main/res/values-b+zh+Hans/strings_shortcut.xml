@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Shortcut keys: their types and icons, their rules, their CSV format. -->
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="shortcut_type_speed">速拨</string>
+    <string name="shortcut_type_bxfer">盲转</string>
+    <string name="shortcut_type_axfer">咨询转</string>
+    <string name="shortcut_type_dtmf">发送按键</string>
+    <string name="shortcut_type_forward">呼叫前转</string>
+    <string name="shortcut_type_dnd">免打扰</string>
+
+    <!-- Category lists: their names are reserved -->
+    <string name="shortcut_category_all">全部</string>
+    <string name="shortcut_category_none">未分类</string>
+    <string name="shortcut_category_new">新建分类</string>
+
+    <!-- Rules -->
+    <plurals name="shortcut_limit">
+        <item quantity="other">最多 %1$s 个快捷键</item>
+    </plurals>
+    <plurals name="shortcut_own_limit">
+        <item quantity="other">最多自建 %1$s 个快捷键</item>
+    </plurals>
+    <string name="shortcut_error_number_empty">号码必填</string>
+    <string name="shortcut_error_spaces">不能包含空格</string>
+    <string name="shortcut_error_number_spaces">号码不能包含空格</string>
+    <string name="shortcut_error_dtmf" tools:ignore="TypographyDashes">仅限 0-9 * #</string>
+    <string name="shortcut_error_dtmf_full" tools:ignore="TypographyDashes">按键仅限 0-9 * #</string>
+    <plurals name="shortcut_error_number_too_long">
+        <item quantity="other">号码最多 %1$s 个字符</item>
+    </plurals>
+    <plurals name="shortcut_error_name_too_long">
+        <item quantity="other">名称最多 %1$s 个字符</item>
+    </plurals>
+    <plurals name="shortcut_error_category_too_long">
+        <item quantity="other">分类最多 %1$s 个字符</item>
+    </plurals>
+    <string name="shortcut_error_category_empty">分类必填</string>
+    <string name="shortcut_error_reserved">名称不可用</string>
+    <string name="shortcut_error_category_reserved">分类名称不可用</string>
+    <string name="shortcut_error_category_taken">分类已存在</string>
+    <string name="shortcut_csv_format">名称,号码[,类型[,分类[,线路[,图标]]]]</string>
+
+    <!-- Icons -->
+    <string name="shortcut_icon_phone">电话</string>
+    <string name="shortcut_icon_person">个人</string>
+    <string name="shortcut_icon_group">团队</string>
+    <string name="shortcut_icon_star">收藏</string>
+    <string name="shortcut_icon_home">家</string>
+    <string name="shortcut_icon_office">办公楼</string>
+    <string name="shortcut_icon_store">门店</string>
+    <string name="shortcut_icon_reception">前台</string>
+    <string name="shortcut_icon_support">客服</string>
+    <string name="shortcut_icon_speaker">广播</string>
+    <string name="shortcut_icon_meeting">会议</string>
+    <string name="shortcut_icon_door">门</string>
+    <string name="shortcut_icon_lock">锁</string>
+    <string name="shortcut_icon_key">钥匙</string>
+    <string name="shortcut_icon_garage">车库</string>
+    <string name="shortcut_icon_car">车辆</string>
+    <string name="shortcut_icon_elevator">电梯</string>
+    <string name="shortcut_icon_security">保安</string>
+    <string name="shortcut_icon_camera">监控</string>
+    <string name="shortcut_icon_bell">门铃</string>
+    <string name="shortcut_icon_alarm">报警</string>
+    <string name="shortcut_icon_medical">医务</string>
+    <string name="shortcut_icon_fire">消防</string>
+    <string name="shortcut_icon_food">餐厅</string>
+    <string name="shortcut_icon_hotel">客房</string>
+    <string name="shortcut_icon_warehouse">仓库</string>
+    <string name="shortcut_icon_factory">车间</string>
+    <string name="shortcut_icon_school">教室</string>
+    <string name="shortcut_icon_repair">维修</string>
+    <string name="shortcut_icon_computer">机房</string>
+    <string name="shortcut_icon_delivery">物流</string>
+    <string name="shortcut_icon_light">照明</string>
+</resources>

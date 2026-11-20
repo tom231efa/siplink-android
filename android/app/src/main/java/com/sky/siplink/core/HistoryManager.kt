@@ -18,7 +18,12 @@ import org.linphone.core.Core
  * that a finished call does not cost a pass over the whole history. A number that is in the
  * directory is shown by its name there.
  */
-class HistoryManager(private val core: Core, private val names: NameResolver, private val codes: () -> FeatureCodes) {
+class HistoryManager(
+    private val core: Core,
+    private val names: NameResolver,
+    private val texts: AppTexts,
+    private val codes: () -> FeatureCodes,
+) {
     private val state = MutableStateFlow(load())
     val entries: StateFlow<List<HistoryEntry>> = state.asStateFlow()
 
@@ -36,6 +41,11 @@ class HistoryManager(private val core: Core, private val names: NameResolver, pr
     private fun rename() {
         val renamed = state.value.map { entry -> names.known(entry.address)?.takeIf { it != entry.name }?.let { entry.copy(name = it) } ?: entry }
         if (renamed != state.value) state.value = renamed
+    }
+
+    /** The language of the app changed: the entries named after a feature code are named in it. */
+    fun onLanguageChanged() {
+        state.value = load()
     }
 
     /** A call log was written or changed by the core: put it where it belongs, newest first. */
@@ -83,7 +93,7 @@ class HistoryManager(private val core: Core, private val names: NameResolver, pr
         }
         return HistoryEntry(
             id = idOf(log),
-            name = PartyName.of(party.name, party.address, log.dir == Call.Dir.Outgoing, codes(), names::known),
+            name = texts.render(PartyName.of(party.name, party.address, log.dir == Call.Dir.Outgoing, codes(), names::known)),
             address = party.address,
             kind = kind,
             startedAtMs = log.startDate * 1000L,

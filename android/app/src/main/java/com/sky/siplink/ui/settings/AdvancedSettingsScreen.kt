@@ -29,6 +29,8 @@ import com.sky.siplink.core.logic.RoomRules
 import com.sky.siplink.core.logic.UserAgent
 import com.sky.siplink.core.model.DndMode
 import com.sky.siplink.core.model.DtmfMode
+import com.sky.siplink.core.model.Phrase
+import com.sky.siplink.core.render
 import com.sky.siplink.engine
 import com.sky.siplink.ui.components.ChoiceRow
 import com.sky.siplink.ui.components.FormField
@@ -36,6 +38,7 @@ import com.sky.siplink.ui.components.LocalMessenger
 import com.sky.siplink.ui.components.SectionCard
 import com.sky.siplink.ui.components.SubScreen
 import com.sky.siplink.ui.components.SwitchRow
+import com.sky.siplink.ui.components.text
 
 /**
  * What most people leave as it is: who keeps do not disturb, call waiting, call forwarding, the
@@ -44,7 +47,8 @@ import com.sky.siplink.ui.components.SwitchRow
  */
 @Composable
 fun AdvancedSettingsScreen(onBack: () -> Unit) {
-    val engine = LocalContext.current.engine
+    val context = LocalContext.current
+    val engine = context.engine
     val messenger = LocalMessenger.current
     val settings by engine.settings.settings.collectAsStateWithLifecycle()
     // Leaving do not disturb to the PBX works through its two codes: without them it is not in use.
@@ -70,7 +74,7 @@ fun AdvancedSettingsScreen(onBack: () -> Unit) {
                 selected = settings.dndMode,
                 onSelect = { mode ->
                     if (mode == DndMode.SERVER && !serverDnd) {
-                        messenger(FeatureDial.missingCode("开启免打扰 / 关闭免打扰"))
+                        messenger(context.render(FeatureDial.missingCode(Phrase.plain("开启免打扰 / 关闭免打扰"))))
                     } else {
                         // What the other side was last told says nothing about this one: start switched off.
                         engine.updateSettings { it.copy(dndMode = mode, doNotDisturb = false) }
@@ -219,7 +223,7 @@ fun AdvancedSettingsScreen(onBack: () -> Unit) {
                     },
                     label = "客户端名称（User-Agent）",
                     placeholder = engine.defaultUserAgent,
-                    error = refused?.message,
+                    error = refused?.message?.text(),
                 )
             }
         }

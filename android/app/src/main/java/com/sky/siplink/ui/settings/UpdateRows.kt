@@ -41,6 +41,7 @@ import com.sky.siplink.ui.components.AppBottomSheet
 import com.sky.siplink.ui.components.LocalMessenger
 import com.sky.siplink.ui.components.NavRow
 import com.sky.siplink.ui.components.SwitchRow
+import com.sky.siplink.ui.components.text
 
 /**
  * The rows of the version and its updates on the About page. A tap on the version checks for a
@@ -68,7 +69,7 @@ internal fun UpdateRows() {
 
     NavRow(
         title = "版本 $installed",
-        subtitle = UpdateRules.status(update, installed, download),
+        subtitle = UpdateRules.status(update, installed, download).text(),
         icon = Icons.Rounded.SystemUpdate,
         onClick = {
             when {

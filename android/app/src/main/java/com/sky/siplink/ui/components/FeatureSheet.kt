@@ -43,6 +43,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -85,7 +86,7 @@ fun FeatureSheet(
     fun DialRow(action: FeatureDial.Action, icon: ImageVector) {
         // The launcher answers a feature without a code with the notice, whatever the target.
         val configured = FeatureDial.isConfigured(action, codes)
-        FeatureRow(icon, action.label, enabled = hasTarget || !configured, dimmed = !configured) {
+        FeatureRow(icon, stringResource(action.label), enabled = hasTarget || !configured, dimmed = !configured) {
             run { launcher.feature(action, extension, accountId) }
         }
     }
@@ -135,7 +136,7 @@ fun FeatureSheet(
             DialRow(FeatureDial.Action.BARGE, Icons.Rounded.GroupAdd)
             FeatureRow(
                 icon = Icons.Rounded.PhoneDisabled,
-                title = if (confirmForce) "再次点按以确认强拆 $extension" else FeatureDial.Action.FORCE_HANG_UP.label,
+                title = if (confirmForce) "再次点按以确认强拆 $extension" else stringResource(FeatureDial.Action.FORCE_HANG_UP.label),
                 enabled = hasTarget || !forceConfigured,
                 destructive = true,
                 dimmed = !forceConfigured,

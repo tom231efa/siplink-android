@@ -6,8 +6,10 @@ import android.os.SystemClock
 import com.sky.siplink.core.logic.RoomPacing
 import com.sky.siplink.core.logic.RoomRules
 import com.sky.siplink.core.model.MemberState
+import com.sky.siplink.core.model.Phrase
 import com.sky.siplink.core.model.RoomMember
 import com.sky.siplink.core.model.SideCall
+import com.sky.siplink.zh
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -166,6 +168,7 @@ class ConferenceRoomTest {
             party = { call -> SideCall(call.remoteAddress.username!!, call.remoteAddress.username + "@pbx") },
             limit = { limit },
             lineOn = { lineSwitchedOn },
+            render = { zh(it)!! },
         ) {}
     }
 
@@ -308,7 +311,7 @@ class ConferenceRoomTest {
         after(60_000)
         val placed = calls.map { it.user }.filter { it.startsWith("24") }
         assertEquals(listOf("2401", "2402", "2403", "2404", "2405"), placed)
-        assertEquals(listOf("2401", "2402") + numbers.drop(placed.size), heldBack(RoomPacing.Failure.LINE_FULL.label))
+        assertEquals(listOf("2401", "2402") + numbers.drop(placed.size), heldBack(zh(Phrase.of(RoomPacing.Failure.LINE_FULL.label))!!))
         assertTrue(rows().none { it.state == MemberState.QUEUED })
     }
 
@@ -341,10 +344,10 @@ class ConferenceRoomTest {
         state(call, Call.State.Error)
         release(call)
         val id = row("2601")!!.id
-        assertEquals("请稍后重试", room.retry(id))
-        assertEquals("请稍后重试", room.invite(listOf("2601")))
+        assertEquals("请稍后重试", zh(room.retry(id)))
+        assertEquals("请稍后重试", zh(room.invite(listOf("2601"))))
         skip(RoomPacing.MAX_RETRY_AFTER_S * 1000L - 1)
-        assertEquals("请稍后重试", room.invite(listOf("2601")))
+        assertEquals("请稍后重试", zh(room.invite(listOf("2601"))))
         skip(1)
         assertNull(room.invite(listOf("2601")))
         assertEquals("Not called again in its own row", id, row("2601")!!.id)
@@ -378,7 +381,7 @@ class ConferenceRoomTest {
     fun `a room that cannot be opened gives its calls back without ending them`() {
         val up = listOf(FakeCall("2501", Call.State.StreamsRunning), FakeCall("2502", Call.State.Paused)).also { calls += it }
         addFails = { it.user == "2502" }
-        assertEquals("无法创建会议室", room.open(up.map { it.proxy }, muted = false))
+        assertEquals("无法创建会议室", zh(room.open(up.map { it.proxy }, muted = false)))
         assertEquals(listOf("2501"), removed)
         assertTrue(terminated.isEmpty())
         assertFalse(conferenceTerminated)
@@ -389,7 +392,7 @@ class ConferenceRoomTest {
     @Test
     fun `calls whose media are being agreed on are not taken into a room`() {
         val up = listOf(FakeCall("2501", Call.State.StreamsRunning), FakeCall("2502", Call.State.UpdatedByRemote)).also { calls += it }
-        assertEquals("请稍后再试", room.open(up.map { it.proxy }, muted = false))
+        assertEquals("请稍后再试", zh(room.open(up.map { it.proxy }, muted = false)))
         assertEquals(0, conferencesCreated)
     }
 
@@ -408,7 +411,7 @@ class ConferenceRoomTest {
     fun `nobody is called on a line that is switched off`() {
         openWith("2501")
         lineSwitchedOn = false
-        assertEquals("线路已停用", room.invite(listOf("2601")))
+        assertEquals("线路已停用", zh(room.invite(listOf("2601"))))
         lineSwitchedOn = true
         assertNull(room.invite(listOf("2601", "2602", "2603", "2604")))
         // Switched off while one waits for its turn: it is not called.

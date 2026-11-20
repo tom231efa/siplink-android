@@ -2,6 +2,8 @@ package com.sky.siplink.core
 
 import android.os.Handler
 import android.os.Looper
+import androidx.annotation.StringRes
+import com.sky.siplink.R
 import com.sky.siplink.core.CallLegs.Companion.live
 import com.sky.siplink.core.CallLegs.Companion.same
 import com.sky.siplink.core.CallSupport.isEnded
@@ -14,6 +16,7 @@ import com.sky.siplink.core.logic.OngoingNotice
 import com.sky.siplink.core.model.AudioRoute
 import com.sky.siplink.core.model.CallInfo
 import com.sky.siplink.core.model.CallPhase
+import com.sky.siplink.core.model.Phrase
 import com.sky.siplink.core.model.RoomReadings
 import com.sky.siplink.core.model.SideCall
 import com.sky.siplink.core.model.SupervisionMode
@@ -44,6 +47,7 @@ class CallManager(
     private val settings: SettingsStore,
     private val accounts: AccountManager,
     private val names: NameResolver,
+    private val texts: AppTexts,
     recordings: RecordingStore,
     roomMonitor: RoomMonitor,
 ) {
@@ -81,7 +85,7 @@ class CallManager(
         }
 
     private val handler = Handler(Looper.getMainLooper())
-    private val describer = CallDescriber(core, settings, accounts, names)
+    private val describer = CallDescriber(core, settings, accounts, names, texts)
     private val legs = CallLegs()
 
     private val autoAnswer = AutoAnswerer(
@@ -101,7 +105,7 @@ class CallManager(
         party = ::partyOf,
     ) { publish() }
 
-    private val room = ConferenceRoom(core, roomMonitor, ::partyOf, limit = { settings.current.roomLimit }, lineOn = accounts::isSwitchedOn) { publish() }
+    private val room = ConferenceRoom(core, roomMonitor, ::partyOf, limit = { settings.current.roomLimit }, lineOn = accounts::isSwitchedOn, render = texts::render) { publish() }
     private val transfer = CallTransfer(core, settings) { publish() }
     private val retry = CallRetry(handler, accounts, ::redial, ::retryGaveUp)
 
@@ -117,7 +121,7 @@ class CallManager(
 
         override fun describe(call: Call): CallInfo = this@CallManager.describe(call)
     }
-    private val follower = CallFollower(core, settings, legs, feed, handler, CallParts(describer, room, video, recorder, transfer, retry, autoAnswer))
+    private val follower = CallFollower(core, settings, texts, legs, feed, handler, CallParts(describer, room, video, recorder, transfer, retry, autoAnswer))
 
     /** A call out was placed again over the other server ([CallRetry]): its entry in the history goes, by its Call-ID. */
     var onSuperseded: ((String) -> Unit)? by follower::onSuperseded
@@ -129,28 +133,28 @@ class CallManager(
      * @return a user readable error, or null when the call was started
      */
     fun dial(target: String, accountId: String?, supervision: SupervisionMode? = null, video: Boolean = false): String? {
-        if (live(legs.current) != null || core.calls.any { !isEnded(it) }) return "已有通话正在进行"
+        if (live(legs.current) != null || core.calls.any { !isEnded(it) }) return say(R.string.call_busy_already)
         val account = accountId?.let(accounts::find) ?: core.defaultAccount
-        return invite(target, account, Pending(supervision, consultation = false), video && videoAllowed)
+        return invite(target, account, Pending(supervision, consultation = false), video && videoAllowed).said()
     }
 
     /** Puts the current call on hold and calls [target]: first step of an attended transfer. */
     fun startConsultation(target: String): String? {
-        val active = live(legs.current) ?: return "当前无通话"
-        if (legs.other != null) return "已有两路通话"
+        val active = live(legs.current) ?: return say(R.string.call_none)
+        if (legs.other != null) return say(R.string.call_two_already)
         val phase = phaseOf(active)
-        if (phase != CallPhase.CONNECTED && phase != CallPhase.HELD) return "通话接通后方可发起咨询"
-        return invite(target, active.params.account ?: core.defaultAccount, Pending(null, consultation = true))
+        if (phase != CallPhase.CONNECTED && phase != CallPhase.HELD) return say(R.string.call_consult_after_connect)
+        return invite(target, active.params.account ?: core.defaultAccount, Pending(null, consultation = true)).said()
     }
 
-    private fun invite(target: String, account: Account?, kind: Pending, video: Boolean = false): String? {
+    private fun invite(target: String, account: Account?, kind: Pending, video: Boolean = false): Phrase? {
         val cleaned = DialTarget.of(target)
-        if (cleaned.isEmpty()) return "请输入号码"
-        if (account == null) return "请先添加 SIP 账号"
+        if (cleaned.isEmpty()) return Phrase.of(R.string.call_enter_number)
+        if (account == null) return Phrase.of(R.string.call_add_account_first)
         // A line that is switched off stays out of use, even where the PBX would take its calls.
-        if (!accounts.isSwitchedOn(account)) return "线路已停用"
-        val address = account.normalizeSipUri(cleaned) ?: return "号码或地址无效"
-        val created = place(address, account, kind, video) ?: return "呼叫失败"
+        if (!accounts.isSwitchedOn(account)) return Phrase.of(R.string.call_line_off)
+        val address = account.normalizeSipUri(cleaned) ?: return Phrase.of(R.string.call_invalid_address)
+        val created = place(address, account, kind, video) ?: return Phrase.of(R.string.call_failed)
         retry.watch(created, inRoom = room.isOpen, consultation = kind.consultation)
         return null
     }
@@ -288,7 +292,7 @@ class CallManager(
 
     /** Sends a string of digits one after the other (a DTMF shortcut key). */
     fun sendDtmfs(digits: String): String? {
-        val call = live(legs.current)?.takeIf { it.state == Call.State.StreamsRunning } ?: return "仅可在通话中发送按键"
+        val call = live(legs.current)?.takeIf { it.state == Call.State.StreamsRunning } ?: return say(R.string.call_dtmf_in_call_only)
         call.sendDtmfs(digits.filter(Formatters::isDtmf))
         return null
     }
@@ -333,10 +337,10 @@ class CallManager(
     // ---------------------------------------------------------------- video
 
     /** Adds video to the current call, or ends it (re-INVITE). The room has none. */
-    fun toggleVideo(): String? = if (room.isOpen) "会议室不支持视频" else video.toggleVideo(live(legs.current))
+    fun toggleVideo(): String? = if (room.isOpen) say(R.string.call_room_no_video) else video.toggleVideo(live(legs.current)).said()
 
     /** Stops or starts sending the own camera; the picture of the other side keeps coming. */
-    fun toggleCamera(): String? = video.toggleCamera(live(legs.current))
+    fun toggleCamera(): String? = video.toggleCamera(live(legs.current)).said()
 
     /** Front and back camera, in turn. */
     fun switchCamera() = video.switchCamera(live(legs.current))
@@ -365,17 +369,17 @@ class CallManager(
     // ---------------------------------------------------------------- transfer / park
 
     /** Blind transfer: the PBX connects the other party to [target] and releases us. */
-    fun blindTransfer(target: String): String? = transfer.blind(live(legs.current), target)
+    fun blindTransfer(target: String): String? = transfer.blind(live(legs.current), target).said()
 
     /** Parks the current call: a blind transfer to the PBX parking extension. */
-    fun park(): String? = transfer.park(live(legs.current))
+    fun park(): String? = transfer.park(live(legs.current)).said()
 
     /** Second step of an attended transfer: connects the held party with the consulted one. */
     fun completeTransfer(): String? {
         val consulted = live(legs.current)
         val held = live(legs.other)
-        if (!legs.consulting || consulted == null || held == null) return "无待完成的转接"
-        return transfer.complete(consulted, held)
+        if (!legs.consulting || consulted == null || held == null) return say(R.string.call_no_pending_transfer)
+        return transfer.complete(consulted, held).said()
     }
 
     // ---------------------------------------------------------------- conference room
@@ -388,14 +392,14 @@ class CallManager(
      */
     fun openRoom(): String? {
         if (room.isOpen) return null
-        val first = live(legs.current) ?: return "当前无通话"
+        val first = live(legs.current) ?: return say(R.string.call_none)
         val phase = phaseOf(first)
-        if (phase != CallPhase.CONNECTED && phase != CallPhase.HELD) return "通话接通后方可开启会议室"
+        if (phase != CallPhase.CONNECTED && phase != CallPhase.HELD) return say(R.string.call_room_after_connect)
         val second = live(legs.other)?.takeIf { !isRinging(it) }
         val calls = listOfNotNull(first, second)
-        CallRules.roomRefusal(supervised = calls.any { metaOf(it).supervision != null }, transferring = transfer.moving)?.let { return it }
+        CallRules.roomRefusal(supervised = calls.any { metaOf(it).supervision != null }, transferring = transfer.moving)?.let { return say(it) }
         // Muting the call the user is talking in carries over to the room.
-        room.open(calls, muted = first.microphoneMuted)?.let { return it }
+        room.open(calls, muted = first.microphoneMuted)?.let { return texts.render(it) }
         recorder.onMerging(calls)
         legs.current = null
         if (second != null) legs.other = null
@@ -410,16 +414,16 @@ class CallManager(
      * @return a user readable error, or null when the calls were placed
      */
     fun inviteToRoom(targets: List<String>): String? =
-        targets.firstNotNullOfOrNull { CallRules.memberRefusal(it, settings.current.features) } ?: room.invite(targets)
+        targets.firstNotNullOfOrNull { CallRules.memberRefusal(it, settings.current.features) }?.let(::say) ?: room.invite(targets).said()
 
     /** Brings the user back into the room's sound after another app had taken it ([com.sky.siplink.core.model.RoomInfo.away]). */
-    fun rejoinRoom(): String? = room.rejoin().also { publish() }
+    fun rejoinRoom(): String? = room.rejoin().also { publish() }.said()
 
     /** Answers the waiting call into the room. @return a user readable error, or null */
     fun joinRoom(): String? {
         val waiting = legs.other?.takeIf(::isRinging) ?: return null
         autoAnswer.cancel()
-        room.join(waiting)?.let { return it }
+        room.join(waiting)?.let { return texts.render(it) }
         legs.other = null
         host?.dismissIncomingCall()
         publish()
@@ -430,7 +434,7 @@ class CallManager(
     fun hangUpMember(id: Long) = room.hangUp(id)
 
     /** Calls a member of the room again that was not called, or whose call failed, after an answer of the PBX. @return a user readable error, or null */
-    fun retryMember(id: Long): String? = room.retry(id)
+    fun retryMember(id: Long): String? = room.retry(id).said()
 
     // ---------------------------------------------------------------- core events
 
@@ -447,6 +451,17 @@ class CallManager(
     fun onCallStateChanged(call: Call, callState: Call.State?, message: String) = follower.onCallStateChanged(call, callState, message)
 
     // ---------------------------------------------------------------- helpers
+
+    /** The answers of the commands are said in the app's language of the moment. */
+    private fun say(@StringRes id: Int): String = texts.get(id)
+
+    private fun Phrase?.said(): String? = this?.let(texts::render)
+
+    /** The language of the app changed: the snapshot is rendered again, and so is the call being announced. */
+    fun onLanguageChanged() {
+        onNamesFound()
+        follower.onLanguageChanged()
+    }
 
     private fun metaOf(call: Call): CallMeta = legs.metaOf(call)
 
@@ -474,8 +489,11 @@ class CallManager(
 
     private fun publish(): CallInfo? {
         val previous = state.value
-        val info = room.snapshot()?.let { describer.roomInfo(it, room, previous, live(legs.other)?.takeIf(::isRinging)?.let(::partyOf)) }
-            ?: legs.current?.let(::callInfo) ?: return null
+        val info = room.snapshot()?.let { room ->
+            // The room says no reason; a call says its own ([callInfo]).
+            legs.endReason = null
+            describer.roomInfo(room, this.room, previous, live(legs.other)?.takeIf(::isRinging)?.let(::partyOf))
+        } ?: legs.current?.let(::callInfo) ?: return null
         state.value = info
         // The notification shows the call or the room: posted again when what it shows changes.
         if (OngoingNotice.of(previous) != OngoingNotice.of(info)) host?.onCallActivityChanged()
@@ -485,9 +503,10 @@ class CallManager(
     /** The current call with what stands beside it. */
     private fun callInfo(call: Call): CallInfo {
         val second = live(legs.other)
-        val described = describe(call)
-        return described.copy(
-            endReason = transfer.endReason() ?: described.endReason,
+        val reason = transfer.endReason() ?: metaOf(call).endReason
+        legs.endReason = reason
+        return describe(call).copy(
+            endReason = reason?.let(texts::render),
             heldCall = second?.takeIf { !isRinging(it) }?.let(::partyOf),
             waitingCall = second?.takeIf(::isRinging)?.let(::partyOf),
             consulting = legs.consulting && second != null,

@@ -118,24 +118,24 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
 
         // Settings: the locked switches are there to look at, the user's own ones work.
         tap("设置")
-        see(ManagedConfig.LOCKED)
-        absent(ManagedConfig.NOTICE)
+        see(zh(ManagedConfig.LOCKED))
+        absent(zh(ManagedConfig.NOTICE))
         // The lock says why when tapped.
-        tap(ManagedConfig.LOCKED)
-        await("the lock to say why") { shown(ManagedConfig.NOTICE).isNotEmpty() }
-        await("the notice to go") { shown(ManagedConfig.NOTICE).isEmpty() }
+        tap(zh(ManagedConfig.LOCKED))
+        await("the lock to say why") { shown(zh(ManagedConfig.NOTICE)).isNotEmpty() }
+        await("the notice to go") { shown(zh(ManagedConfig.NOTICE)).isEmpty() }
         locked("视频通话", "后台保持在线")
         // The pages behind them open to be looked at.
         usable("免打扰", "深色", "顶部", "电池优化", "录音", "对讲与自动接听")
         tap("录音")
-        see(ManagedConfig.LOCKED)
+        see(zh(ManagedConfig.LOCKED))
         locked("通话录音", "默认录音")
         // The recordings and how many are kept are the user's own.
         usable("录音文件", "1000")
         picture("recording")
         back()
         tap("对讲与自动接听")
-        see(ManagedConfig.LOCKED)
+        see(zh(ManagedConfig.LOCKED))
         locked("自动接听对讲呼叫", "对讲使用扬声器", "自动接听", "立即", "30 秒")
         picture("auto-answer")
         back()
@@ -160,14 +160,14 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
         // The accounts: listed, with nothing to add, import or switch; one of them opens to be read.
         tap("SIP 账号")
         see(LINE)
-        see(ManagedConfig.LOCKED)
+        see(zh(ManagedConfig.LOCKED))
         absent("批量导入账号")
         assertTrue("There is a button to add an account", namelessButtons().isEmpty())
         switchesAreLocked()
         picture("accounts")
         tap(LINE)
         see("账号详情")
-        see(ManagedConfig.LOCKED)
+        see(zh(ManagedConfig.LOCKED))
         locked("账号名称（可选）", "用户名", "密码", "域名 / 服务器", "端口", "显示名称（可选）", "UDP", "TLS", "启用此账号")
         // Without a password of its own the configuration lets the stored ones be looked at.
         assertFalse("The password is on the screen", passwordOnScreen(env.sipPassword))
@@ -180,20 +180,20 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
 
         // Call handling, feature codes, codecs.
         tap("高级设置")
-        see(ManagedConfig.LOCKED)
+        see(zh(ManagedConfig.LOCKED))
         locked("软件", "服务器", "呼叫等待", "拒接匿名来电", "RFC 2833", "SIP INFO", "无条件前转", "遇忙前转", "无应答前转", "无应答等待时间（秒）")
         locked("自适应速率控制", "回声消除", "允许 IPv6", "客户端名称（User-Agent）")
         see("免打扰方式")
         picture("advanced")
         back()
         tap("功能码")
-        see(ManagedConfig.LOCKED)
+        see(zh(ManagedConfig.LOCKED))
         locked("对讲", "驻留", "语音信箱", "关闭免打扰")
         absent("恢复默认")
         picture("feature-codes")
         back()
         tap("编码")
-        see(ManagedConfig.LOCKED)
+        see(zh(ManagedConfig.LOCKED))
         see("音频")
         switchesAreLocked()
         val arrows = nodes().filter { it.contentDescription?.startsWith("提高") == true || it.contentDescription?.startsWith("降低") == true }
@@ -207,7 +207,7 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
 
         // TLS: the CA is listed and stays, verification and media encryption are not to be touched.
         tap("TLS 与 CA 证书")
-        see(ManagedConfig.LOCKED)
+        see(zh(ManagedConfig.LOCKED))
         locked("校验服务器证书", "校验主机名", "关闭", "优先", "强制")
         assertTrue("The CA is not listed", nodes().any { it.text?.startsWith("签发者") == true })
         absent("导入 CA 证书", "移除证书")
@@ -220,7 +220,7 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
         onMain { engine.directory.search(directory.id, "100") }
         await("the answer of the directory in the local copy") { engine.directory.cacheStats.value.entries > 0 }
         tap("LDAP 通讯录")
-        see(ManagedConfig.LOCKED)
+        see(zh(ManagedConfig.LOCKED))
         usable("清空缓存")
         absent("添加通讯录")
         picture("directories")
@@ -228,7 +228,7 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
         await("the local copy to be emptied") { engine.directory.cacheStats.value.entries == 0L }
         tap(DIRECTORY)
         see("通讯录详情")
-        see(ManagedConfig.LOCKED)
+        see(zh(ManagedConfig.LOCKED))
         locked("名称（可选）", "服务器地址", "搜索基准", "不加密", "StartTLS", "匿名", "用户名", "密码", "线路", "来电显示姓名", "启用此通讯录")
         assertFalse("The password is on the screen", passwordOnScreen(env.ldapPassword))
         see("显示密码")
@@ -262,9 +262,9 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
         back()
         // Forwarding is part of what was handed out: its key says so and switches nothing.
         tap(FORWARD_KEY)
-        await("the key to say why it does nothing") { shown(ManagedConfig.NOTICE).isNotEmpty() }
+        await("the key to say why it does nothing") { shown(zh(ManagedConfig.NOTICE)).isNotEmpty() }
         assertEquals("", engine.settings.current.forwardAlways)
-        await("the notice to go") { shown(ManagedConfig.NOTICE).isEmpty() }
+        await("the notice to go") { shown(zh(ManagedConfig.NOTICE)).isEmpty() }
 
         // Next to them the user makes keys of their own, which stay theirs to open and to remove.
         tap("新建快捷键")
@@ -277,7 +277,7 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
         picture("shortcuts-own")
         tap("编辑")
         tap(SPEED_KEY)
-        await("the key that was handed out to say why it does not open") { shown(ManagedConfig.NOTICE).isNotEmpty() }
+        await("the key that was handed out to say why it does not open") { shown(zh(ManagedConfig.NOTICE)).isNotEmpty() }
         absent("编辑快捷键")
         tap(OWN_KEY)
         see("编辑快捷键")
@@ -292,9 +292,9 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
         // Switched off while the app is shown, the screens take input again and everything that
         // was left out is back: none of it was missing above for being called something else.
         tap("设置")
-        see(ManagedConfig.LOCKED)
+        see(zh(ManagedConfig.LOCKED))
         onMain { engine.lock.setManaged(false) }
-        await("the lock to go") { shown(ManagedConfig.LOCKED).isEmpty() }
+        await("the lock to go") { shown(zh(ManagedConfig.LOCKED)).isEmpty() }
         usable("视频通话", "后台保持在线")
         tap("录音")
         usable("通话录音", "默认录音")
@@ -459,7 +459,7 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
         absent("添加 SIP 账号")
         picture("empty-dialer")
         tap("暂无 SIP 账号")
-        await("the dial pad to say why") { shown(ManagedConfig.NOTICE).isNotEmpty() }
+        await("the dial pad to say why") { shown(zh(ManagedConfig.NOTICE)).isNotEmpty() }
         tap("快捷键")
         see("暂无快捷键")
         see(ownKeysCounter(0))
@@ -472,13 +472,13 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
         tap("设置")
         tap("SIP 账号")
         see("暂无 SIP 账号")
-        see(ManagedConfig.LOCKED)
+        see(zh(ManagedConfig.LOCKED))
         absent("添加账号", "批量导入账号")
         picture("empty-accounts")
         back()
         tap("LDAP 通讯录")
         see("尚未配置 LDAP 通讯录")
-        see(ManagedConfig.LOCKED)
+        see(zh(ManagedConfig.LOCKED))
         absent("添加通讯录")
         picture("empty-directories")
         back()

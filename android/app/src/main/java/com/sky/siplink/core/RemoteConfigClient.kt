@@ -2,8 +2,10 @@ package com.sky.siplink.core
 
 import android.annotation.SuppressLint
 import com.sky.siplink.BuildConfig
+import com.sky.siplink.R
 import com.sky.siplink.core.logic.CertificatePin
 import com.sky.siplink.core.logic.RemoteSync
+import com.sky.siplink.core.model.Phrase
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
@@ -48,8 +50,8 @@ internal object RemoteConfigClient {
      */
     class Answer(val status: Int, val body: String, val retryAfterSeconds: Long?, val pinned: X509Certificate?)
 
-    /** The request did not get an answer; [message] says why, for the user. */
-    class Failure(message: String) : IOException(message)
+    /** The request did not get an answer; [reason] says why, for the user. */
+    class Failure(val reason: Phrase) : IOException()
 
     /**
      * Posts [body] to [url].
@@ -90,7 +92,7 @@ internal object RemoteConfigClient {
             val status = connection.responseCode
             val answer = if (status == HttpURLConnection.HTTP_OK) {
                 val read = connection.inputStream.use { it.readAtMost(MAX_ANSWER_BYTES + 1) }
-                if (read.size > MAX_ANSWER_BYTES) throw Failure("平台响应过长")
+                if (read.size > MAX_ANSWER_BYTES) throw Failure(Phrase.of(R.string.remote_answer_too_long))
                 read.toString(Charsets.UTF_8)
             } else {
                 ""

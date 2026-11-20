@@ -1,5 +1,8 @@
 package com.sky.siplink.core.logic
 
+import com.sky.siplink.R
+import com.sky.siplink.core.model.Phrase
+
 /**
  * The name the app gives itself in the User-Agent header of its SIP requests: by default the SIP
  * stack's and then its own, or one the user (or a remote configuration) sets.
@@ -17,21 +20,14 @@ object UserAgent {
     private const val APP_NAME = "SipLink"
 
     /**
-     * @param subject what the error is about
-     * @param message what is wrong with it, as shown right under the field
+     * @param message what is wrong, as shown right under the field
+     * @param full the error where no field stands next to it (a remote configuration's errors): it names the value
      */
-    enum class Error(val subject: String, val message: String) {
-        TOO_LONG(SUBJECT, "最多 $MAX_LENGTH 个字符"),
-        NOT_PRINTABLE_ASCII(SUBJECT, "仅限可打印的 ASCII 字符"),
-        SPACE_AT_ENDS(SUBJECT, "首尾不能包含空格"),
-        ;
-
-        /** The error where no field stands next to it. */
-        val full: String get() = subject + message
+    enum class Error(val message: Phrase, val full: Phrase) {
+        TOO_LONG(FormRules.maxChars(MAX_LENGTH), Phrase.count(R.plurals.user_agent_error_too_long, MAX_LENGTH)),
+        NOT_PRINTABLE_ASCII(Phrase.of(R.string.user_agent_error_ascii), Phrase.of(R.string.user_agent_error_ascii_full)),
+        SPACE_AT_ENDS(Phrase.of(R.string.user_agent_error_spaces), Phrase.of(R.string.user_agent_error_spaces_full)),
     }
-
-    /** What a remote configuration's errors call the value. */
-    private const val SUBJECT = "客户端名称（User-Agent）"
 
     /** What is wrong with [value] as a name of the user's own; null when nothing. Empty stands for the default name. */
     fun error(value: String): Error? = when {

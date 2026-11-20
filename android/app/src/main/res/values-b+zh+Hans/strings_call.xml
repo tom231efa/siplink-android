@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Calls: what the commands answer, why a call ended, the PBX features. -->
+<resources>
+    <string name="call_busy_already">已有通话正在进行</string>
+    <string name="call_none">当前无通话</string>
+    <string name="call_two_already">已有两路通话</string>
+    <string name="call_consult_after_connect">通话接通后方可发起咨询</string>
+    <string name="call_enter_number">请输入号码</string>
+    <string name="call_add_account_first">请先添加 SIP 账号</string>
+    <string name="call_line_off">线路已停用</string>
+    <string name="call_invalid_address">号码或地址无效</string>
+    <string name="call_failed">呼叫失败</string>
+    <string name="call_dtmf_in_call_only">仅可在通话中发送按键</string>
+    <string name="call_room_no_video">会议室不支持视频</string>
+    <string name="call_no_pending_transfer">无待完成的转接</string>
+    <string name="call_room_after_connect">通话接通后方可开启会议室</string>
+    <string name="call_room_transferring">转接进行中</string>
+    <string name="call_room_supervised">监听通话不能加入会议室</string>
+    <string name="call_withheld">匿名来电</string>
+
+    <!-- Why a call ended -->
+    <string name="call_ended">通话结束</string>
+    <string name="call_hung_up">已挂断</string>
+    <string name="call_cancelled">已取消</string>
+    <string name="call_end_busy">对方正忙</string>
+    <string name="call_end_declined">对方已拒绝</string>
+    <string name="call_end_not_found">号码不存在</string>
+    <string name="call_end_not_answered">无人接听</string>
+    <string name="call_end_no_response">对方无响应</string>
+    <string name="call_end_dnd">对方已开启免打扰</string>
+    <string name="call_end_unavailable">对方暂时无法接通</string>
+    <string name="call_end_forbidden">无权呼叫</string>
+    <string name="call_end_network">网络连接失败</string>
+    <string name="call_end_media">媒体协商失败</string>
+    <string name="call_no_sound">未收到对方声音</string>
+    <string name="call_server_silent">服务器无响应</string>
+
+    <!-- Transfer and park -->
+    <string name="call_transfer_after_connect">通话接通后方可转接</string>
+    <string name="call_enter_transfer_number">请输入转接号码</string>
+    <string name="call_transfer_after_answer">对方接听后方可转接</string>
+    <string name="call_parked">通话已驻留</string>
+    <string name="call_transferred">转接成功</string>
+    <string name="call_transfer_send_failed">转接请求发送失败</string>
+
+    <!-- Video -->
+    <string name="call_video_after_connect">通话接通后方可开启视频</string>
+    <string name="call_video_not_supported">此通话不支持视频</string>
+    <string name="call_cannot_change">无法更改通话</string>
+    <string name="call_camera_after_connect">通话接通后方可使用摄像头</string>
+    <string name="call_no_video">此通话无视频</string>
+    <string name="call_camera_permission">需要摄像头权限</string>
+
+    <!-- PBX features reached by feature codes -->
+    <string name="feature_intercom">对讲</string>
+    <string name="feature_listen">监听</string>
+    <string name="feature_whisper">耳语</string>
+    <string name="feature_barge">强插</string>
+    <string name="feature_force_hang_up">强拆</string>
+    <string name="feature_pickup">代接</string>
+    <string name="feature_voicemail">语音信箱</string>
+    <string name="feature_group_pickup">同组代接</string>
+    <string name="feature_park">驻留</string>
+    <string name="feature_dnd_on">开启免打扰</string>
+    <string name="feature_dnd_off">关闭免打扰</string>
+    <string name="feature_to">%1$s %2$s</string>
+    <string name="feature_code_missing">未配置“%1$s”功能码</string>
+</resources>

@@ -47,7 +47,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -58,6 +61,7 @@ import com.sky.siplink.core.model.ShortcutAction
 import com.sky.siplink.engine
 import com.sky.siplink.ui.components.FadingText
 import com.sky.siplink.ui.components.pressScale
+import com.sky.siplink.ui.components.text
 
 /**
  * The board of keys with its search field and category chips. Used by the shortcut screen and,
@@ -80,7 +84,9 @@ internal fun ShortcutBoard(
     modifier: Modifier = Modifier,
     onMove: ((movedId: Long, targetId: Long) -> Unit)? = null,
 ) {
-    val engine = LocalContext.current.engine
+    val context = LocalContext.current
+    val resources = LocalResources.current
+    val engine = context.engine
     val settings by engine.settings.settings.collectAsStateWithLifecycle()
     // Read from the engine rather than the screen: the board is also shown during a call.
     val managed by engine.lock.managed.collectAsStateWithLifecycle()
@@ -88,7 +94,8 @@ internal fun ShortcutBoard(
 
     // 2000 keys filter quickly, but not on every recomposition.
     val categories = remember(all) { ShortcutRules.categories(all) }
-    val shown = remember(all, query, category) { ShortcutRules.filter(all, query, category) }
+    val configuration = LocalConfiguration.current
+    val shown = remember(all, query, category, configuration) { ShortcutRules.filter(all, query, category) { resources.getString(it.label) } }
     LaunchedEffect(categories) {
         if (category != null && categories.none { it.first == category }) onCategoryChange(null)
     }
@@ -237,7 +244,7 @@ private fun ShortcutKey(
         color = container,
         border = if (editing) BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant) else null,
     ) {
-        Box(Modifier.clickable(onClickLabel = shortcut.action.label, onClick = onClick)) {
+        Box(Modifier.clickable(onClickLabel = stringResource(shortcut.action.label), onClick = onClick)) {
             Column(
                 Modifier
                     .fillMaxSize()
@@ -254,7 +261,7 @@ private fun ShortcutKey(
                 )
                 Spacer(Modifier.height(6.dp))
                 FadingText(
-                    shortcut.label,
+                    ShortcutRules.title(shortcut).text(),
                     style = MaterialTheme.typography.labelLarge,
                     maxLines = 2,
                     textAlign = TextAlign.Center,

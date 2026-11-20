@@ -2,9 +2,11 @@ package com.sky.siplink.core
 
 import android.content.Context
 import android.util.Log
+import com.sky.siplink.R
 import com.sky.siplink.core.logic.CertificateTools
 import com.sky.siplink.core.model.CertInfo
 import com.sky.siplink.core.model.MediaSecurity
+import com.sky.siplink.core.model.Phrase
 import com.sky.siplink.core.model.Settings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -27,7 +29,7 @@ class TlsManager(context: Context, private val core: Core, private val lock: Con
     sealed interface ImportResult {
         data class Added(val count: Int) : ImportResult
         data object AlreadyTrusted : ImportResult
-        data class Invalid(val reason: String) : ImportResult
+        data class Invalid(val reason: Phrase) : ImportResult
 
         /** Nothing was looked at: the configuration is managed. */
         data object Managed : ImportResult
@@ -59,7 +61,7 @@ class TlsManager(context: Context, private val core: Core, private val lock: Con
         val parsed = try {
             CertificateTools.parse(data)
         } catch (e: Exception) {
-            return ImportResult.Invalid("无效的 X.509 证书文件（支持 PEM / CRT / CER / DER）")
+            return ImportResult.Invalid(Phrase.of(R.string.tls_invalid_file))
         }
         val (merged, added) = CertificateTools.merge(userCertificates, parsed)
         if (added == 0) return ImportResult.AlreadyTrusted
@@ -69,7 +71,7 @@ class TlsManager(context: Context, private val core: Core, private val lock: Con
             ImportResult.Added(added)
         } catch (e: Exception) {
             Log.e(TAG, "Unable to store imported CA", e)
-            ImportResult.Invalid("证书保存失败：${e.message}")
+            ImportResult.Invalid(Phrase.of(R.string.tls_save_failed, e.message.orEmpty()))
         }
     }
 

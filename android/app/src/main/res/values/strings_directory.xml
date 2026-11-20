@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- LDAP directories. -->
+<resources>
+    <plurals name="directory_limit">
+        <item quantity="one">At most %1$s directory</item>
+        <item quantity="other">At most %1$s directories</item>
+    </plurals>
+    <string name="directory_error_name_taken">Name already exists</string>
+    <plurals name="directory_error_name_too_long">
+        <item quantity="one">Name: at most %1$s character</item>
+        <item quantity="other">Name: at most %1$s characters</item>
+    </plurals>
+    <string name="directory_error_host_empty">Server address is required</string>
+    <string name="directory_error_host_invalid">Server address must be host[:port]</string>
+    <string name="directory_error_ldaps">ldaps:// is not supported; use StartTLS</string>
+    <string name="directory_error_host_ldaps">Server address: ldaps:// is not supported; use StartTLS</string>
+    <string name="directory_error_starttls_name">StartTLS needs a host name</string>
+    <string name="directory_error_host_starttls_name">Server address: StartTLS needs a host name</string>
+    <string name="directory_error_port_range">Port must be 1–65535</string>
+    <string name="directory_error_host_port_range">Server address: port must be 1–65535</string>
+    <string name="directory_error_user_for_password">Required (a password is set)</string>
+    <string name="directory_error_user_for_password_full">User name is required (a password is set)</string>
+    <string name="directory_error_base_dn_empty">Base DN is required</string>
+    <string name="directory_error_max_results_range">Must be 1–%1$s</string>
+    <string name="directory_error_max_results_invalid">Maximum results must be 1–%1$s</string>
+    <string name="directory_error_name_attributes_empty">Name attributes are required</string>
+    <string name="directory_error_number_attributes_empty">Number attributes are required</string>
+    <string name="directory_error_placeholder">Must contain %</string>
+    <string name="directory_error_name_filter_placeholder">Name filter must contain %</string>
+    <string name="directory_error_number_filter_placeholder">Number filter must contain %</string>
+</resources>

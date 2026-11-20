@@ -345,7 +345,7 @@ class ConferenceTest : RoomTestBase("conference") {
         awaitCall("the call to wait") { it.waitingCall != null }
         // Answered from its notification: through the call screen, which says why that cannot be.
         context.startActivity(Intent(context, CallActivity::class.java).setAction(CallActivity.ACTION_ANSWER).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-        see(RoomRules.refusal(present = 2, adding = 1, limit = 2)!!)
+        see(zh(RoomRules.refusal(present = 2, adding = 1, limit = 2)!!))
         never("the waiting call answered or gone", QUIET_WINDOW_MS) { call()?.waitingCall == null }
         assertEquals(2, room()!!.present)
         tap("拒接")
@@ -357,8 +357,8 @@ class ConferenceTest : RoomTestBase("conference") {
         callFirstMember()
         val first = onMain { engine.core.currentCall!! }
         // A room past the call manager, asked to take the same call twice: the SDK takes it once only.
-        val other = onMain { ConferenceRoom(engine.core, RoomMonitor(context), { CallSupport.side(it.remoteAddress) }, { RoomRules.LIMIT }, { true }) {} }
-        assertEquals("无法创建会议室", onMain { other.open(listOf(first, first), muted = true) })
+        val other = onMain { ConferenceRoom(engine.core, RoomMonitor(context), { CallSupport.side(it.remoteAddress) }, { RoomRules.LIMIT }, { true }, engine.texts::render) {} }
+        assertEquals("无法创建会议室", onMain { other.open(listOf(first, first), muted = true) }?.let(::zh))
         assertEquals(RoomRules.MAX_CALLS_WITHOUT_ROOM, onMain { engine.core.maxCalls })
         // Taken out of the conference again, the call goes on, on hold; no conference is left.
         await("the call to be out of the conference") { onMain { first.conference == null } }

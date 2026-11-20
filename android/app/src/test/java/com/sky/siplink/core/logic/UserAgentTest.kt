@@ -1,5 +1,6 @@
 package com.sky.siplink.core.logic
 
+import com.sky.siplink.zh
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -23,7 +24,7 @@ class UserAgentTest {
         assertEquals(UserAgent.Error.SPACE_AT_ENDS, UserAgent.error(" SipLink"))
         assertEquals(UserAgent.Error.SPACE_AT_ENDS, UserAgent.error("SipLink "))
         assertEquals(UserAgent.Error.SPACE_AT_ENDS, UserAgent.error(" "))
-        assertEquals("客户端名称（User-Agent）首尾不能包含空格", UserAgent.Error.SPACE_AT_ENDS.full)
+        assertEquals("客户端名称（User-Agent）首尾不能包含空格", zh(UserAgent.Error.SPACE_AT_ENDS.full))
     }
 
     /** What the SIP core makes of a name and a version: `name/version`, or the name alone without a version. */

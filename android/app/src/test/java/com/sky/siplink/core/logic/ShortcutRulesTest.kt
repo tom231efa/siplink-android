@@ -1,8 +1,11 @@
 package com.sky.siplink.core.logic
 
+import com.sky.siplink.core.model.Phrase
 import com.sky.siplink.core.model.Shortcut
 import com.sky.siplink.core.model.ShortcutAction
 import com.sky.siplink.core.model.ShortcutIcon
+import com.sky.siplink.zh
+import com.sky.siplink.zhReserved
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -10,6 +13,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ShortcutRulesTest {
+    private fun zhType(action: ShortcutAction): String = zh(Phrase.of(action.label))!!
+
     private fun key(
         label: String = "前台",
         number: String = "1001",
@@ -22,20 +27,20 @@ class ShortcutRulesTest {
     @Test
     fun `a category cannot take a name that is in use or that a list needs`() {
         val taken = listOf("销售", "Sales")
-        assertNull(ShortcutRules.categoryNameError("门禁", taken))
-        assertNull(ShortcutRules.categoryNameError(" 门禁 ", taken))
-        assertEquals(ShortcutRules.Error.CATEGORY_EMPTY, ShortcutRules.categoryNameError("  ", taken))
-        assertEquals(ShortcutRules.Error.CATEGORY_TAKEN, ShortcutRules.categoryNameError("销售", taken))
-        assertEquals(ShortcutRules.Error.CATEGORY_TAKEN, ShortcutRules.categoryNameError(" sales ", taken))
-        assertEquals(ShortcutRules.Error.CATEGORY_RESERVED, ShortcutRules.categoryNameError("未分类", taken))
-        assertEquals(ShortcutRules.Error.CATEGORY_RESERVED, ShortcutRules.categoryNameError("全部", taken))
-        assertEquals(ShortcutRules.Error.CATEGORY_RESERVED, ShortcutRules.categoryNameError("新建分类", taken))
+        assertNull(ShortcutRules.categoryNameError("门禁", taken, zhReserved))
+        assertNull(ShortcutRules.categoryNameError(" 门禁 ", taken, zhReserved))
+        assertEquals(ShortcutRules.Error.CATEGORY_EMPTY, ShortcutRules.categoryNameError("  ", taken, zhReserved))
+        assertEquals(ShortcutRules.Error.CATEGORY_TAKEN, ShortcutRules.categoryNameError("销售", taken, zhReserved))
+        assertEquals(ShortcutRules.Error.CATEGORY_TAKEN, ShortcutRules.categoryNameError(" sales ", taken, zhReserved))
+        assertEquals(ShortcutRules.Error.CATEGORY_RESERVED, ShortcutRules.categoryNameError("未分类", taken, zhReserved))
+        assertEquals(ShortcutRules.Error.CATEGORY_RESERVED, ShortcutRules.categoryNameError("全部", taken, zhReserved))
+        assertEquals(ShortcutRules.Error.CATEGORY_RESERVED, ShortcutRules.categoryNameError("新建分类", taken, zhReserved))
         assertEquals(
             ShortcutRules.Error.CATEGORY_TOO_LONG,
-            ShortcutRules.categoryNameError("a".repeat(ShortcutRules.MAX_CATEGORY_LENGTH + 1), taken),
+            ShortcutRules.categoryNameError("a".repeat(ShortcutRules.MAX_CATEGORY_LENGTH + 1), taken, zhReserved),
         )
         // Also where no dialog asks: in an import.
-        assertEquals(listOf(ShortcutRules.Error.CATEGORY_RESERVED), ShortcutRules.validate(key(category = "全部")))
+        assertEquals(listOf(ShortcutRules.Error.CATEGORY_RESERVED), ShortcutRules.validate(key(category = "全部"), zhReserved))
     }
 
     @Test
@@ -60,7 +65,9 @@ class ShortcutRulesTest {
         val named = ShortcutRules.normalize(key(label = "  前台 ", number = " 1001 ", category = " 常用 ", line = " 总机 "))
         assertEquals(key(label = "前台", number = "1001", category = "常用", line = "总机"), named)
         assertEquals("*801005", ShortcutRules.normalize(key(label = " ", number = "*801005")).label)
-        assertEquals("免打扰", ShortcutRules.normalize(key(label = "", number = "", action = ShortcutAction.DND)).label)
+        val dnd = ShortcutRules.normalize(key(label = "", number = "", action = ShortcutAction.DND))
+        assertEquals("", dnd.label)
+        assertEquals("免打扰", zh(ShortcutRules.title(dnd)))
     }
 
     @Test
@@ -77,9 +84,9 @@ class ShortcutRulesTest {
     @Test
     fun `every type but do not disturb needs a number`() {
         for (action in ShortcutAction.entries - ShortcutAction.DND) {
-            assertEquals(action.name, listOf(ShortcutRules.Error.NUMBER_EMPTY), ShortcutRules.validate(key(number = "", action = action)))
+            assertEquals(action.name, listOf(ShortcutRules.Error.NUMBER_EMPTY), ShortcutRules.validate(key(number = "", action = action), zhReserved))
         }
-        assertTrue(ShortcutRules.validate(key(number = "", action = ShortcutAction.DND)).isEmpty())
+        assertTrue(ShortcutRules.validate(key(number = "", action = ShortcutAction.DND), zhReserved).isEmpty())
     }
 
     @Test
@@ -95,11 +102,11 @@ class ShortcutRulesTest {
 
     @Test
     fun `feature codes and sip addresses are numbers and dtmf keys are digits star and hash`() {
-        assertTrue(ShortcutRules.validate(key(number = "*801005")).isEmpty())
-        assertTrue(ShortcutRules.validate(key(number = "sip:alice@example.org")).isEmpty())
-        assertEquals(listOf(ShortcutRules.Error.NUMBER_INVALID), ShortcutRules.validate(key(number = "10 01")))
-        assertTrue(ShortcutRules.validate(key(number = "#9*0", action = ShortcutAction.DTMF)).isEmpty())
-        assertEquals(listOf(ShortcutRules.Error.DTMF_INVALID), ShortcutRules.validate(key(number = "12a", action = ShortcutAction.DTMF)))
+        assertTrue(ShortcutRules.validate(key(number = "*801005"), zhReserved).isEmpty())
+        assertTrue(ShortcutRules.validate(key(number = "sip:alice@example.org"), zhReserved).isEmpty())
+        assertEquals(listOf(ShortcutRules.Error.NUMBER_INVALID), ShortcutRules.validate(key(number = "10 01"), zhReserved))
+        assertTrue(ShortcutRules.validate(key(number = "#9*0", action = ShortcutAction.DTMF), zhReserved).isEmpty())
+        assertEquals(listOf(ShortcutRules.Error.DTMF_INVALID), ShortcutRules.validate(key(number = "12a", action = ShortcutAction.DTMF), zhReserved))
     }
 
     @Test
@@ -110,6 +117,7 @@ class ShortcutRulesTest {
                 number = "1".repeat(ShortcutRules.MAX_NUMBER_LENGTH + 1),
                 category = "c".repeat(ShortcutRules.MAX_CATEGORY_LENGTH + 1),
             ),
+            zhReserved,
         )
         assertEquals(
             setOf(ShortcutRules.Error.LABEL_TOO_LONG, ShortcutRules.Error.NUMBER_TOO_LONG, ShortcutRules.Error.CATEGORY_TOO_LONG),
@@ -125,13 +133,13 @@ class ShortcutRulesTest {
             key("开门", "#9", ShortcutAction.DTMF, "门禁", id = 3),
             key("转总机", "1000", ShortcutAction.BLIND_TRANSFER, "常用", id = 4),
         )
-        assertEquals(all, ShortcutRules.filter(all, "", null))
-        assertEquals(listOf(1L, 4L), ShortcutRules.filter(all, " ", "常用").map { it.id })
-        assertEquals(listOf(2L), ShortcutRules.filter(all, "*80", null).map { it.id })
-        assertEquals(listOf(2L), ShortcutRules.filter(all, "对讲", null).map { it.id })
-        assertEquals(listOf(4L), ShortcutRules.filter(all, "盲转", null).map { it.id })
-        assertEquals(listOf(3L), ShortcutRules.filter(all, "门", null).map { it.id })
-        assertEquals(emptyList<Long>(), ShortcutRules.filter(all, "开门", "常用").map { it.id })
+        assertEquals(all, ShortcutRules.filter(all, "", null, typeName = ::zhType))
+        assertEquals(listOf(1L, 4L), ShortcutRules.filter(all, " ", "常用", typeName = ::zhType).map { it.id })
+        assertEquals(listOf(2L), ShortcutRules.filter(all, "*80", null, typeName = ::zhType).map { it.id })
+        assertEquals(listOf(2L), ShortcutRules.filter(all, "对讲", null, typeName = ::zhType).map { it.id })
+        assertEquals(listOf(4L), ShortcutRules.filter(all, "盲转", null, typeName = ::zhType).map { it.id })
+        assertEquals(listOf(3L), ShortcutRules.filter(all, "门", null, typeName = ::zhType).map { it.id })
+        assertEquals(emptyList<Long>(), ShortcutRules.filter(all, "开门", "常用", typeName = ::zhType).map { it.id })
     }
 
     @Test
@@ -162,7 +170,7 @@ class ShortcutRulesTest {
             "只有名称",
             "\"没关引号,1004",
         ).joinToString("\n")
-        val parsed = ShortcutRules.decode(text, firstId = 10)
+        val parsed = ShortcutRules.decode(text, firstId = 10, reserved = zhReserved)
         assertEquals(
             listOf(
                 key("前台", "1001", id = 10),
@@ -176,7 +184,7 @@ class ShortcutRulesTest {
 
     @Test
     fun `an icon is written as a word and read back`() {
-        val parsed = ShortcutRules.decode("开门,#9,dtmf,门禁,,door\n仓库,*801005,,,,仓库\n没有图标,1001\n坏图标,1,,,,rocket")
+        val parsed = ShortcutRules.decode("开门,#9,dtmf,门禁,,door\n仓库,*801005,,,,仓库\n没有图标,1001\n坏图标,1,,,,rocket", reserved = zhReserved)
         assertEquals(listOf(ShortcutIcon.DOOR, ShortcutIcon.WAREHOUSE, null), parsed.shortcuts.map { it.icon })
         assertEquals(listOf(4), parsed.errors.map { it.line })
         assertEquals(
@@ -189,7 +197,7 @@ class ShortcutRulesTest {
     @Test
     fun `reading stops at the room that is left`() {
         val text = (1..5).joinToString("\n") { "键$it,10$it" }
-        val parsed = ShortcutRules.decode(text, room = 3)
+        val parsed = ShortcutRules.decode(text, room = 3, reserved = zhReserved)
         assertEquals(3, parsed.shortcuts.size)
         assertEquals(2, parsed.skippedForLimit)
         assertTrue(parsed.errors.isEmpty())
@@ -201,7 +209,7 @@ class ShortcutRulesTest {
             key("键, \"$it\"", "*80$it", ShortcutAction.entries[it % ShortcutAction.entries.size], "组${it % 7}", id = it.toLong())
         }.map { it.copy(icon = ShortcutIcon.entries.getOrNull(it.id.toInt() % (ShortcutIcon.entries.size + 1))) }
             .map(ShortcutRules::normalize).map { if (it.action == ShortcutAction.DTMF) it.copy(number = "#$it".filter { c -> c.isDigit() || c == '#' }.take(8)) else it }
-        val parsed = ShortcutRules.decode(ShortcutRules.encode(all))
+        val parsed = ShortcutRules.decode(ShortcutRules.encode(all), reserved = zhReserved)
         assertTrue(parsed.errors.toString(), parsed.errors.isEmpty())
         assertEquals(all, parsed.shortcuts)
     }
@@ -262,7 +270,7 @@ class ShortcutRulesTest {
     fun `whose key it is is no part of the csv format`() {
         val own = Shortcut(1, "家", "1002", category = "我的", own = true)
         assertEquals(ShortcutRules.encode(listOf(own.copy(own = false))), ShortcutRules.encode(listOf(own)))
-        assertFalse(ShortcutRules.decode(ShortcutRules.encode(listOf(own))).shortcuts.single().own)
+        assertFalse(ShortcutRules.decode(ShortcutRules.encode(listOf(own)), reserved = zhReserved).shortcuts.single().own)
     }
 
     @Test
@@ -308,7 +316,7 @@ class ShortcutRulesTest {
     fun `a drag among the keys of a category lands in the same place among all of them`() {
         // Keys 2, 4 and 6 are in the category shown; 1, 3 and 5 are not.
         val all = (1L..6L).map { key(label = "k$it", category = if (it % 2 == 0L) "门禁" else "", id = it) }
-        val shown = ShortcutRules.filter(all, "", "门禁").map { it.id }
+        val shown = ShortcutRules.filter(all, "", "门禁", typeName = ::zhType).map { it.id }
 
         // Key 2 dragged to the end of what is shown.
         val down = listOf(4L, 6L, 2L)
@@ -316,7 +324,7 @@ class ShortcutRulesTest {
         assertEquals(6L, downTarget)
         val movedDown = ShortcutRules.move(all, 2, downTarget!!, ownOnly = false)!!
         assertEquals(listOf(1L, 3L, 4L, 5L, 6L, 2L), movedDown.map { it.id })
-        assertEquals(down, ShortcutRules.filter(movedDown, "", "门禁").map { it.id })
+        assertEquals(down, ShortcutRules.filter(movedDown, "", "门禁", typeName = ::zhType).map { it.id })
 
         // Key 6 dragged to the front.
         val up = listOf(6L, 2L, 4L)
@@ -324,7 +332,7 @@ class ShortcutRulesTest {
         assertEquals(2L, upTarget)
         val movedUp = ShortcutRules.move(all, 6, upTarget!!, ownOnly = false)!!
         assertEquals(listOf(1L, 6L, 2L, 3L, 4L, 5L), movedUp.map { it.id })
-        assertEquals(up, ShortcutRules.filter(movedUp, "", "门禁").map { it.id })
+        assertEquals(up, ShortcutRules.filter(movedUp, "", "门禁", typeName = ::zhType).map { it.id })
 
         // Dropped where it was picked up.
         assertNull(ShortcutRules.dropTarget(shown, shown, 4))

@@ -1,5 +1,6 @@
 package com.sky.siplink.core
 
+import com.sky.siplink.R
 import com.sky.siplink.core.CallSupport.isRinging
 import com.sky.siplink.core.CallSupport.phaseOf
 import com.sky.siplink.core.logic.AssertedParties
@@ -7,6 +8,7 @@ import com.sky.siplink.core.logic.PartyName
 import com.sky.siplink.core.model.AudioRoute
 import com.sky.siplink.core.model.CallInfo
 import com.sky.siplink.core.model.CallPhase
+import com.sky.siplink.core.model.Phrase
 import com.sky.siplink.core.model.RoomInfo
 import com.sky.siplink.core.model.SideCall
 import com.sky.siplink.core.model.SupervisionMode
@@ -20,7 +22,7 @@ internal class CallMeta(
     var connectedAt: Long? = null,
     /** The sound went to the speaker for an intercom call, or to [chosenRoute] once the sound ran: done once. */
     var speakerApplied: Boolean = false,
-    var endReason: String? = null,
+    var endReason: Phrase? = null,
     /** The call had video the last time it was looked at (sound moves to the speaker as video starts). */
     var hadVideo: Boolean = false,
     /** It came in next to another call or the room and waited there: it is never answered by itself (CallRules, rule 2). */
@@ -29,12 +31,13 @@ internal class CallMeta(
     var chosenRoute: AudioRoute? = null,
 )
 
-/** What the call screen shows of one call ([CallInfo]), for [CallManager]. Main thread only. */
+/** What the call screen shows of one call ([CallInfo]), for [CallManager], in the app's language of the moment. Main thread only. */
 internal class CallDescriber(
     private val core: Core,
     private val settings: SettingsStore,
     private val accounts: AccountManager,
     private val names: NameResolver,
+    private val texts: AppTexts,
 ) {
     /** Whom the PBX asserted the other side of each call to be. */
     private val asserted = AssertedParties()
@@ -57,7 +60,7 @@ internal class CallDescriber(
         val outgoing = call.dir == Call.Dir.Outgoing
         val line = call.params.account?.let(accounts::idOf)
         val name = PartyName.of(party.name, party.address, outgoing, settings.current.features) { names.nameOf(it, !outgoing, line) }
-        return party.copy(name = name)
+        return party.copy(name = texts.render(name))
     }
 
     /**
@@ -80,7 +83,7 @@ internal class CallDescriber(
             route = CallSupport.routeOf(call.outputAudioDevice?.type) ?: lastRoute ?: AudioRoute.EARPIECE,
             availableRoutes = CallSupport.availableRoutes(core),
             connectedAt = meta.connectedAt,
-            endReason = meta.endReason,
+            endReason = meta.endReason?.let(texts::render),
             supervision = meta.supervision,
             video = if (videoAllowed && !ringing) CallVideoSupport.stateOf(call) else null,
             videoOffer = videoAllowed && (if (ringing) CallVideoSupport.offered(call) else video.isRequesting(call)),
@@ -94,7 +97,7 @@ internal class CallDescriber(
     /** The room in place of a call, with the call that waits beside it ([waiting]). */
     fun roomInfo(room: RoomInfo, conference: ConferenceRoom, previous: CallInfo?, waiting: SideCall?) = CallInfo(
         phase = CallPhase.CONNECTED,
-        remoteName = ROOM_NAME,
+        remoteName = texts.get(R.string.room_name),
         remoteAddress = "",
         accountLabel = CallSupport.lineOf(conference.account),
         incoming = false,
@@ -106,9 +109,4 @@ internal class CallDescriber(
         waitingCall = waiting,
         room = room,
     )
-
-    private companion object {
-        /** What the call screen and the notification call the conference room. */
-        const val ROOM_NAME = "会议室"
-    }
 }

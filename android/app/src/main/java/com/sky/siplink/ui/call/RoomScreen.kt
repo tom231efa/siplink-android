@@ -92,6 +92,7 @@ import com.sky.siplink.core.model.SideCall
 import com.sky.siplink.engine
 import com.sky.siplink.ui.components.Avatar
 import com.sky.siplink.ui.components.FadingText
+import com.sky.siplink.ui.components.text
 import com.sky.siplink.ui.theme.Brand
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filter
@@ -404,7 +405,7 @@ private fun MemberRow(member: RoomMember, onHangUp: () -> Unit, onRetry: () -> U
                     Spacer(Modifier.width(8.dp))
                 }
                 Text(
-                    RoomRules.stateLabel(member.state, member.endReason),
+                    RoomRules.stateLabel(member.state, member.endReason).text(),
                     style = MaterialTheme.typography.bodySmall,
                     color = if (left || heldBack || member.state == MemberState.HELD) Brand.Amber else Color.White.copy(alpha = 0.6f),
                     maxLines = 1,
@@ -532,7 +533,7 @@ private fun RoomControls(
     modifier: Modifier,
 ) {
     val settings by LocalContext.current.engine.settings.settings.collectAsStateWithLifecycle()
-    val full = RoomRules.refusal(room.present, 1, room.limit)
+    val full = RoomRules.refusal(room.present, 1, room.limit)?.text()
     Column(
         modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,

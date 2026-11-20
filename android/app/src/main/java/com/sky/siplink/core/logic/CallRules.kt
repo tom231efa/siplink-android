@@ -1,5 +1,7 @@
 package com.sky.siplink.core.logic
 
+import androidx.annotation.StringRes
+import com.sky.siplink.R
 import com.sky.siplink.core.model.FeatureCodes
 import com.sky.siplink.core.model.SupervisionMode
 
@@ -39,14 +41,16 @@ object CallRules {
     fun mayAnswerByItself(otherCallUp: Boolean, roomOpen: Boolean): Boolean = !otherCallUp && !roomOpen
 
     /** Null when the calls may become a room; else why not. */
-    fun roomRefusal(supervised: Boolean, transferring: Boolean): String? = when {
+    @StringRes
+    fun roomRefusal(supervised: Boolean, transferring: Boolean): Int? = when {
         supervised -> SUPERVISED
-        transferring -> "转接进行中"
+        transferring -> R.string.call_room_transferring
         else -> null
     }
 
     /** Null when [target] may be called into the room; a supervision or force hang-up code may not. */
-    fun memberRefusal(target: String, codes: FeatureCodes): String? {
+    @StringRes
+    fun memberRefusal(target: String, codes: FeatureCodes): Int? {
         val action = FeatureDial.parse(FeatureDial.extensionOf(target), codes)?.first ?: return null
         return SUPERVISED.takeIf {
             FeatureDial.supervisionOf(action) != null || action == FeatureDial.Action.FORCE_HANG_UP
@@ -71,5 +75,5 @@ object CallRules {
     /** Whether ending the room for everyone is asked for again: with more than one member in it. */
     fun confirmRoomEnd(present: Int): Boolean = present > 1
 
-    private const val SUPERVISED = "监听通话不能加入会议室"
+    private val SUPERVISED = R.string.call_room_supervised
 }

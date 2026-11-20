@@ -33,6 +33,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -59,6 +60,7 @@ import java.time.ZoneId
 @Composable
 fun RemoteConfigScreen(onBack: () -> Unit) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val remote = context.engine.remote
     val status by remote.status.collectAsStateWithLifecycle()
     val messenger = LocalMessenger.current
@@ -70,7 +72,7 @@ fun RemoteConfigScreen(onBack: () -> Unit) {
     /** Takes an address that was scanned or typed to the question whether to load it; returns what is wrong with it. */
     fun offer(text: String): String? = when (val parsed = remote.parse(text)) {
         is RemoteAddress.Parsed.Ok -> null.also { pending = parsed.enrollment }
-        is RemoteAddress.Parsed.Invalid -> parsed.error.message
+        is RemoteAddress.Parsed.Invalid -> resources.getString(parsed.error.message)
     }
 
     // The camera is asked for only here, when the user wants to scan; typing works without it.

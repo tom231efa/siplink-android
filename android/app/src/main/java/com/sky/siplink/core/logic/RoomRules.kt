@@ -1,6 +1,8 @@
 package com.sky.siplink.core.logic
 
+import com.sky.siplink.R
 import com.sky.siplink.core.model.MemberState
+import com.sky.siplink.core.model.Phrase
 
 /** The rules of the conference room that need no SIP core: its size, who can still join, what a row says. */
 object RoomRules {
@@ -56,12 +58,12 @@ object RoomRules {
     fun free(present: Int, limit: Int = LIMIT): Int = (limit - present).coerceAtLeast(0)
 
     /** Null when [adding] more members fit into a room that has [present]; else the notice that refuses them. */
-    fun refusal(present: Int, adding: Int, limit: Int = LIMIT): String? {
+    fun refusal(present: Int, adding: Int, limit: Int = LIMIT): Phrase? {
         val free = free(present, limit)
         return when {
             adding <= free -> null
-            free == 0 -> "会议室已满（最多 $limit 方）"
-            else -> "最多还可添加 $free 方"
+            free == 0 -> Phrase.count(R.plurals.room_full, limit)
+            else -> Phrase.count(R.plurals.room_free, free)
         }
     }
 
@@ -86,14 +88,14 @@ object RoomRules {
         return result.values.toList()
     }
 
-    /** What the state of a member reads in its row; a member that left shows why. */
-    fun stateLabel(state: MemberState, endReason: String?): String = when (state) {
-        MemberState.QUEUED -> "等待呼叫"
-        MemberState.CALLING -> "呼叫中"
-        MemberState.RINGING -> "振铃"
-        MemberState.CONNECTED -> "已接通"
-        MemberState.HELD -> "已保留"
-        MemberState.LEFT -> endReason ?: "已离开"
-        MemberState.HELD_BACK -> endReason ?: "未呼叫"
+    /** What the state of a member reads in its row; a member that left shows why ([endReason], as the snapshot rendered it). */
+    fun stateLabel(state: MemberState, endReason: String?): Phrase = when (state) {
+        MemberState.QUEUED -> Phrase.of(R.string.room_member_queued)
+        MemberState.CALLING -> Phrase.of(R.string.room_member_calling)
+        MemberState.RINGING -> Phrase.of(R.string.room_member_ringing)
+        MemberState.CONNECTED -> Phrase.of(R.string.room_member_connected)
+        MemberState.HELD -> Phrase.of(R.string.room_member_held)
+        MemberState.LEFT -> endReason?.let(Phrase::plain) ?: Phrase.of(R.string.room_member_left)
+        MemberState.HELD_BACK -> endReason?.let(Phrase::plain) ?: Phrase.of(R.string.room_member_held_back)
     }
 }
