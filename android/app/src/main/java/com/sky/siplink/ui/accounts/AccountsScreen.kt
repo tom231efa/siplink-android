@@ -347,7 +347,8 @@ private fun AccountRow(
                 )
                 Spacer(Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    if ((adapted ?: account.transport) == SipTransport.TLS) {
+                    // The lock stands for the account's own setting; a line that went to TLS by itself says so in its label.
+                    if (account.transport == SipTransport.TLS) {
                         Icon(
                             Icons.Rounded.Lock,
                             contentDescription = null,
