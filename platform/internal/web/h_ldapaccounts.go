@@ -173,7 +173,7 @@ func (s *Server) ldapAccountCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	s.audit(r, "ldap_account.create", "ldap_account", a.ID, a.Name, a.RegionID, map[string]any{"books": a.BookIDs})
 	s.ok(w, r, "ldap_account_secret", &Page{Title: tr(r).T("dirs.ldap.created_title"), Nav: "ldap",
-		Data: ldapAccountForm{Account: a, BindDN: s.bindDN(a.Name), Password: password}})
+		Data: ldapAccountForm{Account: a, BindDN: s.bindDN(a.Name), Password: password}, secret: true})
 }
 
 func (s *Server) ldapAccountEdit(w http.ResponseWriter, r *http.Request) {
@@ -214,7 +214,7 @@ func (s *Server) ldapAccountReset(w http.ResponseWriter, r *http.Request) {
 	}
 	s.audit(r, "ldap_account.reset", "ldap_account", a.ID, a.Name, a.RegionID, map[string]any{"password": auditChanged})
 	s.ok(w, r, "ldap_account_secret", &Page{Title: tr(r).T("dirs.ldap.reset_title"), Nav: "ldap",
-		Data: ldapAccountForm{Account: a, BindDN: s.bindDN(a.Name), Password: password}})
+		Data: ldapAccountForm{Account: a, BindDN: s.bindDN(a.Name), Password: password}, secret: true})
 }
 
 func (s *Server) ldapAccountDelete(w http.ResponseWriter, r *http.Request) {

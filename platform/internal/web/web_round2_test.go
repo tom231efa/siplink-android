@@ -39,7 +39,8 @@ func TestStrictPages(t *testing.T) {
 }
 
 // TestStaticVersions: pages load CSS and JS through URLs that change with their
-// content; those are cached for good, anything else is revalidated.
+// content; those are cached for good, anything else is revalidated. (The files as they
+// are; their compressed form: TestCompression.)
 func TestStaticVersions(t *testing.T) {
 	h := newHarness(t)
 	anon := h.client()
@@ -53,7 +54,7 @@ func TestStaticVersions(t *testing.T) {
 		if !strings.Contains(page, `"`+u+`"`) {
 			t.Errorf("layout does not reference %s", u)
 		}
-		if r := anon.get(u); r.code != 200 || r.header.Get("Cache-Control") != "public, max-age=31536000, immutable" ||
+		if r := anon.getWith(u, "Accept-Encoding", "identity"); r.code != 200 || r.header.Get("Cache-Control") != "public, max-age=31536000, immutable" ||
 			r.header.Get("ETag") != `"`+v+`"` {
 			t.Errorf("%s: %d %q %q", u, r.code, r.header.Get("Cache-Control"), r.header.Get("ETag"))
 		}
@@ -64,6 +65,7 @@ func TestStaticVersions(t *testing.T) {
 		}
 		req, _ := http.NewRequest("GET", h.ts.URL+"/static/"+name, nil)
 		req.Header.Set("If-None-Match", `"`+v+`"`)
+		req.Header.Set("Accept-Encoding", "identity")
 		if r := anon.do(req); r.code != http.StatusNotModified {
 			t.Errorf("%s: revalidation answered %d", name, r.code)
 		}

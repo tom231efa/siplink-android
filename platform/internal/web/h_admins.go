@@ -140,7 +140,7 @@ func (s *Server) adminCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.audit(r, "admin.create", "admin", a.ID, a.Username, nil, map[string]any{"role": a.Role, "regions": a.RegionIDs})
-	s.ok(w, r, "admin_password", &Page{Title: tr(r).T("admins.created_title"), Nav: "admins", Data: adminForm{Admin: a, Password: password}})
+	s.ok(w, r, "admin_password", &Page{Title: tr(r).T("admins.created_title"), Nav: "admins", Data: adminForm{Admin: a, Password: password}, secret: true})
 }
 
 func (s *Server) loadAdmin(w http.ResponseWriter, r *http.Request) *store.Admin {
@@ -243,7 +243,7 @@ func (s *Server) adminResetPassword(w http.ResponseWriter, r *http.Request) {
 	if a.ID == current(r).ID {
 		s.clearSessionCookie(w, r) // one's own sessions ended with the reset
 	}
-	s.ok(w, r, "admin_password", &Page{Title: tr(r).T("admins.password_reset_title"), Nav: "admins", Data: adminForm{Admin: a, Password: password}})
+	s.ok(w, r, "admin_password", &Page{Title: tr(r).T("admins.password_reset_title"), Nav: "admins", Data: adminForm{Admin: a, Password: password}, secret: true})
 }
 
 // ---- audit log page ----

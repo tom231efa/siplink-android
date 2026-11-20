@@ -666,6 +666,14 @@ The document contains SIP and LDAP passwords in clear, so:
 - HSTS on the admin UI when TLS is on.
 - The HTTPS listener offers HTTP/2 by ALPN (`h2`, then `http/1.1`); with `SIPLINK_TLS=off` the
   platform speaks HTTP/1.1 to its proxy.
+- Compression (gzip, standard library): pages of the admin UI and the text files under
+  `/static` (CSS, JS, SVG; not the font) when the browser accepts gzip, with
+  `Vary: Accept-Encoding`; a static file's compressed form has its own ETag (`"<hash>-gzip"`).
+  Never compressed, because the length of a compressed page that holds a secret and text an
+  attacker chose tells whether the two share bytes (BREACH): pages that show a one-time or LDAP
+  account password, the TOTP secret, recovery codes, an enrollment link or QR code (client page
+  while pending, print page), revealed stored passwords or the document preview, and every
+  answer of the device API.
 - The enrollment token is single-use and expires; it appears in reverse-proxy access logs only
   until the first scan. Device keys travel in a header, which proxies do not log by default.
 

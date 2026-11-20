@@ -175,7 +175,7 @@ func (s *Server) renderClient(w http.ResponseWriter, r *http.Request, status int
 		d.QR = template.HTML(svg) // our own markup, no user data inside
 	}
 	d.Expired = c.Status == store.StatusPending && d.EnrollURL == ""
-	s.render(w, r, status, "client", &Page{Title: c.Name, Nav: "clients", Data: d})
+	s.render(w, r, status, "client", &Page{Title: c.Name, Nav: "clients", Data: d, secret: d.EnrollURL != "" || len(d.Secrets) > 0})
 }
 
 func (s *Server) hasHosted(r *http.Request, configID int64) bool {
@@ -217,8 +217,9 @@ func (s *Server) clientPreview(w http.ResponseWriter, r *http.Request) {
 		s.internal(w, r, err)
 		return
 	}
+	// Passwords are masked; the configuration password's hash is not.
 	s.ok(w, r, "client_preview", &Page{Title: tr(r).T("clients.preview.title", "name", c.Name), Nav: "clients",
-		Data: map[string]any{"C": c, "JSON": string(raw), "Problems": b.problems}})
+		Data: map[string]any{"C": c, "JSON": string(raw), "Problems": b.problems}, secret: true})
 }
 
 // clientReveal checks the administrator's own password, then shows the stored secrets.
@@ -352,5 +353,5 @@ func (s *Server) clientPrint(w http.ResponseWriter, r *http.Request) {
 		cards[i].QR = template.HTML(svg) // our own markup, no user data inside
 	}
 	s.render(w, r, http.StatusOK, "client_print", &Page{Title: tr(r).T("clients.print.title"), Nav: "clients", Bare: true,
-		Data: map[string]any{"Cards": cards, "Skipped": skipped}})
+		Data: map[string]any{"Cards": cards, "Skipped": skipped}, secret: true})
 }

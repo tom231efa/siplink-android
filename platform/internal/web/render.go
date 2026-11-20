@@ -43,7 +43,8 @@ type Page struct {
 	Lang      *i18n.Lang
 	Data      any
 
-	tr *i18n.Tr
+	tr     *i18n.Tr
+	secret bool // the page shows a secret: never compressed (compress.go)
 }
 
 // Langs are the languages of the pickers.
@@ -212,8 +213,7 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, status int, name
 	h.Set("Content-Type", "text/html; charset=utf-8")
 	h.Set("Cache-Control", "no-store")
 	h.Set("Content-Language", pg.Lang.Code)
-	w.WriteHeader(status)
-	w.Write(buf.Bytes())
+	writeBody(w, r, status, buf.Bytes(), !pg.secret)
 }
 
 func (s *Server) ok(w http.ResponseWriter, r *http.Request, name string, pg *Page) {
@@ -347,7 +347,17 @@ func (s *Server) static(w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.Header().Set("Cache-Control", "no-cache")
 	}
-	w.Header().Set("ETag", `"`+version+`"`)
+	// A text file goes compressed to a browser that accepts gzip; the compressed bytes are
+	// another representation and have their own ETag.
+	etag := `"` + version + `"`
+	if gz := gzippedAssets()[name]; gz != nil {
+		w.Header().Add("Vary", "Accept-Encoding")
+		if acceptsGzip(r) {
+			w.Header().Set("Content-Encoding", "gzip")
+			data, etag = gz, `"`+version+`-gzip"`
+		}
+	}
+	w.Header().Set("ETag", etag)
 	http.ServeContent(w, r, name, startTime, bytes.NewReader(data))
 }
 

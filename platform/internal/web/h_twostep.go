@@ -231,7 +231,7 @@ func (s *Server) renderTOTP(w http.ResponseWriter, r *http.Request, status int, 
 		return
 	}
 	d := totpData{QR: template.HTML(svg), Secret: twostep.SecretText(key), Error: msg} // our own SVG
-	s.render(w, r, status, "totp_setup", &Page{Title: tr(r).T("twostep.totp"), Nav: "me", Data: d})
+	s.render(w, r, status, "totp_setup", &Page{Title: tr(r).T("twostep.totp"), Nav: "me", Data: d, secret: true})
 }
 
 func (s *Server) totpConfirm(w http.ResponseWriter, r *http.Request) {
@@ -394,7 +394,8 @@ func (s *Server) recoveryShow(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/me#two-step", http.StatusSeeOther)
 		return
 	}
-	s.ok(w, r, "recovery_codes", &Page{Title: tr(r).T("twostep.recovery_codes"), Nav: "me", Data: recoveryData{Codes: codes, Token: token}})
+	s.ok(w, r, "recovery_codes", &Page{Title: tr(r).T("twostep.recovery_codes"), Nav: "me", Data: recoveryData{Codes: codes, Token: token},
+		secret: true})
 }
 
 // recoveryDone ("完成") forgets the codes shown.
