@@ -44,8 +44,8 @@ blind transfer / 盲转 → слепой перевод
 attended transfer / 咨询转 → перевод с консультацией
 consultation call / 咨询 → консультационный вызов
 park / 驻留 → парковка; call parked → вызов припаркован
-swap / 切换 → Поменять (a button under its icon: "Переключить" breaks inside the word there)
-merge / 合并 → Слить (a button under its icon: "Объединить" leaves its last letter alone on a line)
+swap / 切换 → Переключить
+merge / 合并 → Объединить
 mute / 静音 → Без звука; muted → Звук откл.
 keypad / 键盘 → клавиатура
 hang up / 挂断 → Завершить

@@ -85,7 +85,7 @@
     <string name="call_supervision_whisper">Chuchotement</string>
     <string name="call_supervision_barge">Intrusion</string>
     <string name="call_route_earpiece">Écouteur</string>
-    <string name="call_route_speaker">Mains libres</string>
+    <string name="call_route_speaker">Haut-parleur</string>
     <string name="call_route_bluetooth">Bluetooth</string>
     <string name="call_route_headset">Casque</string>
     <string name="call_route_wired_headset">Casque filaire</string>

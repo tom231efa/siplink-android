@@ -66,7 +66,7 @@ own shortcut keys / 自建快捷键 → teclas rápidas propias
 keys (DTMF digits) / 按键 → teclas
 category / 分类 → categoría ; uncategorized / 未分类 → sin categoría
 conference room / 会议室 → sala de conferencias (call-screen button: Conferencia)
-member / 成员, 方 → participante; the button of the room that adds them: Agregar (under its icon of a person with a plus), the sheet it opens: Agregar participantes
+member / 成员, 方 → participante
 earpiece / speaker / headset / 听筒 / 扬声器 / 耳机 → auricular / altavoz / auriculares
 recording / 录音 → grabación ; recordings / 录音文件 → grabaciones
 codec / 编码 → códec ; resolution / 清晰度 → resolución ; frame rate / 帧率 → velocidad de fotogramas

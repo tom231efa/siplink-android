@@ -39,7 +39,7 @@
     </plurals>
     <string name="room_end_confirm">Finalizar</string>
     <string name="room_end">Finalizar conferencia</string>
-    <string name="room_add_members">Agregar</string>
+    <string name="room_add_members">Agregar participantes</string>
     <string name="room_show_readings">Ver valores medidos</string>
     <string name="room_warning_heat">Dispositivo demasiado caliente</string>
     <string name="room_warning_load">Dispositivo sobrecargado</string>

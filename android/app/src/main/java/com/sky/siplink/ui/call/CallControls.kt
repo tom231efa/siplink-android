@@ -347,21 +347,18 @@ private val LocalKeyLabelWidth = staticCompositionLocalOf { KeyLabelWidth }
 private val KeyLabelWidth = 86.dp
 
 /**
- * A row of [keys] keys spread evenly over the width, whose labels keep to their share of it: on
- * a narrow screen, or with long words, a label takes its second line instead of running into
- * its neighbour or off the screen.
+ * A row of [keys] keys spread evenly over the width, whose labels keep to their share of it: a
+ * row that cannot hold [keys] labels of the full width (a narrow screen) narrows them, so a long
+ * word takes the label's second line instead of running into its neighbour or off the screen.
  */
 @Composable
 internal fun KeyRow(keys: Int, content: @Composable RowScope.() -> Unit) {
     BoxWithConstraints(Modifier.fillMaxWidth()) {
-        CompositionLocalProvider(LocalKeyLabelWidth provides minOf(KeyLabelWidth, maxWidth / keys - KeyLabelGap)) {
+        CompositionLocalProvider(LocalKeyLabelWidth provides minOf(KeyLabelWidth, maxWidth / keys)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, content = content)
         }
     }
 }
-
-/** What keeps two labels side by side apart. */
-private val KeyLabelGap = 6.dp
 
 @Composable
 internal fun RoundAction(

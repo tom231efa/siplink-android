@@ -58,7 +58,7 @@ conference room / 会议室 → salle de conférence (call-screen button: Confé
 member / 方, 成员 → participant
 auto answer / 自动接听 → réponse automatique
 regular calls / 常规呼叫 → appels ordinaires
-earpiece / speaker / headset → écouteur / haut-parleur / casque; the route of a call (a button under its icon): Mains libres ("Haut-parleur" breaks before its last letter there)
+earpiece / speaker / headset → écouteur / haut-parleur / casque
 recording / 录音 → enregistrement (des appels) ; recordings → enregistrements
 codec / 编码 → codec ; frame rate → fréquence d'images ; resolution → résolution
 adaptive rate control → contrôle adaptatif du débit ; echo cancellation → annulation d'écho
