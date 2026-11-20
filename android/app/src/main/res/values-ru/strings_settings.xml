@@ -21,13 +21,13 @@
     <string name="settings_keep_alive">Поддержание активности в фоне</string>
     <string name="settings_battery_optimization">Оптимизация батареи</string>
     <string name="settings_battery_open_failed">Не удалось открыть настройки оптимизации батареи</string>
-    <string name="settings_lock_screen_calls">Вызовы на заблокированном экране</string>
+    <string name="settings_lock_screen_calls">Вызовы на экране блокировки</string>
     <string name="settings_lock_screen_allowed">Разрешено</string>
     <string name="settings_lock_screen_not_allowed">Не разрешено</string>
     <string name="settings_lock_screen_open_failed">Не удалось открыть настройки полноэкранных уведомлений</string>
     <string name="settings_section_appearance">Оформление</string>
     <string name="settings_theme">Тема</string>
-    <string name="settings_theme_system">Как в системе</string>
+    <string name="settings_theme_system">Системная</string>
     <string name="settings_theme_light">Светлая</string>
     <string name="settings_theme_dark">Тёмная</string>
     <string name="settings_banner_position">Положение панели вызова</string>

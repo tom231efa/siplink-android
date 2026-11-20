@@ -22,7 +22,7 @@
     <string name="settings_keep_alive">Mantener activo en segundo plano</string>
     <string name="settings_battery_optimization">Optimización de batería</string>
     <string name="settings_battery_open_failed">No se pueden abrir los ajustes de optimización de batería</string>
-    <string name="settings_lock_screen_calls">Mostrar llamadas en la pantalla de bloqueo</string>
+    <string name="settings_lock_screen_calls">Llamadas en pantalla de bloqueo</string>
     <string name="settings_lock_screen_allowed">Permitido</string>
     <string name="settings_lock_screen_not_allowed">No permitido</string>
     <string name="settings_lock_screen_open_failed">No se pueden abrir los ajustes de notificaciones a pantalla completa</string>

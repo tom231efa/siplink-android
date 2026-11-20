@@ -88,7 +88,7 @@ Force hang-up / 强拆 → 強制切断
 Directed pickup / 代接 → 代理応答 (feature list); 指定代接 → 指定代理応答 (feature codes page)
 Group pickup / 同组代接 → グループ代理応答
 Voicemail / 语音信箱、语音留言 → ボイスメール
-Do not disturb, DND / 免打扰 → おやすみモード
+Do not disturb, DND / 免打扰 → おやすみモード; its two ways: 端末で拒否 / サーバーで拒否
 Call forwarding / 呼叫前转 → 着信転送
 Forward always / 无条件前转 → 無条件転送
 Forward when busy / 遇忙前转 → 話中時転送
@@ -141,7 +141,7 @@ Adapt to network automatically / 自动适应网络 → ネットワークに自
 Client name (User-Agent) / 客户端名称 → クライアント名（User-Agent）
 Stay online in background / 后台保持在线 → バックグラウンドで接続を維持
 Battery optimization / 电池优化 → 電池の最適化
-Lock screen / 锁屏 → ロック画面
+Lock screen / 锁屏 → ロック画面; the settings row: ロック画面の着信
 Full-screen notification / 全屏通知 → 全画面通知
 Appearance / 外观 → 外観
 CA certificate / CA 证书 → CA 証明書

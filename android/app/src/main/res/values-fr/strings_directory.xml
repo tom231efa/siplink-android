@@ -37,7 +37,7 @@
     <string name="directory_add_account_first">Ajoutez d\'abord un compte SIP</string>
     <string name="directory_none_configured">Aucun annuaire LDAP configuré</string>
     <string name="directory_all_disabled">Les annuaires LDAP sont désactivés</string>
-    <string name="directory_search">Rechercher un nom ou un numéro</string>
+    <string name="directory_search">Nom ou numéro</string>
     <string name="directory_no_match">Aucun contact correspondant</string>
     <string name="directory_cache_searching">Cache local ; interrogation du serveur…</string>
     <string name="directory_from_cache">Depuis le cache local</string>

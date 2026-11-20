@@ -36,8 +36,8 @@
     <string name="diagnosis_validation_passed">Пройдена</string>
     <string name="diagnosis_validation_failed">Не пройдена</string>
     <string name="diagnosis_battery">Оптимизация батареи</string>
-    <string name="diagnosis_battery_unrestricted">Без ограничений</string>
-    <string name="diagnosis_battery_restricted">С ограничениями</string>
+    <string name="diagnosis_battery_unrestricted">Отключена</string>
+    <string name="diagnosis_battery_restricted">Включена</string>
     <string name="diagnosis_battery_settings">Настройки</string>
     <string name="diagnosis_server">Сервер</string>
     <string name="diagnosis_address">Адрес</string>

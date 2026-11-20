@@ -72,7 +72,7 @@
     <string name="account_section_info">Cuenta</string>
     <string name="account_field_name">Nombre de la cuenta (opcional)</string>
     <string name="account_field_name_hint">p. ej., Recepción, Línea de ventas 1</string>
-    <string name="account_field_username">Nombre de usuario</string>
+    <string name="account_field_username">Usuario</string>
     <string name="account_field_username_hint">p. ej., 1001</string>
     <string name="account_field_port">Puerto</string>
     <string name="account_field_domain">Dominio / servidor</string>

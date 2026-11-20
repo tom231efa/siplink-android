@@ -8,9 +8,9 @@
     <string name="main_banner_incoming">Входящий вызов: %1$s</string>
     <string name="main_banner_outgoing">Вызов: %1$s</string>
     <string name="main_banner_in_call">Разговор: %1$s</string>
-    <string name="main_banner_return">Вернуться к вызову</string>
-    <string name="main_lock_screen_title">Вызовы на заблокированном экране</string>
-    <string name="main_lock_screen_text">У SipLink нет разрешения на полноэкранные уведомления. Входящие вызовы на заблокированном экране отображаются только как уведомление, без экрана вызова.</string>
+    <string name="main_banner_return">Вернуться</string>
+    <string name="main_lock_screen_title">Вызовы на экране блокировки</string>
+    <string name="main_lock_screen_text">У SipLink нет разрешения на полноэкранные уведомления. Входящие вызовы на экране блокировки отображаются только как уведомление, без экрана вызова.</string>
     <string name="main_lock_screen_settings_failed">Не удалось открыть настройки полноэкранных уведомлений</string>
     <string name="main_lock_screen_open_settings">Открыть настройки</string>
     <string name="main_lock_screen_never">Больше не напоминать</string>

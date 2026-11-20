@@ -58,13 +58,14 @@ conference room / 会议室 → salle de conférence (call-screen button: Confé
 member / 方, 成员 → participant
 auto answer / 自动接听 → réponse automatique
 regular calls / 常规呼叫 → appels ordinaires
-earpiece / speaker / headset → écouteur / haut-parleur / casque
+earpiece / speaker / headset → écouteur / haut-parleur / casque; the route of a call (a button under its icon): Mains libres ("Haut-parleur" breaks before its last letter there)
 recording / 录音 → enregistrement (des appels) ; recordings → enregistrements
 codec / 编码 → codec ; frame rate → fréquence d'images ; resolution → résolution
 adaptive rate control → contrôle adaptatif du débit ; echo cancellation → annulation d'écho
 client name (User-Agent) → nom du client (User-Agent)
 stay online in background / 后台保持在线 → rester en ligne en arrière-plan (platform: maintien en vie en arrière-plan)
 battery optimization / 电池优化 → optimisation de la batterie
+search the directory (its field) → Nom ou numéro (the field shows a search icon); check for updates automatically (a switch) → Mises à jour automatiques
 lock screen / 锁屏 → écran de verrouillage ; full-screen notification → notification en plein écran
 call banner / 通话横幅 → bandeau d'appel
 TLS and CA certificates → TLS et certificats CA ; issuer → émetteur ; trusted → approuvé

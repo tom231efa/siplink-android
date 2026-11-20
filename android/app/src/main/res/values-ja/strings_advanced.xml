@@ -4,7 +4,7 @@
     <string name="advanced_section_incoming">着信</string>
     <string name="advanced_dnd_mode">おやすみモードの方式</string>
     <string name="advanced_dnd_software">端末で拒否</string>
-    <string name="advanced_dnd_server">サーバーの機能コード</string>
+    <string name="advanced_dnd_server">サーバーで拒否</string>
     <string name="advanced_dnd_codes">%1$s / %2$s</string>
     <string name="advanced_call_waiting">通話中着信</string>
     <string name="advanced_reject_anonymous">非通知着信を拒否</string>

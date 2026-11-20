@@ -37,7 +37,7 @@
     <string name="directory_add_account_first">Сначала добавьте учётную запись SIP</string>
     <string name="directory_none_configured">Справочники LDAP не настроены</string>
     <string name="directory_all_disabled">Справочники LDAP отключены</string>
-    <string name="directory_search">Поиск по имени или номеру</string>
+    <string name="directory_search">Имя или номер</string>
     <string name="directory_no_match">Нет подходящих контактов</string>
     <string name="directory_cache_searching">Локальный кэш; запрос к серверу…</string>
     <string name="directory_from_cache">Из локального кэша</string>

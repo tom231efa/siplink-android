@@ -8,7 +8,7 @@ outgoing account / 呼出账号 → cuenta de salida
 outgoing line / 出局线路 → línea de salida
 specific line / 固定线路 → línea específica
 choose when calling / 拨出时选择 → elegir al llamar
-user name / 用户名 → nombre de usuario
+user name / 用户名 → nombre de usuario; the narrow field of the account form beside the port: Usuario
 auth user name / 认证用户名 → usuario de autenticación
 display name / 显示名称 → nombre visible
 domain / 域名 → dominio
@@ -66,7 +66,7 @@ own shortcut keys / 自建快捷键 → teclas rápidas propias
 keys (DTMF digits) / 按键 → teclas
 category / 分类 → categoría ; uncategorized / 未分类 → sin categoría
 conference room / 会议室 → sala de conferencias (call-screen button: Conferencia)
-member / 成员, 方 → participante
+member / 成员, 方 → participante; the button of the room that adds them: Agregar (under its icon of a person with a plus), the sheet it opens: Agregar participantes
 earpiece / speaker / headset / 听筒 / 扬声器 / 耳机 → auricular / altavoz / auriculares
 recording / 录音 → grabación ; recordings / 录音文件 → grabaciones
 codec / 编码 → códec ; resolution / 清晰度 → resolución ; frame rate / 帧率 → velocidad de fotogramas
@@ -95,6 +95,7 @@ expired (QR) / 已过期 → vencido
 stay online in background / 后台保持在线 → mantener activo en segundo plano
 battery optimization / 电池优化 → optimización de batería
 lock screen / 锁屏 → pantalla de bloqueo
+call banner / 通话横幅: its link back to the call → Volver (the name of the call shares the line)
 full-screen notification / 全屏通知 → notificaciones a pantalla completa
 system default / 跟随系统 → predeterminado del sistema; as one of three choices side by side (the theme): Sistema
 required / 必填 → obligatorio ; optional / 可选 → opcional

@@ -21,7 +21,7 @@
     <string name="settings_keep_alive">バックグラウンドで接続を維持</string>
     <string name="settings_battery_optimization">電池の最適化</string>
     <string name="settings_battery_open_failed">電池の最適化の設定を開けません</string>
-    <string name="settings_lock_screen_calls">ロック画面に着信を表示</string>
+    <string name="settings_lock_screen_calls">ロック画面の着信</string>
     <string name="settings_lock_screen_allowed">許可済み</string>
     <string name="settings_lock_screen_not_allowed">未許可</string>
     <string name="settings_lock_screen_open_failed">全画面通知の設定を開けません</string>

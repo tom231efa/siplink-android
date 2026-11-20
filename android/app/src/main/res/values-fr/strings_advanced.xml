@@ -21,7 +21,7 @@
     <string name="advanced_rate_control">Contrôle adaptatif du débit</string>
     <string name="advanced_echo_cancellation">Annulation d\'écho</string>
     <string name="advanced_ipv6">Autoriser IPv6</string>
-    <string name="advanced_auto_network">S\'adapter automatiquement au réseau</string>
+    <string name="advanced_auto_network">Adaptation automatique au réseau</string>
     <string name="advanced_stun_server">Serveur STUN</string>
     <string name="advanced_host_port_hint">hôte[:port]</string>
     <string name="advanced_section_identity">Identité du client</string>

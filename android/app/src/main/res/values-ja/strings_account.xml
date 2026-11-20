@@ -82,7 +82,7 @@
     <string name="account_field_expires">登録の有効期間（秒）</string>
     <string name="account_subscribe_mwi">ボイスメール通知を購読</string>
     <string name="account_line_diagnosis">回線診断</string>
-    <string name="account_enable">このアカウントを有効にする</string>
+    <string name="account_enable">アカウントを有効にする</string>
     <string name="account_default_set">デフォルトアカウントに設定しました</string>
     <string name="account_is_default">デフォルトアカウント</string>
     <string name="account_set_default">デフォルトに設定</string>

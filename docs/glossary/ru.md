@@ -2,9 +2,9 @@
 
 SIP account / SIP 账号 → учётная запись SIP
 account name / 账号名称 → название учётной записи
-user name / 用户名 → имя пользователя
+user name / 用户名 → имя пользователя; the narrow field of the account form beside the port: Пользователь
 auth user name / 认证用户名 → имя для аутентификации
-display name / 显示名称 → отображаемое имя
+display name / 显示名称 → отображаемое имя; the field of the account form: Ваше имя (the name the other side sees)
 domain / 域名 → домен
 transport / 传输协议 → транспорт
 proxy / 代理服务器 → прокси-сервер
@@ -44,8 +44,8 @@ blind transfer / 盲转 → слепой перевод
 attended transfer / 咨询转 → перевод с консультацией
 consultation call / 咨询 → консультационный вызов
 park / 驻留 → парковка; call parked → вызов припаркован
-swap / 切换 → Переключить
-merge / 合并 → Объединить
+swap / 切换 → Поменять (a button under its icon: "Переключить" breaks inside the word there)
+merge / 合并 → Слить (a button under its icon: "Объединить" leaves its last letter alone on a line)
 mute / 静音 → Без звука; muted → Звук откл.
 keypad / 键盘 → клавиатура
 hang up / 挂断 → Завершить
@@ -95,11 +95,12 @@ region / 区域 → регион
 sync / 同步 → синхронизация
 certificate fingerprint / 证书指纹 → отпечаток сертификата
 Stay online in background / 后台保持在线 → поддержание активности в фоне
-battery optimization / 电池优化 → оптимизация батареи
-lock screen / 锁屏 → заблокированный экран
+battery optimization / 电池优化 → оптимизация батареи; its state in the line diagnosis: Включена / Отключена (a button "Настройки" shares the line)
+search the directory (its field) → Имя или номер (the field shows a search icon)
+lock screen / 锁屏 → экран блокировки
 full-screen notifications / 全屏通知 → полноэкранные уведомления
 appearance / 外观 → оформление
-call banner / 通话横幅 → панель вызова
+call banner / 通话横幅 → панель вызова; its link back to the call: Вернуться (the name of the call shares the line)
 recording(s) / 录音 → запись, записи; call recording → запись разговоров
 jitter / packet loss / round trip → джиттер / потери пакетов / круговая задержка (short: задержка)
 Echo cancellation → эхоподавление; Adaptive rate control → адаптивное управление скоростью
