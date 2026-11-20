@@ -74,7 +74,7 @@ When the primary server does not respond, or returns 408 or 5xx, the account swi
 
 Both servers are also probed (OPTIONS over UDP, a connection over TCP and TLS) when the account starts and whenever the network changes, so an account whose primary is an office PBX goes to its backup within a few seconds of leaving the office, and returns when the phone is back on the office network instead of waiting for the next check a minute later. On a network the phone has seen before (up to 20, for 30 days), the account goes to the server it registered on there last at once, while the probe confirms it.
 
-With **Fast timeout** set, the primary server gets only that long to answer, and the probes also run whenever the registration starts or is refreshed. Within the time the probe is sent three times over UDP (a second connection is opened halfway over TCP and TLS), so that one lost packet does not count as a server out of reach. While a call is up the account stays on its server unless that server stops answering.
+With **Fast timeout** set, the primary server gets only that long to answer, and the probes also run whenever the registration starts or is refreshed. Within the time the probe is sent three times over UDP (a second connection is opened halfway over TCP and TLS), and a server the account registered on, on the network it is on, is left only after two silent probes in a row, so that a lost packet does not count as a server out of reach. While a call is up the account stays on its server unless that server gives no answer for the whole probe.
 
 ## A call drops when I leave the office during it
 
