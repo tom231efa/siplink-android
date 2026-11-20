@@ -315,10 +315,17 @@ class LineRoutingTest : PbxTestBase() {
             repeat(LOSS_ROUNDS) {
                 val before = onMain { engine.accounts.servers(id)?.checkedAt }
                 Thread.sleep(ServerChoice.MIN_CHECK_GAP_MS + SLACK_MS)
-                onMain { engine.core.refreshRegisters() }
-                // The check, the second one after a silence, and the registration.
-                Thread.sleep(2 * ServerChoice.waitMs(FAST_MS) + SLACK_MS)
-                assertTrue("The servers were not asked", onMain { engine.accounts.servers(id)?.checkedAt } != before)
+                // A refresh still sending its REGISTER again over the lossy path starts no new one: asked again.
+                var asked = false
+                repeat(REFRESH_TRIES) {
+                    if (!asked) {
+                        onMain { engine.core.refreshRegisters() }
+                        asked = settles(REFRESH_WAIT_MS) { onMain { engine.accounts.servers(id)?.checkedAt } != before }
+                    }
+                }
+                assertTrue("The servers were not asked", asked)
+                // The second check after a silence, and the registration.
+                Thread.sleep(ServerChoice.waitMs(FAST_MS) + SLACK_MS)
                 if (account(APP)?.onBackup == true) {
                     moved++
                     relay!!.loss = 0.0
@@ -364,6 +371,8 @@ class LineRoutingTest : PbxTestBase() {
         /** Loss each way and delay each way of the path to the first server. */
         val PATHS = listOf(0.0 to 0L, 0.0 to SMALL_DELAY_MS, 0.1 to 0L, 0.2 to 0L, 0.3 to 0L, 0.1 to SMALL_DELAY_MS)
         const val LOSS_ROUNDS = 10
+        const val REFRESH_TRIES = 4
+        const val REFRESH_WAIT_MS = 10_000L
 
         /** 200 ms there and back: well within the 500 ms. */
         const val SMALL_DELAY_MS = 100L
