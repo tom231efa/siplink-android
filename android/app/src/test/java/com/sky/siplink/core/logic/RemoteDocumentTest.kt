@@ -227,6 +227,17 @@ class RemoteDocumentTest {
     }
 
     @Test
+    fun theFastTimeoutIsOffUnlessSentAndStaysInItsRange() {
+        assertEquals(0, parsed(fixture).accounts[0].draft.serverTimeoutMs)
+        fun timeout(value: Long) = parsed(withElement("accounts", 0) { it["serverTimeoutMs"] = value }).accounts[0].draft.serverTimeoutMs
+        assertEquals(500, timeout(500))
+        assertEquals(0, timeout(0))
+        assertEquals(ServerChoice.MIN_TIMEOUT_MS, timeout(50))
+        assertEquals(ServerChoice.MAX_TIMEOUT_MS, timeout(30_000))
+        assertEquals(listOf("accounts[0].serverTimeoutMs 格式不正确"), errors(withElement("accounts", 0) { it["serverTimeoutMs"] = "500" }))
+    }
+
+    @Test
     fun theLinesAdaptWithoutStunUnlessTheDocumentSaysOtherwise() {
         // The fixture is from before the platform sent the two keys.
         val older = parsed(fixture).settings

@@ -27,6 +27,7 @@ object AccountRules {
         BACKUP_INVALID("备用服务器", "应为 主机[:端口]"),
         BACKUP_SAME("备用服务器", "与主服务器相同"),
         DNS_INVALID("DNS 服务器", "应为 IP[:端口]"),
+        TIMEOUT_INVALID("快速超时", "应为 ${ServerChoice.MIN_TIMEOUT_MS}–${ServerChoice.MAX_TIMEOUT_MS} 毫秒"),
         EXPIRES_OUT_OF_RANGE("注册有效期", "应为 $MIN_EXPIRES–$MAX_EXPIRES 秒"),
         DUPLICATE("", "账号已存在"),
 
@@ -85,6 +86,8 @@ object AccountRules {
             server = draft.server.trim().removePrefix("sips:").removePrefix("sip:"),
             backupServer = draft.backupServer.trim().removePrefix("sips:").removePrefix("sip:"),
             dnsServer = draft.dnsServer.trim(),
+            // Without a backup server there is nothing to go to: the timeout means nothing.
+            serverTimeoutMs = if (draft.backupServer.isBlank()) 0 else draft.serverTimeoutMs,
         )
     }
 
@@ -121,6 +124,7 @@ object AccountRules {
             draft.backupServer.equals(draft.server.ifEmpty { draft.address }, ignoreCase = true) -> errors += Error.BACKUP_SAME
         }
         if (draft.dnsServer.isNotEmpty() && !AccountRoute.isValidDnsServer(draft.dnsServer)) errors += Error.DNS_INVALID
+        if (!ServerChoice.isValidTimeout(draft.serverTimeoutMs)) errors += Error.TIMEOUT_INVALID
         if (draft.expires !in MIN_EXPIRES..MAX_EXPIRES) errors += Error.EXPIRES_OUT_OF_RANGE
 
         val key = identityKey(draft.username, draft.address)

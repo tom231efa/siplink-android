@@ -15,8 +15,10 @@ object AccountRoute {
      * @param backup the server to use while the first one is down; empty: none
      * @param dns the DNS server to ask for the address of either, `address[:port]`; empty: the system's
      * @param waiting the account is to register as soon as the address of its server is known
+     * @param timeoutMs the fast timeout ([ServerChoice]): how long the first server gets to answer
+     *   before the account goes to its backup; 0: off
      */
-    data class Record(val primary: String, val backup: String, val dns: String, val waiting: Boolean = false) {
+    data class Record(val primary: String, val backup: String, val dns: String, val waiting: Boolean = false, val timeoutMs: Int = 0) {
         /** Nothing here that the SIP core does not know by itself. */
         val isPlain: Boolean get() = backup.isEmpty() && dns.isEmpty()
     }
@@ -25,12 +27,15 @@ object AccountRoute {
     private const val DNS_PORT = 53
 
     fun encode(record: Record): String =
-        listOf(record.primary, record.backup, record.dns, if (record.waiting) "1" else "0").joinToString(SEPARATOR.toString())
+        listOf(record.primary, record.backup, record.dns, if (record.waiting) "1" else "0", record.timeoutMs.toString())
+            .joinToString(SEPARATOR.toString())
 
+    /** The record of [text]; null for none. One written before the fast timeout came has four fields, and the timeout off. */
     fun decode(text: String?): Record? {
         val fields = text?.split(SEPARATOR) ?: return null
-        if (fields.size != 4) return null
-        return Record(fields[0], fields[1], fields[2], waiting = fields[3] == "1")
+        if (fields.size !in 4..5) return null
+        val timeout = fields.getOrNull(4)?.toIntOrNull()?.takeIf(ServerChoice::isValidTimeout) ?: 0
+        return Record(fields[0], fields[1], fields[2], waiting = fields[3] == "1", timeoutMs = timeout)
     }
 
     /** Host and port of `host[:port]`; an IPv6 address stays in its brackets. */

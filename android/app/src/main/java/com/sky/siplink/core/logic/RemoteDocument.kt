@@ -192,6 +192,8 @@ data class RemoteDocument(
                     server = fields.string("server", d.server),
                     backupServer = fields.string("backupServer", d.backupServer),
                     dnsServer = fields.string("dnsServer", d.dnsServer),
+                    // Held within the app's bounds, not refused, like the size of the room.
+                    serverTimeoutMs = ServerChoice.fromRemote(fields.int("serverTimeoutMs", d.serverTimeoutMs)),
                     transport = fields.enum("transport", d.transport, SipTransport.entries),
                     expires = fields.int("expires", d.expires),
                     subscribeMwi = fields.bool("subscribeMwi", d.subscribeMwi),

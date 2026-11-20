@@ -21,6 +21,11 @@ data class AccountDraft(
     val backupServer: String = "",
     /** Optional DNS server of this account as address[:port]; the servers are looked up there instead of by the system. */
     val dnsServer: String = "",
+    /**
+     * The fast timeout, in ms: how long [server] gets to answer before the account goes to
+     * [backupServer]; 0: off. Only with a backup server ([com.sky.siplink.core.logic.ServerChoice]).
+     */
+    val serverTimeoutMs: Int = 0,
     val transport: SipTransport = SipTransport.UDP,
     val expires: Int = 3600,
     /** Ask the PBX to report new voicemail (SUBSCRIBE); a PBX that reports it unasked needs none. */
@@ -48,6 +53,7 @@ data class SipAccount(
     val name: String = "",
     val backupServer: String = "",
     val dnsServer: String = "",
+    val serverTimeoutMs: Int = 0,
     val subscribeMwi: Boolean = false,
     /** The account is on its backup server at the moment. */
     val onBackup: Boolean = false,
@@ -71,6 +77,7 @@ data class SipAccount(
         server = server,
         backupServer = backupServer,
         dnsServer = dnsServer,
+        serverTimeoutMs = serverTimeoutMs,
         transport = transport,
         expires = expires,
         subscribeMwi = subscribeMwi,

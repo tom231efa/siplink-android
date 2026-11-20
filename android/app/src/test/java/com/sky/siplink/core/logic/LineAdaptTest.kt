@@ -163,6 +163,21 @@ class LineAdaptTest {
     }
 
     @Test
+    fun `the two servers of a network are kept apart and count as one network`() {
+        assertEquals("net", LineAdapt.slotted("net", onBackup = false))
+        val backup = LineAdapt.slotted("net", onBackup = true)
+        assertTrue(backup != "net")
+        assertEquals("a", LineAdapt.accountOf(LineAdapt.key("a", backup)))
+        val now = 100 * day
+        val records = HashMap<String, Record>()
+        repeat(LineAdapt.MAX_NETWORKS) { i ->
+            records[LineAdapt.key("a", "net$i")] = Record(transport = TCP, usedAt = now - i * 1000L)
+            records[LineAdapt.key("a", LineAdapt.slotted("net$i", onBackup = true))] = Record(transport = TCP, usedAt = now - i * 1000L)
+        }
+        assertTrue(LineAdapt.stale(records, now).isEmpty())
+    }
+
+    @Test
     fun `keys split into account and network`() {
         val key = LineAdapt.key("sip:1001@pbx", "0123456789abcdef")
         assertEquals("sip:1001@pbx", LineAdapt.accountOf(key))

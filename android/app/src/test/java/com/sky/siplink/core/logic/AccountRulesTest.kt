@@ -89,6 +89,20 @@ class AccountRulesTest {
     }
 
     @Test
+    fun `the fast timeout is off or 200 to 10000 ms and needs a backup server`() {
+        val withBackup = valid.copy(backupServer = "sbc.example.com")
+        fun errors(draft: AccountDraft) = AccountRules.validate(AccountRules.normalize(draft), emptyList())
+        assertEquals(emptyList<AccountRules.Error>(), errors(withBackup.copy(serverTimeoutMs = 500)))
+        assertEquals(emptyList<AccountRules.Error>(), errors(withBackup.copy(serverTimeoutMs = 0)))
+        assertEquals(listOf(AccountRules.Error.TIMEOUT_INVALID), errors(withBackup.copy(serverTimeoutMs = 100)))
+        assertEquals(listOf(AccountRules.Error.TIMEOUT_INVALID), errors(withBackup.copy(serverTimeoutMs = 20_000)))
+        assertEquals(listOf(AccountRules.Error.TIMEOUT_INVALID), errors(withBackup.copy(serverTimeoutMs = -1)))
+        // Without a backup server there is nothing to time out to: it is off.
+        assertEquals(0, AccountRules.normalize(valid.copy(serverTimeoutMs = 500)).serverTimeoutMs)
+        assertEquals(500, AccountRules.normalize(withBackup.copy(serverTimeoutMs = 500)).serverTimeoutMs)
+    }
+
+    @Test
     fun `a dns server is given by its address`() {
         fun errors(dns: String) = AccountRules.validate(AccountRules.normalize(valid.copy(dnsServer = dns)), emptyList())
         assertEquals(emptyList<AccountRules.Error>(), errors(" 192.0.2.53 "))

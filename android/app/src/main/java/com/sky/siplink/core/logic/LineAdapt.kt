@@ -245,15 +245,31 @@ object LineAdapt {
      * The keys (`account|network`) of [records] to forget at [now]: those unused for
      * [KEEP_MS], and those of all but the [MAX_NETWORKS] networks used most recently.
      */
-    fun stale(records: Map<String, Record>, now: Long): Set<String> {
-        val old = records.filterValues { now - it.usedAt > KEEP_MS }.keys
-        val networks = records.filterKeys { it !in old }.entries
-            .groupBy({ networkOf(it.key) }, { it.value.usedAt })
+    fun stale(records: Map<String, Record>, now: Long): Set<String> = staleKeys(records.mapValues { it.value.usedAt }, now)
+
+    /**
+     * Like [stale], for anything kept by `account|network` with the time it was last used
+     * ([usedAt]). The two servers of one network ([slotted]) count as one network.
+     */
+    fun staleKeys(usedAt: Map<String, Long>, now: Long): Set<String> {
+        val old = usedAt.filterValues { now - it > KEEP_MS }.keys
+        val networks = usedAt.filterKeys { it !in old }.entries
+            .groupBy({ baseNetwork(networkOf(it.key)) }, { it.value })
             .mapValues { (_, used) -> used.max() }
             .entries.sortedByDescending { it.value }
             .drop(MAX_NETWORKS).map { it.key }.toSet()
-        return old + records.keys.filter { networkOf(it) in networks }
+        return old + usedAt.keys.filter { baseNetwork(networkOf(it)) in networks }
     }
+
+    private const val BACKUP_SLOT = "~b"
+
+    /**
+     * The network as the records of a line know it: what was learned on [network] towards the
+     * backup server of an account is kept apart from what was learned there towards its first one.
+     */
+    fun slotted(network: String, onBackup: Boolean): String = if (onBackup) network + BACKUP_SLOT else network
+
+    private fun baseNetwork(network: String): String = network.removeSuffix(BACKUP_SLOT)
 
     fun key(account: String, network: String): String = "$account$SEPARATOR$network"
 
