@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="dialer_call_features">Функции вызовов</string>
+    <string name="dialer_switch_to_pad">Переключить на цифровую клавиатуру</string>
+    <string name="dialer_switch_to_keyboard">Переключить на текстовую клавиатуру</string>
+    <string name="dialer_add_account">Добавить учётную запись SIP</string>
+    <string name="dialer_no_accounts">Учётных записей SIP нет</string>
+    <string name="dialer_choose_account">Учётная запись для вызова</string>
+    <string name="dialer_dnd_on">Режим «Не беспокоить» включён</string>
+    <plurals name="dialer_new_voicemail">
+        <item quantity="one">%1$s новое голосовое сообщение</item>
+        <item quantity="few">%1$s новых голосовых сообщения</item>
+        <item quantity="many">%1$s новых голосовых сообщений</item>
+        <item quantity="other">%1$s нового голосового сообщения</item>
+    </plurals>
+    <string name="dialer_number_hint">Введите номер или адрес SIP</string>
+    <string name="dialer_address_label">Номер или адрес SIP</string>
+    <string name="dialer_address_example">Например: %1$s или %2$s</string>
+    <string name="dialer_video_call">Видеозвонок</string>
+    <string name="dialer_shortcuts">Быстрые клавиши</string>
+    <string name="dialer_backspace">Удалить</string>
+    <string name="dialer_call">Позвонить</string>
+</resources>

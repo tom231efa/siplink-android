@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_language">Язык</string>
+    <string name="settings_language_system">Как в системе</string>
+    <string name="settings_title">Настройки</string>
+    <string name="settings_section_accounts">Учётные записи</string>
+    <string name="settings_sip_accounts">Учётные записи SIP</string>
+    <string name="settings_section_call_features">Функции вызовов</string>
+    <string name="settings_dnd">Не беспокоить</string>
+    <string name="settings_video_calls">Видеозвонки</string>
+    <string name="settings_recording">Запись</string>
+    <string name="settings_auto_answer">Интерком и автоответ</string>
+    <string name="settings_ldap">Справочники LDAP</string>
+    <string name="settings_feature_codes">Коды функций</string>
+    <string name="settings_codecs">Кодеки</string>
+    <string name="settings_audio_codecs">Аудиокодеки</string>
+    <string name="settings_advanced">Дополнительные настройки</string>
+    <string name="settings_section_security">Безопасность</string>
+    <string name="settings_tls">TLS и сертификаты CA</string>
+    <string name="settings_section_battery">Батарея</string>
+    <string name="settings_keep_alive">Поддержание активности в фоне</string>
+    <string name="settings_battery_optimization">Оптимизация батареи</string>
+    <string name="settings_battery_open_failed">Не удалось открыть настройки оптимизации батареи</string>
+    <string name="settings_lock_screen_calls">Вызовы на заблокированном экране</string>
+    <string name="settings_lock_screen_allowed">Разрешено</string>
+    <string name="settings_lock_screen_not_allowed">Не разрешено</string>
+    <string name="settings_lock_screen_open_failed">Не удалось открыть настройки полноэкранных уведомлений</string>
+    <string name="settings_section_appearance">Оформление</string>
+    <string name="settings_theme">Тема</string>
+    <string name="settings_theme_system">Как в системе</string>
+    <string name="settings_theme_light">Светлая</string>
+    <string name="settings_theme_dark">Тёмная</string>
+    <string name="settings_banner_position">Положение панели вызова</string>
+    <string name="settings_banner_top">Вверху</string>
+    <string name="settings_banner_bottom">Внизу</string>
+    <string name="settings_dynamic_color">Динамические цвета</string>
+    <string name="settings_remote_config">Удалённая настройка</string>
+    <string name="settings_about">О приложении</string>
+    <string name="settings_update_available">Доступно обновление</string>
+    <string name="settings_recording_calls">Запись разговоров</string>
+    <string name="settings_recording_by_default">Записывать по умолчанию</string>
+    <string name="settings_recording_kept">Число хранимых записей</string>
+    <string name="settings_recording_files">Записи</string>
+</resources>

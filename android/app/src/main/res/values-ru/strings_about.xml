@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="about_license_app">SipLink: GNU AGPL-3.0</string>
+    <string name="about_license_sdk">Стек SIP: Belledonne Communications Linphone SDK, GNU AGPLv3</string>
+    <string name="about_browser_failed">Не удалось открыть браузер</string>
+    <string name="about_repository">Репозиторий на GitHub</string>
+    <string name="about_version">Версия %1$s</string>
+    <string name="about_auto_check">Автоматически проверять обновления</string>
+    <string name="about_new_version">Новая версия: %1$s</string>
+    <string name="about_current_version">Текущая версия: %1$s</string>
+    <string name="about_download_failed">Ошибка загрузки</string>
+    <string name="about_skip_version">Пропустить эту версию</string>
+    <string name="about_open_download_page">Открыть страницу загрузки</string>
+    <string name="about_cancel_download">Отменить загрузку</string>
+    <string name="about_install">Установить</string>
+    <string name="about_download_again">Загрузить снова</string>
+    <string name="about_download_install">Загрузить и установить</string>
+</resources>

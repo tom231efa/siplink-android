@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="recording_title">Записи</string>
+    <plurals name="recording_selected">
+        <item quantity="one">Выбрано: %1$s</item>
+        <item quantity="few">Выбрано: %1$s</item>
+        <item quantity="many">Выбрано: %1$s</item>
+        <item quantity="other">Выбрано: %1$s</item>
+    </plurals>
+    <string name="recording_clear_selection">Снять выбор</string>
+    <string name="recording_export">Экспорт</string>
+    <plurals name="recording_exported">
+        <item quantity="one">Экспортирована %1$s запись</item>
+        <item quantity="few">Экспортировано %1$s записи</item>
+        <item quantity="many">Экспортировано %1$s записей</item>
+        <item quantity="other">Экспортировано %1$s записи</item>
+    </plurals>
+    <string name="recording_export_failed">Ошибка экспорта</string>
+    <plurals name="recording_summary">
+        <item quantity="one">%1$s запись · %2$s</item>
+        <item quantity="few">%1$s записи · %2$s</item>
+        <item quantity="many">%1$s записей · %2$s</item>
+        <item quantity="other">%1$s записи · %2$s</item>
+    </plurals>
+    <string name="recording_empty">Записей нет</string>
+    <string name="recording_cannot_play">Не удаётся воспроизвести</string>
+    <plurals name="recording_delete_title">
+        <item quantity="one">Удалить %1$s запись?</item>
+        <item quantity="few">Удалить %1$s записи?</item>
+        <item quantity="many">Удалить %1$s записей?</item>
+        <item quantity="other">Удалить %1$s записи?</item>
+    </plurals>
+    <string name="recording_period_all">Все</string>
+    <string name="recording_period_today">Сегодня</string>
+    <plurals name="recording_period_days">
+        <item quantity="one">%1$s день</item>
+        <item quantity="few">%1$s дня</item>
+        <item quantity="many">%1$s дней</item>
+        <item quantity="other">%1$s дня</item>
+    </plurals>
+    <string name="recording_period_custom">Период</string>
+    <string name="recording_period_range">%1$s–%2$s</string>
+    <string name="recording_unknown_number">Неизвестный номер</string>
+    <string name="recording_detail_incoming">Входящий · %1$s · %2$s · %3$s</string>
+    <string name="recording_detail_outgoing">Исходящий · %1$s · %2$s · %3$s</string>
+    <string name="recording_play">Воспроизвести</string>
+    <string name="recording_stop">Остановить</string>
+</resources>

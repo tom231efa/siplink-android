@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="codec_restored">Настройки кодеков сброшены</string>
+    <string name="codec_keep_audio">Оставьте хотя бы один аудиокодек</string>
+    <string name="codec_keep_video">Оставьте хотя бы один видеокодек</string>
+    <string name="codec_audio">Аудио</string>
+    <string name="codec_video">Видео</string>
+    <string name="codec_resolution">Разрешение</string>
+    <string name="codec_frame_rate">Частота кадров (кадр/с)</string>
+    <string name="codec_frame_rate_auto">Авто</string>
+    <string name="codec_rate">%1$s Гц</string>
+    <string name="codec_move_up">Повысить приоритет: %1$s</string>
+    <string name="codec_move_down">Понизить приоритет: %1$s</string>
+    <plurals name="codec_rate_channels">
+        <item quantity="one">%1$s Гц · %2$s канал</item>
+        <item quantity="few">%1$s Гц · %2$s канала</item>
+        <item quantity="many">%1$s Гц · %2$s каналов</item>
+        <item quantity="other">%1$s Гц · %2$s канала</item>
+    </plurals>
+</resources>

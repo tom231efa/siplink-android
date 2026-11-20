@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="video_request">Собеседник просит включить видео</string>
+    <string name="video_request_decline">Отклонить</string>
+    <string name="video_request_accept">Включить</string>
+    <string name="video_answer_with_video">Ответить с видео</string>
+    <string name="video_answer_with_audio">Ответить без видео</string>
+    <string name="video_own_picture">Ваше изображение</string>
+    <string name="video_other_picture">Изображение собеседника</string>
+    <string name="video_swap">Поменять местами</string>
+    <string name="video_move_left">Переместить влево</string>
+    <string name="video_move_right">Переместить вправо</string>
+    <string name="video_move_up">Переместить вверх</string>
+    <string name="video_move_down">Переместить вниз</string>
+    <string name="video_show_whole">Показать целиком</string>
+    <string name="video_fill">Заполнить экран</string>
+    <string name="video_switch_camera">Сменить камеру</string>
+    <string name="video_camera_off">Выключить камеру</string>
+    <string name="video_camera_on">Включить камеру</string>
+</resources>

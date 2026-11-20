@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="managed_password_title">Просмотр пароля</string>
+    <string name="managed_password_text">Пароль защищён. Чтобы его увидеть, введите пароль конфигурации.</string>
+    <string name="managed_password_field">Пароль конфигурации</string>
+    <string name="managed_password_wrong">Неверный пароль</string>
+    <string name="managed_password_view">Показать</string>
+    <string name="managed_notice">Задаётся удалённо; изменить на этом устройстве нельзя</string>
+    <string name="managed_locked">Задаётся удалённо</string>
+</resources>

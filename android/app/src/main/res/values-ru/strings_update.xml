@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="update_check_failed">Не удалось проверить обновления</string>
+    <string name="update_rate_limited">Слишком много запросов</string>
+    <string name="update_downloading">Загрузка: %1$s</string>
+    <string name="update_downloaded">Версия %1$s загружена</string>
+    <string name="update_checking">Проверка…</string>
+    <string name="update_available">Доступно обновление: %1$s</string>
+    <string name="update_skipped">Версия %1$s пропущена</string>
+    <string name="update_latest">Установлена последняя версия</string>
+    <string name="update_tap_to_check">Нажмите, чтобы проверить обновления</string>
+</resources>

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="advanced_title">Дополнительные настройки</string>
+    <string name="advanced_section_incoming">Входящие вызовы</string>
+    <string name="advanced_dnd_mode">Режим «Не беспокоить»</string>
+    <string name="advanced_dnd_software">На телефоне</string>
+    <string name="advanced_dnd_server">На сервере</string>
+    <string name="advanced_dnd_codes">%1$s / %2$s</string>
+    <string name="advanced_call_waiting">Ожидание вызова</string>
+    <string name="advanced_reject_anonymous">Отклонять анонимные вызовы</string>
+    <string name="advanced_dtmf_mode">Режим DTMF</string>
+    <string name="advanced_section_forwarding">Переадресация</string>
+    <string name="advanced_forward_always">Безусловная переадресация</string>
+    <string name="advanced_forward_busy">Переадресация при занятости</string>
+    <string name="advanced_forward_no_answer">Переадресация при неответе</string>
+    <string name="advanced_no_answer_seconds">Ожидание ответа (с)</string>
+    <string name="advanced_range">Допустимо: %1$s–%2$s</string>
+    <string name="advanced_section_room">Конференц-комната</string>
+    <string name="advanced_room_limit">Максимум участников</string>
+    <string name="advanced_section_media">Медиа и сеть</string>
+    <string name="advanced_rate_control">Адаптивное управление скоростью</string>
+    <string name="advanced_echo_cancellation">Эхоподавление</string>
+    <string name="advanced_ipv6">Разрешить IPv6</string>
+    <string name="advanced_auto_network">Автоматически адаптироваться к сети</string>
+    <string name="advanced_stun_server">STUN-сервер</string>
+    <string name="advanced_host_port_hint">хост[:порт]</string>
+    <string name="advanced_section_identity">Идентификация клиента</string>
+    <string name="advanced_user_agent">Имя клиента (User-Agent)</string>
+    <plurals name="advanced_user_agent_error_too_long">
+        <item quantity="one">Имя клиента (User-Agent): не более %1$s символа</item>
+        <item quantity="few">Имя клиента (User-Agent): не более %1$s символов</item>
+        <item quantity="many">Имя клиента (User-Agent): не более %1$s символов</item>
+        <item quantity="other">Имя клиента (User-Agent): не более %1$s символа</item>
+    </plurals>
+    <string name="advanced_user_agent_error_ascii">Только печатные символы ASCII</string>
+    <string name="advanced_user_agent_error_ascii_full">Имя клиента (User-Agent): только печатные символы ASCII</string>
+    <string name="advanced_user_agent_error_spaces">Без пробелов в начале и в конце</string>
+    <string name="advanced_user_agent_error_spaces_full">Имя клиента (User-Agent) не должно начинаться или заканчиваться пробелом</string>
+</resources>

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="csv_unclosed_quote">Незакрытая кавычка</string>
+    <string name="csv_too_few_fields">Недостаточно полей; формат: %1$s</string>
+    <string name="csv_unknown_type">Неизвестный тип «%1$s»; доступны: %2$s</string>
+    <string name="csv_unknown_icon">Неизвестный значок «%1$s»; доступны: %2$s</string>
+    <string name="csv_unknown_transport">Неизвестный транспорт «%1$s»; доступны: %2$s</string>
+    <string name="csv_choose_file">Выбрать файл</string>
+    <string name="csv_import">Импортировать</string>
+    <string name="csv_file_unreadable">Не удаётся прочитать выбранный файл</string>
+    <plurals name="csv_imported_accounts">
+        <item quantity="one">Импортирована %1$s учётная запись</item>
+        <item quantity="few">Импортировано %1$s учётные записи</item>
+        <item quantity="many">Импортировано %1$s учётных записей</item>
+        <item quantity="other">Импортировано %1$s учётной записи</item>
+    </plurals>
+    <plurals name="csv_imported_shortcuts">
+        <item quantity="one">Импортирована %1$s быстрая клавиша</item>
+        <item quantity="few">Импортировано %1$s быстрые клавиши</item>
+        <item quantity="many">Импортировано %1$s быстрых клавиш</item>
+        <item quantity="other">Импортировано %1$s быстрой клавиши</item>
+    </plurals>
+    <plurals name="csv_report_skipped">
+        <item quantity="one">; пропущено: %1$s (превышен лимит в %2$s)</item>
+        <item quantity="few">; пропущено: %1$s (превышен лимит в %2$s)</item>
+        <item quantity="many">; пропущено: %1$s (превышен лимит в %2$s)</item>
+        <item quantity="other">; пропущено: %1$s (превышен лимит в %2$s)</item>
+    </plurals>
+    <plurals name="csv_report_errors">
+        <item quantity="one">; %1$s строка с ошибками:</item>
+        <item quantity="few">; %1$s строки с ошибками:</item>
+        <item quantity="many">; %1$s строк с ошибками:</item>
+        <item quantity="other">; %1$s строки с ошибками:</item>
+    </plurals>
+    <string name="csv_report_line">\nСтрока %1$s: %2$s</string>
+    <string name="csv_report_more">\n…</string>
+</resources>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="list_separator">"; "</string>
+    <string name="common_cancel">Отмена</string>
+    <string name="common_back">Назад</string>
+    <string name="common_delete">Удалить</string>
+    <string name="common_confirm_delete">Подтвердить удаление</string>
+    <string name="common_save">Сохранить</string>
+    <string name="common_ok">ОК</string>
+    <string name="common_edit">Изменить</string>
+    <string name="common_done">Готово</string>
+    <string name="common_close">Закрыть</string>
+    <string name="common_more">Ещё</string>
+    <string name="common_clear">Очистить</string>
+    <string name="common_restore_defaults">Сбросить настройки</string>
+</resources>

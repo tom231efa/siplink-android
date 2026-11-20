@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="form_required">Обязательно</string>
+    <string name="form_taken">Уже существует</string>
+    <string name="form_invalid">Недопустимый формат</string>
+    <string name="form_host_port">Формат: хост[:порт]</string>
+    <string name="form_port_range">Допустимо: 1–65535</string>
+    <plurals name="form_max_chars">
+        <item quantity="one">Не более %1$s символа</item>
+        <item quantity="few">Не более %1$s символов</item>
+        <item quantity="many">Не более %1$s символов</item>
+        <item quantity="other">Не более %1$s символа</item>
+    </plurals>
+    <string name="form_expand">Развернуть</string>
+    <string name="form_collapse">Свернуть</string>
+    <string name="form_password_show">Показать пароль</string>
+    <string name="form_password_hide">Скрыть пароль</string>
+    <string name="form_placeholder_host_port">хост[:порт]</string>
+</resources>

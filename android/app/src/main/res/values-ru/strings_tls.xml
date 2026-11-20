@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tls_invalid_file">Недопустимый файл сертификата X.509 (PEM / CRT / CER / DER)</string>
+    <string name="tls_save_failed">Не удалось сохранить сертификат: %1$s</string>
+    <string name="tls_read_failed">Не удаётся прочитать выбранный файл</string>
+    <string name="tls_file_too_large">Файл слишком большой</string>
+    <string name="tls_already_trusted">Сертификат уже добавлен</string>
+    <string name="tls_section_imported">Импортированные сертификаты CA</string>
+    <string name="tls_none">Импортированных сертификатов нет</string>
+    <string name="tls_import">Импортировать сертификат CA</string>
+    <string name="tls_section_verification">Проверка сертификата сервера</string>
+    <string name="tls_verify_certificate">Проверять сертификат сервера</string>
+    <string name="tls_verify_hostname">Проверять имя хоста</string>
+    <string name="tls_verification_off_warning">Без проверки вызовы могут быть перехвачены</string>
+    <string name="tls_section_srtp">Шифрование медиа (SRTP)</string>
+    <string name="tls_srtp_off">Выкл.</string>
+    <string name="tls_srtp_preferred">Предпочтительно</string>
+    <string name="tls_srtp_mandatory">Обязательно</string>
+    <string name="tls_remove_title">Удалить сертификат?</string>
+    <string name="tls_remove_text">Сертификаты серверов от издателя «%1$s» перестанут считаться доверенными, и учётные записи TLS, которые зависят от этого сертификата, не смогут зарегистрироваться.</string>
+    <string name="tls_remove_confirm">Удалить</string>
+    <string name="tls_issuer">Издатель: %1$s</string>
+    <string name="tls_expired">Срок действия истёк: %1$s</string>
+    <string name="tls_valid_until_not_ca">Действует до %1$s · Не сертификат CA</string>
+    <string name="tls_valid_until">Действует до %1$s</string>
+    <string name="tls_remove">Удалить сертификат</string>
+    <plurals name="tls_imported">
+        <item quantity="one">Импортирован %1$s сертификат; учётные записи регистрируются заново</item>
+        <item quantity="few">Импортировано %1$s сертификата; учётные записи регистрируются заново</item>
+        <item quantity="many">Импортировано %1$s сертификатов; учётные записи регистрируются заново</item>
+        <item quantity="other">Импортировано %1$s сертификата; учётные записи регистрируются заново</item>
+    </plurals>
+    <string name="tls_restart_ldap_title">Для LDAP нужен перезапуск</string>
+    <string name="tls_restart_ldap_text">Учётные записи SIP уже используют новые настройки сертификатов. Справочники LDAP установили зашифрованное соединение ещё до этого изменения; чтобы они использовали новые сертификаты CA, перезапустите приложение.</string>
+    <string name="tls_restart_after_call">Перезапустите приложение после завершения вызова</string>
+    <string name="tls_restart_now">Перезапустить</string>
+    <string name="tls_restart_later">Позже</string>
+</resources>

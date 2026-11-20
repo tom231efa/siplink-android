@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="feature_sheet_title">Функции вызовов</string>
+    <string name="feature_sheet_extension">Добавочный %1$s</string>
+    <string name="feature_sheet_target">Целевой добавочный номер</string>
+    <string name="feature_sheet_target_hint">Например: 1002</string>
+    <string name="feature_sheet_call">Позвонить</string>
+    <string name="feature_sheet_add_shortcut">Добавить в быстрые клавиши</string>
+    <string name="feature_sheet_force_confirm">Нажмите ещё раз для принудительного разъединения: %1$s</string>
+    <string name="feature_intercom">Интерком</string>
+    <string name="feature_listen">Прослушивание</string>
+    <string name="feature_whisper">Суфлирование</string>
+    <string name="feature_barge">Вмешательство</string>
+    <string name="feature_force_hang_up">Принудительное разъединение</string>
+    <string name="feature_pickup">Перехват вызова</string>
+    <string name="feature_voicemail">Голосовая почта</string>
+    <string name="feature_group_pickup">Групповой перехват</string>
+    <string name="feature_park">Парковка</string>
+    <string name="feature_dnd_on">Включить «Не беспокоить»</string>
+    <string name="feature_dnd_off">Отключить «Не беспокоить»</string>
+    <string name="feature_to">%1$s %2$s</string>
+    <string name="feature_code_missing">Не задан код функции: %1$s</string>
+    <string name="feature_codes_pickup">Перехват вызова</string>
+    <string name="feature_codes_restored">Коды функций сброшены</string>
+    <string name="feature_codes_invalid">Только 0-9 * #</string>
+</resources>
