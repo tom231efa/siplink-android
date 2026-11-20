@@ -17,11 +17,12 @@ import org.linphone.core.Config
  * @param onBackup whether an account is on its backup server now
  */
 internal class LineRecords(private val config: Config, private val onBackup: (String) -> Boolean = { false }) {
-    private fun keyOf(id: String, network: String): String = LineAdapt.key(id, LineAdapt.slotted(network, onBackup(id)))
+    private fun keyOf(id: String, network: String, backup: Boolean = onBackup(id)): String = LineAdapt.key(id, LineAdapt.slotted(network, backup))
 
-    fun record(id: String, network: String?): LineAdapt.Record? {
+    /** What was learned for account [id] on [network], towards the server it is on, or towards its backup ([backup]) or first one. */
+    fun record(id: String, network: String?, backup: Boolean = onBackup(id)): LineAdapt.Record? {
         val net = network ?: return null
-        return LineAdapt.decode(config.getString(SECTION, keyOf(id, net), null))
+        return LineAdapt.decode(config.getString(SECTION, keyOf(id, net, backup), null))
     }
 
     fun store(id: String, network: String?, record: LineAdapt.Record) {

@@ -73,9 +73,17 @@ internal class CallMediaWatch(
     private val iceOffered = HashMap<Long, Boolean>()
     private val last = HashMap<String, CallMediaSummary>()
 
+    /** Calls placed again over the other server of their account ([CallRetry]): they count for nothing. */
+    private val superseded = HashSet<Long>()
+
+    fun supersede(call: Call) {
+        superseded += call.nativePointer
+    }
+
     private val listener = object : CoreListenerStub() {
         override fun onCallStateChanged(core: Core, call: Call, state: Call.State?, message: String) {
             val pointer = call.nativePointer
+            if (pointer in superseded && (state == Call.State.End || state == Call.State.Error)) return
             when (state) {
                 Call.State.OutgoingInit -> {
                     startedOut[pointer] = SystemClock.elapsedRealtime()
@@ -86,6 +94,7 @@ internal class CallMediaWatch(
                 Call.State.StreamsRunning -> started(call)
                 Call.State.End, Call.State.Error -> finish(call, state)
                 Call.State.Released -> {
+                    superseded.remove(pointer)
                     running.remove(pointer)
                     startedOut.remove(pointer)
                     setups.remove(pointer)

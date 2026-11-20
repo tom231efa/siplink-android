@@ -84,9 +84,12 @@ class ServerChoiceTest {
         assertEquals(Move.STAY, ServerChoice.next(onBackup = true, ANSWERED, ANSWERED, callUp = true))
         assertEquals(Move.WAIT, ServerChoice.next(onBackup = true, ANSWERED, PENDING, callUp = true))
         assertEquals(Move.PRIMARY, ServerChoice.next(onBackup = true, ANSWERED, FAILED, callUp = true))
-        // Away from a first server that is gone, call or not.
-        assertEquals(Move.BACKUP, ServerChoice.next(onBackup = false, SILENT, ANSWERED, callUp = true))
+        // Away from a first server that is gone, call or not; with a call, silence past the fast timeout is not enough.
+        assertEquals(Move.WAIT, ServerChoice.next(onBackup = false, SILENT, ANSWERED, callUp = true))
         assertEquals(Move.BACKUP, ServerChoice.next(onBackup = false, FAILED, ANSWERED, callUp = true))
+        assertEquals(Move.WAIT, ServerChoice.next(onBackup = true, ANSWERED, SILENT, callUp = true))
+        // A call out without an answer leaves on silence.
+        assertEquals(Move.BACKUP, ServerChoice.next(onBackup = false, SILENT, ANSWERED, callUp = true, silentLeaves = true))
         // Staying where it is needs no exception.
         assertEquals(Move.PRIMARY, ServerChoice.next(onBackup = false, ANSWERED, FAILED, callUp = true))
     }
@@ -106,11 +109,53 @@ class ServerChoiceTest {
     @Test
     fun `the server of a network is written down when it changes and now and then while it stays`() {
         val now = 10 * ServerChoice.USED_AT_STEP_MS
-        assertEquals(ServerChoice.Remembered(true, now), ServerChoice.remember(null, backup = true, now))
-        assertEquals(ServerChoice.Remembered(false, now), ServerChoice.remember(ServerChoice.Remembered(true, now - 1), backup = false, now))
-        assertNull(ServerChoice.remember(ServerChoice.Remembered(true, now - 1), backup = true, now))
+        assertEquals(ServerChoice.Remembered(true, now), ServerChoice.remember(null, backup = true, primaryDown = true, now))
+        assertEquals(ServerChoice.Remembered(false, now), ServerChoice.remember(ServerChoice.Remembered(true, now - 1), backup = false, primaryDown = false, now))
+        assertNull(ServerChoice.remember(ServerChoice.Remembered(true, now - 1), backup = true, primaryDown = true, now))
         val old = now - ServerChoice.USED_AT_STEP_MS
-        assertEquals(ServerChoice.Remembered(true, now), ServerChoice.remember(ServerChoice.Remembered(true, old), backup = true, now))
+        assertEquals(ServerChoice.Remembered(true, now), ServerChoice.remember(ServerChoice.Remembered(true, old), backup = true, primaryDown = true, now))
+    }
+
+    @Test
+    fun `the backup is remembered only where a probe found the first server silent`() {
+        assertNull(ServerChoice.remember(null, backup = true, primaryDown = false, now = 5))
+        assertNull(ServerChoice.remember(ServerChoice.Remembered(false, 1), backup = true, primaryDown = false, now = 5))
+        assertEquals(ServerChoice.Remembered(false, 5), ServerChoice.remember(null, backup = false, primaryDown = true, now = 5))
+    }
+
+    @Test
+    fun `a server the account registered on here is left after silence only the second time`() {
+        assertFalse(ServerChoice.leavesNow(SILENT, registeredHere = true, strikes = 0))
+        assertTrue(ServerChoice.leavesNow(SILENT, registeredHere = true, strikes = 1))
+        // Right after a change of network, or after a failure for all the probe's time, once is enough.
+        assertTrue(ServerChoice.leavesNow(SILENT, registeredHere = false, strikes = 0))
+        assertTrue(ServerChoice.leavesNow(FAILED, registeredHere = true, strikes = 0))
+    }
+
+    @Test
+    fun `a failed registration switches blindly only outside a check and the quiet time after a move`() {
+        val quiet = ServerChoice.MOVED_QUIET_MS
+        assertTrue(ServerChoice.switchesBlindly(failures = 1, checking = false, sinceMoveMs = quiet))
+        assertFalse(ServerChoice.switchesBlindly(failures = 2, checking = false, sinceMoveMs = quiet))
+        assertTrue(ServerChoice.switchesBlindly(failures = 3, checking = false, sinceMoveMs = quiet))
+        assertFalse(ServerChoice.switchesBlindly(failures = 1, checking = true, sinceMoveMs = quiet))
+        assertFalse(ServerChoice.switchesBlindly(failures = 1, checking = false, sinceMoveMs = quiet - 1))
+    }
+
+    @Test
+    fun `after returns that did not hold the first server waits out its back-off`() {
+        assertTrue(ServerChoice.mayReturn(failedReturns = 0, sinceFailedReturnMs = 0))
+        assertFalse(ServerChoice.mayReturn(failedReturns = 1, sinceFailedReturnMs = AccountRoute.failbackDelay(1) - 1))
+        assertTrue(ServerChoice.mayReturn(failedReturns = 1, sinceFailedReturnMs = AccountRoute.failbackDelay(1)))
+        assertFalse(ServerChoice.mayReturn(failedReturns = 3, sinceFailedReturnMs = AccountRoute.failbackDelay(2)))
+    }
+
+    @Test
+    fun `a move counts for a call out only when a check made it for the silence of the call's server`() {
+        assertTrue(ServerChoice.movedForSilence("pbx.example.com:5060", "PBX.example.com:5060", sinceMs = 1_000))
+        assertFalse(ServerChoice.movedForSilence("pbx.example.com:5060", null, sinceMs = 1_000))
+        assertFalse(ServerChoice.movedForSilence("pbx.example.com:5060", "sbc.example.com", sinceMs = 1_000))
+        assertFalse(ServerChoice.movedForSilence("pbx.example.com:5060", "pbx.example.com:5060", sinceMs = ServerChoice.LEFT_SILENT_KEEP_MS))
     }
 
     @Test

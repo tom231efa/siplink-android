@@ -90,10 +90,13 @@ object ServerChoice {
      *
      * The first server is taken when it answers. Without an answer from it in time, the backup is
      * taken when it answers. Both silent: the account stays, and the SIP core's own retries go on.
-     * While a call is up ([callUp]) the account leaves a server only when that server failed:
-     * back to the first server only once no call is up, as the return after a failure always did.
+     * While a call is up ([callUp]) the account leaves a server only when that server failed for
+     * all the probe's time: silence past the fast timeout alone may be a moment's jitter, which
+     * the call would not survive a move for. With [silentLeaves] (a call out without an answer,
+     * [mayRetry]) silence is enough. Back to the first server only once no call is up, as the
+     * return after a failure always did.
      */
-    fun next(onBackup: Boolean, primary: Answer, backup: Answer, callUp: Boolean): Move {
+    fun next(onBackup: Boolean, primary: Answer, backup: Answer, callUp: Boolean, silentLeaves: Boolean = false): Move {
         val target = when {
             primary == Answer.ANSWERED -> Move.PRIMARY
             primary == Answer.PENDING -> return Move.WAIT
@@ -106,11 +109,41 @@ object ServerChoice {
         // The server the account is on, and with it its calls, has to have failed.
         val here = if (onBackup) backup else primary
         return when (here) {
-            Answer.FAILED, Answer.SILENT -> target
+            Answer.FAILED -> target
+            Answer.SILENT -> if (silentLeaves) target else Move.WAIT
             Answer.PENDING -> Move.WAIT
             Answer.ANSWERED -> Move.STAY
         }
     }
+
+    /**
+     * Whether an account leaves the server it is on, which answered [here], now. A server the
+     * account registered on, on this same network ([registeredHere]: no change of network since),
+     * is left after silence past the fast timeout only the second time in a row ([strikes]: the
+     * times before): one lost packet more than the tries cover does not move it. Right after a
+     * change of network, or when the server failed for all the probe's time, once is enough.
+     */
+    fun leavesNow(here: Answer, registeredHere: Boolean, strikes: Int): Boolean =
+        here != Answer.SILENT || !registeredHere || strikes >= 1
+
+    /**
+     * Whether a registration that failed for want of a server switches the account to its other
+     * server at once: every other failure ([AccountRoute.switchesNow]), but not while both
+     * servers are being asked ([checking]), nor within [MOVED_QUIET_MS] of a move ([sinceMoveMs]):
+     * the first registration on a new network or a new server may fail before the way is up, and
+     * the check decides better.
+     */
+    fun switchesBlindly(failures: Int, checking: Boolean, sinceMoveMs: Long): Boolean =
+        AccountRoute.switchesNow(failures) && !checking && sinceMoveMs >= MOVED_QUIET_MS
+
+    /**
+     * Whether an account on its backup may go back to its first server now, when its last
+     * [failedReturns] returns did not hold, the last one [sinceFailedReturnMs] ago: only once the
+     * wait of the return after a failure is over ([AccountRoute.failbackDelay]). A first server
+     * that answers OPTIONS and refuses registrations would have the account bounce otherwise.
+     */
+    fun mayReturn(failedReturns: Int, sinceFailedReturnMs: Long): Boolean =
+        failedReturns == 0 || sinceFailedReturnMs >= AccountRoute.failbackDelay(failedReturns)
 
     /** After a change of network the servers are asked once more after this long: a new network may not carry at its first moment. */
     const val SETTLE_MS = 3_000L
@@ -119,8 +152,9 @@ object ServerChoice {
     const val MIN_CHECK_GAP_MS = 5_000L
 
     /**
-     * How long the line doctor leaves the failures of an account alone after it moved to its
-     * other server: what failed was the way to the server it left.
+     * How long after a move a failed registration neither switches the account blindly
+     * ([switchesBlindly]) nor counts for the line doctor at once: the way to the new server may
+     * not be up yet, and what failed may be the way to the server it left.
      */
     const val MOVED_QUIET_MS = 40_000L
 
@@ -146,9 +180,17 @@ object ServerChoice {
     /** What is remembered is written down again at most this often while it stays the same. */
     const val USED_AT_STEP_MS = 60 * 60_000L
 
-    /** The record to keep after the account registered on its backup ([backup]) or first server at [now]; null: nothing to write. */
-    fun remember(known: Remembered?, backup: Boolean, now: Long): Remembered? =
-        if (known != null && known.backup == backup && now - known.usedAt < USED_AT_STEP_MS) null else Remembered(backup, now)
+    /**
+     * The record to keep after the account registered on its backup ([backup]) or first server at
+     * [now]; null: nothing to write. The backup is remembered only where a probe on this network
+     * found the first server silent ([primaryDown]): after a blind switch on a network where the
+     * first server answers, every later arrival would go to the backup and straight back.
+     */
+    fun remember(known: Remembered?, backup: Boolean, primaryDown: Boolean, now: Long): Remembered? = when {
+        backup && !primaryDown -> null
+        known != null && known.backup == backup && now - known.usedAt < USED_AT_STEP_MS -> null
+        else -> Remembered(backup, now)
+    }
 
     // ---------------------------------------------------------------- calls out
 
@@ -162,6 +204,18 @@ object ServerChoice {
 
     /** When a call out with no answer yet is looked at, with the fast timeout [timeoutMs]; null: never (off). */
     fun retryAfter(timeoutMs: Int): Long? = if (timeoutMs > 0) maxOf(timeoutMs.toLong(), RETRY_FLOOR_MS) else null
+
+    /** A move by a check that found the server it left silent counts for a call out on that server this long. */
+    const val LEFT_SILENT_KEEP_MS = 30_000L
+
+    /**
+     * Whether a call out through [callServer] that has had no answer, on an account now on
+     * another server, may take that move as the evidence that [callServer] is silent: only when
+     * a check made it, having found [callServer] silent ([leftSilent]: that server, [sinceMs] ago).
+     * Else both servers are asked now.
+     */
+    fun movedForSilence(callServer: String, leftSilent: String?, sinceMs: Long): Boolean =
+        leftSilent != null && leftSilent.equals(callServer, ignoreCase = true) && sinceMs < LEFT_SILENT_KEEP_MS
 
     /**
      * Whether a call out is placed again over the other server, once, when the server it went to

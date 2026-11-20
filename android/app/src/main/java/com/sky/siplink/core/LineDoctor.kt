@@ -125,8 +125,21 @@ internal class LineDoctor(
         core.isNetworkReachable = true
     }
 
+    /** Calls placed again over the other server of their account ([supersede]). */
+    private val superseded = HashSet<Long>()
+
+    /** [call] is being placed again over the other server ([CallRetry]): its end is no failure of the line. */
+    fun supersede(call: Call) {
+        superseded += call.nativePointer
+    }
+
     private val calls = object : CoreListenerStub() {
         override fun onCallStateChanged(core: Core, call: Call, state: Call.State?, message: String) {
+            // A call placed again over the other server ([CallRetry]) counts for nothing here.
+            if (call.nativePointer in superseded) {
+                if (state == Call.State.Released) superseded -= call.nativePointer
+                return
+            }
             // A call out that got no answer while the registration works: maybe its request was too large.
             if (state == Call.State.Error && call.dir == Call.Dir.Outgoing && call.errorInfo.protocolCode == TIMEOUT) {
                 call.params.account?.let(::callTimedOut)
@@ -237,6 +250,19 @@ internal class LineDoctor(
     fun pbxUnreachable(id: String): Boolean = records.pbxHop(id) != null
 
     /**
+     * The transport the line of account [id] runs on towards its backup server ([onBackup]) or
+     * its first one, by what is remembered for it on this network; null: before the network is
+     * known, where nothing is remembered yet. The router moves the account onto it in one change.
+     */
+    fun transportFor(id: String, onBackup: Boolean): SipTransport? {
+        if (network == null) return null
+        val params = find(id)?.params ?: return null
+        val server = params.serverAddress ?: return null
+        val own = records.own(id) ?: LineSteps.Own(transportOf(server), params.expires, params.isOutboundProxyEnabled)
+        return LineSteps.target(own, if (enabled) records.record(id, network, onBackup) else null, stunServer).transport
+    }
+
+    /**
      * The router moved account [id] to its other server: what was pending for the line was about
      * the server it left, and the line runs on what was learned for the new one.
      */
@@ -338,9 +364,10 @@ internal class LineDoctor(
      * again, when it is time.
      */
     private fun failed(account: Account, id: String, state: State) {
-        // Which server the line goes to is being decided: the failure may be the way to the server it leaves.
+        // Which server the line goes to is being decided, or it just moved: the failure may be the way
+        // to the server it leaves, or a way not up yet. It is looked at again later, nothing more.
         if (routing(id)) {
-            cancelConfirm(state)
+            if (LineAdapt.isTransportFailure(account.errorInfo.protocolCode) && !holds()) confirmLater(id, state) else cancelConfirm(state)
             return
         }
         val current = transportOf(account.params.serverAddress)
@@ -365,7 +392,8 @@ internal class LineDoctor(
             val current = find(id)
             // Dropped states (another network, another setting) have nothing to confirm.
             if (current != null && enabled && states[id] === state && current.state == RegistrationState.Failed && !holds()) {
-                stillFailing(current, id, state, refused = false)
+                // The router is still at it: looked at once more later.
+                if (routing(id)) confirmLater(id, state) else stillFailing(current, id, state, refused = false)
             }
         }
         state.confirm = task
@@ -526,8 +554,12 @@ internal class LineDoctor(
 
     // ---------------------------------------------------------------- the network
 
-    /** The phone is on [next] now ([NetworkWatch]); before the router hears of it. */
-    fun onNetwork(next: NetworkFacts?) {
+    /**
+     * The phone is on [next] now ([NetworkWatch]); before the router hears of it. With [applyNow]
+     * false the lines are put on what is remembered for the new network only by [reapply],
+     * after the router chose their servers: one change of each account, not two.
+     */
+    fun onNetwork(next: NetworkFacts?, applyNow: Boolean = true) {
         val before = facts
         facts = next
         if (next == null) return
@@ -541,7 +573,7 @@ internal class LineDoctor(
         if (!enabled) return
         if (moved) {
             records.prune(System.currentTimeMillis())
-            applyAll()
+            if (applyNow) applyAll()
         }
         // Logged in at last: the registrations need not wait for their next try.
         if (before?.captive == true && !next.captive) core.refreshRegisters()

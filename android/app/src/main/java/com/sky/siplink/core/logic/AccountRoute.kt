@@ -16,7 +16,7 @@ object AccountRoute {
      * @param dns the DNS server to ask for the address of either, `address[:port]`; empty: the system's
      * @param waiting the account is to register as soon as the address of its server is known
      * @param timeoutMs the fast timeout ([ServerChoice]): how long the first server gets to answer
-     *   before the account goes to its backup; 0: off
+     *   before the account goes to its backup; 0: off. Stored apart from the rest ([encode]).
      */
     data class Record(val primary: String, val backup: String, val dns: String, val waiting: Boolean = false, val timeoutMs: Int = 0) {
         /** Nothing here that the SIP core does not know by itself. */
@@ -26,17 +26,25 @@ object AccountRoute {
     private const val SEPARATOR = '|'
     private const val DNS_PORT = 53
 
+    /**
+     * The record as text, without its fast timeout: an older version of the app reads four
+     * fields and nothing else, and keeps its part of the record. The timeout is kept apart.
+     */
     fun encode(record: Record): String =
-        listOf(record.primary, record.backup, record.dns, if (record.waiting) "1" else "0", record.timeoutMs.toString())
-            .joinToString(SEPARATOR.toString())
+        listOf(record.primary, record.backup, record.dns, if (record.waiting) "1" else "0").joinToString(SEPARATOR.toString())
 
-    /** The record of [text]; null for none. One written before the fast timeout came has four fields, and the timeout off. */
+    /**
+     * The record of [text], with its fast timeout off; null for none. A fifth field (written by
+     * builds of the development branch, never released) is passed over.
+     */
     fun decode(text: String?): Record? {
         val fields = text?.split(SEPARATOR) ?: return null
         if (fields.size !in 4..5) return null
-        val timeout = fields.getOrNull(4)?.toIntOrNull()?.takeIf(ServerChoice::isValidTimeout) ?: 0
-        return Record(fields[0], fields[1], fields[2], waiting = fields[3] == "1", timeoutMs = timeout)
+        return Record(fields[0], fields[1], fields[2], waiting = fields[3] == "1")
     }
+
+    /** The fast timeout kept apart from the record ([encode]); 0 for none, or one out of bounds. */
+    fun decodeTimeout(text: String?): Int = text?.toIntOrNull()?.takeIf(ServerChoice::isValidTimeout) ?: 0
 
     /** Host and port of `host[:port]`; an IPv6 address stays in its brackets. */
     fun split(hostPort: String): Pair<String, Int?> {

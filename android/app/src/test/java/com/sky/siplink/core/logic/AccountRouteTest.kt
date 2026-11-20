@@ -16,17 +16,21 @@ class AccountRouteTest {
         assertEquals(bare, AccountRoute.decode(AccountRoute.encode(bare)))
         assertNull(AccountRoute.decode(null))
         assertNull(AccountRoute.decode("pbx.example.com"))
+        // The fast timeout is kept apart: an older version reads the four fields it knows.
         val fast = AccountRoute.Record("pbx.example.com", "sbc.example.com", "", timeoutMs = 500)
-        assertEquals(fast, AccountRoute.decode(AccountRoute.encode(fast)))
+        assertEquals("pbx.example.com|sbc.example.com||0", AccountRoute.encode(fast))
+        assertEquals(fast.copy(timeoutMs = 0), AccountRoute.decode(AccountRoute.encode(fast)))
         assertTrue(AccountRoute.Record("pbx.example.com", "", "").isPlain)
         assertFalse(bare.isPlain)
     }
 
     @Test
-    fun `a record of four fields from before the fast timeout is read with it off`() {
-        assertEquals(AccountRoute.Record("pbx.example.com", "sbc.example.com", "192.0.2.53", waiting = true), AccountRoute.decode("pbx.example.com|sbc.example.com|192.0.2.53|1"))
-        assertEquals(0, AccountRoute.decode("pbx.example.com|sbc.example.com||0|99")?.timeoutMs)
-        assertNull(AccountRoute.decode("a|b|c|0|500|x"))
+    fun `the fast timeout kept apart is read within its bounds`() {
+        assertEquals(500, AccountRoute.decodeTimeout("500"))
+        assertEquals(0, AccountRoute.decodeTimeout(null))
+        assertEquals(0, AccountRoute.decodeTimeout("99"))
+        assertEquals(0, AccountRoute.decodeTimeout("soon"))
+        assertEquals(AccountRoute.Record("a", "b", "c"), AccountRoute.decode("a|b|c|0|500"))
     }
 
     @Test

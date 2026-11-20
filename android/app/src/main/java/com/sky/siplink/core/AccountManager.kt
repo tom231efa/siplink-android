@@ -17,6 +17,7 @@ import org.linphone.core.Account
 import org.linphone.core.AccountParams
 import org.linphone.core.Address
 import org.linphone.core.AuthInfo
+import org.linphone.core.Call
 import org.linphone.core.Core
 import org.linphone.core.Factory
 import org.linphone.core.RegistrationState
@@ -62,6 +63,7 @@ class AccountManager(private val core: Core, private val lock: ConfigLock) {
     private val router: AccountRouter = AccountRouter(
         core, handler, ::find, ::idOf, ::noteChanged, doctor::holds,
         ownTransport = { doctor.own(it)?.transport },
+        transportFor = doctor::transportFor,
         afterMove = doctor::onServerMoved,
     )
 
@@ -92,11 +94,14 @@ class AccountManager(private val core: Core, private val lock: ConfigLock) {
     init {
         refresh()
         router.refresh()
-        // Both live as long as the core, which is as long as the process. The doctor first: the
-        // router's moves then find the doctor on the new network already.
+        // Both live as long as the core, which is as long as the process. The doctor learns of the
+        // network first, the router chooses the servers on it, and then the doctor puts each line on
+        // what it has for that server: one change of each account in this turn of the main thread,
+        // and with it one registration (the SIP core registers once the turn is over).
         NetworkWatch.listen { facts ->
-            doctor.onNetwork(facts)
+            doctor.onNetwork(facts, applyNow = false)
             router.onNetwork(facts)
+            doctor.reapply()
         }
     }
 
@@ -183,6 +188,12 @@ class AccountManager(private val core: Core, private val lock: ConfigLock) {
         val view = router.view(id, account)?.takeIf { it.record.backup.isNotEmpty() } ?: return null
         val seen = view.seen
         return ServerReport(view.onBackup, seen?.primary, seen?.backup, seen?.at, view.record.timeoutMs)
+    }
+
+    /** [call] is placed again over the other server ([CallRetry]): its end counts nowhere as a failed call. */
+    internal fun supersede(call: Call) {
+        doctor.supersede(call)
+        media.supersede(call)
     }
 
     /** The fast timeout of account [id] in ms; 0: off, or no backup server. */
