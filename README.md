@@ -12,7 +12,7 @@
 
 <p align="center"><img src="docs/images/divider.svg" width="100%" alt=""></p>
 
-SipLink is a SIP softphone based on the [Linphone SDK](https://www.linphone.org/en/liblinphone-voip-sdk), with a user interface written in Jetpack Compose. It is mainly for voice calls, supports one-to-one video calls, and has no instant messaging.
+SipLink is a SIP softphone based on the [Linphone SDK](https://www.linphone.org/en/liblinphone-voip-sdk), with a user interface written in Jetpack Compose. It is mainly for voice calls, supports one-to-one video calls, and has no instant messaging. The app comes in eight languages, Arabic shown right to left.
 
 This repository also contains the [management platform](docs/platform.md) (`platform/`): a server that provisions accounts, settings, directories and shortcut keys to many phones from one place, published as a Docker image.
 
@@ -36,7 +36,7 @@ The update check contacts `api.github.com` and can be turned off in Settings, se
 
 - [Features](docs/features.md)
 - [Screenshots](docs/screenshots.md)
-- [User guide](docs/user-guide.md): accounts, calls, conference room, video, feature codes, shortcut keys, directories, recording, settings
+- [User guide](docs/user-guide.md): accounts, calls, conference room, video, feature codes, shortcut keys, directories, recording, settings, languages
 - [Remote configuration](docs/remote-configuration.md): loading and sync, what is locked, configuration document format
 - [Management platform](docs/platform.md): the server that provisions configuration, Docker deployment
 - [FAQ](docs/faq.md): no incoming calls, no sound in calls, certificates, LDAP, updates

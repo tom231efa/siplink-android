@@ -378,10 +378,21 @@ Under remote configuration, the Recordings page and "Recordings to keep" stay wi
 | Security | TLS and CA certificates | — |
 | Battery | Stay online in background | On |
 | | Battery optimization, Show calls on lock screen (Android 14 and later) | — |
-| Appearance | Theme: System default / Light / Dark | System default |
+| Appearance | Language: System default and the eight languages of the app, see [Language](#language) | System default |
+| | Theme: System default / Light / Dark | System default |
 | | Call banner position: Top / Bottom | Bottom |
 | | Dynamic color (Android 12 and later) | Off |
 | — | Remote configuration, About | — |
+
+### Language
+
+**Settings → Appearance → Language** offers "System default" and the eight languages of the app, each by its own name: English, 简体中文, 繁體中文, 日本語, العربية, Français, Русский, Español.
+
+- A new installation follows the system ("System default").
+- A system language the app does not have gives the next language of the system's list that the app has, else English.
+- Chinese goes by script: Traditional Chinese for Taiwan, Hong Kong and Macau, Simplified Chinese for the rest.
+- From Android 13 on, the same choice is on the system's page of the app's language; a change on one side shows on the other.
+- Arabic is shown right to left. The dial pad, the call timer, phone numbers, SIP addresses and other technical values keep their left-to-right order.
 
 ### Recording
 

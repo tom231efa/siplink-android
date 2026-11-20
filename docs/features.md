@@ -86,4 +86,5 @@ The management platform is published as a Docker image with a web console (eight
 - Enabling and ordering audio and video codecs
 - Stays registered in the background without a push service
 - Dark and light themes, or follow the system
+- Eight languages, following the system or chosen in Settings: English, 简体中文, 繁體中文, 日本語, العربية (right to left), Français, Русский, Español
 - Checks for, downloads and installs updates in the app

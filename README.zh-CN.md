@@ -12,7 +12,7 @@
 
 <p align="center"><img src="docs/images/divider.svg" width="100%" alt=""></p>
 
-SipLink 是基于 [Linphone SDK](https://www.linphone.org/en/liblinphone-voip-sdk) 的 SIP 软电话，界面使用 Jetpack Compose 编写。以语音通话为主，支持一对一视频通话，不含即时消息。
+SipLink 是基于 [Linphone SDK](https://www.linphone.org/en/liblinphone-voip-sdk) 的 SIP 软电话，界面使用 Jetpack Compose 编写。以语音通话为主，支持一对一视频通话，不含即时消息。应用有八种语言，阿拉伯语从右向左显示。
 
 本仓库同时包含[管理平台](docs/zh-CN/platform.md)（`platform/`）：为多部手机集中下发账号、设置、通讯录和快捷键的服务端，以 Docker 镜像发布。
 
@@ -36,7 +36,7 @@ SipLink 是基于 [Linphone SDK](https://www.linphone.org/en/liblinphone-voip-sd
 
 - [功能特性](docs/zh-CN/features.md)
 - [应用截图](docs/zh-CN/screenshots.md)
-- [使用指南](docs/zh-CN/user-guide.md)：账号、通话、会议室、视频、功能码、快捷键、通讯录、录音、设置
+- [使用指南](docs/zh-CN/user-guide.md)：账号、通话、会议室、视频、功能码、快捷键、通讯录、录音、设置、语言
 - [远程配置](docs/zh-CN/remote-configuration.md)：载入与同步、锁定范围、配置文档格式
 - [管理平台](docs/zh-CN/platform.md)：集中下发配置的服务端，Docker 部署
 - [常见问题](docs/zh-CN/faq.md)：收不到来电、通话无声、证书、LDAP、更新
