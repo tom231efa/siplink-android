@@ -81,12 +81,20 @@ class CutTexts {
 
     private fun cut(layout: TextLayoutResult): String? {
         val text = layout.layoutInput.text.text
-        return when {
-            runsOut(layout) -> "\"${LanguageTexts.plain(text)}\" is cut off"
-            loneLastCharacter(layout, text) -> "\"${LanguageTexts.plain(text)}\" ends with one character on its last line"
-            breaksAWord(layout, text) -> "\"${LanguageTexts.plain(text)}\" breaks a word between two lines"
-            else -> null
+        val finding = when {
+            runsOut(layout) -> "is cut off"
+            loneLastCharacter(layout, text) -> "ends with one character on its last line"
+            breaksAWord(layout, text) -> "breaks a word between two lines"
+            else -> return null
         }
+        return "\"${LanguageTexts.plain(text)}\" $finding ${measures(layout)}"
+    }
+
+    /** The widths behind a finding, in pixels: the text on one line, each line, its box. */
+    private fun measures(layout: TextLayoutResult): String {
+        val lines = (0 until layout.lineCount).joinToString("+") { "%.0f".format(layout.getLineRight(it) - layout.getLineLeft(it)) }
+        val oneLine = "%.0f".format(layout.multiParagraph.intrinsics.maxIntrinsicWidth)
+        return "(one line $oneLine px, lines $lines px, box ${layout.size.width} px)"
     }
 
     /**
