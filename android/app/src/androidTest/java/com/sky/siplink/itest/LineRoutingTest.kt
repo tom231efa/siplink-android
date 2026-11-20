@@ -1,7 +1,13 @@
 package com.sky.siplink.itest
 
+import android.os.SystemClock
+import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.sky.siplink.core.NetworkWatch
 import com.sky.siplink.core.TlsManager
+import com.sky.siplink.core.logic.ServerChoice
+import com.sky.siplink.core.model.CallPhase
+import com.sky.siplink.core.model.NetworkFacts
 import com.sky.siplink.core.model.RegState
 import com.sky.siplink.core.model.SipTransport
 import org.junit.After
@@ -11,71 +17,54 @@ import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.junit.runner.RunWith
-import java.io.Closeable
-import java.io.IOException
-import java.net.DatagramPacket
-import java.net.DatagramSocket
 import java.net.InetAddress
 import java.net.InetSocketAddress
-import java.net.SocketAddress
-import java.util.concurrent.ConcurrentHashMap
-import kotlin.concurrent.thread
 
 /** An account with a backup server, and an account with a DNS server of its own. */
 @RunWith(AndroidJUnit4::class)
 class LineRoutingTest : PbxTestBase() {
-    private var relay: Relay? = null
+    private var relay: ServerRelay? = null
+
+    /** The network the phone is on, as the app had it before the test fed it others ([moveTo]). */
+    private var realNetwork: NetworkFacts? = null
 
     @After
     fun closeRelay() {
         relay?.close()
+        realNetwork?.let { real -> onMain { NetworkWatch.publish(real) } }
     }
 
     /**
-     * A second way to the PBX that the test can cut: a UDP relay on the device itself. To the app
-     * it is a SIP server of its own, at 127.0.0.1.
+     * Has the app take the phone to be on another network, which differs from the real one only
+     * in a name server it does not use (192.0.2.0/24 is for documentation): its own path from
+     * Android's callbacks on (NetworkWatch). The phone itself stays on its network, so this does
+     * not show what a real change does to sockets, routes and the SIP core's connections.
      */
-    private class Relay(private val target: InetSocketAddress, port: Int) : Closeable {
-        private val front = DatagramSocket(InetSocketAddress(InetAddress.getByName(HOST), port))
-        private val backs = ConcurrentHashMap<SocketAddress, DatagramSocket>()
-
-        init {
-            pump(front) { packet ->
-                // One socket towards the PBX per sender, so that its answers find their way back.
-                val back = backs.getOrPut(packet.socketAddress) { backFor(packet.socketAddress) }
-                back.send(DatagramPacket(packet.data, packet.length, target))
-            }
-        }
-
-        private fun backFor(client: SocketAddress): DatagramSocket {
-            val socket = DatagramSocket()
-            pump(socket) { packet -> front.send(DatagramPacket(packet.data, packet.length, client)) }
-            return socket
-        }
-
-        private fun pump(socket: DatagramSocket, forward: (DatagramPacket) -> Unit) {
-            thread(isDaemon = true) {
-                val buffer = ByteArray(MAX_PACKET)
-                try {
-                    while (true) {
-                        val packet = DatagramPacket(buffer, buffer.size)
-                        socket.receive(packet)
-                        forward(packet)
-                    }
-                } catch (_: IOException) {
-                    // Closed: the relay is switched off.
-                }
-            }
-        }
-
-        override fun close() {
-            front.close()
-            backs.values.forEach { it.close() }
-        }
+    private fun network(tag: Int): NetworkFacts {
+        val real = realNetwork ?: onMain { NetworkWatch.facts }.also { realNetwork = it }
+        assumeTrue("The app does not know the network the phone is on", real != null)
+        return real!!.copy(dns = real.dns + "192.0.2.$tag")
     }
 
+    private fun moveTo(facts: NetworkFacts) = onMain { NetworkWatch.publish(facts) }
+
+    private fun onBackupNow(): Boolean = account(APP)?.let { it.state == RegState.OK && it.onBackup } == true
+
+    private fun onFirstNow(): Boolean = account(APP)?.let { it.state == RegState.OK && !it.onBackup } == true
+
+    /** The relay as the first server, the PBX itself as the backup. */
+    private fun addRoutedAccount(timeoutMs: Int) {
+        startRelay()
+        addAccount(draft(APP).copy(server = "$HOST:$RELAY_PORT", backupServer = env.pbxHost, serverTimeoutMs = timeoutMs))
+        assertFalse(awaitRegistered().onBackup)
+        // The servers were asked as the account started; a registration asks them again only after a while.
+        Thread.sleep(ServerChoice.MIN_CHECK_GAP_MS + SLACK_MS)
+    }
+
+    private fun report(what: String, ms: Long) = Log.i(TAG, "$what: ${ms} ms")
+
     private fun startRelay() {
-        relay = Relay(InetSocketAddress(env.pbxHost, SIP_PORT), RELAY_PORT)
+        relay = ServerRelay(InetSocketAddress(env.pbxHost, SIP_PORT), InetSocketAddress(InetAddress.getByName(HOST), RELAY_PORT))
     }
 
     @Test
@@ -158,6 +147,144 @@ class LineRoutingTest : PbxTestBase() {
         awaitRegistered()
     }
 
+    /** With the fast timeout a first server that falls silent is left when the registration is refreshed. */
+    @Test
+    fun theFastTimeoutLeavesASilentServerInAMoment() {
+        addRoutedAccount(timeoutMs = FAST_MS)
+        relay!!.silent = true
+        val start = SystemClock.elapsedRealtime()
+        onMain { engine.core.refreshRegisters() }
+        await("the account to move to its backup server", FAST_FAILOVER_MS) { onBackupNow() }
+        report("Fast timeout $FAST_MS ms: registered on the backup after the first server fell silent", SystemClock.elapsedRealtime() - start)
+    }
+
+    /** The same without the fast timeout: the registration's own SIP timeout decides, for comparison. */
+    @Test
+    fun withoutTheFastTimeoutASilentServerCostsTheSipTimeout() {
+        addRoutedAccount(timeoutMs = 0)
+        relay!!.silent = true
+        val start = SystemClock.elapsedRealtime()
+        onMain { engine.core.refreshRegisters() }
+        await("the account to move to its backup server", SIP_FAILOVER_MS) { onBackupNow() }
+        report("No fast timeout: registered on the backup after the first server fell silent", SystemClock.elapsedRealtime() - start)
+    }
+
+    /** A change of network has both servers asked at once, with the fast timeout off as well. */
+    @Test
+    fun aChangeOfNetworkAsksBothServersAgain() {
+        addRoutedAccount(timeoutMs = 0)
+        relay!!.silent = true
+        val start = SystemClock.elapsedRealtime()
+        moveTo(network(1))
+        await("the account to move to its backup server", NETWORK_FAILOVER_MS) { onBackupNow() }
+        report("Change of network: registered on the backup", SystemClock.elapsedRealtime() - start)
+
+        // The first server is there again on the next network: the account returns without the minute's wait.
+        relay!!.silent = false
+        val back = SystemClock.elapsedRealtime()
+        moveTo(network(2))
+        await("the account to return to its first server", NETWORK_FAILOVER_MS) { onFirstNow() }
+        report("Change of network: back on the first server", SystemClock.elapsedRealtime() - back)
+    }
+
+    /** On a network it knows the account goes at once to the server it registered on there last. */
+    @Test
+    fun theServerOfANetworkIsRemembered() {
+        val office = network(1)
+        val home = network(2)
+        moveTo(office)
+        addRoutedAccount(timeoutMs = FAST_MS)
+        relay!!.silent = true
+        moveTo(home)
+        await("the account to move to its backup server at home", NETWORK_FAILOVER_MS) { onBackupNow() }
+
+        relay!!.silent = false
+        // Back in the office: on its first server as soon as the network is known, before any answer.
+        assertEquals(RELAY_PORT, onMain { NetworkWatch.publish(office); engine.accounts.find(account(APP)!!.id)!!.params.serverAddress!!.port })
+        await("the account to register on its first server in the office", NETWORK_FAILOVER_MS) { onFirstNow() }
+
+        // At home again: on the backup at once, and then back on the first server, which answers there now.
+        val port = onMain { NetworkWatch.publish(home); engine.accounts.find(account(APP)!!.id)!!.params.serverAddress!!.port }
+        assertTrue("Not on the backup at once: port $port", port != RELAY_PORT)
+        await("the account to return to its first server, which answers", NETWORK_FAILOVER_MS) { onFirstNow() }
+    }
+
+    /** A call on the backup stays up while the first server answers again; the account returns after it. */
+    @Test
+    fun aCallStaysOnItsServerWhileTheOtherComesBack() {
+        addRoutedAccount(timeoutMs = FAST_MS)
+        relay!!.silent = true
+        moveTo(network(1))
+        await("the account to move to its backup server", NETWORK_FAILOVER_MS) { onBackupNow() }
+
+        dial("2000") // echo
+        awaitConnected("2000")
+        awaitAppHearsAudio()
+        relay!!.silent = false
+        moveTo(network(2))
+        never("the account to leave the backup during the call", CALL_WINDOW_MS) { !onBackupNow() }
+        assertEquals(CallPhase.CONNECTED, call()?.phase)
+        awaitAppHearsAudio()
+        onMain { engine.calls.hangUp() }
+        awaitNoCall()
+
+        moveTo(network(3))
+        await("the account to return to its first server after the call", NETWORK_FAILOVER_MS) { onFirstNow() }
+    }
+
+    /** A call out to a first server that fell silent unnoticed is placed again over the backup, once, on the same screen. */
+    @Test
+    fun aCallOutToASilentServerIsPlacedAgainOverTheBackup() {
+        addRoutedAccount(timeoutMs = FAST_MS)
+        val entries = engine.history.entries.value.size
+        relay!!.silent = true
+        val phases = ArrayList<CallPhase?>()
+        val start = SystemClock.elapsedRealtime()
+        dial("2000") // echo
+        await("the call to be connected over the backup", RETRY_CONNECT_MS) {
+            phases += call()?.phase
+            call()?.phase == CallPhase.CONNECTED
+        }
+        report("Call out placed again over the backup: connected", SystemClock.elapsedRealtime() - start)
+        assertTrue("The call screen ended or went away in between: $phases", phases.none { it == null || it == CallPhase.ENDED })
+        assertTrue(account(APP)!!.onBackup)
+        awaitAppHearsAudio()
+        onMain { engine.calls.hangUp() }
+        awaitNoCall()
+        await("one entry in the history") { engine.history.entries.value.size == entries + 1 }
+        never("a second entry in the history", QUIET_WINDOW_MS) { engine.history.entries.value.size > entries + 1 }
+    }
+
+    /**
+     * How often a short fast timeout takes a first server that answers, through a path that loses
+     * packets, for out of reach. A measurement: it fails only where the account leaves a path
+     * without loss.
+     */
+    @Test
+    fun aShortFastTimeoutAndPacketLoss() {
+        addRoutedAccount(timeoutMs = FAST_MS)
+        var tag = 10
+        for (loss in LOSSES) {
+            var moved = 0
+            repeat(LOSS_ROUNDS) {
+                relay!!.loss = loss
+                val before = onMain { engine.accounts.servers(account(APP)!!.id)?.checkedAt }
+                moveTo(network(tag++))
+                // The check at once and the one after the network settled.
+                Thread.sleep(ServerChoice.SETTLE_MS + ServerChoice.waitMs(FAST_MS) + SLACK_MS)
+                assertTrue(onMain { engine.accounts.servers(account(APP)!!.id)?.checkedAt } != before)
+                if (account(APP)?.onBackup == true) {
+                    moved++
+                    relay!!.loss = 0.0
+                    moveTo(network(tag++))
+                    await("the account to return to its first server", NETWORK_FAILOVER_MS) { onFirstNow() }
+                }
+            }
+            Log.i(TAG, "Fast timeout $FAST_MS ms, ${(loss * 100).toInt()} % loss each way: $moved of $LOSS_ROUNDS changes of network took the backup")
+            if (loss == 0.0) assertEquals(0, moved)
+        }
+    }
+
     private companion object {
         const val HOST = "127.0.0.1"
         const val SIP_PORT = 5060
@@ -165,9 +292,27 @@ class LineRoutingTest : PbxTestBase() {
 
         /** A port of the PBX host on which nothing answers. */
         const val DEAD_PORT = 5399
-        const val MAX_PACKET = 65_535
 
         /** The first server is asked about once a minute. */
         const val RETURN_TIMEOUT_MS = 150_000L
+
+        const val TAG = "SipLink.Test"
+        const val FAST_MS = 500
+        const val SLACK_MS = 1_000L
+
+        /** The fast timeout, the backup's probe and its registration. */
+        const val FAST_FAILOVER_MS = 10_000L
+
+        /** A probe of four seconds, and a registration on the backup. */
+        const val NETWORK_FAILOVER_MS = 15_000L
+
+        /** The SIP core's own timeout of 32 seconds, and a registration. */
+        const val SIP_FAILOVER_MS = 90_000L
+
+        /** The INVITE's two seconds, the probes, and the call over the backup. */
+        const val RETRY_CONNECT_MS = 20_000L
+        const val CALL_WINDOW_MS = 10_000L
+        val LOSSES = listOf(0.0, 0.05, 0.1, 0.2, 0.3)
+        const val LOSS_ROUNDS = 10
     }
 }
