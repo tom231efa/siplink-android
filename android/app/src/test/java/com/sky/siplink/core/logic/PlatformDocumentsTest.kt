@@ -12,7 +12,7 @@ import org.junit.Test
 
 /**
  * The golden documents of the management platform, copied unchanged from its repository
- * (`docs/examples/provisioning-document.json`, the four of `internal/provision/testdata/`): the app has
+ * (`docs/examples/provisioning-document.json`, the five of `internal/provision/testdata/`): the app has
  * to take each of them as the platform builds it. Their CAs and passwords are test data.
  */
 class PlatformDocumentsTest {
@@ -118,5 +118,15 @@ class PlatformDocumentsTest {
         val document = read("platform-provision-testdata-room-network.json")
         assertEquals(listOf("p1"), document.accounts.map { it.key })
         assertEquals(listOf(8, false, "stun.example.com:3478"), network(document))
+    }
+
+    @Test
+    fun theDocumentWithAFastServerTimeoutIsTaken() {
+        val document = read("platform-provision-testdata-server-timeout.json")
+        val (first, second) = document.accounts.map { it.draft }
+        assertEquals(listOf("p1", "p2"), document.accounts.map { it.key })
+        assertEquals(listOf("192.0.2.30", "sbc.example.com:5061", 1500), listOf(first.server, first.backupServer, first.serverTimeoutMs))
+        // Without the key the timeout is off.
+        assertEquals(0, second.serverTimeoutMs)
     }
 }
