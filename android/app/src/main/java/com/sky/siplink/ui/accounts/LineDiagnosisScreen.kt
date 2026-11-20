@@ -81,7 +81,7 @@ fun LineDiagnosisScreen(accountId: String, onBack: () -> Unit) {
                 ServerCard(shown)
                 RegistrationCard(shown)
                 shown.lastCall?.let { LastCallCard(shown) }
-                if (shown.adaptedTransport != null || shown.adaptedExpires != null || shown.adaptedIce || shown.viaServer) {
+                if (shown.adaptedTransport != null || shown.adaptedExpires != null || shown.adaptedIce) {
                     AdaptationCard(shown, onReset = { confirmReset = true })
                 }
             }
@@ -176,6 +176,7 @@ private fun ServerCard(report: LineReport) {
         ValueRow("TCP", report.tcpMs?.let { "$it ms" } ?: "无法连接")
         ValueRow("TLS", report.tlsMs?.let { "$it ms" } ?: "无法连接")
         report.algSuspected?.let { ValueRow("SIP ALG", if (it) "疑似" else "未发现", error = it) }
+        if (report.pbxUnreachable) ValueRow("通话地址", "内网", error = true)
     }
 }
 
@@ -217,10 +218,6 @@ private fun AdaptationCard(report: LineReport, onReset: () -> Unit) {
         report.adaptedTransport?.let { ValueRow("传输协议", it.name) }
         report.adaptedExpires?.let { ValueRow("注册有效期", "$it 秒") }
         if (report.adaptedIce) ValueRow("ICE", "开启")
-        if (report.viaServer) {
-            ValueRow("出站代理", "开启")
-            ValueRow("对称 RTP", "开启")
-        }
         OutlinedButton(
             onClick = onReset,
             modifier = Modifier

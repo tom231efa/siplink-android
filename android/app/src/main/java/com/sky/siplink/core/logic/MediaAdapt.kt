@@ -4,19 +4,22 @@ import com.sky.siplink.core.model.MediaFlow
 import com.sky.siplink.core.model.NatKind
 
 /**
- * Rules of the adaptation of a line's sound, learned from the calls:
+ * Rules of the adaptation of a line's sound, learned from the calls: ICE, on one line (an account
+ * on one network), after a call whose sound went one way only, behind a NAT that STUN can see
+ * through, with a STUN server set. The SIP core then offers its candidates with the address the
+ * STUN server sees as the default one (IceService chooseDefaultCandidates: relay, then server
+ * reflexive, then host), which a PBX without ICE takes from the offer's c= and m= lines; a PBX
+ * with ICE checks the candidates. Kept once a call ICE took part in had sound both ways without a
+ * set-up slowed by the gathering, given up on this network otherwise. A call that comes in from a
+ * PBX without ICE goes without it (IceService::updateFromRemoteMediaDescription deletes the
+ * session) and tells nothing.
  *
- * - ICE, on one line (an account on one network), after a call whose sound went one way only,
- *   behind a NAT that STUN can see through, with a STUN server set. The SIP core then offers its
- *   candidates with the address the STUN server sees as the default one (IceService
- *   chooseDefaultCandidates: relay, then server reflexive, then host), which a PBX without ICE
- *   takes from the offer's c= and m= lines; a PBX with ICE checks the candidates. Kept once a
- *   call ICE took part in had sound both ways without a set-up slowed by the gathering, given up
- *   on this network otherwise. A call that comes in from a PBX without ICE goes without it
- *   (IceService::updateFromRemoteMediaDescription deletes the session) and tells nothing.
- * - For an account whose PBX announces an address of its own network (it stands behind a NAT
- *   that it does not know of): the requests of its calls by way of the server, and symmetric RTP
- *   (the sound goes back to where the other side's sound comes from).
+ * A PBX that names an address of its own network as the next hop of its calls (Contact, or a
+ * Record-Route) stands behind a NAT it does not know of. Nothing on the phone repairs that: the
+ * requests within a call (ACK, BYE) go to that hop whatever the account's route (op.cpp
+ * addInitialRouteSet leaves a route out that names the host of the request URI; dialog.c
+ * belle_sip_dialog_establish takes the route set of a call from the Record-Route of its answer
+ * alone, RFC 3261 12.1.2). The line checks show it ([unreachableHop]).
  *
  * STUN alone (a NAT policy with STUN and without ICE) is not among them: with the SIP core of the
  * app (liblinphone 5.5.39) it asks the STUN server for calls that come in only, not while IPv6 is
@@ -95,33 +98,64 @@ object MediaAdapt {
     private const val NOT_ACTIVATED = "NotActivated"
 
     /**
-     * Whether a PBX whose Contact names [contact] (its host) announces an address of its own
-     * network: one that is no public address, and neither the server the line connects to
-     * ([server]: the name it is set up with and the addresses that stands for) nor in a network
-     * of this phone ([local], its own addresses). Requests sent there go nowhere: the ACK of a
-     * call out (the PBX then ends the call after half a minute) and the BYE.
+     * The host the requests within a call go to: the Record-Route entry next to this phone
+     * ([recordRoute], the header of the other side's last message; the last entry for a call
+     * out, the first for one that came in, RFC 3261 12.1.1/12.1.2), else the host of the other
+     * side's [contact]. Null when neither names one.
      */
-    fun pbxBehindNat(contact: String?, server: Collection<String>, local: Collection<String>): Boolean {
-        val host = contact?.removePrefix("[")?.removeSuffix("]") ?: return false
+    fun nextHop(contact: String?, recordRoute: String?, outgoing: Boolean): String? {
+        val routes = routeHosts(recordRoute)
+        val hop = if (routes.isEmpty()) contact else if (outgoing) routes.last() else routes.first()
+        return hop?.removePrefix("[")?.removeSuffix("]")?.takeIf { it.isNotEmpty() }
+    }
+
+    /** The hosts of the URIs in a Record-Route value such as `<sip:p1.example.com;lr>, <sip:[fd00::1]:5060;lr>`. */
+    fun routeHosts(value: String?): List<String> {
+        if (value.isNullOrBlank()) return emptyList()
+        // Entries are split at the commas outside <> and quotes (RFC 3261 25.1: rec-route).
+        val entries = ArrayList<String>()
+        var depth = 0
+        var quoted = false
+        var from = 0
+        value.forEachIndexed { i, c ->
+            when {
+                c == '"' && (i == 0 || value[i - 1] != '\\') -> quoted = !quoted
+                quoted -> Unit
+                c == '<' -> depth++
+                c == '>' -> depth--
+                c == ',' && depth == 0 -> {
+                    entries += value.substring(from, i)
+                    from = i + 1
+                }
+            }
+        }
+        entries += value.substring(from)
+        return entries.mapNotNull(::uriHost)
+    }
+
+    private fun uriHost(entry: String): String? {
+        val uri = entry.substringAfter('<', entry).substringBefore('>').trim()
+        val scheme = uri.substringBefore(':', "").lowercase()
+        if (scheme != "sip" && scheme != "sips") return null
+        val hostPort = uri.substringAfter(':').substringAfter('@').substringBefore(';').substringBefore('?')
+        val host = if (hostPort.startsWith("[")) hostPort.substringBefore(']') + "]" else hostPort.substringBefore(':')
+        return host.takeIf { it.isNotEmpty() && it != "]" }
+    }
+
+    /**
+     * Whether the next hop of a call ([hop], see [nextHop]) is an address of the PBX's own
+     * network: no public address, and neither the server the line connects to ([server]: the
+     * name it is set up with and the addresses that stands for) nor in a network of this phone
+     * ([local], its own addresses). The requests sent there go nowhere: the ACK of a call out
+     * (the PBX then ends the call after half a minute) and the BYE.
+     */
+    fun unreachableHop(hop: String?, server: Collection<String>, local: Collection<String>): Boolean {
+        val host = hop?.removePrefix("[")?.removeSuffix("]") ?: return false
         val kind = NetAddress.kind(host)
         if (kind == NetAddress.Kind.PUBLIC || kind == NetAddress.Kind.INVALID) return false
         val bytes = NetAddress.parse(host) ?: return false
         if (server.any { NetAddress.parse(it)?.contentEquals(bytes) == true }) return false
         val subnet = NetAddress.subnet(host)
         return local.none { NetAddress.subnet(it) == subnet }
-    }
-
-    /** Calls in a row with a PBX that announces a reachable address before its remedy is lifted. */
-    const val CALLS_TO_LIFT = 3
-
-    /**
-     * The calls in a row since the PBX of an account last announced an address of its own
-     * network, after a call where it did so or not ([behind]); null: the account has no remedy
-     * (none was needed, or it was lifted after [CALLS_TO_LIFT] calls).
-     */
-    fun pbxAfter(count: Int?, behind: Boolean): Int? = when {
-        behind -> 0
-        count == null || count + 1 >= CALLS_TO_LIFT -> null
-        else -> count + 1
     }
 }

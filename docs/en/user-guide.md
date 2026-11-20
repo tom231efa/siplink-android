@@ -59,7 +59,7 @@ While typing: a `sip:` / `sips:` prefix is removed; `user@domain` typed as the u
 
 The account editor offers **Set as default** and **Delete account**. After an account is deleted, shortcut keys set to that line ask for a line when used.
 
-**Line diagnosis** in the account editor (also available when the configuration is managed remotely) checks the line on the current network: network type, local and public address, NAT type, battery optimization; what the server name resolves to, the UDP response time, large outgoing packets, TCP and TLS connections, a suspected SIP ALG; the registration; the direction of the sound of the last call, its loss, jitter and round trip; and what [automatic network adaptation](#advanced-settings) currently changes. **Restore defaults** clears the account's adaptations. The diagnosis only sends check requests and changes no settings.
+**Line diagnosis** in the account editor (also available when the configuration is managed remotely) checks the line on the current network: network type, local and public address, NAT type, battery optimization; what the server name resolves to, the UDP response time, large outgoing packets, TCP and TLS connections, a suspected SIP ALG, and whether the PBX gave an address of its own internal network as the address of its last call (shown as "通话地址 内网": the ACK and BYE of its calls then never reach the PBX, which hangs up after about half a minute; the PBX needs its external address set, the phone cannot repair this); the registration; the direction of the sound of the last call, its loss, jitter and round trip; and what [automatic network adaptation](#advanced-settings) currently changes. **Restore defaults** clears the account's adaptations. The diagnosis only sends check requests and changes no settings.
 
 ### TLS and SRTP
 
@@ -433,7 +433,6 @@ See [Intercom](#intercom) and [Auto answer](#auto-answer).
 - When UDP registrations get no answer, or large UDP packets are dropped (calls out get no answer), the line moves to TCP, and to TLS when TCP does not get through either and the current certificate settings accept the server. The account list shows "TCP（自动）". The line is retested regularly and goes back to UDP when idle once UDP works again
 - When the NAT forgets the line between registrations, the registration interval is shortened to 300 seconds; if that does not help, the line moves to TCP
 - When a call's sound goes one way, a STUN server is set and the NAT is not symmetric, the line turns on ICE: its outgoing calls offer the address found by STUN as the default address, and a PBX that supports ICE runs connectivity checks. It is kept only if the next call ICE takes part in has sound both ways and is not set up 2 seconds or more slower because of it; otherwise it is undone and not tried again on that network. Once kept, it is taken off from time to time to retest. Calls from a PBX without ICE do not use ICE
-- When the PBX announces an address of its own internal network in calls, the account's calls send their requests by way of the server (outbound proxy) with symmetric RTP; this is lifted after 3 calls in a row without the need
 - Networks that require a web login are not adjusted until the login
 Turning it off puts all lines back on their own settings and clears what was remembered.
 

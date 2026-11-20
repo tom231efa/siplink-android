@@ -28,14 +28,28 @@ internal class CallMediaWatch(
      *
      * @param summary how its sound went; null: too short to tell
      * @param contact the host of the other side's Contact
+     * @param recordRoute the Record-Route of the other side's message that set the call up (the
+     *   answer to a call out, the INVITE of one that came in); null without one
      * @param outgoing the call went out
      * @param setupMs from the start of a call out to its INVITE (the SIP core gathers its ICE
      *   candidates in between); null for a call that came in
      */
-    class Finished(val summary: CallMediaSummary?, val contact: String?, val outgoing: Boolean, val setupMs: Long?)
+    class Finished(
+        val summary: CallMediaSummary?,
+        val contact: String?,
+        val recordRoute: String?,
+        val outgoing: Boolean,
+        val setupMs: Long?,
+    )
 
     /** The latest counters of a call whose sound runs, copied: the core reuses its objects. */
-    private class Running(val startedAt: Long, val contact: String?, val outgoing: Boolean, val setupMs: Long?) {
+    private class Running(
+        val startedAt: Long,
+        val contact: String?,
+        val recordRoute: String?,
+        val outgoing: Boolean,
+        val setupMs: Long?,
+    ) {
         /** When the sound (re)started or the last packet came in. */
         var heardAt = startedAt
         var counted = false
@@ -79,7 +93,13 @@ internal class CallMediaWatch(
                     val pointer = call.nativePointer
                     // Back from a hold, or after a re-INVITE: the silence counts from now.
                     running.getOrPut(pointer) {
-                        Running(now, call.remoteContactAddress?.domain, call.dir == Call.Dir.Outgoing, setups[pointer])
+                        Running(
+                            now,
+                            call.remoteContactAddress?.domain,
+                            call.remoteParams?.getCustomHeader(RECORD_ROUTE),
+                            call.dir == Call.Dir.Outgoing,
+                            setups[pointer],
+                        )
                     }.heardAt = now
                 }
                 Call.State.End, Call.State.Error -> finish(call)
@@ -120,7 +140,7 @@ internal class CallMediaWatch(
         val account = call.params.account ?: return
         val summary = summaryOf(call, entry)
         if (summary != null) last[idOf(account)] = summary
-        onFinished(account, Finished(summary, entry.contact, entry.outgoing, entry.setupMs))
+        onFinished(account, Finished(summary, entry.contact, entry.recordRoute, entry.outgoing, entry.setupMs))
     }
 
     private fun summaryOf(call: Call, entry: Running): CallMediaSummary? {
@@ -142,6 +162,7 @@ internal class CallMediaWatch(
 
     companion object {
         private const val MS_PER_S = 1000f
+        private const val RECORD_ROUTE = "Record-Route"
 
         /** What the SIP core ends a call with when no sound arrived for too long (MediaSession::terminateBecauseOfLostMedia). */
         private const val MEDIA_LOST_CODE = 503

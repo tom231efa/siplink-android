@@ -28,11 +28,11 @@ import java.util.concurrent.Executors
 /**
  * Adapts the lines (an account on one network) to what the network lets through, by the rules
  * of [LineAdapt]: another transport where UDP does not get through, a shorter registration
- * interval where the NAT forgets the line between registrations. After the calls it adapts their
- * sound by the rules of [MediaAdapt]: ICE for a line whose sound went one way, the way by the
- * server and symmetric RTP for an account whose PBX announces an address of its own network. It
- * also has the SIP core look at the network again where it would not notice a change by itself,
- * and holds back while the network wants a login first.
+ * interval where the NAT forgets the line between registrations. After the calls it gives a line
+ * whose sound went one way ICE ([MediaAdapt]), and notes an account whose PBX names an address of
+ * its own network as the next hop of its calls, which nothing on the phone repairs. It also has
+ * the SIP core look at the network again where it would not notice a change by itself, and holds
+ * back while the network wants a login first.
  *
  * What it changes it changes in the core only: the account's own settings are kept aside
  * ([own]) and shown and edited as they are. Main thread only.
@@ -76,10 +76,7 @@ internal class LineDoctor(
             field = value
             dropStates()
             applyAll()
-            if (!value) {
-                core.config.cleanSection(SECTION)
-                core.config.cleanSection(PBX)
-            }
+            if (!value) core.config.cleanSection(SECTION)
         }
 
     /** The STUN server the lines' ICE asks, `host[:port]`; empty: none, and no ICE. */
@@ -186,22 +183,21 @@ internal class LineDoctor(
      *
      * @param transport null: its own; [expires] likewise
      * @param ice its calls offer ICE candidates
-     * @param viaServer its calls go by way of the server with symmetric RTP: the PBX announces an address of its own network
      */
-    data class Adaptation(val transport: SipTransport?, val expires: Int?, val ice: Boolean, val viaServer: Boolean)
+    data class Adaptation(val transport: SipTransport?, val expires: Int?, val ice: Boolean)
 
     fun adaptation(id: String): Adaptation? {
         val params = find(id)?.params ?: return null
-        val own = own(id)
-        val viaServer = enabled && pbxCount(id) != null
-        if (own == null && !viaServer) return null
+        val own = own(id) ?: return null
         return Adaptation(
-            transport = transportOf(params.serverAddress).takeIf { own != null && it != own.transport },
-            expires = params.expires.takeIf { own != null && it != own.expires },
+            transport = transportOf(params.serverAddress).takeIf { it != own.transport },
+            expires = params.expires.takeIf { it != own.expires },
             ice = params.natPolicy?.isIceEnabled == true,
-            viaServer = viaServer,
         )
     }
+
+    /** Whether the PBX of account [id] named an address of its own network as the next hop of its last call ([MediaAdapt.unreachableHop]). */
+    fun pbxUnreachable(id: String): Boolean = core.config.getString(PBX, id, null) != null
 
     /** The core looks at the network anew (its connections may be new ones): where the server sees the lines starts over. */
     fun onReachable() {
@@ -483,16 +479,11 @@ internal class LineDoctor(
         LineAdapt.stale(records, System.currentTimeMillis()).forEach { core.config.cleanEntry(SECTION, it) }
     }
 
-    /**
-     * Puts every line on what is remembered for it on this network, or back on its own settings,
-     * and the SIP core's symmetric RTP on what the lines need.
-     */
+    /** Puts every line on what is remembered for it on this network, or back on its own settings. */
     private fun applyAll() {
         // Before the network is known nothing is known of what it needs: the lines stay as they are.
         if (enabled && network == null) return
-        val accounts = core.accountList
-        accounts.forEach(::apply)
-        applySymmetricRtp(accounts)
+        core.accountList.forEach(::apply)
         publish()
     }
 
@@ -505,9 +496,8 @@ internal class LineDoctor(
         val record = if (enabled) record(id) else null
         val transport = record?.transport?.takeIf { own.transport == SipTransport.UDP } ?: own.transport
         val expires = record?.expires?.takeIf { it < own.expires } ?: own.expires
-        // Calls take the way of the registration, which the domain of the account may not lead
-        // to, and the way of the server past a PBX that announces an address nothing reaches.
-        val outbound = transport != own.transport || (enabled && pbxCount(id) != null) || own.outbound
+        // Calls take the way of the registration, which the domain of the account may not lead to.
+        val outbound = transport != own.transport || own.outbound
         val stun = stunServer.trim().takeIf { MediaAdapt.stunServer(it) != null }
         val ice = stun?.takeIf { record?.ice == MediaAdapt.Ice.TRIAL || record?.ice == MediaAdapt.Ice.ON }
         val iceNow = params.natPolicy?.takeIf { it.isIceEnabled }?.stunServer
@@ -528,24 +518,31 @@ internal class LineDoctor(
 
     // ---------------------------------------------------------------- the sound of the calls
 
-    /** A call whose sound ran ended on [account]: what the line needs for its sound ([MediaAdapt]) is in place for the next call. */
+    /**
+     * A call whose sound ran ended on [account]: what the line needs for its sound ([MediaAdapt])
+     * is in place for the next call, and whether its PBX names a next hop nothing reaches is noted
+     * (with the adaptation switched off as well: it changes nothing).
+     */
     fun onCallFinished(account: Account, call: CallMediaWatch.Finished) {
-        if (!enabled) return
         val id = idOf(account)
         val net = network
         val flow = call.summary?.flow
-        val record = record(id) ?: LineAdapt.Record()
-        val tookPart = MediaAdapt.iceTookPart(call.outgoing, call.summary?.ice.orEmpty())
-        val ice = MediaAdapt.iceAfter(record.ice, flow, tookPart, call.setupMs)
-        Log.i(TAG, "Line $id: a call ${if (call.outgoing) "out, set up in ${call.setupMs} ms" else "in"}, sound $flow, ICE ${call.summary?.ice}")
-        if (ice != record.ice) {
-            Log.i(TAG, "Line $id on $net: ICE $ice")
-            val retestAt = if (ice == MediaAdapt.Ice.ON) System.currentTimeMillis() + LineAdapt.retestDelay(0) else 0
-            store(id, record.copy(ice = ice, iceRetestAt = retestAt))
-            if (ice == MediaAdapt.Ice.REFUSED) applyAll()
+        val hop = MediaAdapt.nextHop(call.contact, call.recordRoute, call.outgoing)
+        Log.i(TAG, "Line $id: a call ${if (call.outgoing) "out, set up in ${call.setupMs} ms" else "in"}, sound $flow, ICE ${call.summary?.ice}, next hop $hop")
+        var ice = MediaAdapt.Ice.NONE
+        if (enabled) {
+            val record = record(id) ?: LineAdapt.Record()
+            val tookPart = MediaAdapt.iceTookPart(call.outgoing, call.summary?.ice.orEmpty())
+            ice = MediaAdapt.iceAfter(record.ice, flow, tookPart, call.setupMs)
+            if (ice != record.ice) {
+                Log.i(TAG, "Line $id on $net: ICE $ice")
+                val retestAt = if (ice == MediaAdapt.Ice.ON) System.currentTimeMillis() + LineAdapt.retestDelay(0) else 0
+                store(id, record.copy(ice = ice, iceRetestAt = retestAt))
+                if (ice == MediaAdapt.Ice.REFUSED) applyAll()
+            }
         }
         val stun = MediaAdapt.stunServer(stunServer)
-        val askNat = stun != null && ice == MediaAdapt.Ice.NONE && (flow == MediaFlow.SEND_ONLY || flow == MediaFlow.RECEIVE_ONLY)
+        val askNat = enabled && stun != null && ice == MediaAdapt.Ice.NONE && (flow == MediaFlow.SEND_ONLY || flow == MediaFlow.RECEIVE_ONLY)
         val params = account.params
         val server = params.serverAddress ?: return
         val host = connectHostOf(server)
@@ -554,12 +551,11 @@ internal class LineDoctor(
         val from = fromOf(params.identityAddress)
         val userAgent = core.userAgent
         val local = facts?.addresses.orEmpty()
-        val contact = call.contact
         workers.execute {
             val addresses = LineNetwork.lookup(host)
             val nat = if (askNat) natOf(addresses.firstOrNull(), port, target, from, userAgent, stun, local) else NatKind.UNKNOWN
-            val behind = MediaAdapt.pbxBehindNat(contact, addresses + host, local)
-            handler.post { learn(id, net, flow, nat, behind) }
+            val unreachable = MediaAdapt.unreachableHop(hop, addresses + host, local)
+            handler.post { learn(id, net, flow, nat, hop.takeIf { unreachable }) }
         }
     }
 
@@ -571,25 +567,25 @@ internal class LineDoctor(
         return LineVerdict.nat(local, probe.from?.let { LineVerdict.seen(probe.answer, it) }, probe.stun)
     }
 
-    private fun learn(id: String, net: String?, flow: MediaFlow?, nat: NatKind, pbxBehindNat: Boolean) {
-        if (!enabled) return
-        var changed = false
-        val before = pbxCount(id)
-        val after = MediaAdapt.pbxAfter(before, pbxBehindNat)
-        if (after != before) {
-            if (after == null) core.config.cleanEntry(PBX, id) else core.config.setString(PBX, id, after.toString())
-            if ((after == null) != (before == null)) {
-                Log.i(TAG, "Line $id: the PBX ${if (after != null) "announces an address of its own network" else "is reached again"}")
-                changed = true
+    /** After a call of line [id] on network [net]: ICE on trial where it may help; [unreachableHop]: the next hop its PBX named, which nothing reaches. */
+    private fun learn(id: String, net: String?, flow: MediaFlow?, nat: NatKind, unreachableHop: String?) {
+        if ((unreachableHop != null) != pbxUnreachable(id)) {
+            if (unreachableHop == null) {
+                core.config.cleanEntry(PBX, id)
+                Log.i(TAG, "Line $id: the PBX names a next hop this phone reaches again")
+            } else {
+                core.config.setString(PBX, id, unreachableHop)
+                Log.i(TAG, "Line $id: the PBX names $unreachableHop, of its own network, as the next hop of its calls: their ACK and BYE get lost")
             }
+            find(id)?.let(onChanged)
         }
+        if (!enabled) return
         val record = record(id) ?: LineAdapt.Record()
         if (net == network && MediaAdapt.tryIce(flow, nat, MediaAdapt.stunServer(stunServer) != null, record.ice)) {
             Log.i(TAG, "Line $id on $net: ICE on trial ($flow, $nat)")
             store(id, record.copy(ice = MediaAdapt.Ice.TRIAL, usedAt = System.currentTimeMillis()))
-            changed = true
+            applyAll()
         }
-        if (changed) applyAll()
     }
 
     /** A NAT policy that gathers ICE candidates, with the address the STUN server at [server] sees among them. */
@@ -597,22 +593,6 @@ internal class LineDoctor(
         it.stunServer = server
         it.isStunEnabled = true
         it.isIceEnabled = true
-    }
-
-    /** The calls in a row since the PBX of account [id] last announced an address of its own network; null: it needs no remedy. */
-    private fun pbxCount(id: String): Int? = core.config.getString(PBX, id, null)?.toIntOrNull()
-
-    /**
-     * Symmetric RTP (the sound goes back to where the other side's comes from, not to the
-     * address it announced) while an account's PBX announces an address of its own network.
-     * The SIP core reads it when a call's streams are set up, for every call: an incoming call
-     * is set up before the app knows its account.
-     */
-    private fun applySymmetricRtp(accounts: Array<Account>) {
-        val wanted = enabled && accounts.any { pbxCount(idOf(it)) != null }
-        if (wanted == (core.config.getInt(RTP, SYMMETRIC, 0) != 0)) return
-        if (wanted) core.config.setInt(RTP, SYMMETRIC, 1) else core.config.cleanEntry(RTP, SYMMETRIC)
-        Log.i(TAG, "Symmetric RTP ${if (wanted) "on" else "off"}")
     }
 
     private fun publish() {
@@ -631,12 +611,8 @@ internal class LineDoctor(
         /** Section holding the [Own] settings of the accounts the doctor changed, keyed by account id. */
         const val APPLIED = "siplink_line_applied"
 
-        /** Section holding, by account id, the calls in a row since its PBX last announced an address of its own network ([MediaAdapt.pbxAfter]). */
+        /** Section holding, by account id, the next hop of its PBX's last call where nothing reaches that ([pbxUnreachable]). */
         const val PBX = "siplink_line_pbx"
-
-        /** The SIP core's key for symmetric RTP (linphone_core_symmetric_rtp_enabled, misc.c). */
-        const val RTP = "rtp"
-        const val SYMMETRIC = "symmetric"
         const val SEPARATOR = "|"
 
         /**

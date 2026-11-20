@@ -68,31 +68,41 @@ class MediaAdaptTest {
     }
 
     @Test
-    fun `a pbx announcing an address of its own network is told from one the phone reaches`() {
+    fun `a pbx naming a hop of its own network is told from one the phone reaches`() {
         val local = listOf("192.168.1.20", "fe80::1")
         // Behind the NAT of its office, reached by its public name and address.
-        assertTrue(MediaAdapt.pbxBehindNat("10.0.0.5", listOf("pbx.example.com", "203.0.113.5"), local))
-        assertTrue(MediaAdapt.pbxBehindNat("[fd00::5]", listOf("203.0.113.5"), local))
+        assertTrue(MediaAdapt.unreachableHop("10.0.0.5", listOf("pbx.example.com", "203.0.113.5"), local))
+        assertTrue(MediaAdapt.unreachableHop("[fd00::5]", listOf("203.0.113.5"), local))
         // The very address the line connects to, or one in the phone's own network: reachable.
-        assertFalse(MediaAdapt.pbxBehindNat("10.0.0.5", listOf("pbx.example.com", "10.0.0.5"), local))
-        assertFalse(MediaAdapt.pbxBehindNat("192.168.1.10", listOf("203.0.113.5"), local))
+        assertFalse(MediaAdapt.unreachableHop("10.0.0.5", listOf("pbx.example.com", "10.0.0.5"), local))
+        assertFalse(MediaAdapt.unreachableHop("192.168.1.10", listOf("203.0.113.5"), local))
         // Public addresses and names say nothing.
-        assertFalse(MediaAdapt.pbxBehindNat("203.0.113.9", listOf("203.0.113.5"), local))
-        assertFalse(MediaAdapt.pbxBehindNat("pbx.example.com", listOf("203.0.113.5"), local))
-        assertFalse(MediaAdapt.pbxBehindNat(null, listOf("203.0.113.5"), local))
+        assertFalse(MediaAdapt.unreachableHop("203.0.113.9", listOf("203.0.113.5"), local))
+        assertFalse(MediaAdapt.unreachableHop("pbx.example.com", listOf("203.0.113.5"), local))
+        assertFalse(MediaAdapt.unreachableHop(null, listOf("203.0.113.5"), local))
     }
 
     @Test
-    fun `the remedy for a pbx behind a nat is lifted after calls in a row without the need`() {
-        assertEquals(0, MediaAdapt.pbxAfter(null, behind = true))
-        assertNull(MediaAdapt.pbxAfter(null, behind = false))
-        var count: Int? = MediaAdapt.pbxAfter(null, behind = true)
-        repeat(MediaAdapt.CALLS_TO_LIFT - 1) {
-            count = MediaAdapt.pbxAfter(count, behind = false)
-            assertTrue(count != null)
-        }
-        // One more call where it is needed starts the count again.
-        assertEquals(0, MediaAdapt.pbxAfter(count, behind = true))
-        assertNull(MediaAdapt.pbxAfter(count, behind = false))
+    fun `the next hop of a call is the record route next to the phone, else the contact`() {
+        assertEquals("10.0.0.5", MediaAdapt.nextHop("10.0.0.5", null, outgoing = true))
+        assertEquals("fd00::5", MediaAdapt.nextHop("[fd00::5]", "", outgoing = false))
+        val routes = "<sip:edge.example.com;lr>, <sip:10.0.0.9:5060;transport=udp;lr>"
+        // A call out takes the route set in reverse: the last entry is next to the phone.
+        assertEquals("10.0.0.9", MediaAdapt.nextHop("10.0.0.5", routes, outgoing = true))
+        assertEquals("edge.example.com", MediaAdapt.nextHop("10.0.0.5", routes, outgoing = false))
+        assertNull(MediaAdapt.nextHop(null, null, outgoing = true))
+    }
+
+    @Test
+    fun `record route values give the hosts of their uris`() {
+        assertEquals(
+            listOf("p1.example.com", "[2001:db8::1]", "192.0.2.4", "203.0.113.8"),
+            MediaAdapt.routeHosts(
+                "<sip:p1.example.com;lr>,<sips:[2001:db8::1]:5061;lr> , <sip:user@192.0.2.4:5060;lr;x=\"a,b\">, \"Edge, west\" <sip:203.0.113.8>",
+            ),
+        )
+        assertEquals(listOf("192.0.2.4"), MediaAdapt.routeHosts("sip:192.0.2.4;lr"))
+        assertEquals(emptyList<String>(), MediaAdapt.routeHosts("<tel:+4930123>"))
+        assertEquals(emptyList<String>(), MediaAdapt.routeHosts(null))
     }
 }

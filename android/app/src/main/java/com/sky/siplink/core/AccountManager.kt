@@ -117,6 +117,9 @@ class AccountManager(private val core: Core, private val lock: ConfigLock) {
     /** What the line of account [id] runs on instead of its own settings; null: its own. */
     internal fun adaptation(id: String): LineDoctor.Adaptation? = doctor.adaptation(id)
 
+    /** Whether the PBX of account [id] named an address of its own network as the next hop of its last call. */
+    internal fun pbxUnreachable(id: String): Boolean = doctor.pbxUnreachable(id)
+
     /** How the sound of the last call of account [id] went; null without one since the app started. */
     fun lastCall(id: String): CallMediaSummary? = media.lastCall(id)
 

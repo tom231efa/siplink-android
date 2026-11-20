@@ -43,6 +43,7 @@ class LineCheck(private val context: Context, private val core: Core, private va
         val stun = accounts.stunServer
         val facts = NetworkWatch.facts
         val adaptation = accounts.adaptation(id)
+        val pbxUnreachable = accounts.pbxUnreachable(id)
         val power = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
         val battery = power?.isIgnoringBatteryOptimizations(context.packageName)
         val contact = account.contactAddress?.asStringUriOnly()
@@ -87,7 +88,7 @@ class LineCheck(private val context: Context, private val core: Core, private va
                 adaptedTransport = adaptation?.transport,
                 adaptedExpires = adaptation?.expires,
                 adaptedIce = adaptation?.ice == true,
-                viaServer = adaptation?.viaServer == true,
+                pbxUnreachable = pbxUnreachable,
                 lastCall = lastCall,
             )
             handler.post { onDone(report) }
