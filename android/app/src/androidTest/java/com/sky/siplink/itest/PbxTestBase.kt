@@ -297,6 +297,10 @@ abstract class PbxTestBase {
 
     protected fun pbxLeg(extension: Int) = "PJSIP/$extension-"
 
+    /** The PBX leg of the app's call to [number]. */
+    protected fun legOf(number: String): String? = pbxChannels()
+        .firstOrNull { it["Channel"].orEmpty().startsWith(pbxLeg(APP)) && it["Exten"] == number }?.get("Channel")
+
     /** Contacts registered on the PBX from somewhere else than the scripted phones: the app's. */
     private fun appContacts(): Int = CONTACT.findAll(pbx.command("pjsip show contacts")).count { it.groupValues[2] != env.phonesHost }
 

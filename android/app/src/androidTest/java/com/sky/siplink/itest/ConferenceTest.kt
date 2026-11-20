@@ -31,8 +31,8 @@ import kotlin.concurrent.thread
 /**
  * The conference room: opened from a call, members added by calling them and by taking a call
  * that comes in, one member hung up while the others stay, no video, the limit, and the end;
- * a warning that comes and goes, the notification of the room, a row that moves under a tap, a
- * call that does not fit, and a room that cannot be opened.
+ * a warning that comes and goes, the notification of the room, the name of a member on its way
+ * out, a row that moves under a tap, a call that does not fit, and a room that cannot be opened.
  *
  * The members are numbers of the test PBX that answer and beep now and then (25XX, 26XX ring
  * first; testenv/asterisk/config/extensions.conf) and report what they hear; that a member hears
@@ -40,10 +40,6 @@ import kotlin.concurrent.thread
  * app does not send its tone file here: its microphone is muted instead.
  */
 class ConferenceTest : RoomTestBase("conference") {
-    /** The PBX leg of the app that runs the member [number]. */
-    private fun legOf(number: String): String? = pbxChannels()
-        .firstOrNull { it["Channel"].orEmpty().startsWith(pbxLeg(APP)) && it["Exten"] == number }?.get("Channel")
-
     /** Every leg of [legs] hears the others through the app: the PBX reports sound on it. */
     private fun awaitEveryLegHears(legs: Collection<String>, from: Int) {
         for (leg in legs) pbx.awaitEvent("ChannelTalkingStart", from, ROOM_SOUND_TIMEOUT_MS) { it["Channel"] == leg }
@@ -274,6 +270,25 @@ class ConferenceTest : RoomTestBase("conference") {
     }
 
     @Test
+    fun aMemberThePbxHangsUpKeepsItsNameUntilItsRowGoes() {
+        openRoom("2501", "2502")
+        val name = room()!!.members.first { it.address.startsWith("2502@") }.name
+        assertEquals("成员02", name)
+        pbx.command("channel request hangup ${legOf("2502")}")
+        // Its row in every state of the room, until it goes (RoomRules.LEFT_LINGER_MS after the member left).
+        val seen = LinkedHashSet<String>()
+        await("the member to leave the list") {
+            val member = room()!!.members.firstOrNull { it.address.startsWith("2502@") }
+            member?.let { seen += "${it.name}/${it.state}" }
+            member == null
+        }
+        assertTrue("Its row never showed that it left: $seen", seen.any { it.endsWith("/${MemberState.LEFT}") })
+        assertTrue("It was named otherwise on its way out: $seen", seen.all { it.startsWith("$name/") })
+        onMain { engine.calls.hangUp() }
+        awaitNoCall()
+    }
+
+    @Test
     fun aTapOnARowThatMovedUnderTheFingerIsNotTaken() {
         openRoom("2501", "2502", "2503")
         val (leaving, staying) = listOf("2502", "2503").map { number -> room()!!.members.first { it.address.startsWith("$number@") }.name }
@@ -316,7 +331,7 @@ class ConferenceTest : RoomTestBase("conference") {
         callFirstMember()
         val first = onMain { engine.core.currentCall!! }
         // A room past the call manager, asked to take the same call twice: the SDK takes it once only.
-        val other = onMain { ConferenceRoom(engine.core, RoomMonitor(context), CallSupport::party, { RoomRules.LIMIT }, { true }) {} }
+        val other = onMain { ConferenceRoom(engine.core, RoomMonitor(context), { CallSupport.side(it.remoteAddress) }, { RoomRules.LIMIT }, { true }) {} }
         assertEquals("无法创建会议室", onMain { other.open(listOf(first, first), muted = true) })
         assertEquals(RoomRules.MAX_CALLS_WITHOUT_ROOM, onMain { engine.core.maxCalls })
         // Taken out of the conference again, the call goes on, on hold; no conference is left.

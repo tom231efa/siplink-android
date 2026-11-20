@@ -124,6 +124,31 @@ class CallerIdTest : PbxTestBase() {
         assertEquals("对讲 $RINGING_PHONE", lastLogged().name)
     }
 
+    /** Calls [NAMED], which the PBX names [NAMED_AS] through P-Asserted-Identity; @return the PBX leg of the call. */
+    private fun callNamedByThePbx(): String {
+        register()
+        dial(NAMED)
+        assertEquals(NAMED_AS, awaitConnected(NAMED).remoteName)
+        return legOf(NAMED)!!
+    }
+
+    @Test
+    fun theNameThePbxGaveACallOutStaysWhenThePbxHangsUp() {
+        val leg = callNamedByThePbx()
+        // Its BYE asserts no one: that takes nothing back.
+        pbx.command("channel request hangup $leg")
+        assertEquals(NAMED_AS, awaitEnded().remoteName)
+        awaitNoCall()
+    }
+
+    @Test
+    fun theNameThePbxGaveACallOutStaysWhenTheUserHangsUp() {
+        callNamedByThePbx()
+        onMain { engine.calls.hangUp() }
+        assertEquals(NAMED_AS, awaitEnded().remoteName)
+        awaitNoCall()
+    }
+
     @Test
     fun aNumberWithAHashIsShownAndRedialledAsDialled() {
         register()
@@ -147,6 +172,10 @@ class CallerIdTest : PbxTestBase() {
     private companion object {
         /** An extension of the test PBX with a character a SIP URI has to escape. */
         const val HASH_CODE = "#9"
+
+        /** A member number of the test PBX, and the name it gives it (testenv/asterisk/config/extensions.conf). */
+        const val NAMED = "2501"
+        const val NAMED_AS = "成员01"
 
         /** From Answer() to Wait() of [HASH_CODE] (testenv/asterisk/config/extensions.conf). */
         const val APPLICATION_TIMEOUT_MS = 10_000L

@@ -72,16 +72,15 @@ internal object CallSupport {
             (call.dir == Call.Dir.Outgoing && FeatureDial.parse(call.remoteAddress.username.orEmpty(), codes)?.first == FeatureDial.Action.INTERCOM)
 
     /**
-     * Who is on the other side. Once the call is established the PBX may tell us that the party
-     * changed (transfer, pickup, ...) through P-Asserted-Identity; that identity then wins.
+     * Whom the message last received on [call] asserts to be on the other side (P-Asserted-Identity):
+     * the PBX tells us so, and that the party changed (transfer, pickup, ...). Null when it asserts
+     * no one with a number. [CallDescriber] keeps it beyond that message.
      */
-    fun party(call: Call): SideCall {
-        val asserted = call.remoteParams?.getCustomHeader(ASSERTED_IDENTITY)
-            ?.takeIf { it.isNotBlank() && phaseOf(call) != CallPhase.INCOMING }
-            ?.let { Factory.instance().createAddress(it) }
-            ?.takeUnless { it.username.isNullOrEmpty() }
-        return side(asserted ?: call.remoteAddress)
-    }
+    fun asserted(call: Call): SideCall? = call.remoteParams?.getCustomHeader(ASSERTED_IDENTITY)
+        ?.takeIf { it.isNotBlank() }
+        ?.let { Factory.instance().createAddress(it) }
+        ?.takeUnless { it.username.isNullOrEmpty() }
+        ?.let(::side)
 
     /** [address] as a party: by the name it carries, else by its number. */
     fun side(address: Address): SideCall {

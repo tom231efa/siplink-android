@@ -447,6 +447,7 @@ class CallManager(
         transfer.onStateChanged(call, transferState, both = listOfNotNull(live(current), live(other)))
 
     fun onCallStateChanged(call: Call, callState: Call.State?, message: String) {
+        describer.onStateChanged(call, callState)
         if (retry.isSuperseded(call)) {
             // Placed again: its successor is on the screen, and it leaves nothing behind.
             if (callState == Call.State.Released) {
@@ -513,7 +514,7 @@ class CallManager(
             settings.current,
             hasActiveCall = live(current) != null || room.isOpen,
             hasSecondCall = other != null,
-            anonymous = NameLookup.isWithheld(CallSupport.party(call).address),
+            anonymous = NameLookup.isWithheld(CallSupport.plain(call.remoteAddress)),
         )
         when (decision) {
             IncomingPolicy.Decision.RejectDoNotDisturb -> call.decline(Reason.DoNotDisturb)

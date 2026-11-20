@@ -2,6 +2,7 @@ package com.sky.siplink.core
 
 import com.sky.siplink.core.CallSupport.isRinging
 import com.sky.siplink.core.CallSupport.phaseOf
+import com.sky.siplink.core.logic.AssertedParties
 import com.sky.siplink.core.logic.PartyName
 import com.sky.siplink.core.model.AudioRoute
 import com.sky.siplink.core.model.CallInfo
@@ -35,9 +36,24 @@ internal class CallDescriber(
     private val accounts: AccountManager,
     private val names: NameResolver,
 ) {
+    /** Whom the PBX asserted the other side of each call to be. */
+    private val asserted = AssertedParties()
+
+    /** [call] reached [state]: the message that brought it may assert who the other side is, and a released call is forgotten. */
+    fun onStateChanged(call: Call, state: Call.State?) {
+        if (state == Call.State.Released) asserted.forget(call.nativePointer) else assertedOf(call)
+    }
+
+    private fun assertedOf(call: Call): SideCall? = asserted.of(
+        call.nativePointer,
+        CallSupport.asserted(call),
+        ringingIn = phaseOf(call) == CallPhase.INCOMING,
+        released = call.state == Call.State.Released,
+    )
+
     /** The other side of a call, by its name in the directory when it has one there. */
     fun partyOf(call: Call): SideCall {
-        val party = CallSupport.party(call)
+        val party = assertedOf(call) ?: CallSupport.side(call.remoteAddress)
         val outgoing = call.dir == Call.Dir.Outgoing
         val line = call.params.account?.let(accounts::idOf)
         val name = PartyName.of(party.name, party.address, outgoing, settings.current.features) { names.nameOf(it, !outgoing, line) }
