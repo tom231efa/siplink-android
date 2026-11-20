@@ -99,7 +99,7 @@ func TestMigrateGroupsTags(t *testing.T) {
 	st, err := store.Open(ctx, path, w.box)
 	w.must(err)
 	defer st.Close()
-	if v, _ := st.SchemaVersion(ctx); v != 11 {
+	if v, _ := st.SchemaVersion(ctx); v < 11 {
 		t.Fatalf("schema %d", v)
 	}
 	got, err := st.ClientByID(ctx, c.ID)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"siplink/internal/store"
@@ -117,5 +118,59 @@ func TestAuditAppendOnly(t *testing.T) {
 	got, _ = st.ListAudit(ctx, store.AuditFilter{RegionIDs: []int64{6}, OwnAdminID: 99})
 	if len(got) != 0 {
 		t.Error("entry of another region visible")
+	}
+}
+
+// TestMigrateClientsNameOrder: migration 0012 adds the index of the client lists' order
+// (name ignoring case, then id), so that a page of all regions reads its rows instead of
+// sorting every client; the order of the list stays the same.
+func TestMigrateClientsNameOrder(t *testing.T) {
+	ctx := context.Background()
+	old, path := testutil.StoreAt(t, 11)
+	must := func(err error) {
+		t.Helper()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	reg := &store.Region{Name: "华东"}
+	must(old.CreateRegion(ctx, reg))
+	cfg := &store.ConfigTemplate{Name: "标准", SettingsJSON: "{}", RefreshMinutes: 60}
+	must(old.CreateConfigTemplate(ctx, cfg))
+	tpl := &store.ClientTemplate{Name: "标准", ConfigTemplateID: cfg.ID}
+	must(old.CreateClientTemplate(ctx, tpl))
+	for _, name := range []string{"b", "C", "a", "B2"} {
+		testutil.OldClient(t, old, testutil.Box(t), &store.Client{Name: name, RegionID: reg.ID, ClientTemplateID: tpl.ID}, nil, nil)
+	}
+	must(old.Close())
+
+	st, err := store.Open(ctx, path, testutil.Box(t))
+	must(err)
+	defer st.Close()
+	if v, _ := st.SchemaVersion(ctx); v < 12 {
+		t.Fatalf("schema %d", v)
+	}
+	// The query of ListClients for a super administrator's page.
+	rows, err := st.DB.QueryContext(ctx, `EXPLAIN QUERY PLAN SELECT id FROM clients c ORDER BY c.name COLLATE NOCASE, c.id LIMIT 50 OFFSET 0`)
+	must(err)
+	var plan []string
+	for rows.Next() {
+		var id, parent, unused int
+		var detail string
+		must(rows.Scan(&id, &parent, &unused, &detail))
+		plan = append(plan, detail)
+	}
+	rows.Close()
+	if p := strings.Join(plan, " | "); !strings.Contains(p, "clients_name_order") || strings.Contains(p, "TEMP B-TREE") {
+		t.Errorf("plan of a page of all clients: %s", p)
+	}
+	list, total, err := st.ListClients(ctx, store.ClientFilter{All: true, Limit: 3})
+	must(err)
+	var names []string
+	for _, c := range list {
+		names = append(names, c.Name)
+	}
+	if total != 4 || strings.Join(names, ",") != "a,b,B2" {
+		t.Errorf("first page: %v of %d", names, total)
 	}
 }
