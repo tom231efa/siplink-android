@@ -1,274 +1,274 @@
-<p align="right"><sub>中文 | <a href="en/platform.md">English</a></sub></p>
+<p align="right"><sub><a href="zh-CN/platform.md">中文</a> | English</sub></p>
 
-# 管理平台
+# Management platform
 
-[返回首页](../README.md) · [功能特性](features.md) · [远程配置](remote-configuration.md)
+[Home](../README.md) · [Features](features.md) · [Remote configuration](remote-configuration.md)
 
-SipLink 管理平台为 SipLink 安卓客户端集中下发配置：账号、通话设置、编解码器、CA 证书、通讯录和功能键。手机在 SipLink → 设置 → 远程配置 中扫描二维码完成绑定，之后定期同步。平台同时提供 LDAP 通讯录服务。
+The SipLink management platform provisions configuration to the SipLink Android client from one place: accounts, call settings, codecs, CA certificates, directories and shortcut keys. A phone binds by scanning a QR code in SipLink → Settings → Remote configuration and syncs regularly afterwards. The platform also provides an LDAP directory service.
 
-平台是一个 Go 程序，带网页控制台，数据保存在 SQLite 中，以 Docker 镜像发布。源码在本仓库的 [`platform/`](../platform) 目录，设计见 [platform/docs/DESIGN.md](../platform/docs/DESIGN.md)。
+The platform is a Go program with a web console; it keeps its data in SQLite and is published as a Docker image. The source code is in the [`platform/`](../platform) directory of this repository; the design is in [platform/docs/DESIGN.md](../platform/docs/DESIGN.md).
 
-**先备份密钥文件。** 平台第一次启动时生成一个 64 字节的密钥文件（`SIPLINK_KEY_FILE`，Compose 部署时是 `/run/secrets/siplink-key`）。数据库里的 SIP 密码、LDAP 密码、内置 CA 的私钥都用它加密。数据库备份**不含**密钥文件；没有密钥文件，备份无法使用。请把密钥文件复制到与服务器、数据库备份都不同的地方，并且只让管理员能读到。
+**Back up the key file first.** On its first start, the platform generates a 64-byte key file (`SIPLINK_KEY_FILE`; `/run/secrets/siplink-key` in a Compose deployment). The SIP passwords, LDAP passwords and the private key of the built-in CA in the database are encrypted with it. Database backups do **not** contain the key file; without the key file, a backup cannot be used. Copy the key file to a place separate from both the server and the database backups, readable by administrators only.
 
-## 部署（Docker）
+## Deployment (Docker)
 
-镜像：`ghcr.io/tom231efa/siplink`（linux/amd64、linux/arm64），标签为版本号和 `latest`。
+Image: `ghcr.io/tom231efa/siplink` (linux/amd64, linux/arm64), tagged with the version number and `latest`.
 
-1. 新建一个目录，把 [`platform/compose.yaml`](../platform/compose.yaml) 下载到其中，并准备数据目录和密钥文件（密钥文件放在该目录之外）：
+1. Create a directory, download [`platform/compose.yaml`](../platform/compose.yaml) into it, and prepare the data directory and the key file (keep the key file outside that directory):
 
    ```sh
    mkdir -p data
-   head -c 64 /dev/urandom > {密钥文件路径}
-   chmod 400 {密钥文件路径}
-   sudo chown 10001:10001 data {密钥文件路径}
+   head -c 64 /dev/urandom > {key-file-path}
+   chmod 400 {key-file-path}
+   sudo chown 10001:10001 data {key-file-path}
    ```
 
-   `{密钥文件路径}` 换成实际路径，例如 `/srv/siplink/siplink-key`。容器内的用户是 uid 10001。
+   Replace `{key-file-path}` with the real path, for example `/srv/siplink/siplink-key`. The user inside the container is uid 10001.
 
-2. 在 `compose.yaml` 旁边写 `.env`：
+2. Write `.env` next to `compose.yaml`:
 
    ```sh
-   SIPLINK_PUBLIC_URL=https://{平台域名}
-   SIPLINK_KEY_PATH={密钥文件路径}
-   # 可选：固定镜像版本，默认 latest
-   # SIPLINK_TAG={版本号}
-   # 可选：手机访问 LDAP 用的名称，默认取 SIPLINK_PUBLIC_URL 的主机名
-   # SIPLINK_LDAP_PUBLIC_HOST={平台域名}
+   SIPLINK_PUBLIC_URL=https://{platform-domain}
+   SIPLINK_KEY_PATH={key-file-path}
+   # Optional: pin the image version (default latest)
+   # SIPLINK_TAG={version}
+   # Optional: the name phones use for LDAP (default: the host name of SIPLINK_PUBLIC_URL)
+   # SIPLINK_LDAP_PUBLIC_HOST={platform-domain}
    ```
 
-   `{平台域名}` 换成手机能访问到的域名，`{版本号}` 换成要使用的镜像版本。
+   Replace `{platform-domain}` with a domain name the phones can reach, and `{version}` with the image version to use.
 
-3. 启动：`docker compose up -d`。HTTPS 在 443 端口，LDAP 在 389 端口。
+3. Start: `docker compose up -d`. HTTPS is on port 443, LDAP on port 389.
 
-4. 建第一个超级管理员（一次性密码只打印在终端，首次登录必须修改；`-e LANG=zh_CN.UTF-8` 使命令输出中文，见[语言](#语言)）：
+4. Create the first super administrator (the one-time password is printed only in the terminal and must be changed at the first sign-in; the command prints English unless a language is set, see [Languages](#languages)):
 
    ```sh
-   docker compose exec -e LANG=zh_CN.UTF-8 siplink siplink admin create --super {用户名}
+   docker compose exec siplink siplink admin create --super {user-name}
    ```
 
-平台没有初始化网页：在建好管理员之前，网页上没有任何可以抢先占用的入口。
+The platform has no web setup page: until an administrator exists, there is nothing on the web that someone else could claim first.
 
-### 升级
+### Upgrading
 
 ```sh
 docker compose pull
 docker compose up -d
 ```
 
-升级前先备份（见[备份与恢复](#备份与恢复)）。
+Back up before upgrading (see [Backup and restore](#backup-and-restore)).
 
-### 从源码构建镜像
+### Building the image from source
 
 ```sh
 docker build -t ghcr.io/tom231efa/siplink:dev platform
 ```
 
-在仓库根目录运行；然后在 `.env` 中设置 `SIPLINK_TAG=dev`。
+Run it in the repository root, then set `SIPLINK_TAG=dev` in `.env`.
 
-### 配置项
+### Configuration options
 
-常用的环境变量（完整列表见 [platform/docs/DESIGN.md](../platform/docs/DESIGN.md) §7.4）：
+Common environment variables (for the full list, see [platform/docs/DESIGN.md](../platform/docs/DESIGN.md) §7.4):
 
-| 变量 | 默认值 | 作用 |
+| Variable | Default | Purpose |
 |---|---|---|
-| `SIPLINK_PUBLIC_URL` | 必填 | 二维码和同步地址使用的公开地址 |
-| `SIPLINK_TLS` | `auto` | `auto`：平台自己提供 HTTPS；`off`：由反向代理提供 HTTPS（见 `SIPLINK_TRUSTED_PROXIES`） |
-| `SIPLINK_TLS_CERT_FILE` / `SIPLINK_TLS_KEY_FILE` | 空 | 使用自有证书文件（优先于在「系统」页面上传的证书和内置 CA） |
-| `SIPLINK_TLS_EXTRA_NAMES` | 空 | 内置 CA 签发的服务器证书额外包含的名称（逗号分隔） |
-| `SIPLINK_LDAP_PUBLIC_HOST` / `_PORT` | 公开地址的主机名 / `389` | 下发给手机的 LDAP 地址 |
-| `SIPLINK_LDAP_REQUIRE_TLS` | `true` | LDAP 登录前必须先 StartTLS |
-| `SIPLINK_ENROLL_DAYS` | `30` | 二维码的有效天数 |
-| `SIPLINK_BACKUP_TIME` / `SIPLINK_BACKUP_KEEP` | `03:30` / `14` | 每日自动备份的时间和保留份数 |
+| `SIPLINK_PUBLIC_URL` | Required | Public address used in QR codes and sync addresses |
+| `SIPLINK_TLS` | `auto` | `auto`: the platform serves HTTPS itself; `off`: a reverse proxy serves HTTPS (see `SIPLINK_TRUSTED_PROXIES`) |
+| `SIPLINK_TLS_CERT_FILE` / `SIPLINK_TLS_KEY_FILE` | Empty | Use own certificate files (they take precedence over a certificate uploaded on the "System" page and over the built-in CA) |
+| `SIPLINK_TLS_EXTRA_NAMES` | Empty | Extra names in the server certificate issued by the built-in CA (comma-separated) |
+| `SIPLINK_LDAP_PUBLIC_HOST` / `_PORT` | Host name of the public address / `389` | LDAP address provisioned to the phones |
+| `SIPLINK_LDAP_REQUIRE_TLS` | `true` | LDAP sign-in (bind) requires StartTLS first |
+| `SIPLINK_ENROLL_DAYS` | `30` | Days a QR code stays valid |
+| `SIPLINK_BACKUP_TIME` / `SIPLINK_BACKUP_KEEP` | `03:30` / `14` | Time of the daily automatic backup and number of backups kept |
 
-## 证书
+## Certificates
 
-每个服务（HTTPS、LDAP）按顺序选用证书：环境变量指定的证书文件 → 在「系统」页面上传的自有证书（证书须包含该服务的名称：HTTPS 是 `SIPLINK_PUBLIC_URL` 的主机名，LDAP 是 `SIPLINK_LDAP_PUBLIC_HOST`）→ 内置 CA 签发的证书。没有服务使用内置 CA 的证书时，自动签发暂停；「系统」页面显示当前模式。
+Each service (HTTPS, LDAP) picks its certificate in this order: the certificate files named by environment variables → an own certificate uploaded on the "System" page (it must contain the service's name: for HTTPS the host name of `SIPLINK_PUBLIC_URL`, for LDAP `SIPLINK_LDAP_PUBLIC_HOST`) → a certificate issued by the built-in CA. When no service uses a certificate of the built-in CA, automatic issuing pauses; the "System" page shows the current mode.
 
-### 内置 CA 与浏览器
+### Built-in CA and browsers
 
-不配置证书时，平台用内置 CA 给自己签发 HTTPS 和 LDAP 证书。CA 在第一次启动时生成，有效期 20 年，以后不会重新生成（否则所有手机都要重新扫码）；服务器证书剩余不足 30 天或名称变化时自动续签。
+Without configured certificates, the platform issues its own HTTPS and LDAP certificates with the built-in CA. The CA is generated at the first start, is valid for 20 years and is never generated again (otherwise every phone would have to scan again); server certificates are renewed automatically when fewer than 30 days remain or the names change.
 
-- **手机**不需要导入 CA：二维码里带有 CA 公钥的指纹（`pin=`），手机第一次扫码时据此信任平台。
-- **浏览器**在导入 CA 之前会提示连接不安全。CA 证书可以在「系统 → 证书 → 下载 CA 证书」下载，或用命令导出：
+- **Phones** do not need to import the CA: the QR code carries the fingerprint of the CA's public key (`pin=`), and the phone trusts the platform by it at the first scan.
+- **Browsers** warn that the connection is not secure until the CA is imported. The CA certificate can be downloaded at "System → Certificates → Download CA certificate", or exported with a command:
 
   ```sh
   docker compose exec siplink siplink pki export-ca /tmp/siplink-ca.pem
   docker compose cp siplink:/tmp/siplink-ca.pem .
   ```
 
-  导入方法：
-  - Windows（Edge、Chrome）：双击证书 → 安装证书 → 选择「受信任的根证书颁发机构」。
-  - macOS：用「钥匙串访问」导入到「系统」钥匙串，打开证书，把「使用此证书时」设为「始终信任」。
-  - Firefox：设置 → 隐私与安全 → 证书 → 查看证书 → 证书颁发机构 → 导入，勾选「信任由此证书颁发机构来标识网站」。
-  - Debian / Ubuntu：复制到 `/usr/local/share/ca-certificates/siplink-ca.crt`，运行 `sudo update-ca-certificates`。
+  How to import it:
+  - Windows (Edge, Chrome): double-click the certificate → Install Certificate → choose "Trusted Root Certification Authorities".
+  - macOS: import it into the "System" keychain with Keychain Access, open the certificate and set "When using this certificate" to "Always Trust".
+  - Firefox: Settings → Privacy & Security → Certificates → View Certificates → Authorities → Import, and tick "Trust this CA to identify websites".
+  - Debian / Ubuntu: copy it to `/usr/local/share/ca-certificates/siplink-ca.crt` and run `sudo update-ca-certificates`.
 
-  导入前请核对「系统」页面上显示的 SHA-256 指纹。
-- 「系统」页面的「重新签发服务器证书」只换服务器证书，CA 不变，手机无需重新扫码。命令行：`siplink pki show`、`siplink pki renew`。
+  Check the SHA-256 fingerprint shown on the "System" page before importing.
+- "Reissue server certificate" on the "System" page replaces only the server certificate; the CA stays the same and phones do not need to scan again. Command line: `siplink pki show`, `siplink pki renew`.
 
-### 使用自有证书
+### Using an own certificate
 
-超级管理员在「系统 → 证书」切换到「自有证书」后，在「上传自有证书」上传证书链文件（PEM，服务器证书在前，中间证书随后；私有 CA 请把根证书附在最后）和**未加密**的私钥文件（PEM）。上传后立即生效，无需重启；私钥加密保存在数据库里（随备份一起），以后不能再查看或下载。命令行：
+A super administrator switches to "Own certificate" in "System → Certificates", then uploads the certificate chain file (PEM, server certificate first, intermediate certificates after it; for a private CA, append the root certificate at the end) and the **unencrypted** private key file (PEM) under "Upload own certificate". The upload takes effect at once, without a restart; the private key is stored encrypted in the database (and goes into backups) and can never be viewed or downloaded again. Command line:
 
 ```sh
 docker compose exec -T siplink sh -c 'cat > /tmp/chain.pem' < chain.pem
 docker compose exec -T siplink sh -c 'umask 077; cat > /tmp/key.pem' < key.pem
-docker compose exec -e LANG=zh_CN.UTF-8 siplink siplink pki import /tmp/chain.pem /tmp/key.pem
+docker compose exec siplink siplink pki import /tmp/chain.pem /tmp/key.pem
 docker compose exec siplink rm /tmp/key.pem /tmp/chain.pem
 ```
 
-（容器的根文件系统只读，`/tmp` 是内存盘，所以用标准输入写入文件。有提示时确认后在 `pki import` 后加 `--yes` 重新运行；运行中的平台在一分钟内启用。）
+(The container's root file system is read-only and `/tmp` is a memory disk, so the files are written through standard input. When asked for confirmation, run `pki import` again with `--yes` added; a running platform starts using it within a minute.)
 
-- **检查**：证书须能解析、私钥与服务器证书匹配、每个证书由下一个签发、当前有效、允许用于服务器身份验证、包含公开地址的主机名。不符合时页面说明原因，证书不会启用。
-- **手机如何信任**：证书链被公共 CA 信任时，二维码不带 `pin`，手机按安卓系统的 CA 校验；链以私有根证书结尾时，二维码带这个根证书的 `pin`，配置文档也下发它，和内置 CA 一样。既不被公共 CA 信任、又不带根证书的链会被拒绝。
-- **已绑定的手机**只信任第一次扫码时记住的 CA 和安卓系统的 CA。换成既不由它签发、也不被公共 CA 信任的证书（或从这样的证书回到内置 CA）后，这些手机无法同步，必须重新生成二维码并重新扫码；平台会先说明受影响的手机数量，确认后才生效。二维码中的 `pin` 改变时，已打印的二维码也需要重新打印。
-- **LDAP**：证书不包含 LDAP 地址时，LDAP 继续使用内置 CA 的证书，自动签发不暂停。证书链中有「授权密钥标识符（AuthorityKeyIdentifier）为空」的证书时平台会提示：手机的 SIP/LDAP TLS 库（mbedTLS 3.6.0）会拒绝这样的证书。
-- **到期提醒**：「到期前提醒天数」默认 30 天（1–365）。自有证书（含证书文件）进入提醒期后，「系统」页面和超级管理员的「概览」显示提醒，日志每天记一条警告；过期后显示「证书已过期，手机将无法同步」。`siplink health`（Docker 健康检查）在提醒期内仍为健康，**过期后为不健康**。内置 CA 的证书会自动续签，不提醒。
-- **改用内置 CA**：「系统 → 证书 → 自有证书」中的「改用内置 CA」或 `siplink pki use-builtin` 回到内置 CA，自动签发立即恢复；需要重新扫码的手机数量会先显示，确认后才生效。
-- 「证书」卡片顶部的「内置 CA / 自有证书」只切换显示内容，不改变正在使用的证书；正在使用的一方带有标记，页面默认打开正在使用的一方。
+- **Checks**: the certificates must parse, the private key must match the server certificate, each certificate must be issued by the next one, all must be valid now and allowed for server authentication, and the host name of the public address must be included. Otherwise the page gives the reason and the certificate is not used.
+- **How phones trust it**: when the chain is trusted by public CAs, the QR code carries no `pin` and the phone verifies against Android's CAs; when the chain ends in a private root certificate, the QR code carries that root's `pin` and the configuration document provisions it, as with the built-in CA. A chain that is neither trusted by public CAs nor ends in its root certificate is refused.
+- **Phones already bound** trust only the CA remembered at the first scan and Android's CAs. After switching to a certificate that was neither issued by that CA nor is trusted by public CAs (or from such a certificate back to the built-in CA), these phones cannot sync and need a new QR code and a new scan; the platform first states how many phones are affected and applies the change only after confirmation. When the `pin` in the QR code changes, printed QR codes must be printed again too.
+- **LDAP**: when the certificate does not contain the LDAP address, LDAP keeps using the certificate of the built-in CA, and automatic issuing does not pause. The platform warns when the chain contains a certificate with an empty Authority Key Identifier (AuthorityKeyIdentifier): the phone's SIP/LDAP TLS library (mbedTLS 3.6.0) rejects such certificates.
+- **Expiry warnings**: "Days of warning before expiry" defaults to 30 (1–365). Once an own certificate (including certificate files) enters the warning period, the "System" page and the super administrators' "Overview" show a warning, and the log records a warning every day; after expiry they show "Certificate expired; phones cannot sync". `siplink health` (the Docker health check) stays healthy during the warning period and becomes **unhealthy after expiry**. Certificates of the built-in CA are renewed automatically and have no warnings.
+- **Back to the built-in CA**: "Use built-in CA" in "System → Certificates → Own certificate", or `siplink pki use-builtin`, returns to the built-in CA, and automatic issuing resumes at once; the number of phones that need to scan again is shown first, and the change applies only after confirmation.
+- "Built-in CA / Own certificate" at the top of the "Certificates" card only switches what is displayed and does not change the certificate in use; the side in use carries a mark, and the page opens on it.
 
-## 托管通讯录与 LDAP 地址
+## Hosted directories and the LDAP address
 
-手机上的 LDAP 库只能按**域名**校验服务器证书，所以：
+The LDAP library on the phone can verify server certificates only by **domain name**, so:
 
-| `SIPLINK_LDAP_PUBLIC_HOST` | `SIPLINK_LDAP_REQUIRE_TLS` | 托管通讯录 |
+| `SIPLINK_LDAP_PUBLIC_HOST` | `SIPLINK_LDAP_REQUIRE_TLS` | Hosted directories |
 |---|---|---|
-| 域名 | 任意 | 以 StartTLS 下发 |
-| IP 地址 | `true`（默认） | 不能加入配置模板；页面和启动日志会说明原因 |
-| IP 地址 | `false` | 以不加密方式下发，配置模板页标明「不加密」 |
+| Domain name | Any | Provisioned with StartTLS |
+| IP address | `true` (default) | Cannot be added to configuration templates; the page and the start-up log give the reason |
+| IP address | `false` | Provisioned unencrypted; the configuration template page marks them "Unencrypted" |
 
-要加密的托管通讯录，请给平台一个 DNS 名称并设置 `SIPLINK_LDAP_PUBLIC_HOST`。外部 LDAP 目录不受此限制，但同样遵守手机的规则：StartTLS 需要域名。
+For encrypted hosted directories, give the platform a DNS name and set `SIPLINK_LDAP_PUBLIC_HOST`. External LDAP directories are not limited by this, but they follow the same phone rule: StartTLS needs a domain name.
 
-## 通讯录
+## Directories
 
-「通讯录」页面在一个列表中管理两种通讯录，可按名称、标识或服务器地址搜索，按类型筛选：
+The "Directories" page manages both kinds of directory in one list, searchable by name, identifier or server address, and filterable by kind:
 
-- **内部**：平台托管的通讯录，由平台的 LDAP 服务提供，在页面上维护联系人、导入导出。
-- **外部**：其他 LDAP 服务器的连接信息：服务器、端口、加密方式、登录名（Bind DN）、密码方式、搜索基准、最大结果数、属性和过滤器。
+- **Internal**: a directory hosted by the platform and served by the platform's LDAP service; its contacts are maintained, imported and exported on the page.
+- **External**: connection details of another LDAP server: server, port, encryption, sign-in name (Bind DN), password mode, Base DN, max results, attributes and filters.
 
-类型在「新建通讯录」时选择，创建后不可修改。外部通讯录的密码方式：
+The kind is chosen in "New directory" and cannot be changed later. Password modes of an external directory:
 
-- **匿名**：不登录。
-- **统一设置**：密码保存在平台（加密），所有客户端相同；保存后不再显示，留空表示不修改。
-- **按客户端设置**：在客户端页面或客户端 CSV 导入中逐个填写。
+- **Anonymous**: no sign-in.
+- **Shared**: the password is stored on the platform (encrypted) and is the same for every client; it is not shown again after saving, and leaving it empty keeps it unchanged.
+- **Per client**: entered client by client on the client page or in the client CSV import.
 
-配置模板的「通讯录」中通过「添加通讯录」选择全局或本区域的通讯录，并设置在手机上显示的名称（留空为通讯录名称）、线路、来电/去电查询和启用；内部通讯录另有最大结果数和凭据（自动或 LDAP 账号）。选定后不可更换为其他通讯录，需更换时移除后重新添加。修改外部通讯录后，使用它的配置模板在客户端下次同步时生效。被配置模板使用的通讯录不能删除，页面列出使用它的模板。
+In the "Directories" part of a configuration template, "Add directory" picks a global directory or one of the template's region, and sets the name shown on the phone (empty = the directory's name), the line, lookup for incoming / outgoing calls and whether it is enabled; internal directories also have max results and credentials (automatic or an LDAP account). Once chosen, the directory cannot be swapped for another; to change it, remove it and add the other one. Changes to an external directory reach the configuration templates that use it at the clients' next sync. A directory used by a configuration template cannot be deleted; the page lists the templates that use it.
 
-升级说明：旧版本中直接填写在配置模板里的外部 LDAP，升级后自动转为外部通讯录（同一区域内连接信息和密码完全相同的合并为一个；重名时自动加「（2）」等后缀），手机收到的配置不变。模板中保存过外部 LDAP 密码时，升级须使用原密钥文件，否则数据库不会升级，平台无法启动。
+Upgrade note: external LDAP entered directly in configuration templates in older versions becomes external directories after the upgrade (entries in the same region with identical connection details and passwords are merged into one; on a name clash a suffix such as `（2）` is added); the configuration the phones receive does not change. If a template stored an external LDAP password, the upgrade needs the original key file; otherwise the database is not upgraded and the platform does not start.
 
-## 分组与标签
+## Groups and tags
 
-「设备 → 分组与标签」页面管理客户端的分组和标签，仅用于在控制台中整理客户端，不影响下发给手机的配置。
+The page "Devices → Groups and tags" manages the groups and tags of clients. They only organize clients in the console and do not affect the configuration provisioned to phones.
 
-- **分组**：属于一个区域；每个客户端最多属于一个本区域的分组。名称在区域内唯一（不区分大小写），每个区域最多 100 个。区域管理员只能看到和管理自己区域的分组。客户端改到其他区域时离开原分组。删除分组后，其中的客户端变为无分组。
-- **标签**：所有区域共用一个列表，名称唯一（不区分大小写，不能包含分号），颜色从固定的几种中选择；最多 500 个，每个客户端最多 10 个。所有管理员都可以新建标签，并给自己可编辑的客户端添加或移除标签；标签已用于其他区域的客户端时，区域管理员不能修改或删除它。
-- **客户端列表**：按分组（含「无分组」）和标签筛选，选择多个标签时显示同时带有这些标签的客户端；筛选条件保存在网址中。勾选客户端后可批量设置分组、添加标签或移除标签；所选客户端或分组中有不可操作的项时，整个操作被拒绝，不做任何修改。
-- **CSV 导入**：可选列「分组」「标签」（英文 `group`、`tags`）。分组须为该行区域中已有的分组；多个标签以 `;` 或 `；` 分隔，不存在的标签在确认导入时自动创建（灰色）。不含这两列的旧文件照常导入。
-- **审计日志**：记录分组和标签的新建、修改、删除，以及每个客户端分组或标签的变化（批量操作时每个客户端一条）。
+- **Groups**: a group belongs to one region; a client is in at most one group of its region. Names are unique within a region (in any case), at most 100 per region. Region administrators see and manage the groups of their own regions only. A client moved to another region leaves its group. Deleting a group leaves its clients without a group.
+- **Tags**: one list shared by all regions; names are unique (in any case) and cannot contain semicolons; the color is one of a fixed few. At most 500 tags, and 10 per client. Every administrator can create tags and put them on or take them off clients they may edit; once a tag is on clients of other regions, a region administrator can no longer change or delete it.
+- **Client list**: filter by group (including "No group") and by tags; with several tags chosen it shows the clients that carry all of them. The filters are kept in the address. With clients ticked, the bulk bar sets a group, adds a tag or removes one; if any of the chosen clients or the group is not one the administrator may use, the whole action is refused and nothing changes.
+- **CSV import**: optional columns `group` and `tags` (Chinese `分组`, `标签`). The group must exist in the line's region; several tags are separated by `;` or `；`, and unknown tags are created (gray) when the import is confirmed. Older files without these columns import as before.
+- **Audit log**: records the creation, change and deletion of groups and tags, and every change of a client's group or tags (one entry per client in bulk actions).
 
-## 两步验证
+## Two-step verification
 
-管理员在「我的账号」中自行启用两步验证，输入密码之后再验证一次。可用方式：
+Administrators turn on two-step verification themselves in "My account": a second check after the password. Available methods:
 
-- **身份验证器**（TOTP，30 秒、6 位，如 Google Authenticator、Microsoft Authenticator）：扫描二维码或输入密钥，输入一次验证码后启用。
-- **通行密钥**（WebAuthn）：可添加多个。需要安全的访问地址：`SIPLINK_PUBLIC_URL` 为 `https://` 加域名，或 `http://localhost`；地址为 IP 或其他 `http://` 地址时不提供。浏览器须通过 `SIPLINK_PUBLIC_URL` 原样访问平台，并信任平台证书（使用内置 CA 时先导入 CA，见上文）。
-- **邮箱验证码**：须先在「我的账号」填写并验证邮箱，且已配置邮件服务。验证码 10 分钟内有效，每个最多输错 5 次；每分钟最多发送 1 次，每小时最多 5 次。
+- **Authenticator app** (TOTP, 30 seconds, 6 digits, for example Google Authenticator or Microsoft Authenticator): scan the QR code or enter the secret, and enter one code to turn it on.
+- **Passkeys** (WebAuthn): several can be added. They need a secure address: `SIPLINK_PUBLIC_URL` with `https://` and a domain name, or `http://localhost`; with an IP address or another `http://` address they are not offered. The browser must reach the platform at exactly `SIPLINK_PUBLIC_URL` and trust the platform certificate (with the built-in CA, import the CA first, see above).
+- **E-mail code**: needs an e-mail address entered and confirmed in "My account" and a configured mail service. A code is valid for 10 minutes and allows at most 5 wrong attempts; at most 1 code is sent per minute and 5 per hour.
 
-启用第一种方式时生成 10 个**恢复码**，在 5 分钟内或点击「完成」之前可以查看，之后不再显示；每个只能用一次，可代替任一方式。启用第一种方式时，该管理员的其他会话全部结束。关闭方式、删除最后一个通行密钥、重新生成恢复码和修改邮箱都须再次输入密码。连续 5 次验证失败（含再次输入密码和查看客户端密码时输错）后，该管理员 15 分钟内不能再验证。
+Turning on the first method generates 10 **recovery codes**, which can be viewed for 5 minutes or until "Done" is clicked and are not shown again; each works once and can replace any method. Turning on the first method also ends all other sessions of that administrator. Turning a method off, deleting the last passkey, generating new recovery codes and changing the e-mail address all ask for the password again. After 5 failed verifications in a row (including wrong passwords when re-entering it and when viewing client passwords), the administrator cannot verify for 15 minutes.
 
-首次登录的顺序：密码 → 两步验证（已启用时）→ 修改一次性密码 → 启用两步验证（要求启用时）。
+Order at the first sign-in: password → two-step verification (when on) → change the one-time password → turn on two-step verification (when required).
 
-**要求区域管理员启用**：超级管理员在「系统 → 两步验证」打开「区域管理员必须启用两步验证」。之后未启用的区域管理员登录后只能进入「我的账号」，启用一种方式后才能使用其他页面，且不能关闭最后一种方式。超级管理员不受此限制。
+**Requiring it for region administrators**: a super administrator turns on "Region administrators must use two-step verification" in "System → Two-step verification". From then on, region administrators without it can only open "My account" after signing in, can use the other pages only after turning on a method, and cannot turn off their last method. Super administrators are not affected.
 
-**超级管理员**：超级管理员的邮箱只能由本人在「我的账号」中修改；已启用两步验证的超级管理员不能被修改角色。另一位超级管理员仍可以「重置密码」或停用其账号，但已启用两步验证时，仅凭新密码无法登录。
+**Super administrators**: a super administrator's e-mail address can only be changed by that administrator in "My account"; the role of a super administrator with two-step verification on cannot be changed. Another super administrator can still "Reset password" or disable the account, but with two-step verification on, the new password alone does not sign in.
 
-**唯一方式不可用时**（例如访问地址改为 IP 后通行密钥不再可用，或邮件服务未配置），登录仍要求两步验证，须使用恢复码或下文的重置。
+**When the only method is unusable** (for example, passkeys stop working after the address changes to an IP, or the mail service is not configured), sign-in still requires two-step verification; use a recovery code or the reset below.
 
-**无法登录时**：
+**When an administrator cannot sign in**:
 
-- 区域管理员：超级管理员在「管理员 → 编辑」中「重置两步验证」。
-- 任何管理员（包括超级管理员）：在服务器上运行
+- Region administrators: a super administrator uses "Reset two-step verification" in "Administrators → Edit".
+- Any administrator (super administrators included): run on the server
 
   ```sh
-  docker compose exec siplink siplink admin reset-2fa {用户名}
+  docker compose exec siplink siplink admin reset-2fa {user-name}
   ```
 
-  `{用户名}` 替换为该管理员的用户名。全部验证方式和恢复码被删除，该管理员的会话全部结束；邮箱保留，但须重新验证。
+  Replace `{user-name}` with the administrator's user name. All methods and recovery codes are deleted and all of the administrator's sessions end; the e-mail address stays but must be confirmed again.
 
-## 管理员密码
+## Administrator passwords
 
-「系统 → 安全 → 密码强度检测」（超级管理员可修改，默认开启）开启时，管理员在「我的账号」设置的新密码须为 10–256 个字符且不得与用户名相同；关闭后只要求不为空且不超过 256 个字符。平台生成的一次性密码不受影响。该开关同样决定下载加密备份时加密口令的最短长度。
+When "System → Security → Password strength check" is on (changeable by super administrators, on by default), new passwords that administrators set in "My account" must be 10–256 characters long and differ from the user name; when it is off, they only have to be non-empty and at most 256 characters. One-time passwords generated by the platform are not affected. The same switch sets the minimum length of the encryption passphrase for downloading encrypted backups.
 
-## 邮件
+## Mail
 
-超级管理员在「邮件」页面配置 SMTP：服务器、端口、加密方式（STARTTLS / TLS / 不加密）、用户名、密码、发件地址和发件人名称。密码加密保存，保存后不再显示；留空表示不修改，清空用户名时一并删除密码；修改服务器、端口或加密方式时须重新输入密码（未设置用户名时除外）。「发送测试邮件」失败时显示服务器的回复；其他页面发送失败时只显示「邮件发送失败。」，原因记录在日志中。
+Super administrators configure SMTP on the "Mail" page: server, port, encryption (STARTTLS / TLS / None), user name, password, sender address and sender name. The password is stored encrypted and not shown again after saving; leaving it empty keeps it unchanged, and clearing the user name deletes the password as well; changing the server, port or encryption requires entering the password again (unless no user name is set). When "Send test e-mail" fails, the server's reply is shown; on other pages a failure shows only "Sending e-mail failed.", with the reason in the log.
 
-- 服务器证书按系统根证书校验，主机名须与证书一致；STARTTLS 方式下服务器必须支持 STARTTLS。
-- 「不加密」时不能使用用户名和密码登录（发往本机 `localhost` 除外）。
-- 邮件目前只用于两步验证的验证码。
+- The server certificate is verified against the system root certificates, and the host name must match the certificate; with STARTTLS, the server must support STARTTLS.
+- With "None", the user name and password cannot be used to sign in (except for the local `localhost`).
+- Mail is currently used only for two-step verification codes.
 
-## 备份与恢复
+## Backup and restore
 
-- 每天 `SIPLINK_BACKUP_TIME`（容器时区）自动备份到 `data/backups/siplink-{日期}.db`，保留 `SIPLINK_BACKUP_KEEP` 份。「系统」页面可以「立即备份」。
-- 命令行：`docker compose exec siplink siplink backup /data/backups/{文件名}.db`。
-- 恢复：停止容器，把备份文件复制为 `data/siplink.db`（删除旧的 `siplink.db-wal`、`siplink.db-shm`），用**同一个密钥文件**启动。没有原密钥文件时，加密的密码不可用，两步验证的恢复码和邮箱验证码也无法验证（需 `reset-2fa`）。
-- 密钥文件不在备份里，见本文第一段。
+- Every day at `SIPLINK_BACKUP_TIME` (container time zone), an automatic backup is written to `data/backups/siplink-{date}.db`, keeping `SIPLINK_BACKUP_KEEP` copies. The "System" page has "Back up now".
+- Command line: `docker compose exec siplink siplink backup /data/backups/{file-name}.db`.
+- Restore: stop the container, copy the backup file to `data/siplink.db` (delete the old `siplink.db-wal` and `siplink.db-shm`), and start with **the same key file**. Without the original key file, the encrypted passwords cannot be used, and recovery codes and e-mail codes for two-step verification cannot be verified either (`reset-2fa` is needed).
+- The key file is not in the backups, see the first part of this page.
 
-### 下载备份
+### Downloading backups
 
-超级管理员在「系统 → 备份」列表中点击某个备份的「下载」，在弹出的对话框中输入当前密码后下载。
+A super administrator clicks "Download" next to a backup in the "System → Backups" list, enters the current password in the dialog that opens, and downloads.
 
-- **加密**（默认开启）：输入两次加密口令（「密码强度检测」开启时至少 10 个字符，最多 256 个字符），下载 `{备份文件名}.db.age`，格式为 [age](https://github.com/FiloSottile/age)（口令加密）。平台不保存口令，忘记口令后文件无法打开。
-- **不加密**：下载与服务器上相同的 `{备份文件名}.db`。文件含全部配置、管理员密码哈希和加密保存的密码，请妥善保管。
-- 下载的文件只有数据库备份，不含密钥文件；恢复时仍须使用原密钥文件。每次下载记入审计日志（文件名、是否加密），口令不记录。
+- **Encrypted** (on by default): enter the encryption passphrase twice (at least 10 characters when "Password strength check" is on, at most 256 characters) and download `{backup-name}.db.age`, in [age](https://github.com/FiloSottile/age) format (passphrase encryption). The platform does not keep the passphrase; without it, the file cannot be opened.
+- **Unencrypted**: downloads `{backup-name}.db`, the same as on the server. The file contains the whole configuration, administrator password hashes and the encrypted passwords; keep it safe.
+- The downloaded file holds only the database backup, not the key file; restoring still needs the original key file. Every download is recorded in the audit log (file name, encrypted or not); the passphrase is not recorded.
 
-打开加密的备份（需要 age 1.0 以上版本，Debian / Ubuntu 可 `sudo apt install age`，其他系统见 age 的 Releases 页面）：
-
-```sh
-age -d -o {备份文件名}.db {备份文件名}.db.age
-```
-
-`{备份文件名}` 替换为下载的文件名（不含扩展名），命令会提示输入加密口令。没有 age 时，也可以用官方 Go 镜像运行同一程序：
+To open an encrypted backup (needs age 1.0 or later; on Debian / Ubuntu `sudo apt install age`, for other systems see age's Releases page):
 
 ```sh
-docker run --rm -it -v "$PWD":/w -w /w golang:1.27.3-trixie go run filippo.io/age/cmd/age@v1.3.2 -d -o {备份文件名}.db {备份文件名}.db.age
+age -d -o {backup-name}.db {backup-name}.db.age
 ```
 
-从下载的备份恢复：
+Replace `{backup-name}` with the downloaded file name (without the extension); the command asks for the encryption passphrase. Without age, the same program can run in the official Go image:
+
+```sh
+docker run --rm -it -v "$PWD":/w -w /w golang:1.27.3-trixie go run filippo.io/age/cmd/age@v1.3.2 -d -o {backup-name}.db {backup-name}.db.age
+```
+
+To restore from a downloaded backup:
 
 ```sh
 docker compose stop siplink
-sudo cp {备份文件名}.db data/siplink.db
+sudo cp {backup-name}.db data/siplink.db
 sudo chown 10001:10001 data/siplink.db
 sudo chmod 600 data/siplink.db
 sudo rm -f data/siplink.db-wal data/siplink.db-shm
 docker compose start siplink
 ```
 
-`data/` 替换为 Compose 中挂载到容器 `/data` 的目录；密钥文件必须是生成该备份的平台所用的同一个文件。
+Replace `data/` with the directory mounted at `/data` in the container in Compose; the key file must be the same file used by the platform that made the backup.
 
-## 日常使用
+## Daily use
 
-- 顺序：区域 → 通讯录（可选，内部或外部）→ 配置模板（账号、设置、选用通讯录）→ 功能键模板（可选）→ 客户端模板 → 客户端 → 打印或展示二维码。
-- 客户端可以批量导入：「客户端 → 批量导入」可下载每个客户端模板的 CSV 表头，先检查再确认。
-- 名称排序按 Unicode 码位，**不是按拼音**；同音或常用字的先后可能与习惯不同。
-- 客户端页面显示手机上报的 SipLink 版本、版本号和 User-Agent。平台向所有版本下发同一份配置，旧版本会忽略不认识的字段。
-- 管理员查看客户端保存的密码前须再次输入自己的密码，每次查看都记入审计日志。
-- 配置模板的「高级设置」中可设置会议室人数上限（2–30，默认 30）、自动适应网络（默认开启）和 STUN 服务器（主机名或 IP 地址，可带端口；留空表示不使用）。保持默认值的模板，下发给手机的配置与之前完全相同；旧版本应用会忽略这些设置。
+- Order: region → directories (optional, internal or external) → configuration template (accounts, settings, chosen directories) → key template (optional) → client template → clients → print or show the QR codes.
+- Clients can be imported in bulk: "Clients → Bulk import" offers the CSV header of each client template for download, checks first and then asks for confirmation.
+- Names are sorted by Unicode code point, **not by pinyin**; homophones and common characters may sort differently from what you expect.
+- The client page shows the SipLink version, version code and User-Agent reported by the phone. The platform provisions the same configuration to all versions; older versions ignore fields they do not know.
+- Administrators must re-enter their own password before viewing a password stored for a client, and every view is recorded in the audit log.
+- The "Advanced settings" of a configuration template set the maximum participants of the conference room (2–30, default 30), whether the lines adapt to the network automatically (on by default) and a STUN server (a host name or IP address, optionally with a port; empty for none). A template that keeps the defaults provisions exactly the configuration it did before; older app versions ignore these settings.
 
-## 语言
+## Languages
 
-网页控制台和命令行有八种语言，各以本语言的名称列出：中文（简体）、English、日本語、العربية（从右向左显示）、Français、中文（繁體）、Русский、Español。
+The web console and the command line come in eight languages, each listed by its own name: 中文（简体）, English, 日本語, العربية (right to left), Français, 中文（繁體）, Русский, Español.
 
-- **切换**：用户菜单「外观」下的「语言」；登录页和两步验证页底部的下拉框。
-- **选用顺序**：管理员保存的语言 → 浏览器之前的选择（Cookie）→ 浏览器的语言（`Accept-Language`）→ 都不匹配时为 English。在菜单中的选择保存到该管理员名下，换浏览器后仍然有效；登录前选择的语言，在登录时成为该管理员的语言（该管理员尚未保存语言时）。
-- **邮件**：验证码邮件使用收件管理员的语言；测试邮件使用发送者的语言。
-- **客户端 CSV 导入**：仍接受中文列名，也可改用英文列名 `name`、`region`、`client_template`、`note`、`group`、`tags`、`{profile} username`、`{profile} password`、`{profile} auth user`、`{profile} display name`、`{directory} LDAP password`（`{profile}`、`{directory}` 为配置模板中的账号和通讯录；英文列名不区分大小写）。一个文件只用一种语言：表头含「名称」列时按中文列名读取，其中的英文列名视为多余的列而忽略；否则按英文列名读取。某一列同时对应两个字段（例如账号「X LDAP」与通讯录「X」都会生成 `X LDAP password`），或同一字段出现两列时，整个文件会被拒绝并指出该列；这样的客户端模板也无法下载表头，需先重命名账号或通讯录。控制台为简体或繁体中文时，下载的模板为中文列名，其他语言时为英文列名；内部通讯录导出的 CSV 同样如此。
-- **命令行**（容器内的 `siplink`）：默认英文；语言依次取 `LC_ALL`、`LC_MESSAGES`、`LANG`。中文输出：
+- **Switching**: "Language" under "Appearance" in the user menu; a drop-down at the foot of the sign-in page and the two-step verification page.
+- **Order**: the administrator's saved language → the browser's earlier choice (cookie) → the browser's language (`Accept-Language`) → English when none matches. A choice made in the menu is saved for the administrator and follows them to other browsers; a language chosen before signing in becomes the administrator's language at sign-in if they have none saved.
+- **Mail**: code mails use the language of the administrator they go to; the test mail uses the sender's language.
+- **Client CSV import**: still accepts the Chinese column names, or instead the English ones `name`, `region`, `client_template`, `note`, `group`, `tags`, `{profile} username`, `{profile} password`, `{profile} auth user`, `{profile} display name`, `{directory} LDAP password` (`{profile}` and `{directory}` are the accounts and directories of the configuration template; the English names in any case). A file uses one language: with a `名称` column it is read by the Chinese names and English names in it are extra columns that are ignored; otherwise it is read by the English names. When a column fits two fields (an account "X LDAP" and a directory "X" both give `X LDAP password`) or a field has two columns, the whole file is refused and the column named; the header of such a client template cannot be downloaded either, until the account or directory is renamed. The downloaded template has Chinese column names when the console is in Simplified or Traditional Chinese, English ones otherwise; the same applies to the CSV exported from an internal directory.
+- **Command line** (`siplink` inside the container): English by default; the language comes from `LC_ALL`, then `LC_MESSAGES`, then `LANG`. For Chinese output:
 
   ```sh
-  docker compose exec -e LANG=zh_CN.UTF-8 siplink siplink admin create --super {用户名}
+  docker compose exec -e LANG=zh_CN.UTF-8 siplink siplink admin create --super {user-name}
   ```
 
-- **审计日志**：本版本之前写入的条目保留原来的中文；新条目按查看者的语言显示。
-- **从右向左的页面**（العربية）：客户端、分组、标签、模板等名称按名称本身的方向显示，中文或拉丁字母的名称从左向右排列，过长时在名称末尾淡出。
-- 下发给手机的配置文档和 SipLink 应用不受控制台语言影响。
+- **Audit log**: entries written before this version keep their original Chinese text; new entries are shown in the viewer's language.
+- **Right-to-left pages** (العربية): names of clients, groups, tags, templates and the like are shown in their own direction; a Chinese or Latin name runs left to right and, when too long, fades out at its end.
+- The configuration documents provisioned to phones and the SipLink app are not affected by the console language.

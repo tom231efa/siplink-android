@@ -18,6 +18,7 @@ permissions:
 
 env:
   IMAGE: ghcr.io/${{ github.repository_owner }}/siplink
+  DESCRIPTION: Management platform for SipLink phones - central provisioning, hosted LDAP directories and a web console
 
 jobs:
   image:
@@ -62,6 +63,10 @@ jobs:
             ${{ env.IMAGE }}:latest
           labels: |
             org.opencontainers.image.title=SipLink management platform
+            org.opencontainers.image.description=${{ env.DESCRIPTION }}
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.version=${{ steps.version.outputs.value }}
             org.opencontainers.image.revision=${{ github.sha }}
+          # The package page of an image for several platforms takes its description from the index.
+          annotations: |
+            index:org.opencontainers.image.description=${{ env.DESCRIPTION }}

@@ -1,25 +1,25 @@
-<p align="right"><sub>中文 | <a href="en/screenshots.md">English</a></sub></p>
+<p align="right"><sub><a href="zh-CN/screenshots.md">中文</a> | English</sub></p>
 
-# 应用截图
+# Screenshots
 
-[返回首页](../README.md) · [功能特性](features.md) · [使用指南](user-guide.md)
+[Home](../README.md) · [Features](features.md) · [User guide](user-guide.md)
 
 <p align="center"><img src="images/divider.svg" width="100%" alt=""></p>
 
-## 拨号与快捷键
+## Dialer and shortcut keys
 
-<p align="center"><img src="images/dialer.png" width="30%" alt="拨号"> &nbsp; <img src="images/shortcuts.png" width="30%" alt="快捷键"></p>
+<p align="center"><img src="images/dialer.png" width="30%" alt="Dialer"> &nbsp; <img src="images/shortcuts.png" width="30%" alt="Shortcut keys"></p>
 
-## 通话
+## Calls
 
-<p align="center"><img src="images/incoming.png" width="30%" alt="来电"> &nbsp; <img src="images/call.png" width="30%" alt="通话中"></p>
+<p align="center"><img src="images/incoming.png" width="30%" alt="Incoming call"> &nbsp; <img src="images/call.png" width="30%" alt="In a call"></p>
 
-## 通话记录与录音
+## Call history and recordings
 
-<p align="center"><img src="images/history.png" width="30%" alt="通话记录"> &nbsp; <img src="images/recordings.png" width="30%" alt="录音文件"></p>
+<p align="center"><img src="images/history.png" width="30%" alt="Call history"> &nbsp; <img src="images/recordings.png" width="30%" alt="Recordings"></p>
 
-## 设置
+## Settings
 
-<p align="center"><img src="images/settings.png" width="30%" alt="设置"> &nbsp; <img src="images/recording-settings.png" width="30%" alt="录音"> &nbsp; <img src="images/auto-answer.png" width="30%" alt="对讲与自动接听"></p>
+<p align="center"><img src="images/settings.png" width="30%" alt="Settings"> &nbsp; <img src="images/recording-settings.png" width="30%" alt="Recording"> &nbsp; <img src="images/auto-answer.png" width="30%" alt="Intercom and auto answer"></p>
 
-<p align="center"><img src="images/about.png" width="30%" alt="关于"></p>
+<p align="center"><img src="images/about.png" width="30%" alt="About"></p>

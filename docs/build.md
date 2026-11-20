@@ -1,109 +1,109 @@
-<p align="right"><sub>中文 | <a href="en/build.md">English</a></sub></p>
+<p align="right"><sub><a href="zh-CN/build.md">中文</a> | English</sub></p>
 
-# 构建
+# Building
 
-## 环境
+## Environment
 
-| 项 | 要求 |
+| Item | Requirement |
 | --- | --- |
-| JDK | 21；源码与字节码兼容级别为 Java 17（`android/app/build.gradle.kts`） |
-| Android SDK | 平台 37（`compileSdk = 37`）；`targetSdk = 36`，`minSdk = 28` |
-| Gradle | 使用仓库中的 Wrapper（`android/gradle/wrapper/gradle-wrapper.properties`） |
-| 网络 | 首次构建需访问 Google Maven、Maven Central 和 Linphone 官方 Maven 仓库 `https://download.linphone.org/maven_repository` |
+| JDK | 21; source and bytecode compatibility level Java 17 (`android/app/build.gradle.kts`) |
+| Android SDK | Platform 37 (`compileSdk = 37`); `targetSdk = 36`, `minSdk = 28` |
+| Gradle | The wrapper in the repository (`android/gradle/wrapper/gradle-wrapper.properties`) |
+| Network | The first build needs Google Maven, Maven Central and the official Linphone Maven repository `https://download.linphone.org/maven_repository` |
 
-Android SDK 路径由 `ANDROID_HOME` 或 `android/local.properties`（`sdk.dir`）指定。以下命令都在仓库根目录执行，`-p android` 指向安卓工程。依赖版本集中在 `android/gradle/libs.versions.toml`。
+The Android SDK path comes from `ANDROID_HOME` or from `android/local.properties` (`sdk.dir`). The commands below run in the repository root; `-p android` points at the Android project. Dependency versions are kept in `android/gradle/libs.versions.toml`.
 
-## 调试包
+## Debug build
 
 ```bash
 android/gradlew -p android :app:assembleDebug
 ```
 
-输出 `android/app/build/outputs/apk/debug/app-debug.apk`。调试包输出更详细的 SIP 日志，并允许以 `http://` 地址载入远程配置。
+Output: `android/app/build/outputs/apk/debug/app-debug.apk`. The debug build writes more detailed SIP logs and allows loading remote configuration from `http://` addresses.
 
-## 发布包与签名
+## Release build and signing
 
-在安卓工程目录 `android/`（`settings.gradle.kts` 所在目录）创建 `keystore.properties`，写入以下四个键：
+In the Android project directory `android/` (the directory with `settings.gradle.kts`), create `keystore.properties` with these four keys:
 
-| 键 | 含义 |
+| Key | Meaning |
 | --- | --- |
-| `storeFile` | 密钥库文件路径，相对于 `android/` |
-| `storePassword` | 密钥库密码 |
-| `keyAlias` | 密钥别名 |
-| `keyPassword` | 密钥密码 |
+| `storeFile` | Path of the keystore file, relative to `android/` |
+| `storePassword` | Keystore password |
+| `keyAlias` | Key alias |
+| `keyPassword` | Key password |
 
-`keystore.properties`、`*.jks`、`*.keystore` 已被 `.gitignore` 忽略，不得提交。然后：
+`keystore.properties`, `*.jks` and `*.keystore` are ignored by `.gitignore` and must not be committed. Then:
 
 ```bash
 android/gradlew -p android :app:assembleRelease
 ```
 
-输出位于 `android/app/build/outputs/apk/release/`。没有 `keystore.properties` 时发布包不签名。发布包启用代码压缩与资源压缩（R8），规则见 `android/app/proguard-rules.pro`。
+The output is in `android/app/build/outputs/apk/release/`. Without `keystore.properties`, the release build is unsigned. Release builds use code and resource shrinking (R8); the rules are in `android/app/proguard-rules.pro`.
 
-同一应用的各个版本必须使用同一把签名密钥，否则无法覆盖安装。
+All versions of the app must be signed with the same key; otherwise they cannot be installed over each other.
 
 ## ABI
 
-SIP 协议栈的原生库按 ABI 打包，是安装包中最大的部分。默认只打包 `arm64-v8a`，用 `siplink.abi` 属性指定其它 ABI（逗号分隔）：
+The SIP stack's native libraries are packaged per ABI and are the largest part of the APK. By default only `arm64-v8a` is packaged; the `siplink.abi` property selects other ABIs (comma-separated):
 
 ```bash
-# 同时支持 32 位 ARM 设备
+# Also support 32-bit ARM devices
 android/gradlew -p android :app:assembleRelease -Psiplink.abi=arm64-v8a,armeabi-v7a
 
-# 集成测试使用的 x86_64 模拟器
+# x86_64 emulator used by the integration tests
 android/gradlew -p android :app:assembleDebug -Psiplink.abi=x86_64
 ```
 
-应用检查更新时，按设备支持的 ABI 顺序选择文件名中包含该 ABI 名称的 `.apk` 发布附件。发布多个 ABI 的安装包时，文件名应包含 ABI 名称，例如 `{名称}-arm64-v8a.apk`，其中 `{名称}` 为自定义前缀。
+When checking for updates, the app goes through the device's supported ABIs in order and picks the `.apk` release asset whose file name contains that ABI name. When releasing APKs for several ABIs, the file names should contain the ABI name, for example `{name}-arm64-v8a.apk`, where `{name}` is a prefix of your choice.
 
-## 版本号
+## Version numbers
 
-在 `android/app/build.gradle.kts` 的 `defaultConfig` 中：
+In `defaultConfig` of `android/app/build.gradle.kts`:
 
-- `versionCode`：整数，每次发布递增
-- `versionName`：点分数字，如 `0.1.2`
+- `versionCode`: integer, increased with every release
+- `versionName`: dotted numbers, such as `0.1.2`
 
-GitHub 发布的标签写作 `v{versionName}`，如 `v0.1.2`。更新检查只比较由数字组成的版本号（`0.2.0-beta` 这类标签不会被视为新版本），缺少的位视为 0。
+GitHub release tags are written `v{versionName}`, such as `v0.1.2`. The update check compares only version numbers made of digits (tags like `0.2.0-beta` are not taken as new versions); missing parts count as 0.
 
-## 项目结构
+## Project structure
 
-仓库根目录下，`android/` 是安卓工程（应用在 `android/app/`，基线配置文件与启动测量在 `android/baselineprofile/`，见[测试](testing.md#基线配置文件与启动测量)），`testenv/` 是集成测试环境，`platform/` 是管理平台（Go，构建方法见 [platform/README.md](../platform/README.md)），`docs/` 是文档。以下为应用部分。
+In the repository root, `android/` is the Android project (the app is in `android/app/`, the baseline profile and startup measurement in `android/baselineprofile/`, see [Testing](testing.md#baseline-profile-and-startup-measurement)), `testenv/` the integration test environment, `platform/` the management platform (Go; for building it, see [platform/README.md](../platform/README.md)), and `docs/` the documentation. The app part:
 
 ```text
 android/app/src/main/java/com/sky/siplink/
-├── SipLinkApp.kt        Application：创建 SipEngine，启动后台服务与远程配置
-├── MainActivity.kt      主界面
-├── CallActivity.kt      通话界面（可显示在锁屏上）
-├── core/                SIP 引擎与各管理器
-│   ├── logic/           纯 Kotlin 规则，不依赖 Android 和 SDK，由单元测试覆盖
-│   └── model/           数据模型
-├── service/             前台服务、通知、开机启动
-└── ui/                  Jetpack Compose 界面
+├── SipLinkApp.kt        Application: creates SipEngine, starts the background service and remote configuration
+├── MainActivity.kt      Main screen
+├── CallActivity.kt      Call screen (can show on the lock screen)
+├── core/                SIP engine and managers
+│   ├── logic/           Plain Kotlin rules, independent of Android and the SDK, covered by unit tests
+│   └── model/           Data models
+├── service/             Foreground service, notifications, start at boot
+└── ui/                  Jetpack Compose screens
 ```
 
 ### core
 
-`SipEngine` 持有 Linphone `Core`，在主线程创建，所有 SDK 调用都在主线程进行。它创建并连接各管理器：
+`SipEngine` holds the Linphone `Core`; it is created on the main thread, and all SDK calls are made on the main thread. It creates and connects the managers:
 
-| 类 | 职责 |
+| Class | Responsibility |
 | --- | --- |
-| `SettingsStore` | 应用设置，保存在 SDK 配置文件的独立分区 |
-| `ConfigLock` | 远程配置的锁定状态；各管理器修改前检查它 |
-| `AccountManager`、`AccountRouter` | 账号；备用服务器切换与账号专用 DNS |
-| `CallManager`、`VideoController` | 通话、转接、驻留、合并、来电策略；视频 |
-| `HistoryManager` | 通话记录（读取 SDK 的通话记录） |
-| `DirectoryManager`、`DirectoryCache`、`NameResolver` | LDAP 查询队列、SQLite 本地缓存、来去电姓名 |
-| `ShortcutManager` | 快捷键，保存为 CSV 文件 |
-| `CodecManager`、`TlsManager` | 编码；CA 证书与 TLS/SRTP 设置 |
-| `RemoteConfig`、`RemoteConfigClient`、`RemoteApplier`、`RemoteConfigStore` | 远程配置的同步、HTTPS 请求、应用与收回、本地状态 |
-| `UpdateChecker`、`GitHubReleases` | 更新检查 |
+| `SettingsStore` | App settings, kept in a separate section of the SDK configuration file |
+| `ConfigLock` | Lock state of remote configuration; the managers check it before changes |
+| `AccountManager`, `AccountRouter` | Accounts; backup server switching and per-account DNS |
+| `CallManager`, `VideoController` | Calls, transfer, park, merge, incoming call policy; video |
+| `HistoryManager` | Call history (reads the SDK's call history) |
+| `DirectoryManager`, `DirectoryCache`, `NameResolver` | LDAP query queue, SQLite local cache, names for incoming and outgoing calls |
+| `ShortcutManager` | Shortcut keys, stored as a CSV file |
+| `CodecManager`, `TlsManager` | Codecs; CA certificates and TLS/SRTP settings |
+| `RemoteConfig`, `RemoteConfigClient`, `RemoteApplier`, `RemoteConfigStore` | Remote configuration sync, HTTPS requests, applying and revoking, local state |
+| `UpdateChecker`, `GitHubReleases` | Update checks |
 
-规则性的逻辑（输入校验、CSV、来电策略、远程文档解析与校验、证书 pin、版本比较等）放在 `core/logic`，管理器只负责调用 SDK 和保存状态。
+Rule-like logic (input validation, CSV, incoming call policy, remote document parsing and validation, certificate pins, version comparison and so on) lives in `core/logic`; the managers only call the SDK and keep state.
 
-### ui 与 service
+### ui and service
 
-`ui/AppRoot.kt` 定义导航与四个标签页，其余按页面分包：`accounts`、`call`、`dialer`、`directory`、`history`、`settings`、`shortcuts`，公共组件在 `components`，主题在 `theme`。界面通过 `StateFlow` 读取管理器状态，通过管理器方法修改。
+`ui/AppRoot.kt` defines the navigation and the four tabs; the rest is grouped by page into packages: `accounts`, `call`, `dialer`, `directory`, `history`, `settings`, `shortcuts`, with shared components in `components` and the theme in `theme`. The UI reads manager state through `StateFlow` and changes it through manager methods.
 
-`service/SipService` 是前台服务：空闲时以 `specialUse` 类型保持进程与注册，通话时切换为 `phoneCall` / `microphone` 类型。`CallNotifier` 负责通知，`BootReceiver` 在开机和应用更新后启动服务。
+`service/SipService` is the foreground service: when idle it keeps the process and registration alive with the `specialUse` type, and during calls it switches to the `phoneCall` / `microphone` types. `CallNotifier` handles notifications, and `BootReceiver` starts the service after boot and after app updates.
 
-测试见[测试](testing.md)。
+For tests, see [Testing](testing.md).

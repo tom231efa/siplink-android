@@ -1,85 +1,85 @@
-<p align="right"><sub>中文 | <a href="en/faq.md">English</a></sub></p>
+<p align="right"><sub><a href="zh-CN/faq.md">中文</a> | English</sub></p>
 
-# 常见问题
+# FAQ
 
-## 应用在后台时收不到来电
+## No incoming calls while the app is in the background
 
-SipLink 不使用推送通知，来电依赖应用在后台保持注册。依次检查：
+SipLink does not use push notifications; incoming calls depend on the app staying registered in the background. Check in this order:
 
-1. **设置 → 电池策略 → 后台保持在线** 已开启，通知栏有“SipLink 运行中”通知，且显示的已注册账号数正确
-2. **设置 → 电池策略 → 电池优化**：在系统页面中对 SipLink 关闭电池优化
-3. 已授予通知权限（Android 13 起），否则后台服务和来电通知无法显示
-4. 锁屏时只有通知没有来电界面：在 **锁屏显示来电** 中允许全屏通知（Android 14 起）
+1. **Settings → Battery → Stay online in background** is on, the "SipLink is running" notification is shown, and the number of registered accounts in it is right
+2. **Settings → Battery → Battery optimization**: turn battery optimization off for SipLink on the system page
+3. The notification permission is granted (Android 13 and later); otherwise the background service and incoming call notifications cannot be shown
+4. Only a notification and no call screen on the lock screen: allow full-screen notifications in **Show calls on lock screen** (Android 14 and later)
 
-设备重启或应用更新后，后台服务会自动启动。
+After the phone restarts or the app is updated, the background service starts automatically.
 
-## 通话一段时间后无声
+## No sound after a while in a call
 
-检查 **设置 → 高级设置 → 自适应速率控制** 是否被开启（默认关闭）。PBX 一般不提供 RTCP 反馈（AVPF），SDK 此时使用基础速率控制器，在检测到丢包或往返时延加倍时把音频打包时长逐步加长到 100 ms；已有报告在 Asterisk 后方，这一变化发生时对端变为无声。保持关闭即可避免。远程配置下由平台的 `adaptiveRateControl` 决定。
+Check whether **Settings → Advanced settings → Adaptive rate control** has been turned on (it is off by default). PBXs generally do not offer RTCP feedback (AVPF); the SDK then uses its basic rate controller, which lengthens the audio packet time step by step up to 100 ms when it detects packet loss or a doubled round-trip time; behind Asterisk, the other side has been reported to go silent when this happens. Keeping it off avoids the problem. Under remote configuration, the platform's `adaptiveRateControl` decides.
 
-## TLS 账号注册失败
+## TLS account fails to register
 
-- 服务器证书由私有 CA 签发时，在 **设置 → TLS 与 CA 证书** 导入该 CA 的根证书（PEM、DER 或 PKCS#7，不超过 1 MB），导入后账号自动重新注册
-- 证书须包含账号所连接的主机名或 IP（“校验主机名”开启时）。用 IP 地址连接时，证书的主题备用名称中要有该 IP
-- 传输协议选 TLS 时，端口为空则使用 5061
-- 关闭“校验服务器证书”或“校验主机名”只适合排查问题，关闭后存在被窃听风险
+- When the server certificate is issued by a private CA, import that CA's root certificate in **Settings → TLS and CA certificates** (PEM, DER or PKCS#7, up to 1 MB); accounts re-register automatically after the import
+- The certificate must contain the host name or IP the account connects to (when "Verify hostname" is on). When connecting by IP address, the certificate's subject alternative names must include that IP
+- With TLS as the transport, an empty port means 5061
+- Turning off "Verify server certificate" or "Verify hostname" is only for troubleshooting; with it off, calls can be eavesdropped
 
-## LDAP 通讯录无法使用 StartTLS
+## LDAP directory cannot use StartTLS
 
-- StartTLS 要求“服务器地址”填写域名，不能填 IP 地址：SIP 协议栈的 LDAP 库没有主机名时会拒绝 TLS 握手。设备须能解析该域名，服务器证书须包含该域名
-- 不支持 `ldaps://`，请改用 StartTLS（通常仍是 389 端口）
-- 服务器证书的 CA 在 **设置 → TLS 与 CA 证书** 中导入。LDAP 在本次运行中已建立过加密连接后再更换 CA，需要重启应用（应用会提示“重启后对 LDAP 生效”）
-- 通讯录页显示“请先添加 SIP 账号”：SIP 协议栈用默认账号的域名补全通讯录号码，没有账号时不返回任何条目
+- StartTLS needs a domain name as the "Server address", not an IP address: the SIP stack's LDAP library refuses the TLS handshake without a host name. The phone must be able to resolve the name, and the server certificate must contain it
+- `ldaps://` is not supported; use StartTLS instead (usually still on port 389)
+- Import the CA of the server certificate in **Settings → TLS and CA certificates**. If LDAP has already made an encrypted connection in this run, changing the CA needs an app restart (the app shows "Takes effect for LDAP after restart")
+- The Directory tab shows "Add a SIP account first": the SIP stack completes directory numbers with the domain of the default account and returns no entries without an account
 
-## 界面显示“配置由远程下发”
+## The app shows "Managed remotely"
 
-配置由管理平台下发，只能查看，不能在本机修改。可修改的内容见[远程配置](remote-configuration.md#用户保留的内容)。要恢复本机配置，在 **设置 → 远程配置** 中删除远程配置；删除会清除下发的账号、通讯录、证书和快捷键。
+The configuration is provisioned by the management platform; it can be viewed but not changed on the phone. For what can still be changed, see [Remote configuration](remote-configuration.md#what-the-user-keeps). To get the local configuration back, remove the remote configuration in **Settings → Remote configuration**; this clears the provisioned accounts, directories, certificates and shortcut keys.
 
-## 远程配置无法载入
+## Remote configuration does not load
 
-页面上的提示含义见[远程配置 → 同步](remote-configuration.md#同步)。常见原因：二维码已使用或过期（重新生成）；地址不是 `https://`；平台证书与二维码中的 `pin` 不符，或无 `pin` 时证书不被系统 CA 信任。
+For the messages on the page, see [Remote configuration → Sync](remote-configuration.md#sync). Common causes: the QR code was already used or has expired (generate a new one); the address is not `https://`; the platform certificate does not match the `pin` in the QR code, or, without `pin`, the certificate is not trusted by the system CAs.
 
-## 检查更新失败
+## Update check fails
 
-检查失败时不弹出任何提示，只在 **设置 → 关于** 的版本行显示：
+A failed check shows no pop-up; only the version row in **Settings → About** shows:
 
-| 提示 | 原因 |
+| Message | Cause |
 | --- | --- |
-| 请求过于频繁 | GitHub 对未登录请求的频率限制（同一出口 IP 每小时 60 次）已用完。应用在 GitHub 给出的解除时间之前不再请求，之后自动恢复 |
-| 更新检查失败 | 其它原因：网络不可达、无法访问 `api.github.com`、响应不是有效的发布信息等 |
+| Too many requests | GitHub's rate limit for unauthenticated requests (60 per hour per public IP address) is used up. The app makes no requests until the reset time GitHub gives, then resumes automatically |
+| Update check failed | Anything else: network unreachable, `api.github.com` not reachable, the response is not valid release information, and so on |
 
-同一出口 IP 下的多台设备共用频率限制。也可以直接访问 [GitHub Releases](https://github.com/tom231efa/siplink-android/releases) 下载。
+Devices behind the same public IP address share the rate limit. You can also download from [GitHub Releases](https://github.com/tom231efa/siplink-android/releases) directly.
 
-## 应用内下载的更新无法安装
+## An update downloaded in the app does not install
 
-- 首次安装时，应用会转到系统的“安装未知应用”设置，允许后返回应用即继续安装
-- 下载失败或校验不符（大小、SHA-256 摘要或包名）时显示“下载失败”，可点按 **重新下载**
-- 系统提示签名冲突：新安装包的签名与已安装的不同（例如自行构建的版本），需先卸载再安装
+- At the first installation, the app opens the system's "Install unknown apps" setting; after allowing it, return to the app and the installation continues
+- When the download fails or does not match (size, SHA-256 digest or package name), "Download failed" is shown; tap **Download again**
+- The system reports a signature conflict: the new APK is signed differently from the installed one (for example a build of your own); uninstall first, then install
 
-## 32 位设备
+## 32-bit devices
 
-发布的安装包面向 64 位 ARM（arm64-v8a）设备。32 位 ARM 设备需要自行构建包含 `armeabi-v7a` 的安装包，见[构建](build.md#abi)。检查更新时，如果发布中没有与本机 ABI 匹配的 APK，更新说明中的按钮为 **前往下载页**，打开发布页面。
+The published APK is for 64-bit ARM (arm64-v8a) devices. 32-bit ARM devices need an APK built with `armeabi-v7a`, see [Building](build.md#abi). When the update check finds no APK for the phone's ABI in the release, the button in the release notes is **Open download page**, which opens the release page.
 
-## 服务器拒绝注册（403），但其它软电话可以
+## The server rejects registration (403), but other softphones work
 
-有的服务只接受 User-Agent 以已知客户端名称开头的请求。默认 User-Agent 以 `LinphoneSDK/` 开头即为此。若在 **高级设置 → 客户端名称（User-Agent）** 中改过名称，清空后恢复默认。
+Some services accept only requests whose User-Agent starts with a known client name. That is why the default User-Agent starts with `LinphoneSDK/`. If you changed the name in **Advanced settings → Client name (User-Agent)**, clear it to restore the default.
 
-## 功能入口是灰色的
+## A feature is grayed out
 
-对应的功能码为空，表示不使用该功能。在 **设置 → 功能码** 中按 PBX 拨号计划填写，见[功能码](user-guide.md#功能码)。“免打扰方式”选“服务器”需要同时设置“开启免打扰”和“关闭免打扰”两个功能码。
+Its feature code is empty, which means the feature is not used. Fill it in under **Settings → Feature codes** according to the PBX dial plan, see [Feature codes](user-guide.md#feature-codes). Choosing "Server" as the "DND mode" needs both the "DND on" and "DND off" feature codes.
 
-## 备用服务器何时生效
+## When the backup server is used
 
-主服务器无响应、返回 408 或 5xx 时，账号切换到备用代理服务器；返回 401、403、404 等拒绝时不切换（备用服务器也会拒绝）。主服务器恢复且没有通话时切回。
+When the primary server does not respond, or returns 408 or 5xx, the account switches to the backup proxy; on rejections such as 401, 403 or 404 it does not switch (the backup server would reject too). It switches back when the primary server recovers and there is no call.
 
-## 录音按钮不显示
+## The record button is missing
 
-**设置 → 话务功能 → 录音 → 通话录音** 已关闭，或该项由远程配置关闭。通话建立时“通话录音”处于关闭状态的通话，即使之后开启也不能录音（录音文件须在通话建立时指定）。会议室和由 PBX 转来（REFER、Replaces）的通话不能录音。
+**Settings → Call features → Recording → Call recording** is off, or remote configuration turned it off. A call that was set up while "Call recording" was off cannot be recorded, even if it is turned on later (the recording file has to be set when the call is set up). Conference rooms and calls transferred in by the PBX (REFER, Replaces) cannot be recorded.
 
-## 会议室成员显示“线路已满”
+## Conference room members show "Line full"
 
-PBX 不再接受这条线路的更多呼叫，见[会议室 → 呼叫失败](user-guide.md#呼叫失败)。FreePBX 中分机的“Outbound Concurrency Limit”默认为 3：调高开启会议室的分机的这一项，或在 **设置 → 高级设置 → 会议室 → 会议室人数上限** 中调低上限。
+The PBX takes no more calls on this line, see [Conference room → Failed calls](user-guide.md#failed-calls). In FreePBX, an extension's "Outbound Concurrency Limit" defaults to 3: raise it for the extension that opens rooms, or lower the limit in **Settings → Advanced settings → Conference room → Maximum members**.
 
-## 视频通话中对方画面停住
+## The other party's video freezes in a video call
 
-丢包时，对方画面可能停在最后一帧，直到下一个关键帧到达，通常需要几秒；PBX 或对方不响应关键帧请求时更久。
+On packet loss, the other party's video can stop on its last frame until the next key frame arrives, usually within seconds; longer when the PBX or the other side does not answer key frame requests.

@@ -1,89 +1,89 @@
-<p align="right"><sub>中文 | <a href="en/features.md">English</a></sub></p>
+<p align="right"><sub><a href="zh-CN/features.md">中文</a> | English</sub></p>
 
-# 功能特性
+# Features
 
-[返回首页](../README.md) · [应用截图](screenshots.md) · [使用指南](user-guide.md) · [管理平台](platform.md)
+[Home](../README.md) · [Screenshots](screenshots.md) · [User guide](user-guide.md) · [Management platform](platform.md)
 
 <p align="center"><img src="images/divider.svg" width="100%" alt=""></p>
 
-## 通话与话务功能
+## Calls and call features
 
 <img src="images/feature-calls.svg" width="300" align="right" alt="">
 
-- 来电滑动接听或挂断；通话中保留、静音、切换听筒 / 扬声器 / 蓝牙
-- 盲转、咨询转、驻留
-- 会议室：仅语音，默认最多 30 名成员，由本机混音；成员可单独挂断或重拨；提示设备和线路的质量问题
-- 呼叫等待、呼叫前转（无条件 / 遇忙 / 无应答）、免打扰、拒接匿名来电
-- 对讲：可自动接听并使用扬声器
-- 常规来电自动接听：立即或在 3–30 秒后接听
-- 监听 / 耳语 / 强插、强拆、指定代接、同组代接、语音信箱；功能码按 PBX 配置
+- Slide to answer or decline incoming calls; hold, mute, and switch between earpiece, speaker and Bluetooth during a call
+- Blind transfer, attended transfer, park
+- Conference room: voice only, up to 30 members by default, mixed on the phone; members can be hung up or called again one by one; warnings about phone and line quality
+- Call waiting, call forwarding (always / when busy / on no answer), do not disturb, reject anonymous calls
+- Intercom: optional auto answer on the speaker
+- Auto answer for regular calls: immediately or after 3–30 seconds
+- Listen / whisper / barge, force hang-up, directed pickup, group pickup, voicemail; feature codes set to match the PBX
 
 <br clear="right">
 
-## 线路
+## Lines
 
-- 最多 100 个 SIP 账号，拨号时可选择呼出线路
-- UDP / TCP / TLS，SRTP
-- 每条线路可设代理、备用代理和 DNS 服务器
-- CSV 批量导入
+- Up to 100 SIP accounts; choose the outgoing line when dialing
+- UDP / TCP / TLS, SRTP
+- Proxy, backup proxy and DNS server per line
+- Bulk import from CSV
 
-## 快捷键
+## Shortcut keys
 
 <img src="images/feature-shortcuts.svg" width="300" align="left" alt="">
 
-- 速拨、转接、发送按键、呼叫前转、免打扰
-- 分类、图标、固定线路
-- 长按拖动排序，按名称搜索
-- CSV 导入导出
+- Speed dial, transfer, send DTMF, call forwarding, do not disturb
+- Categories, icons, a specific line per key
+- Long-press and drag to reorder, search by name
+- CSV import and export
 
 <br clear="left">
 
-## 视频通话
+## Video calls
 
 <img src="images/feature-video.svg" width="300" align="right" alt="">
 
-- 一对一视频通话，可在设置中整体关闭
-- 发送清晰度 240p–1080p，帧率可选
-- 对方画面保持比例，可在“完整”和“铺满”之间切换
-- 支持横屏；可切换前后摄像头、暂停本端画面
-- 控制按钮无操作后自动隐藏；自己的画面可拖到左右两侧，点按交换两个画面
+- One-to-one video calls; can be turned off as a whole in Settings
+- Sending resolution 240p–1080p, selectable frame rate
+- The other party's video keeps its aspect ratio; switch between "Fit" and "Fill"
+- Landscape supported; switch between front and back cameras, pause your own video
+- Controls hide when not touched; your own video can be dragged to the left or right side, and a tap swaps the two pictures
 
 <br clear="right">
 
-## 通讯录
+## Directories
 
-- 最多 50 个 LDAP 通讯录，支持 StartTLS
-- 来电和去电显示通讯录中的姓名
-- 本地缓存
+- Up to 50 LDAP directories, with StartTLS
+- Names from the directory shown for incoming and outgoing calls
+- Local cache
 
-## 远程配置
+## Remote configuration
 
 <img src="images/feature-remote.svg" width="300" align="left" alt="">
 
-- 扫描管理平台的二维码或输入地址载入配置，之后定期同步
-- 账号、通讯录、证书、编码、设置和快捷键由平台下发，在本机只读
-- 免打扰、外观和通话记录仍由用户自己设置；可另建最多 50 个快捷键
-- 下发的密码可由查看口令保护
+- Load the configuration by scanning a QR code from the management platform or entering its address; it syncs regularly afterwards
+- Accounts, directories, certificates, codecs, settings and shortcut keys are provisioned by the platform and read-only on the phone
+- Do not disturb, appearance and call history stay with the user; up to 50 shortcut keys of the user's own can be added
+- Provisioned passwords can be protected by a configuration password
 
-管理平台以 Docker 镜像发布，带网页控制台（八种语言）和 LDAP 通讯录服务，见[管理平台](platform.md)。配置文档格式见[远程配置](remote-configuration.md)。
+The management platform is published as a Docker image with a web console (eight languages) and an LDAP directory service, see [Management platform](platform.md). For the configuration document format, see [Remote configuration](remote-configuration.md).
 
 <br clear="left">
 
-## 录音与安全
+## Recording and security
 
 <img src="images/feature-recording.svg" width="300" align="right" alt="">
 
-- 通话中一键录音，视频通话同样可用（只录声音）；可设为默认录音
-- 录音保存为 AAC（`.m4a`），按时间筛选、播放、导出；保留条数可选，总大小不超过 2 GB
-- TLS 信令与 SRTP 媒体加密，可校验服务器证书和主机名
-- 自带 CA 证书管理，可导入私有 CA
+- One-tap call recording, also in video calls (audio only); can record every call by default
+- Recordings are saved as AAC (`.m4a`), filtered by time, played and exported; selectable number to keep, 2 GB in total at most
+- TLS signaling and SRTP media encryption, with server certificate and hostname verification
+- CA certificate management in the app; private CAs can be imported
 
 <br clear="right">
 
-## 其它
+## Other
 
-- 通话记录
-- 音视频编码的启用与优先级
-- 后台保持注册，不依赖推送服务
-- 深色与浅色主题，可跟随系统
-- 应用内检查、下载并安装更新
+- Call history
+- Enabling and ordering audio and video codecs
+- Stays registered in the background without a push service
+- Dark and light themes, or follow the system
+- Checks for, downloads and installs updates in the app
