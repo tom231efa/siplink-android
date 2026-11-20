@@ -69,11 +69,14 @@ internal object LineNetwork {
      * Whether a SIP server is there at [host]:[port]. Over UDP it is sent an OPTIONS request,
      * which any server answers; for TCP and TLS it is enough that it takes the connection
      * (nothing is sent: an account on TLS sends nothing in clear). With the fast timeout
-     * [timeoutMs] it is asked several times within that time ([ServerChoice.sendTimes]).
+     * [timeoutMs] it is asked several times within that time ([ServerChoice.sendTimes]). An
+     * attempt that fails at once (no route, nothing listening) does not end the probe: the next
+     * one may get through.
      *
      * @param server the server as the account knows it, `host[:port]`
      * @param from `user@domain` of the account that asks
      * @param userAgent what the app calls itself in its other requests
+     * @param onStart called as the first request or connection goes out, once [host] is looked up
      */
     fun answers(
         host: String,
@@ -83,14 +86,13 @@ internal object LineNetwork {
         from: String,
         userAgent: String,
         timeoutMs: Int = 0,
+        onStart: () -> Unit = {},
     ): Boolean = try {
         val target = InetSocketAddress(host, port)
-        if (target.isUnresolved) {
-            false
-        } else if (transport == SipTransport.UDP) {
-            answersOptions(target, server, from, userAgent, timeoutMs)
-        } else {
-            connects(target, ServerChoice.sendTimes(timeoutMs, reliable = true), ServerChoice.waitMs(timeoutMs))
+        when {
+            target.isUnresolved -> false
+            transport == SipTransport.UDP -> answersOptions(target, server, from, userAgent, timeoutMs, onStart)
+            else -> connects(target, ServerChoice.sendTimes(timeoutMs, reliable = true), ServerChoice.waitMs(timeoutMs), onStart)
         }
     } catch (_: IOException) {
         false
@@ -100,17 +102,18 @@ internal object LineNetwork {
         false
     }
 
-    private fun answersOptions(target: InetSocketAddress, server: String, from: String, userAgent: String, timeoutMs: Int): Boolean =
+    private fun answersOptions(target: InetSocketAddress, server: String, from: String, userAgent: String, timeoutMs: Int, onStart: () -> Unit): Boolean =
         DatagramSocket().use { socket ->
             socket.connect(target)
             val token = Random.nextLong().toULong().toString(16)
             val local = "${socket.localAddress.hostAddress}:${socket.localPort}"
             val request = SipPing.options(server, from, local, token, userAgent).toByteArray(Charsets.US_ASCII)
-            awaitAnswer(socket, DatagramPacket(request, request.size), token, timeoutMs)
+            awaitAnswer(socket, DatagramPacket(request, request.size), token, timeoutMs, onStart)
         }
 
     /** Sends [request] on the connected [socket] at the times of [ServerChoice.sendTimes] until the answer with [token] comes. */
-    private fun awaitAnswer(socket: DatagramSocket, request: DatagramPacket, token: String, timeoutMs: Int): Boolean {
+    private fun awaitAnswer(socket: DatagramSocket, request: DatagramPacket, token: String, timeoutMs: Int, onStart: () -> Unit): Boolean {
+        onStart()
         val start = System.nanoTime()
         val sends = ArrayDeque(ServerChoice.sendTimes(timeoutMs, reliable = false))
         val wait = ServerChoice.waitMs(timeoutMs)
@@ -118,7 +121,11 @@ internal object LineNetwork {
             val elapsed = (System.nanoTime() - start) / NANOS_PER_MS
             while (sends.isNotEmpty() && sends.first() <= elapsed) {
                 sends.removeFirst()
-                socket.send(request)
+                try {
+                    socket.send(request)
+                } catch (_: IOException) {
+                    // No route just now, or the last one was refused: the next one may get through.
+                }
             }
             if (elapsed >= wait) return false
             val until = minOf(wait, sends.firstOrNull() ?: wait)
@@ -136,20 +143,18 @@ internal object LineNetwork {
     }
 
     /** Whether one of the connections started at [starts] (ms after the first) to [target] is taken within [waitMs]. */
-    private fun connects(target: InetSocketAddress, starts: List<Long>, waitMs: Long): Boolean {
+    private fun connects(target: InetSocketAddress, starts: List<Long>, waitMs: Long, onStart: () -> Unit): Boolean {
         val selector = Selector.open()
         val channels = ArrayList<SocketChannel>()
         try {
+            onStart()
             val start = System.nanoTime()
             val pending = ArrayDeque(starts)
             while (true) {
                 val elapsed = (System.nanoTime() - start) / NANOS_PER_MS
                 while (pending.isNotEmpty() && pending.first() <= elapsed) {
                     pending.removeFirst()
-                    val channel = SocketChannel.open().also(channels::add)
-                    channel.configureBlocking(false)
-                    if (channel.connect(target)) return true
-                    channel.register(selector, SelectionKey.OP_CONNECT)
+                    if (startConnection(target, selector, channels)) return true
                 }
                 if (elapsed >= waitMs) return false
                 val until = minOf(waitMs, pending.firstOrNull() ?: waitMs)
@@ -167,6 +172,20 @@ internal object LineNetwork {
             channels.forEach { runCatching { it.close() } }
             selector.close()
         }
+    }
+
+    /** Starts one connection to [target]; true when it was taken at once. One that cannot start (no route) is none. */
+    private fun startConnection(target: InetSocketAddress, selector: Selector, channels: MutableList<SocketChannel>): Boolean = try {
+        val channel = SocketChannel.open().also(channels::add)
+        channel.configureBlocking(false)
+        if (channel.connect(target)) {
+            true
+        } else {
+            channel.register(selector, SelectionKey.OP_CONNECT)
+            false
+        }
+    } catch (_: IOException) {
+        false
     }
 
     // ---------------------------------------------------------------- the line checks
