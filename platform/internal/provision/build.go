@@ -56,11 +56,14 @@ func Build(in Input) (*Document, []i18n.Msg) {
 		for _, e := range rules.ValidateAccount(draft, keys, "", names) {
 			problems = append(problems, AccountProblem(draft.Name, e.Msg()))
 		}
+		if !rules.IsValidServerTimeoutMs(draft.ServerTimeoutMs) {
+			problems = append(problems, AccountProblem(draft.Name, ServerTimeoutRange))
+		}
 		keys = append(keys, rules.IdentityKey(draft.Username, draft.Address()))
 		names = append(names, draft.Name)
 		d.Accounts = append(d.Accounts, Account{Key: a.Key, Name: draft.Name, Username: draft.Username, Password: draft.Password,
 			AuthUser: draft.AuthUser, DisplayName: draft.DisplayName, Domain: draft.Domain, Port: draft.Port, Server: draft.Server,
-			BackupServer: draft.BackupServer, DNSServer: draft.DnsServer, Transport: draft.Transport, Expires: draft.Expires,
+			BackupServer: draft.BackupServer, ServerTimeoutMs: draft.ServerTimeoutMs, DNSServer: draft.DnsServer, Transport: draft.Transport, Expires: draft.Expires,
 			SubscribeMwi: draft.SubscribeMwi, Enabled: draft.Enabled})
 		if a.Default && d.DefaultAccount == "" {
 			d.DefaultAccount = a.Key
@@ -111,6 +114,10 @@ func Build(in Input) (*Document, []i18n.Msg) {
 
 // RefreshRange is the problem of a refresh interval outside 5–1440 minutes.
 var RefreshRange = i18n.M("provision.refresh_range", "min", 5, "max", 1440)
+
+// ServerTimeoutRange is the problem of a fast server timeout that is neither off nor within
+// its bounds.
+var ServerTimeoutRange = i18n.M("provision.server_timeout_range", "min", rules.MinServerTimeoutMs, "max", rules.MaxServerTimeoutMs)
 
 // AccountProblem names the account a problem belongs to.
 func AccountProblem(name string, problem i18n.Msg) i18n.Msg {

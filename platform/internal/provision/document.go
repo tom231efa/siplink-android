@@ -133,21 +133,24 @@ func DefaultSettings() Settings {
 
 // Account is one account of the document (§3.5.4), fields of AccountDraft plus key.
 type Account struct {
-	Key          string             `json:"key"`
-	Name         string             `json:"name"`
-	Username     string             `json:"username"`
-	Password     string             `json:"password"`
-	AuthUser     string             `json:"authUser"`
-	DisplayName  string             `json:"displayName"`
-	Domain       string             `json:"domain"`
-	Port         string             `json:"port"`
-	Server       string             `json:"server"`
-	BackupServer string             `json:"backupServer"`
-	DNSServer    string             `json:"dnsServer"`
-	Transport    rules.SipTransport `json:"transport"`
-	Expires      int                `json:"expires"`
-	SubscribeMwi bool               `json:"subscribeMwi"`
-	Enabled      bool               `json:"enabled"`
+	Key          string `json:"key"`
+	Name         string `json:"name"`
+	Username     string `json:"username"`
+	Password     string `json:"password"`
+	AuthUser     string `json:"authUser"`
+	DisplayName  string `json:"displayName"`
+	Domain       string `json:"domain"`
+	Port         string `json:"port"`
+	Server       string `json:"server"`
+	BackupServer string `json:"backupServer"`
+	// ServerTimeoutMs: rules.MinServerTimeoutMs–rules.MaxServerTimeoutMs; 0 (off) leaves
+	// the field out, as the app's default.
+	ServerTimeoutMs int                `json:"serverTimeoutMs,omitempty"`
+	DNSServer       string             `json:"dnsServer"`
+	Transport       rules.SipTransport `json:"transport"`
+	Expires         int                `json:"expires"`
+	SubscribeMwi    bool               `json:"subscribeMwi"`
+	Enabled         bool               `json:"enabled"`
 }
 
 // Directory is one LDAP directory of the document (§3.5.5), fields of LdapDirectory plus key.

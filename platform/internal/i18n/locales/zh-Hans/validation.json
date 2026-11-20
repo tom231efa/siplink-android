@@ -1,5 +1,6 @@
 {
   "provision.refresh_range": "刷新间隔应为 {min}–{max} 分钟",
+  "provision.server_timeout_range": "快速超时应为 {min}–{max} 毫秒",
   "provision.account_problem": "账号「{name}」：{problem}",
   "provision.directory_problem": "通讯录「{name}」：{problem}",
   "provision.key_problem": "功能键「{name}」：{problem}",

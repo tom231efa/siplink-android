@@ -160,6 +160,8 @@
   "config.profile.transport": "トランスポート",
   "config.profile.server": "プロキシサーバー",
   "config.profile.backup_server": "予備サーバー",
+  "config.profile.server_timeout_ms": "高速タイムアウト（ミリ秒）",
+  "config.profile.server_timeout_off": "オフ",
   "config.profile.host_port_tip": "ホスト[:ポート]",
   "config.profile.dns_server": "DNS サーバー",
   "config.profile.ip_port_tip": "IP[:ポート]",

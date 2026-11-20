@@ -1,5 +1,6 @@
 {
   "provision.refresh_range": "El intervalo de actualización debe estar entre {min} y {max} minutos",
+  "provision.server_timeout_range": "El tiempo de espera rápido debe estar entre {min} y {max} ms",
   "provision.account_problem": "Cuenta «{name}»: {problem}",
   "provision.directory_problem": "Directorio «{name}»: {problem}",
   "provision.key_problem": "Tecla «{name}»: {problem}",

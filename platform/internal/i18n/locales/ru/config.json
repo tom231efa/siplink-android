@@ -160,6 +160,8 @@
   "config.profile.transport": "Транспорт",
   "config.profile.server": "Прокси-сервер",
   "config.profile.backup_server": "Резервный сервер",
+  "config.profile.server_timeout_ms": "Быстрый тайм-аут (мс)",
+  "config.profile.server_timeout_off": "Выкл.",
   "config.profile.host_port_tip": "хост[:порт]",
   "config.profile.dns_server": "DNS-сервер",
   "config.profile.ip_port_tip": "IP[:порт]",

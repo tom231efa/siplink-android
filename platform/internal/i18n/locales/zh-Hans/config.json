@@ -160,6 +160,8 @@
   "config.profile.transport": "传输方式",
   "config.profile.server": "代理服务器",
   "config.profile.backup_server": "备用服务器",
+  "config.profile.server_timeout_ms": "快速超时（毫秒）",
+  "config.profile.server_timeout_off": "关闭",
   "config.profile.host_port_tip": "主机[:端口]",
   "config.profile.dns_server": "DNS 服务器",
   "config.profile.ip_port_tip": "IP[:端口]",

@@ -160,6 +160,8 @@
   "config.profile.transport": "Transport",
   "config.profile.server": "Serveur proxy",
   "config.profile.backup_server": "Serveur de secours",
+  "config.profile.server_timeout_ms": "Délai rapide (ms)",
+  "config.profile.server_timeout_off": "Désactivé",
   "config.profile.host_port_tip": "hôte[:port]",
   "config.profile.dns_server": "Serveur DNS",
   "config.profile.ip_port_tip": "IP[:port]",

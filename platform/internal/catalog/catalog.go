@@ -45,8 +45,8 @@ func NameProblem(name string) error {
 // ProfileDraft turns a profile into the app's AccountDraft (server side only).
 func ProfileDraft(p *store.Profile) rules.AccountDraft {
 	return rules.AccountDraft{Name: p.Name, Domain: p.Domain, Port: p.Port, Server: p.Server, BackupServer: p.BackupServer,
-		DnsServer: p.DNSServer, Transport: rules.SipTransport(p.Transport), Expires: p.Expires, SubscribeMwi: p.SubscribeMWI,
-		Enabled: p.Enabled}
+		ServerTimeoutMs: p.ServerTimeoutMs, DnsServer: p.DNSServer, Transport: rules.SipTransport(p.Transport), Expires: p.Expires,
+		SubscribeMwi: p.SubscribeMWI, Enabled: p.Enabled}
 }
 
 // NormalizeProfile applies AccountRules.normalize to the server side of a profile.
@@ -66,6 +66,9 @@ func ProfileProblems(p *store.Profile, others []*store.Profile) []i18n.Msg {
 	}
 	if !rules.SipTransport(p.Transport).Valid() {
 		out = append(out, i18n.M("catalog.transport_invalid"))
+	}
+	if !rules.IsValidServerTimeoutMs(p.ServerTimeoutMs) {
+		out = append(out, provision.ServerTimeoutRange)
 	}
 	var taken []string
 	for _, o := range others {

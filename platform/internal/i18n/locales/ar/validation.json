@@ -1,5 +1,6 @@
 {
   "provision.refresh_range": "فاصل التحديث بالدقائق: يجب أن يتراوح بين {min} و{max}",
+  "provision.server_timeout_range": "المهلة السريعة بالملي ثانية: يجب أن تتراوح بين {min} و{max}",
   "provision.account_problem": "الحساب «{name}»: {problem}",
   "provision.directory_problem": "الدليل «{name}»: {problem}",
   "provision.key_problem": "المفتاح «{name}»: {problem}",

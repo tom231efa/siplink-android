@@ -102,6 +102,43 @@ func OldClient(t testing.TB, st *store.Store, box *secret.Box, c *store.Client, 
 	}
 }
 
+// OldProfile stores a profile as schemas 4 to 12 did, for tests of later migrations (the
+// store's code reads and writes the fast server timeout of migration 0013): the row with
+// p's fields, the default kept as SaveProfile keeps it and the template's revision raised.
+// It sets p.ID and p.Position.
+func OldProfile(t testing.TB, st *store.Store, p *store.Profile) {
+	t.Helper()
+	ctx := context.Background()
+	now := st.NowText()
+	err := st.Tx(ctx, func(tx *sql.Tx) error {
+		var n int
+		if err := tx.QueryRowContext(ctx, `SELECT count(*), COALESCE(max(position), 0) FROM account_profiles WHERE config_template_id = ?`,
+			p.TemplateID).Scan(&n, &p.Position); err != nil {
+			return err
+		}
+		p.Position++
+		res, err := tx.ExecContext(ctx, `INSERT INTO account_profiles(config_template_id, position, name, domain, port, server,
+			backup_server, dns_server, transport, expires, subscribe_mwi, enabled, is_default, created_at, updated_at)
+			VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, p.TemplateID, p.Position, p.Name, p.Domain, p.Port, p.Server, p.BackupServer,
+			p.DNSServer, p.Transport, p.Expires, p.SubscribeMWI, p.Enabled, p.IsDefault || n == 0, now, now)
+		if err != nil {
+			return err
+		}
+		p.ID, _ = res.LastInsertId()
+		if p.IsDefault {
+			if _, err := tx.ExecContext(ctx, `UPDATE account_profiles SET is_default = (id = ?) WHERE config_template_id = ?`,
+				p.ID, p.TemplateID); err != nil {
+				return err
+			}
+		}
+		_, err = tx.ExecContext(ctx, `UPDATE config_templates SET revision = revision + 1, updated_at = ? WHERE id = ?`, now, p.TemplateID)
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 // ManyClients fills region with groups groups, tags tags and n clients of template, for
 // tests of the client list at scale: client i is in group i mod (groups+1) (the last one
 // meaning none) and carries three tags. It returns the ids of the groups and the tags.

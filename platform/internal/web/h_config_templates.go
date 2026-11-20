@@ -258,11 +258,14 @@ type settingOptions struct {
 	AutoAnswer    []int
 	RoomMin       int
 	RoomMax       int
+
+	ServerTimeoutMin int
+	ServerTimeoutMax int
 }
 
 func options() settingOptions {
 	return settingOptions{rules.MediaSecurities, rules.DndModes, rules.DtmfModes, rules.VideoSizes, rules.FrameRates, rules.SipTransports,
-		rules.AutoAnswerDelays, rules.MinRoomLimit, rules.RoomLimit}
+		rules.AutoAnswerDelays, rules.MinRoomLimit, rules.RoomLimit, rules.MinServerTimeoutMs, rules.MaxServerTimeoutMs}
 }
 
 func (s *Server) configShow(w http.ResponseWriter, r *http.Request) {

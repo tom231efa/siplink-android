@@ -28,20 +28,23 @@ func (t SipTransport) Valid() bool { return contains(SipTransports, t) }
 // Port of data class AccountDraft (android/app/src/main/java/com/sky/siplink/core/model/Models.kt);
 // DefaultAccountDraft gives its defaults.
 type AccountDraft struct {
-	Name         string       `json:"name"`
-	Username     string       `json:"username"`
-	Password     string       `json:"password"`
-	Domain       string       `json:"domain"`
-	Port         string       `json:"port"`
-	DisplayName  string       `json:"displayName"`
-	AuthUser     string       `json:"authUser"`
-	Server       string       `json:"server"`
-	BackupServer string       `json:"backupServer"`
-	DnsServer    string       `json:"dnsServer"`
-	Transport    SipTransport `json:"transport"`
-	Expires      int          `json:"expires"`
-	SubscribeMwi bool         `json:"subscribeMwi"`
-	Enabled      bool         `json:"enabled"`
+	Name         string `json:"name"`
+	Username     string `json:"username"`
+	Password     string `json:"password"`
+	Domain       string `json:"domain"`
+	Port         string `json:"port"`
+	DisplayName  string `json:"displayName"`
+	AuthUser     string `json:"authUser"`
+	Server       string `json:"server"`
+	BackupServer string `json:"backupServer"`
+	// ServerTimeoutMs is the fast server timeout: with a backup server, a server that does
+	// not answer within this many milliseconds is taken as out of reach. 0 = off.
+	ServerTimeoutMs int          `json:"serverTimeoutMs,omitempty"`
+	DnsServer       string       `json:"dnsServer"`
+	Transport       SipTransport `json:"transport"`
+	Expires         int          `json:"expires"`
+	SubscribeMwi    bool         `json:"subscribeMwi"`
+	Enabled         bool         `json:"enabled"`
 }
 
 // DefaultAccountDraft returns AccountDraft() with the Kotlin default values.
@@ -66,6 +69,18 @@ const (
 	MaxExpires           = 86400
 	MaxAccountNameLength = 30
 )
+
+// Bounds of AccountDraft.ServerTimeoutMs when it is on (0 = off).
+const (
+	MinServerTimeoutMs = 200
+	MaxServerTimeoutMs = 10000
+)
+
+// IsValidServerTimeoutMs reports whether ms can be the fast server timeout of an account:
+// 0 (off) or MinServerTimeoutMs–MaxServerTimeoutMs.
+func IsValidServerTimeoutMs(ms int) bool {
+	return ms == 0 || ms >= MinServerTimeoutMs && ms <= MaxServerTimeoutMs
+}
 
 // AccountError is what is wrong with an account.
 // Port of enum AccountRules.Error (android/app/src/main/java/com/sky/siplink/core/logic/AccountRules.kt).

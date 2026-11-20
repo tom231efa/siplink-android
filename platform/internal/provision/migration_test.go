@@ -45,6 +45,10 @@ func (w *world) inlineDirectories(cfg *store.ConfigTemplate, hq *store.Profile, 
 // testutil.OldClient.
 const groupsSchema = 11
 
+// timeoutSchema is the schema that gave profiles their fast server timeout (migration
+// 0013): an older database gets its profiles through testutil.OldProfile.
+const timeoutSchema = 13
+
 // TestGoldenAfterMigration: the full example stored at schema 7, with an external
 // directory in each password mode and a per-client password, gives the same document
 // after migrations 0008 and 0009 as the golden file.

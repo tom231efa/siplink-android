@@ -79,6 +79,11 @@ func (s *Server) profileSave(w http.ResponseWriter, r *http.Request) {
 	p.Name, p.Domain, p.Port = r.FormValue("name"), r.FormValue("domain"), r.FormValue("port")
 	p.Server, p.BackupServer, p.DNSServer = r.FormValue("server"), r.FormValue("backupServer"), r.FormValue("dnsServer")
 	p.Transport, p.Expires = r.FormValue("transport"), intValue(r, "expires", 0)
+	// Empty is off; what is not a number is refused as out of range.
+	p.ServerTimeoutMs = 0
+	if trimmed(r, "serverTimeoutMs") != "" {
+		p.ServerTimeoutMs = intValue(r, "serverTimeoutMs", -1)
+	}
 	p.SubscribeMWI, p.Enabled, p.IsDefault = checkbox(r, "subscribeMwi"), checkbox(r, "enabled"), checkbox(r, "isDefault")
 	catalog.NormalizeProfile(p)
 	others, err := s.St.Profiles(r.Context(), t.ID)

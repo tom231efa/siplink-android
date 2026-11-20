@@ -1,5 +1,6 @@
 {
   "provision.refresh_range": "更新間隔は {min}～{max} 分にしてください",
+  "provision.server_timeout_range": "高速タイムアウトは {min}～{max} ミリ秒にしてください",
   "provision.account_problem": "アカウント「{name}」：{problem}",
   "provision.directory_problem": "電話帳「{name}」：{problem}",
   "provision.key_problem": "キー「{name}」：{problem}",

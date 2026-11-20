@@ -1,5 +1,6 @@
 {
   "provision.refresh_range": "Refresh interval must be {min}–{max} minutes",
+  "provision.server_timeout_range": "Fast timeout must be {min}–{max} ms",
   "provision.account_problem": "Account “{name}”: {problem}",
   "provision.directory_problem": "Directory “{name}”: {problem}",
   "provision.key_problem": "Key “{name}”: {problem}",

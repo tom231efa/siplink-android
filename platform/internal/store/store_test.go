@@ -299,3 +299,52 @@ func TestClientFilterOfflineAndPages(t *testing.T) {
 		}
 	}
 }
+
+// TestMigrateProfileServerTimeout: migration 0013 gives every line a fast server timeout
+// that is off, leaves the rest of the line and the template's revision as they were, and
+// the line keeps a timeout saved afterwards.
+func TestMigrateProfileServerTimeout(t *testing.T) {
+	ctx := context.Background()
+	old, path := testutil.StoreAt(t, 12)
+	must := func(err error) {
+		t.Helper()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	cfg := &store.ConfigTemplate{Name: "标准", SettingsJSON: "{}", RefreshMinutes: 60}
+	must(old.CreateConfigTemplate(ctx, cfg))
+	p := &store.Profile{TemplateID: cfg.ID, Name: "内网", Domain: "pbx.example.com", Port: "5070", Server: "192.0.2.30",
+		BackupServer: "sbc.example.com:5061", DNSServer: "192.0.2.53", Transport: "TCP", Expires: 600, SubscribeMWI: true,
+		Enabled: true, IsDefault: true}
+	testutil.OldProfile(t, old, p)
+	before, err := old.ConfigTemplateByID(ctx, cfg.ID)
+	must(err)
+	must(old.Close())
+
+	st, err := store.Open(ctx, path, testutil.Box(t))
+	must(err)
+	defer st.Close()
+	if v, _ := st.SchemaVersion(ctx); v < 13 {
+		t.Fatalf("schema %d", v)
+	}
+	got, err := st.ProfileByID(ctx, cfg.ID, p.ID)
+	must(err)
+	if *got != *p {
+		t.Errorf("after the migration: %+v, want %+v", *got, *p)
+	}
+	if after, _ := st.ConfigTemplateByID(ctx, cfg.ID); after.Revision != before.Revision {
+		t.Errorf("the migration changed the template revision: %d → %d", before.Revision, after.Revision)
+	}
+	got.ServerTimeoutMs = 1500
+	must(st.SaveProfile(ctx, got, 100))
+	if again, _ := st.ProfileByID(ctx, cfg.ID, p.ID); again.ServerTimeoutMs != 1500 || again.BackupServer != p.BackupServer {
+		t.Errorf("saved: %+v", again)
+	}
+	added := &store.Profile{TemplateID: cfg.ID, Name: "外网", Domain: "sbc.example.com", ServerTimeoutMs: 200, Transport: "UDP",
+		Expires: 3600, Enabled: true}
+	must(st.SaveProfile(ctx, added, 100))
+	if again, _ := st.ProfileByID(ctx, cfg.ID, added.ID); again.ServerTimeoutMs != 200 {
+		t.Errorf("new line: %+v", again)
+	}
+}

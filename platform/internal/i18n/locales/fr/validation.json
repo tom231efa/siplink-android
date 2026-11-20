@@ -1,5 +1,6 @@
 {
   "provision.refresh_range": "L'intervalle d'actualisation doit être compris entre {min} et {max} minutes",
+  "provision.server_timeout_range": "Le délai rapide doit être compris entre {min} et {max} ms",
   "provision.account_problem": "Compte « {name} » : {problem}",
   "provision.directory_problem": "Annuaire « {name} » : {problem}",
   "provision.key_problem": "Touche « {name} » : {problem}",

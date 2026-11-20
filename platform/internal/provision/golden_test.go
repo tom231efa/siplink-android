@@ -105,6 +105,10 @@ func (w *world) external(e *store.ExternalDirectory, password string) *store.Ext
 func (w *world) profile(c *store.ConfigTemplate, name, domain, transport string, def bool) *store.Profile {
 	p := &store.Profile{TemplateID: c.ID, Name: name, Domain: domain, Transport: transport, Expires: 3600, Enabled: true,
 		IsDefault: def, SubscribeMWI: true}
+	if v, err := w.st.SchemaVersion(context.Background()); err == nil && v < timeoutSchema {
+		testutil.OldProfile(w.t, w.st, p)
+		return p
+	}
 	w.must(w.st.SaveProfile(context.Background(), p, rules.MaxAccounts))
 	return p
 }
@@ -442,7 +446,7 @@ func TestFieldNames(t *testing.T) {
 			"userAgent", "adaptiveRateControl", "echoCancellation", "ipv6", "callRecording", "recordByDefault",
 			"autoAnswer", "autoAnswerSeconds", "roomLimit", "autoNetwork", "stunServer"},
 		"account": {"key", "name", "username", "password", "authUser", "displayName", "domain", "port", "server", "backupServer",
-			"dnsServer", "transport", "expires", "subscribeMwi", "enabled"},
+			"serverTimeoutMs", "dnsServer", "transport", "expires", "subscribeMwi", "enabled"},
 		"directory": {"key", "name", "enabled", "host", "port", "security", "bindDn", "password", "baseDn", "line", "lookupIncoming",
 			"lookupOutgoing", "maxResults", "nameAttributes", "numberAttributes", "nameFilter", "numberFilter"},
 		"shortcut": {"label", "number", "action", "category", "line", "icon"},

@@ -28,20 +28,21 @@ type ConfigTemplate struct {
 
 // Profile is the server side of an account (account_profiles).
 type Profile struct {
-	ID           int64
-	TemplateID   int64
-	Position     int
-	Name         string
-	Domain       string
-	Port         string
-	Server       string
-	BackupServer string
-	DNSServer    string
-	Transport    string
-	Expires      int
-	SubscribeMWI bool
-	Enabled      bool
-	IsDefault    bool
+	ID              int64
+	TemplateID      int64
+	Position        int
+	Name            string
+	Domain          string
+	Port            string
+	Server          string
+	BackupServer    string
+	ServerTimeoutMs int // 0 = off
+	DNSServer       string
+	Transport       string
+	Expires         int
+	SubscribeMWI    bool
+	Enabled         bool
+	IsDefault       bool
 }
 
 // Directory is the use of a directory in a template (template_directories): it refers
@@ -258,13 +259,13 @@ func bumpConfigTemplate(ctx context.Context, q querier, id int64, now string) er
 
 // ---- account profiles ----
 
-const profileCols = `id, config_template_id, position, name, domain, port, server, backup_server, dns_server, transport,
-	expires, subscribe_mwi, enabled, is_default`
+const profileCols = `id, config_template_id, position, name, domain, port, server, backup_server, server_timeout_ms, dns_server,
+	transport, expires, subscribe_mwi, enabled, is_default`
 
 func scanProfile(row interface{ Scan(...any) error }) (*Profile, error) {
 	p := &Profile{}
-	err := row.Scan(&p.ID, &p.TemplateID, &p.Position, &p.Name, &p.Domain, &p.Port, &p.Server, &p.BackupServer, &p.DNSServer,
-		&p.Transport, &p.Expires, &p.SubscribeMWI, &p.Enabled, &p.IsDefault)
+	err := row.Scan(&p.ID, &p.TemplateID, &p.Position, &p.Name, &p.Domain, &p.Port, &p.Server, &p.BackupServer,
+		&p.ServerTimeoutMs, &p.DNSServer, &p.Transport, &p.Expires, &p.SubscribeMWI, &p.Enabled, &p.IsDefault)
 	return p, mapErr(err)
 }
 
@@ -313,17 +314,17 @@ func (s *Store) SaveProfile(ctx context.Context, p *Profile, max int) error {
 			}
 			p.Position = pos + 1
 			res, err := tx.ExecContext(ctx, `INSERT INTO account_profiles(config_template_id, position, name, domain, port, server,
-				backup_server, dns_server, transport, expires, subscribe_mwi, enabled, is_default, created_at, updated_at)
-				VALUES(?,?,?,?,?,?,?,?,?,?,?,?,0,?,?)`, p.TemplateID, p.Position, p.Name, p.Domain, p.Port, p.Server, p.BackupServer,
-				p.DNSServer, p.Transport, p.Expires, boolInt(p.SubscribeMWI), boolInt(p.Enabled), now, now)
+				backup_server, server_timeout_ms, dns_server, transport, expires, subscribe_mwi, enabled, is_default, created_at, updated_at)
+				VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,0,?,?)`, p.TemplateID, p.Position, p.Name, p.Domain, p.Port, p.Server, p.BackupServer,
+				p.ServerTimeoutMs, p.DNSServer, p.Transport, p.Expires, boolInt(p.SubscribeMWI), boolInt(p.Enabled), now, now)
 			if err != nil {
 				return mapErr(err)
 			}
 			p.ID, _ = res.LastInsertId()
 		} else if err := deleteRowLike(ctx, tx, `UPDATE account_profiles SET name = ?, domain = ?, port = ?, server = ?, backup_server = ?,
-			dns_server = ?, transport = ?, expires = ?, subscribe_mwi = ?, enabled = ?, updated_at = ? WHERE id = ? AND config_template_id = ?`,
-			p.Name, p.Domain, p.Port, p.Server, p.BackupServer, p.DNSServer, p.Transport, p.Expires, boolInt(p.SubscribeMWI),
-			boolInt(p.Enabled), now, p.ID, p.TemplateID); err != nil {
+			server_timeout_ms = ?, dns_server = ?, transport = ?, expires = ?, subscribe_mwi = ?, enabled = ?, updated_at = ? WHERE id = ? AND config_template_id = ?`,
+			p.Name, p.Domain, p.Port, p.Server, p.BackupServer, p.ServerTimeoutMs, p.DNSServer, p.Transport, p.Expires,
+			boolInt(p.SubscribeMWI), boolInt(p.Enabled), now, p.ID, p.TemplateID); err != nil {
 			return err
 		}
 		if p.IsDefault {

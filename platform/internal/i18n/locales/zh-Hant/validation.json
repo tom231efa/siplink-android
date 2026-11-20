@@ -1,5 +1,6 @@
 {
   "provision.refresh_range": "重新整理間隔應為 {min}–{max} 分鐘",
+  "provision.server_timeout_range": "快速逾時應為 {min}–{max} 毫秒",
   "provision.account_problem": "帳號「{name}」：{problem}",
   "provision.directory_problem": "通訊錄「{name}」：{problem}",
   "provision.key_problem": "功能鍵「{name}」：{problem}",

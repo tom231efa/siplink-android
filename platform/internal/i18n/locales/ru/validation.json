@@ -1,5 +1,6 @@
 {
   "provision.refresh_range": "Интервал обновления должен быть от {min} до {max} мин",
+  "provision.server_timeout_range": "Быстрый тайм-аут должен быть от {min} до {max} мс",
   "provision.account_problem": "Учётная запись «{name}»: {problem}",
   "provision.directory_problem": "Справочник «{name}»: {problem}",
   "provision.key_problem": "Клавиша «{name}»: {problem}",

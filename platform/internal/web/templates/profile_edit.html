@@ -19,6 +19,9 @@
       <div class="field"><span class="label-line"><label for="f-backup">{{t "config.profile.backup_server"}}</label>{{tip "f-backup-tip" (t "config.profile.host_port_tip")}}</span><input id="f-backup" aria-describedby="f-backup-tip" name="backupServer" value="{{$d.P.BackupServer}}" dir="ltr"></div>
     </div>
     <div class="grid2">
+      <label>{{t "config.profile.server_timeout_ms"}}<input type="number" name="serverTimeoutMs" value="{{if $d.P.ServerTimeoutMs}}{{$d.P.ServerTimeoutMs}}{{end}}" min="{{$d.Options.ServerTimeoutMin}}" max="{{$d.Options.ServerTimeoutMax}}" placeholder="{{t "config.profile.server_timeout_off"}}" dir="ltr"></label>
+    </div>
+    <div class="grid2">
       <div class="field"><span class="label-line"><label for="f-dns">{{t "config.profile.dns_server"}}</label>{{tip "f-dns-tip" (t "config.profile.ip_port_tip")}}</span><input id="f-dns" aria-describedby="f-dns-tip" name="dnsServer" value="{{$d.P.DNSServer}}" dir="ltr"></div>
       <label>{{t "config.profile.expires"}}<span class="input-suffix"><input type="number" name="expires" value="{{$d.P.Expires}}" min="60" max="86400" required dir="ltr"><span>{{t "config.unit.seconds"}}</span></span></label>
     </div>

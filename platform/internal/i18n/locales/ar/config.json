@@ -160,6 +160,8 @@
   "config.profile.transport": "النقل",
   "config.profile.server": "الخادم الوكيل",
   "config.profile.backup_server": "الخادم الاحتياطي",
+  "config.profile.server_timeout_ms": "المهلة السريعة (ملي ثانية)",
+  "config.profile.server_timeout_off": "إيقاف",
   "config.profile.host_port_tip": "مضيف[:منفذ]",
   "config.profile.dns_server": "خادم DNS",
   "config.profile.ip_port_tip": "IP[:منفذ]",
