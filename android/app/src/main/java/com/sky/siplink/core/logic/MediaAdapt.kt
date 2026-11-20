@@ -59,7 +59,8 @@ object MediaAdapt {
 
         /**
          * Tried, and the sound still went one way, the calls were set up too slowly or failed in
-         * their set-up, or [TRIAL_CALLS] calls told nothing: not tried again on this network.
+         * their set-up, or [TRIAL_CALLS] calls told nothing: not tried again on this network for
+         * [REFUSED_MS].
          */
         REFUSED,
     }
@@ -90,58 +91,59 @@ object MediaAdapt {
     /**
      * Whether a call out that failed with SIP status [code] before its sound ran may be the doing
      * of ICE: its INVITE, larger with the candidates, got no answer (408), or the other side
-     * refused the offer (488, 606) or failed on it (5xx).
+     * refused the offer (488, 606). Any other failure (busy, unavailable, a server error) is not
+     * ICE's, and tells nothing.
      */
-    fun isSetupFailure(code: Int): Boolean = code == TIMEOUT || code == NOT_ACCEPTABLE_HERE || code == NOT_ACCEPTABLE || code in SERVER_ERRORS
+    fun isSetupFailure(code: Int): Boolean = code == TIMEOUT || code == NOT_ACCEPTABLE_HERE || code == NOT_ACCEPTABLE
 
-    /** Ends of a call out that are the other side's or the user's choice (busy, cancelled, declined): they tell nothing about ICE, nor count. */
-    private val CHOSEN = setOf(486, 487, 600, 603)
-
-    /** Calls with ICE on trial that tell nothing, after which ICE is given up on the line. */
+    /** Calls with ICE on trial whose sound ran too short to tell, after which ICE is given up on the line. */
     const val TRIAL_CALLS = 3
+
+    /** How long ICE given up stays given up on a network: then a call whose sound goes one way may try it again. */
+    const val REFUSED_MS = 7 * LineAdapt.DAY_MS
 
     /**
      * The record of a line after a call ICE [tookPart] in, while ICE is on trial there. Sound both
      * ways ([flow]) with a set-up no slower than [SLOW_SETUP_MS] ([setupMs]: from the start of a
      * call out to its INVITE; null for one that came in) keeps it: in use until it is given up to
      * see whether the line still needs it ([iceWithdrawn]), later each time the line needed it again.
-     * Sound one way, a slow set-up, or a call out that failed before its sound ran
-     * ([failedWith], [isSetupFailure]) gives it up on this network. [TRIAL_CALLS] calls that tell
-     * nothing (too short for a verdict, or failed otherwise) give it up as well.
+     * Sound one way, a slow set-up, or a call out that failed before its sound ran in a way ICE
+     * can cause ([failedWith], [isSetupFailure]) gives it up on this network for [REFUSED_MS];
+     * a call out that failed otherwise tells nothing, nor counts. [TRIAL_CALLS] calls whose sound
+     * ran too short for a verdict give it up as well.
      */
     fun afterCall(record: LineAdapt.Record, flow: MediaFlow?, tookPart: Boolean, setupMs: Long?, failedWith: Int?, now: Long): LineAdapt.Record {
-        if (record.ice != Ice.TRIAL || !tookPart || failedWith in CHOSEN) return record
+        if (record.ice != Ice.TRIAL || !tookPart) return record
+        if (failedWith != null && !isSetupFailure(failedWith)) return record
         val ice = when {
-            failedWith != null -> Ice.REFUSED.takeIf { isSetupFailure(failedWith) }
+            failedWith != null -> Ice.REFUSED
             flow == null -> null
             flow == MediaFlow.BOTH && (setupMs == null || setupMs <= SLOW_SETUP_MS) -> Ice.ON
             else -> Ice.REFUSED
         }
-        if (ice == null) {
-            val calls = record.iceCalls + 1
-            return if (calls >= TRIAL_CALLS) record.copy(ice = Ice.REFUSED, iceCalls = 0) else record.copy(iceCalls = calls)
-        }
-        val retestAt = if (ice == Ice.ON) now + LineAdapt.retestDelay(record.iceRetests) else 0
-        return record.copy(ice = ice, iceCalls = 0, iceRetestAt = retestAt)
+        val calls = record.iceCalls + 1
+        if (ice == null && calls < TRIAL_CALLS) return record.copy(iceCalls = calls)
+        val verdict = ice ?: Ice.REFUSED
+        val until = if (verdict == Ice.ON) now + LineAdapt.retestDelay(record.iceRetests) else now + REFUSED_MS
+        return record.copy(ice = verdict, iceCalls = 0, iceRetestAt = until)
     }
 
     /**
      * ICE in use is given up when its time came ([LineAdapt.Record.iceRetestAt]), between calls: the
-     * line tries it again when its sound goes one way again, and keeps it longer then.
+     * line tries it again when its sound goes one way again, and keeps it longer then. ICE given up
+     * may be tried again once [REFUSED_MS] are over.
      */
-    fun iceWithdrawn(record: LineAdapt.Record, now: Long, calls: Int): LineAdapt.Record =
-        if (record.ice == Ice.ON && now >= record.iceRetestAt && calls == 0) {
-            record.copy(ice = Ice.NONE, iceRetestAt = 0, iceRetests = record.iceRetests + 1)
-        } else {
-            record
-        }
+    fun iceWithdrawn(record: LineAdapt.Record, now: Long, calls: Int): LineAdapt.Record = when {
+        record.ice == Ice.ON && now >= record.iceRetestAt && calls == 0 -> record.copy(ice = Ice.NONE, iceRetestAt = 0, iceRetests = record.iceRetests + 1)
+        record.ice == Ice.REFUSED && now >= record.iceRetestAt -> record.copy(ice = Ice.NONE, iceRetestAt = 0)
+        else -> record
+    }
 
     /** The SIP core's name of a call that goes without ICE (org.linphone.core.IceState). */
     private const val NOT_ACTIVATED = "NotActivated"
     private const val TIMEOUT = 408
     private const val NOT_ACCEPTABLE_HERE = 488
     private const val NOT_ACCEPTABLE = 606
-    private val SERVER_ERRORS = 500..599
 
     /**
      * The host the requests within a call go to: the Record-Route entry next to this phone

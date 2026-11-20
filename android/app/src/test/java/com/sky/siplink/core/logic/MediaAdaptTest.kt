@@ -60,6 +60,7 @@ class MediaAdaptTest {
         assertEquals(Ice.REFUSED, after(MediaFlow.BOTH, setupMs = MediaAdapt.SLOW_SETUP_MS + 1).ice)
         assertEquals(Ice.REFUSED, after(MediaFlow.SEND_ONLY).ice)
         assertEquals(Ice.REFUSED, after(MediaFlow.RECEIVE_ONLY).ice)
+        assertEquals(now + MediaAdapt.REFUSED_MS, after(MediaFlow.SEND_ONLY).iceRetestAt)
         // A call ICE took no part in tells nothing, nor counts.
         assertEquals(trial, after(MediaFlow.SEND_ONLY, tookPart = false, setupMs = null))
         // One bad call does not undo what worked.
@@ -68,11 +69,14 @@ class MediaAdaptTest {
     }
 
     @Test
-    fun `a call out with ice on trial that fails in its set-up gives ice up`() {
-        // Its INVITE got no answer (larger with the candidates), or the other side refused the offer or failed on it.
-        for (code in listOf(408, 488, 500, 503, 606)) assertEquals("$code", Ice.REFUSED, after(null, failedWith = code).ice)
-        // Busy, cancelled or declined: the other side's or the user's choice.
-        for (code in listOf(486, 487, 600, 603)) assertEquals("$code", trial, after(null, failedWith = code))
+    fun `a call out with ice on trial that fails in a way ice can cause gives ice up`() {
+        // Its INVITE got no answer (larger with the candidates), or the other side refused the offer.
+        for (code in listOf(408, 488, 606)) assertEquals("$code", Ice.REFUSED, after(null, failedWith = code).ice)
+        // Busy, cancelled, declined, unavailable, unknown, or a server error: not ICE's doing, and not counted.
+        for (code in listOf(404, 480, 486, 487, 500, 503, 600, 603)) assertEquals("$code", trial, after(null, failedWith = code))
+        var record = trial
+        repeat(MediaAdapt.TRIAL_CALLS + 1) { record = after(null, failedWith = 480, record = record) }
+        assertEquals(trial, record)
     }
 
     @Test
@@ -82,9 +86,9 @@ class MediaAdaptTest {
             record = after(null, record = record)
             assertEquals(Ice.TRIAL, record.ice)
         }
-        // A call that failed in a way that says nothing of ICE counts as well.
-        record = after(null, failedWith = 404, record = record)
+        record = after(null, record = record)
         assertEquals(Ice.REFUSED, record.ice)
+        assertEquals(now + MediaAdapt.REFUSED_MS, record.iceRetestAt)
         assertEquals(0, record.iceCalls)
         // One with a verdict starts the count anew.
         assertEquals(0, after(MediaFlow.BOTH, record = trial.copy(iceCalls = 2)).iceCalls)
@@ -103,6 +107,16 @@ class MediaAdaptTest {
             MediaAdapt.afterCall(LineAdapt.Record(ice = Ice.TRIAL, iceRetests = retests), MediaFlow.BOTH, true, 300, null, now).iceRetestAt - now
         }
         assertEquals(listOf(2 * day, 4 * day, 7 * day, 7 * day), delays)
+    }
+
+    @Test
+    fun `ice given up may be tried again after a week`() {
+        val refused = after(MediaFlow.SEND_ONLY)
+        assertEquals(refused, MediaAdapt.iceWithdrawn(refused, now + MediaAdapt.REFUSED_MS - 1, calls = 0))
+        val again = MediaAdapt.iceWithdrawn(refused, now + MediaAdapt.REFUSED_MS, calls = 1)
+        assertEquals(Ice.NONE, again.ice)
+        assertEquals(0L, again.iceRetestAt)
+        assertEquals(0, again.iceRetests)
     }
 
     @Test

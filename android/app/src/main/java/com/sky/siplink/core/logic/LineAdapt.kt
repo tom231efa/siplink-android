@@ -24,7 +24,8 @@ object LineAdapt {
      * @param lost when the NAT was seen to forget the line (ms since the epoch), the last day's worth
      * @param usedAt when the phone was last on this network with this account
      * @param ice where ICE stands for the sound of the line ([MediaAdapt])
-     * @param iceRetestAt when ICE in use is given up to see whether the line still needs it (ms since the epoch)
+     * @param iceRetestAt when ICE in use is given up to see whether the line still needs it, or ICE
+     *   given up may be tried again (ms since the epoch)
      * @param left why the line left UDP, while that counts: until it is back on UDP and holds there
      * @param backAt when the line went back to UDP after the NAT forgot it ([Leave.NAT_FORGETS]),
      *   until it held there a day; 0: it did not, or it held
