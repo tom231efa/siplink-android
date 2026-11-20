@@ -90,7 +90,8 @@ android/app/src/main/java/com/sky/siplink/
 | `SettingsStore` | 应用设置，保存在 SDK 配置文件的独立分区 |
 | `ConfigLock` | 远程配置的锁定状态；各管理器修改前检查它 |
 | `AccountManager`、`AccountRouter` | 账号；备用服务器切换与账号专用 DNS |
-| `CallManager`、`VideoController` | 通话、转接、驻留、合并、来电策略；视频 |
+| `CallManager`、`CallFollower`、`VideoController` | 通话、转接、驻留、合并、来电策略；跟随 core 的通话报告；视频 |
+| `AppLanguage`、`AppTexts` | 应用语言；在界面之外生成的文字 |
 | `HistoryManager` | 通话记录（读取 SDK 的通话记录） |
 | `DirectoryManager`、`DirectoryCache`、`NameResolver` | LDAP 查询队列、SQLite 本地缓存、来去电姓名 |
 | `ShortcutManager` | 快捷键，保存为 CSV 文件 |
@@ -105,5 +106,40 @@ android/app/src/main/java/com/sky/siplink/
 `ui/AppRoot.kt` 定义导航与四个标签页，其余按页面分包：`accounts`、`call`、`dialer`、`directory`、`history`、`settings`、`shortcuts`，公共组件在 `components`，主题在 `theme`。界面通过 `StateFlow` 读取管理器状态，通过管理器方法修改。
 
 `service/SipService` 是前台服务：空闲时以 `specialUse` 类型保持进程与注册，通话时切换为 `phoneCall` / `microphone` 类型。`CallNotifier` 负责通知，`BootReceiver` 在开机和应用更新后启动服务。
+
+## 语言
+
+应用的文字都是字符串资源：默认的英文在 `res/values/`，简体中文在 `res/values-b+zh+Hans/`。应用提供的语言列在 `core/model/Language.kt` 和 `res/xml/locales_config.xml`（清单中的 `android:localeConfig`）；`android/app/build.gradle.kts` 中的 `androidResources.localeFilters` 让依赖库的文字也只保留这些语言。文字按领域分文件：`strings.xml`（公共）、`strings_form.xml`、`strings_call.xml`、`strings_room.xml`、`strings_account.xml`、`strings_directory.xml`、`strings_shortcut.xml`、`strings_remote.xml`、`strings_settings.xml`、`strings_notification.xml`；名称为小写下划线，以领域开头（`call_ended`、`remote_invalid`）。
+
+### 选择语言
+
+设置 › 语言 中有“跟随系统”（新安装时即为此项）和以各自名称显示的语言。Android 13 起，所选语言就是系统的应用专属语言（`LocaleManager`），与系统设置中本应用的语言页是同一个值；Android 13 之前由应用保存在自己的偏好设置中，并放进各 Activity 的配置。界面之外生成的文字使用该设置中的语言，或系统语言（`core/AppLanguage.kt`）。一个语言列表得到哪套文字，由 Android 自己的资源匹配决定：应用没有的语言顺延到列表中的下一个语言，最后是英文。中文按书写体系匹配：`zh`、`zh-CN`、`zh-SG` 用简体文字，`zh-TW`、`zh-HK`、`zh-MO` 用繁体文字（应用还没有繁体时为英文）。
+
+### 文字的流转
+
+- `core/logic` 不含文字，只返回枚举、`@StringRes` id 或 `Phrase`（`core/model/Phrase.kt`）：带参数的资源、带数量的复数资源，或原样显示的文字。
+- 各管理器保存类型化的值，用 `AppTexts` 生成发布出去的快照（`StateFlow`）。语言改变时，`SipLinkApp` 调用 `SipEngine.onLanguageChanged()`，各管理器重新发布快照，`CallNotifier` 重命名通知渠道，服务更新它的通知。
+- 界面用 `Phrase.text()`（`ui/components/Phrases.kt`）显示 `Phrase`，自己的文字用 `stringResource`。
+- 生成后的文字不保存。远程配置保存的错误按资源名称存为 phrase（`core/logic/PhraseCodec.kt`）；旧版本保存的文字原样显示。
+- 参数带编号（`%1$s`、`%2$s`），不拼接文字片段。数字用西文数字（`Locale.ROOT`）；在从右到左的文字中，每个值都被隔离（U+2068 … U+2069），使数字和地址保持顺序。数量用 `<plurals>`。日期跟随应用语言。
+
+### 是数据而不是文字的内容
+
+以下内容在所有语言中保持原样：账号和快捷键的 CSV 格式（包括其中可用的中文类型与图标词）、设置导出、远程配置文档、二维码内容、SIP 头和服务器返回的原因短语、协议与编码名称、`Log.*` 日志（英文），以及名称 SipLink（`app_name`，不翻译）。
+
+### 添加一条文字
+
+把字符串加到 `res/values/` 和每个 `res/values-*/` 目录中对应领域的文件，占位符相同。在 `core` 中返回 `Phrase.of(R.string.name, …)`（或 `Phrase.count(R.plurals.name, n, …)`）；在界面中用 `stringResource`。
+
+### 添加一种语言
+
+新建 `res/values-{qualifier}/`，包含 `res/values/` 的全部文字（`{qualifier}`：语言，如 `fr`；按书写体系区分时如 `b+zh+Hant`），并确认该语言已在 `Language`、`locales_config.xml` 和 `localeFilters` 中。`android/app/src/test/java/com/sky/siplink/Texts.kt` 中的 `PluralRules` 需要知道它的复数形式。
+
+### 测试
+
+- `LanguageCatalogTest`（单元测试）把每种语言与默认语言比较：键相同、占位符相同、具备该语言需要的复数形式、没有空文字；并把语言与 `Language` 和 `locales_config.xml` 比较。
+- `SourceTextTest`：Kotlin 源码的字符串字面量中出现中日韩字符、且不在允许列表中时失败。允许列表是数据（`Language.kt`、`ShortcutRules.kt` 中 CSV 的词）和尚未迁移的界面，后者只减不增。
+- 单元测试断言真实文字：`Texts` 读取资源文件，以某种语言生成 `Phrase`（简体中文用 `zh(…)`）。
+- 集成测试在每个测试前通过应用自己的设置把应用语言设为简体中文（`PbxTestBase.pinLanguage`），不改手机的系统语言。`AppLanguageTest` 覆盖选择语言、跟随系统、回退到英文、中文的书写体系、通话中切换语言，以及 core 生成的文字。
 
 测试见[测试](testing.md)。
