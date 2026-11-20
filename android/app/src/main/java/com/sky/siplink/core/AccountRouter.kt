@@ -66,14 +66,11 @@ internal class AccountRouter(
         /** Changes whenever the route is decided anew: the answer to an older question is dropped. */
         var generation = 0
 
-        /**
-         * When the account last went back to its first server, until that held
-         * ([ServerChoice.RETURN_HOLD_MS]); 0: it did not, or it held. [failedReturns] counts the
-         * returns that did not hold, the last at [failedReturnAt].
-         */
-        var returnedAt = 0L
-        var failedReturns = 0
-        var failedReturnAt = 0L
+        /** Its returns to the first server, and those that did not hold ([ServerChoice.RETURN_HOLD_MS]). */
+        var returns = ServerChoice.Returns()
+
+        /** Where it is after a move: until it registered on the server it moved to, a registration the core shows is the old one. */
+        var settle = Settle.NONE
         var probe: Runnable? = null
         var lookedUpAt = 0L
         var dnsFailed = false
@@ -104,6 +101,9 @@ internal class AccountRouter(
         /** What the last check found, for the line checks. */
         var seen: Seen? = null
     }
+
+    /** MOVED: a move is on its way to the core (a lookup may come first); SET: the core has the new server, its registration is awaited. */
+    private enum class Settle { NONE, MOVED, SET }
 
     /** One asking of both servers; [waiters] are told whether the account moved. */
     private class Check(val id: String, val timeoutMs: Int) {
@@ -176,9 +176,12 @@ internal class AccountRouter(
     fun view(id: String, account: Account): View? {
         val record = record(id) ?: return null
         val state = states[id]
-        val settling = state != null && state.movedAt > 0 && state.registeredOn == null
-        return View(record, onBackup(account, record), state?.dnsFailed == true, state?.seen, settling)
+        return View(record, onBackup(account, record), state?.dnsFailed == true, state?.seen, settling = state != null && state.settle != Settle.NONE)
     }
+
+    /** Whether account [id] is registered, on the server it moved to last: a registration that came after the move. */
+    fun registeredSinceMove(id: String): Boolean =
+        find(id)?.state == RegistrationState.Ok && states[id]?.settle?.let { it == Settle.NONE } != false
 
     /** Whether account [id] is on its backup server. */
     fun isOnBackup(id: String): Boolean {
@@ -305,6 +308,7 @@ internal class AccountRouter(
                 // What was being asked was asked on the network before; a silence there says nothing here.
                 dropCheck(it)
                 it.strikes = 0
+                it.returns = it.returns.newNetwork()
             }
             arrive(id)
         }
@@ -318,7 +322,8 @@ internal class AccountRouter(
         if (record.backup.isEmpty() || !account.params.isRegisterEnabled) return
         val state = states.getOrPut(id, ::State)
         val known = network?.let { remembered(id, it) }
-        val back = known != null && !known.backup && !ServerChoice.mayReturn(state.failedReturns, SystemClock.elapsedRealtime() - state.failedReturnAt)
+        // The wait after a failed return holds the memory back; the check below returns at once from a backup that does not answer.
+        val back = known != null && !known.backup && !ServerChoice.mayReturn(state.returns.failed, SystemClock.elapsedRealtime() - state.returns.failedAt)
         if (known != null && known.backup != onBackup(account, record) && core.callsNb == 0 && !holds() && !back) {
             Log.i(TAG, "Line $id: to its ${if (known.backup) "backup" else "first"} server, as last time on this network")
             move(id, known.backup)
@@ -345,10 +350,18 @@ internal class AccountRouter(
      * account left the server it was on; false at once when nothing is asked.
      *
      * @param silentLeaves for a call out without an answer: silence is enough to leave ([ServerChoice.next])
-     * @param again asked while a check runs: once more after it
+     * @param again asked while a check runs: once more after it; while none runs, the one started is enough
+     * @param carried a check that takes the place of one asked for again ([Check.again]): it is, after it
      * @param fresh answers kept from a moment ago do not count
      */
-    private fun check(id: String, then: ((Boolean) -> Unit)? = null, silentLeaves: Boolean = false, again: Boolean = false, fresh: Boolean = false) {
+    private fun check(
+        id: String,
+        then: ((Boolean) -> Unit)? = null,
+        silentLeaves: Boolean = false,
+        again: Boolean = false,
+        fresh: Boolean = false,
+        carried: Boolean = false,
+    ) {
         val account = find(id)
         val record = record(id)
         if (account == null || record == null || record.backup.isEmpty() || record.waiting || !account.params.isRegisterEnabled || holds()) {
@@ -365,7 +378,7 @@ internal class AccountRouter(
         val check = Check(id, record.timeoutMs)
         then?.let(check.waiters::add)
         check.silentLeaves = silentLeaves
-        check.again = again
+        check.again = carried
         state.check = check
         state.checkedAt = SystemClock.elapsedRealtime()
         val onBackup = onBackup(account, record)
@@ -430,13 +443,13 @@ internal class AccountRouter(
                 // Once silent on a server it registered on here: asked again at once before it leaves.
                 state.strikes++
                 Log.i(TAG, "Line $id: its server was silent once (${check.timeoutMs} ms): asked again")
-                check(id, silentLeaves = check.silentLeaves, again = check.again, fresh = true)
+                check(id, silentLeaves = check.silentLeaves, fresh = true, carried = check.again)
                 val next = state.check
                 if (next != null) next.waiters.addAll(check.waiters) else check.waiters.forEach { it(false) }
                 return
             }
         }
-        if (moves && !toBackup && !ServerChoice.mayReturn(state.failedReturns, SystemClock.elapsedRealtime() - state.failedReturnAt)) moves = false
+        if (moves && !toBackup && ServerChoice.returnWaits(state.returns, SystemClock.elapsedRealtime(), backupAnswers = here == Answer.ANSWERED)) moves = false
         state.strikes = 0
         Log.i(TAG, "Line $id: first server ${check.primary}, backup ${check.backup}${if (check.timeoutMs > 0) " (fast, ${check.timeoutMs} ms)" else ""}: $move${if (moves) "" else ", stays"}")
         if (moves) {
@@ -477,23 +490,15 @@ internal class AccountRouter(
     /**
      * Puts account [id] on its other server: the backup with [toBackup], else its first one. A
      * return to the first server counts as one that did not hold when the account leaves it again
-     * within [ServerChoice.RETURN_HOLD_MS]: the next return waits longer ([ServerChoice.mayReturn]).
+     * within [ServerChoice.RETURN_HOLD_MS] on the same network: the next return waits longer
+     * ([ServerChoice.Returns]).
      */
     private fun move(id: String, toBackup: Boolean) {
         val state = states.getOrPut(id, ::State)
         dropCheck(state)
         val now = SystemClock.elapsedRealtime()
-        if (!toBackup) {
-            state.returnedAt = now
-        } else if (state.returnedAt > 0) {
-            if (ServerChoice.returnHeld(now - state.returnedAt)) {
-                state.failedReturns = 0
-            } else {
-                state.failedReturns++
-                state.failedReturnAt = now
-            }
-            state.returnedAt = 0
-        }
+        state.returns = state.returns.moved(toBackup, now)
+        state.settle = Settle.MOVED
         state.failures = 0
         state.strikes = 0
         state.registeredOn = null
@@ -554,6 +559,7 @@ internal class AccountRouter(
             RegistrationState.Ok -> {
                 state.failures = 0
                 state.registeredOn = network
+                if (state.settle == Settle.SET) state.settle = Settle.NONE
                 if (record.backup.isNotEmpty()) remember(id, state, backup)
                 // A registration that worked is an answer of the server, whatever the probe finds.
                 state.check?.let { running ->
@@ -562,10 +568,9 @@ internal class AccountRouter(
                 }
                 if (backup) {
                     scheduleProbe(id, state)
-                } else if (state.returnedAt > 0 && ServerChoice.returnHeld(SystemClock.elapsedRealtime() - state.returnedAt)) {
+                } else {
                     // Back on the first server long enough: the returns before it are forgotten.
-                    state.returnedAt = 0
-                    state.failedReturns = 0
+                    state.returns = state.returns.registeredOnFirst(SystemClock.elapsedRealtime())
                 }
             }
             RegistrationState.Progress, RegistrationState.Refreshing -> {
@@ -636,6 +641,10 @@ internal class AccountRouter(
         val transport = transportFor(id, useBackup) ?: transportOf(params.serverAddress)
         val address = Factory.instance().createAddress(AccountRoute.uri(server, transport, pin)) ?: return
         val same = params.serverAddress?.asStringUriOnly() == address.asStringUriOnly()
+        // A move reaches the core here: the registration that follows is the one on the new server.
+        states[id]?.takeIf { it.settle != Settle.NONE }?.let {
+            it.settle = if (same && !record.waiting && account.state == RegistrationState.Ok) Settle.NONE else Settle.SET
+        }
         if (same && !record.waiting) {
             // Nothing changes, so no registration follows that would set up the next look at the first server.
             if (onBackup(account, record) && account.state == RegistrationState.Ok) states[id]?.let { scheduleProbe(id, it) }
@@ -663,7 +672,7 @@ internal class AccountRouter(
             probe(id)
         }
         state.probe = task
-        handler.postDelayed(task, AccountRoute.failbackDelay(state.failedReturns))
+        handler.postDelayed(task, AccountRoute.failbackDelay(state.returns.failed))
     }
 
     private fun cancelProbe(state: State) {

@@ -164,6 +164,41 @@ class ServerChoiceTest {
     }
 
     @Test
+    fun `a return that is left within ten minutes did not hold, one left later did`() {
+        val back = ServerChoice.Returns().moved(toBackup = false, now = 1_000)
+        assertEquals(1_000L, back.returnedAt)
+        val failed = back.moved(toBackup = true, now = 1_000 + ServerChoice.RETURN_HOLD_MS - 1)
+        assertEquals(ServerChoice.Returns(failed = 1, failedAt = 1_000 + ServerChoice.RETURN_HOLD_MS - 1), failed)
+        val twice = failed.moved(toBackup = false, now = 2_000_000).moved(toBackup = true, now = 2_000_001)
+        assertEquals(2, twice.failed)
+        // Held: everything before is forgotten, whether the account leaves it or registers there again.
+        assertEquals(ServerChoice.Returns(), twice.moved(toBackup = false, now = 10).moved(toBackup = true, now = 10 + ServerChoice.RETURN_HOLD_MS))
+        assertEquals(ServerChoice.Returns(), twice.moved(toBackup = false, now = 10).registeredOnFirst(now = 10 + ServerChoice.RETURN_HOLD_MS))
+        assertEquals(2, twice.moved(toBackup = false, now = 10).registeredOnFirst(now = 9 + ServerChoice.RETURN_HOLD_MS).failed)
+        // A move to the backup with no return under way changes nothing.
+        assertEquals(twice, twice.moved(toBackup = true, now = 3_000_000))
+    }
+
+    @Test
+    fun `a change of network leaves the return under way neither failed nor held`() {
+        val back = ServerChoice.Returns(failed = 1, failedAt = 500).moved(toBackup = false, now = 1_000)
+        val elsewhere = back.newNetwork()
+        assertEquals(ServerChoice.Returns(failed = 1, failedAt = 500), elsewhere)
+        // On the new network the account takes the backup it used there: no failed return.
+        assertEquals(elsewhere, elsewhere.moved(toBackup = true, now = 2_000))
+    }
+
+    @Test
+    fun `the wait after a failed return holds the account only on a backup that answers`() {
+        val failed = ServerChoice.Returns(failed = 1, failedAt = 0)
+        val early = AccountRoute.failbackDelay(1) - 1
+        assertTrue(ServerChoice.returnWaits(failed, now = early, backupAnswers = true))
+        assertFalse(ServerChoice.returnWaits(failed, now = early, backupAnswers = false))
+        assertFalse(ServerChoice.returnWaits(failed, now = AccountRoute.failbackDelay(1), backupAnswers = true))
+        assertFalse(ServerChoice.returnWaits(ServerChoice.Returns(), now = 0, backupAnswers = true))
+    }
+
+    @Test
     fun `a move counts for a call out only when a check made it for the silence of the call's server`() {
         assertTrue(ServerChoice.movedForSilence("pbx.example.com:5060", "PBX.example.com:5060", sinceMs = 1_000))
         assertFalse(ServerChoice.movedForSilence("pbx.example.com:5060", null, sinceMs = 1_000))

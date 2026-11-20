@@ -5,7 +5,6 @@ import android.os.SystemClock
 import android.util.Log
 import com.sky.siplink.core.logic.ServerChoice
 import org.linphone.core.Call
-import org.linphone.core.RegistrationState
 
 /**
  * Places a call out once more over the other server of its account, when the server it went to
@@ -53,21 +52,25 @@ internal class CallRetry(
         later(pointer, after) {
             if (!waiting(call)) return@later
             accounts.leaveSilentServer(id, server) { moved ->
-                if (moved && waiting(call)) awaitRegistration(call, id, server, SystemClock.elapsedRealtime())
+                if (moved && waiting(call)) awaitRegistration(call, id, SystemClock.elapsedRealtime())
             }
         }
     }
 
-    /** Places [call] again once its account is registered on another server than [server], or the wait since [since] is over. */
-    private fun awaitRegistration(call: Call, id: String, server: String, since: Long) {
+    /**
+     * Places [call] again once its account is registered on the server it moved to (a
+     * registration after the move, which the router knows: the core shows the old one until the
+     * new one is done), or the wait since [since] is over.
+     */
+    private fun awaitRegistration(call: Call, id: String, since: Long) {
         if (!waiting(call)) return
-        val account = accounts.find(id)
-        val registered = account != null && account.state == RegistrationState.Ok &&
-            !hostPortOf(account.params.serverAddress).equals(server, ignoreCase = true)
-        if (registered || SystemClock.elapsedRealtime() - since >= REGISTRATION_WAIT_MS) {
+        val registered = accounts.registeredSinceMove(id)
+        val waited = SystemClock.elapsedRealtime() - since
+        if (registered || waited >= REGISTRATION_WAIT_MS) {
+            Log.i(TAG, "A call out is placed again after $waited ms, ${if (registered) "registered" else "not registered yet"} on the other server")
             placeAgain(call)
         } else {
-            later(call.nativePointer, POLL_MS) { awaitRegistration(call, id, server, since) }
+            later(call.nativePointer, POLL_MS) { awaitRegistration(call, id, since) }
         }
     }
 

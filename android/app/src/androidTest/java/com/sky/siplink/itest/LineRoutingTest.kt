@@ -18,6 +18,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.linphone.core.Account
+import org.linphone.core.Call
+import org.linphone.core.Core
+import org.linphone.core.CoreListenerStub
+import org.linphone.core.RegistrationState
 import java.net.InetAddress
 import java.net.InetSocketAddress
 
@@ -254,15 +259,38 @@ class LineRoutingTest : PbxTestBase() {
     fun aCallOutToASilentServerIsPlacedAgainOverTheBackup() {
         addRoutedAccount(timeoutMs = FAST_MS)
         val entries = engine.history.entries.value.size
+        // What the core itself reports: the second call goes out once the backup has the account registered.
+        val identity = onMain { engine.accounts.find(account(APP)!!.id)!!.params.identityAddress!!.asStringUriOnly() }
+        val placedAt = ArrayList<Long>()
+        val registeredOnBackupAt = ArrayList<Long>()
+        val listener = object : CoreListenerStub() {
+            override fun onCallStateChanged(core: Core, call: Call, state: Call.State?, message: String) {
+                if (state == Call.State.OutgoingInit) placedAt += SystemClock.elapsedRealtime()
+            }
+
+            override fun onAccountRegistrationStateChanged(core: Core, account: Account, state: RegistrationState?, message: String) {
+                val ours = account.params.identityAddress?.asStringUriOnly() == identity
+                if (ours && state == RegistrationState.Ok && account.params.serverAddress?.port != RELAY_PORT) registeredOnBackupAt += SystemClock.elapsedRealtime()
+            }
+        }
+        onMain { engine.core.addListener(listener) }
         relay!!.silent = true
         val phases = ArrayList<CallPhase?>()
         val start = SystemClock.elapsedRealtime()
-        dial("2000") // echo
-        await("the call to be connected over the backup", RETRY_CONNECT_MS) {
-            phases += call()?.phase
-            call()?.phase == CallPhase.CONNECTED
+        try {
+            dial("2000") // echo
+            await("the call to be connected over the backup", RETRY_CONNECT_MS) {
+                phases += call()?.phase
+                call()?.phase == CallPhase.CONNECTED
+            }
+        } finally {
+            onMain { engine.core.removeListener(listener) }
         }
         report("Call out placed again over the backup: connected", SystemClock.elapsedRealtime() - start)
+        val (placed, registered) = onMain { placedAt.toList() to registeredOnBackupAt.toList() }
+        assertEquals("Calls placed: $placed", 2, placed.size)
+        assertTrue("Placed again before the registration on the backup: $placed, $registered", registered.isNotEmpty() && registered.first() <= placed[1])
+        report("Call out placed again: after the registration on the backup", placed[1] - registered.first())
         assertTrue("The call screen ended or went away in between: $phases", phases.none { it == null || it == CallPhase.ENDED })
         assertTrue(account(APP)!!.onBackup)
         awaitAppHearsAudio()

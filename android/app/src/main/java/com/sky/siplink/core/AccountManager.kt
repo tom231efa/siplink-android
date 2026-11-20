@@ -182,6 +182,9 @@ class AccountManager(private val core: Core, private val lock: ConfigLock) {
      */
     internal fun leaveSilentServer(id: String, server: String, then: (Boolean) -> Unit) = router.leaveSilentServer(id, server, then)
 
+    /** Whether account [id] is registered on the server it moved to last ([AccountRouter.registeredSinceMove]). */
+    internal fun registeredSinceMove(id: String): Boolean = router.registeredSinceMove(id)
+
     /** The two servers of account [id], for the line checks; null without a backup server. */
     internal fun servers(id: String): ServerReport? {
         val account = find(id) ?: return null

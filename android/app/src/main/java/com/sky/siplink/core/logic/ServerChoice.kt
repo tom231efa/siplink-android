@@ -157,6 +157,40 @@ object ServerChoice {
     fun mayReturn(failedReturns: Int, sinceFailedReturnMs: Long): Boolean =
         failedReturns == 0 || sinceFailedReturnMs >= AccountRoute.failbackDelay(failedReturns)
 
+    /**
+     * Whether the wait after a failed return ([mayReturn]) keeps an account on its backup that a
+     * check would take back to its first server: only while the backup answers ([backupAnswers]).
+     * A backup that does not answer is left at once for a first server that does.
+     */
+    fun returnWaits(returns: Returns, now: Long, backupAnswers: Boolean): Boolean =
+        backupAnswers && !mayReturn(returns.failed, now - returns.failedAt)
+
+    /**
+     * The returns of an account to its first server ([RETURN_HOLD_MS]).
+     *
+     * @param returnedAt when the account last went back to its first server, until that held; 0: it did not, or it held
+     * @param failed the returns that did not hold in a row, the last at [failedAt]
+     */
+    data class Returns(val returnedAt: Long = 0, val failed: Int = 0, val failedAt: Long = 0) {
+        /** The account moved at [now], to its backup with [toBackup]: a return within [RETURN_HOLD_MS] did not hold. */
+        fun moved(toBackup: Boolean, now: Long): Returns = when {
+            !toBackup -> copy(returnedAt = now)
+            returnedAt == 0L -> this
+            returnHeld(now - returnedAt) -> Returns()
+            else -> Returns(failed = failed + 1, failedAt = now)
+        }
+
+        /** Registered on its first server at [now]: a return that has lasted [RETURN_HOLD_MS] held. */
+        fun registeredOnFirst(now: Long): Returns = if (returnedAt > 0 && returnHeld(now - returnedAt)) Returns() else this
+
+        /**
+         * On another network: a return is judged on the network it was made on, so the one under
+         * way neither failed nor held. A move there by what the account used on that network
+         * says nothing about the first server.
+         */
+        fun newNetwork(): Returns = copy(returnedAt = 0)
+    }
+
     /** After a change of network the servers are asked once more after this long: a new network may not carry at its first moment. */
     const val SETTLE_MS = 3_000L
 
