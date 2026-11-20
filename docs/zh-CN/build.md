@@ -109,7 +109,7 @@ android/app/src/main/java/com/sky/siplink/
 
 ## 语言
 
-应用的文字都是字符串资源：默认的英文在 `res/values/`，简体中文在 `res/values-b+zh+Hans/`。应用提供的语言列在 `core/model/Language.kt` 和 `res/xml/locales_config.xml`（清单中的 `android:localeConfig`）；`android/app/build.gradle.kts` 中的 `androidResources.localeFilters` 让依赖库的文字也只保留这些语言。文字按领域分文件：`strings.xml` 放各领域共用的文字（公共按钮 `common_cancel`、`common_save` 等），每个领域有自己的 `strings_{area}.xml`（`strings_call.xml`、`strings_room.xml`、`strings_settings.xml`、`strings_dialer.xml` 等）；名称为小写下划线，以领域开头（`call_ended`、`remote_invalid`）。同样的字用在两种角色（按钮与状态、标题与取值）时是两条文字，因为其他语言可能需要不同的词。
+应用的文字都是字符串资源：默认的英文在 `res/values/`，简体中文在 `res/values-b+zh+Hans/`。应用提供的语言列在 `core/model/Language.kt` 和 `res/xml/locales_config.xml`（清单中的 `android:localeConfig`）；`android/app/build.gradle.kts` 中的 `androidResources.localeFilters` 让依赖库的文字也只保留这些语言。文字按领域分文件：`strings.xml` 只放各领域共用的文字（`app_name`、`list_separator` 和公共按钮 `common_*`），每个领域有自己的 `strings_{area}.xml`（`strings_call.xml`、`strings_room.xml`、`strings_settings.xml`、`strings_dialer.xml` 等），其中每个名称为小写下划线并以 `{area}_` 开头（`strings_call.xml` 中的 `call_ended`、`strings_remote.xml` 中的 `remote_invalid`）。同样的字用在两种角色（按钮与状态、标题与取值）时是两条文字，因为其他语言可能需要不同的词。
 
 ### 选择语言
 
@@ -131,13 +131,15 @@ android/app/src/main/java/com/sky/siplink/
 
 把字符串加到 `res/values/` 和每个 `res/values-*/` 目录中对应领域的文件，占位符相同。在 `core` 中返回 `Phrase.of(R.string.name, …)`（或 `Phrase.count(R.plurals.name, n, …)`）；在界面中用 `stringResource`（或 `pluralStringResource`）。
 
+可能被保存的文字，其名称在发布后就是保存格式的一部分：远程配置的错误及其中可能包含的所有文字按名称保存（`PhraseCodec`），之后改名会丢掉按旧名称保存的内容。
+
 ### 添加一种语言
 
 新建 `res/values-{qualifier}/`，包含 `res/values/` 的全部文字（`{qualifier}`：语言，如 `fr`；按书写体系区分时如 `b+zh+Hant`），并确认该语言已在 `Language`、`locales_config.xml` 和 `localeFilters` 中。`android/app/src/test/java/com/sky/siplink/Texts.kt` 中的 `PluralRules` 需要知道它的复数形式。
 
 ### 测试
 
-- `LanguageCatalogTest`（单元测试）把每种语言与默认语言比较：键相同、占位符相同、具备该语言需要的复数形式、没有空文字；并把语言与 `Language` 和 `locales_config.xml` 比较。
+- `LanguageCatalogTest`（单元测试）把每种语言与默认语言比较：键相同、占位符相同、具备该语言需要的复数形式、没有空文字；检查每条文字都在其领域的文件中；并把语言与 `Language` 和 `locales_config.xml` 比较。
 - `SourceTextTest`：Kotlin 源码的字符串字面量中出现中日韩字符、且不在允许列表中时失败。允许列表只有数据（`Language.kt`、`ShortcutRules.kt` 中 CSV 的词）。
 - 单元测试断言真实文字：`Texts` 读取资源文件，以某种语言生成 `Phrase`（简体中文用 `zh(…)`）。
 - 集成测试在每个测试前通过应用自己的设置把应用语言设为简体中文（`PbxTestBase.pinLanguage`），跑完后保持简体中文，不改手机的系统语言。`AppLanguageTest` 覆盖选择语言、跟随系统、回退到英文、中文的书写体系、应用没有界面时在应用外改语言、通话中切换语言、core 生成的文字，以及通话记录的日期标题。`EnglishScreensTest` 以英文走遍四个标签页、各设置页面、通话界面和会议室，界面上出现任何中文字符即失败（语言自身的名称和数据除外）。

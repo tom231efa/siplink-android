@@ -27,4 +27,14 @@
     <string name="advanced_host_port_hint">host[:port]</string>
     <string name="advanced_section_identity">Client identity</string>
     <string name="advanced_user_agent">Client name (User-Agent)</string>
+
+    <!-- The client name (User-Agent) -->
+    <plurals name="advanced_user_agent_error_too_long">
+        <item quantity="one">Client name (User-Agent): at most %1$s character</item>
+        <item quantity="other">Client name (User-Agent): at most %1$s characters</item>
+    </plurals>
+    <string name="advanced_user_agent_error_ascii">Printable ASCII characters only</string>
+    <string name="advanced_user_agent_error_ascii_full">Client name (User-Agent): printable ASCII characters only</string>
+    <string name="advanced_user_agent_error_spaces">No spaces at the start or end</string>
+    <string name="advanced_user_agent_error_spaces_full">Client name (User-Agent) must not start or end with a space</string>
 </resources>

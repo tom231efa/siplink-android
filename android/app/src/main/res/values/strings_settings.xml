@@ -1,19 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Settings: the main list, the language of the app, updates, intercom and auto answer, recording, feature codes. -->
+<!-- Settings: the main list, the language of the app, recording. -->
 <resources xmlns:tools="http://schemas.android.com/tools">
     <string name="settings_language">Language</string>
     <string name="settings_language_system">System default</string>
-
-    <!-- Updates -->
-    <string name="update_check_failed">Update check failed</string>
-    <string name="update_rate_limited">Too many requests</string>
-    <string name="update_downloading">Downloading %1$s</string>
-    <string name="update_downloaded">Downloaded %1$s</string>
-    <string name="update_checking">Checking…</string>
-    <string name="update_available">Update available: %1$s</string>
-    <string name="update_skipped">Skipped %1$s</string>
-    <string name="update_latest">Up to date</string>
-    <string name="update_tap_to_check">Tap to check for updates</string>
 
     <!-- The main list -->
     <string name="settings_title">Settings</string>
@@ -52,27 +41,9 @@
     <string name="settings_about">About</string>
     <string name="settings_update_available">Update available</string>
 
-    <!-- Intercom and auto answer -->
-    <string name="auto_answer_section_intercom">Intercom</string>
-    <string name="auto_answer_intercom">Auto answer intercom calls</string>
-    <string name="auto_answer_intercom_speaker">Use speaker for intercom</string>
-    <string name="auto_answer_section_regular">Regular calls</string>
-    <string name="auto_answer_regular">Auto answer</string>
-    <string name="auto_answer_delay">Auto answer delay</string>
-    <string name="auto_answer_now">Immediately</string>
-
     <!-- Recording -->
     <string name="settings_recording_calls">Call recording</string>
     <string name="settings_recording_by_default">Record by default</string>
     <string name="settings_recording_kept">Recordings to keep</string>
     <string name="settings_recording_files">Recordings</string>
-
-    <!-- Feature codes -->
-    <string name="feature_codes_pickup">Directed pickup</string>
-    <string name="feature_codes_restored">Feature codes restored to defaults</string>
-    <string name="feature_codes_invalid" tools:ignore="TypographyDashes">Only 0-9 * #</string>
-    <plurals name="auto_answer_seconds">
-        <item quantity="one">%1$s second</item>
-        <item quantity="other">%1$s seconds</item>
-    </plurals>
 </resources>

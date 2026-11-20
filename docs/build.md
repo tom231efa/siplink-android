@@ -109,7 +109,7 @@ Rule-like logic (input validation, CSV, incoming call policy, remote document pa
 
 ## Languages
 
-The app's texts are string resources: English, the default, in `res/values/`, Simplified Chinese in `res/values-b+zh+Hans/`. The languages the app offers are listed in `core/model/Language.kt` and in `res/xml/locales_config.xml` (the manifest's `android:localeConfig`); `androidResources.localeFilters` in `android/app/build.gradle.kts` keeps the texts of libraries to the same languages. The texts are split by area: `strings.xml` holds what every area uses (the common buttons, `common_cancel`, `common_save`, …), and each area has its own `strings_{area}.xml` (`strings_call.xml`, `strings_room.xml`, `strings_settings.xml`, `strings_dialer.xml`, …); names are lower snake case and start with their area (`call_ended`, `remote_invalid`). The same words in two roles (a button and a state, a title and a value) are two texts, since other languages may need different words.
+The app's texts are string resources: English, the default, in `res/values/`, Simplified Chinese in `res/values-b+zh+Hans/`. The languages the app offers are listed in `core/model/Language.kt` and in `res/xml/locales_config.xml` (the manifest's `android:localeConfig`); `androidResources.localeFilters` in `android/app/build.gradle.kts` keeps the texts of libraries to the same languages. The texts are split by area: `strings.xml` holds only what every area shares (`app_name`, `list_separator` and the common buttons `common_*`), and each area has its own `strings_{area}.xml` (`strings_call.xml`, `strings_room.xml`, `strings_settings.xml`, `strings_dialer.xml`, …) in which every name is lower snake case and starts with `{area}_` (`call_ended` in `strings_call.xml`, `remote_invalid` in `strings_remote.xml`). The same words in two roles (a button and a state, a title and a value) are two texts, since other languages may need different words.
 
 ### Choosing the language
 
@@ -131,13 +131,15 @@ These stay as they are in every language: the CSV formats of accounts and shortc
 
 Add the string to the file of its area in `res/values/` and in every `res/values-*/` folder, with the same placeholders. In `core`, return `Phrase.of(R.string.name, …)` (or `Phrase.count(R.plurals.name, n, …)`); on a screen, use `stringResource` (or `pluralStringResource`).
 
+The names of the texts a store may hold are part of the stored format once released: the errors of the remote configuration and every text they can contain are stored by name (`PhraseCodec`), so a later rename drops what was stored under the old name.
+
 ### Adding a language
 
 Create `res/values-{qualifier}/` with every text of `res/values/` (`{qualifier}`: the language, such as `fr`, or `b+zh+Hant` for a script), and make sure the language is in `Language`, in `locales_config.xml` and in `localeFilters`. `PluralRules` in `android/app/src/test/java/com/sky/siplink/Texts.kt` must know its plural forms.
 
 ### Tests
 
-- `LanguageCatalogTest` (unit test) compares every language with the default: the same keys, the same placeholders, the plural forms the language needs, no empty text; and the languages with `Language` and `locales_config.xml`.
+- `LanguageCatalogTest` (unit test) compares every language with the default: the same keys, the same placeholders, the plural forms the language needs, no empty text; checks that every text is in the file of its area; and compares the languages with `Language` and `locales_config.xml`.
 - `SourceTextTest` fails when a string literal of the Kotlin sources holds Chinese, Japanese or Korean characters outside its allow-list of data (`Language.kt`, the CSV words of `ShortcutRules.kt`).
 - Unit tests assert on the real texts: `Texts` reads the resource files and renders a `Phrase` in a language (`zh(…)` for Simplified Chinese).
 - The integration tests set the app's own language to Simplified Chinese before each test (`PbxTestBase.pinLanguage`), through the app's setting, and leave it so after a run; the phone's system language is not changed. `AppLanguageTest` covers choosing, following the system, falling back to English, the script of Chinese, a change made outside the app while it shows no screen, a call during a change, texts the core puts together, and the day headers of the history. `EnglishScreensTest` walks the four tabs, the settings pages, the call screen and the conference room in English and fails on any Chinese character a screen shows, but the languages' own names and data.

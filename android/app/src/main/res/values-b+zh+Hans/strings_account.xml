@@ -34,16 +34,7 @@
     <!-- Registration -->
     <string name="account_dns_failed">DNS 解析失败</string>
     <string name="account_register_failed">注册失败</string>
-    <string name="line_transport_auto">%1$s（自动）</string>
-
-    <!-- The client name (User-Agent) -->
-    <plurals name="user_agent_error_too_long">
-        <item quantity="other">客户端名称（User-Agent）最多 %1$s 个字符</item>
-    </plurals>
-    <string name="user_agent_error_ascii">仅限可打印的 ASCII 字符</string>
-    <string name="user_agent_error_ascii_full">客户端名称（User-Agent）仅限可打印的 ASCII 字符</string>
-    <string name="user_agent_error_spaces">首尾不能包含空格</string>
-    <string name="user_agent_error_spaces_full">客户端名称（User-Agent）首尾不能包含空格</string>
+    <string name="account_line_transport_auto">%1$s（自动）</string>
 
     <!-- The registration state of an account -->
     <string name="account_state_registered">已注册</string>

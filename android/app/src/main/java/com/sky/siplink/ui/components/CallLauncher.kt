@@ -112,7 +112,7 @@ fun rememberCallLauncher(): CallLauncher {
         when {
             request == null -> Unit
             microphone -> start(request)
-            else -> messenger(resources.getString(R.string.launcher_microphone_permission))
+            else -> messenger(resources.getString(R.string.call_microphone_permission))
         }
     }
 

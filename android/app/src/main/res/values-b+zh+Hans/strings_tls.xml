@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- TLS and CA certificates, media encryption. -->
+<!-- TLS and CA certificates, media encryption, the restart a change of them may need. -->
 <resources>
     <string name="tls_invalid_file">无效的 X.509 证书文件（支持 PEM / CRT / CER / DER）</string>
     <string name="tls_save_failed">证书保存失败：%1$s</string>
@@ -28,4 +28,11 @@
     <plurals name="tls_imported">
         <item quantity="other">已导入 %1$s 个证书，正在重新注册账号</item>
     </plurals>
+
+    <!-- Restarting the app for a change of the CA certificates -->
+    <string name="tls_restart_ldap_title">重启后对 LDAP 生效</string>
+    <string name="tls_restart_ldap_text">SIP 账号已启用新的证书设置。LDAP 通讯录的加密连接已在本次运行中建立，需重启应用后方可使用新的 CA 证书。</string>
+    <string name="tls_restart_after_call">请在通话结束后重启应用</string>
+    <string name="tls_restart_now">立即重启</string>
+    <string name="tls_restart_later">稍后</string>
 </resources>

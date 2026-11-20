@@ -19,11 +19,11 @@ import com.sky.siplink.restartApp
 fun LdapRestartDialog(onDismiss: () -> Unit) {
     val context = LocalContext.current
     val messenger = LocalMessenger.current
-    val afterCall = stringResource(R.string.restart_after_call)
+    val afterCall = stringResource(R.string.tls_restart_after_call)
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.restart_ldap_title)) },
-        text = { Text(stringResource(R.string.restart_ldap_text)) },
+        title = { Text(stringResource(R.string.tls_restart_ldap_title)) },
+        text = { Text(stringResource(R.string.tls_restart_ldap_text)) },
         confirmButton = {
             TextButton(onClick = {
                 if (context.engine.calls.call.value != null) {
@@ -32,8 +32,8 @@ fun LdapRestartDialog(onDismiss: () -> Unit) {
                 } else {
                     context.restartApp()
                 }
-            }) { Text(stringResource(R.string.restart_now)) }
+            }) { Text(stringResource(R.string.tls_restart_now)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.restart_later)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.tls_restart_later)) } },
     )
 }

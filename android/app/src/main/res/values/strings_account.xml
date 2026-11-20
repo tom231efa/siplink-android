@@ -36,17 +36,7 @@
     <!-- Registration -->
     <string name="account_dns_failed">DNS lookup failed</string>
     <string name="account_register_failed">Registration failed</string>
-    <string name="line_transport_auto">%1$s (auto)</string>
-
-    <!-- The client name (User-Agent) -->
-    <plurals name="user_agent_error_too_long">
-        <item quantity="one">Client name (User-Agent): at most %1$s character</item>
-        <item quantity="other">Client name (User-Agent): at most %1$s characters</item>
-    </plurals>
-    <string name="user_agent_error_ascii">Printable ASCII characters only</string>
-    <string name="user_agent_error_ascii_full">Client name (User-Agent): printable ASCII characters only</string>
-    <string name="user_agent_error_spaces">No spaces at the start or end</string>
-    <string name="user_agent_error_spaces_full">Client name (User-Agent) must not start or end with a space</string>
+    <string name="account_line_transport_auto">%1$s (auto)</string>
 
     <!-- The registration state of an account -->
     <string name="account_state_registered">Registered</string>

@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Restarting the app for a change that needs it. -->
-<resources>
-    <string name="restart_ldap_title">Restart to apply to LDAP</string>
-    <string name="restart_ldap_text">SIP accounts now use the new certificate settings. LDAP directories made their encrypted connection earlier in this run; restart the app to use the new CA certificates.</string>
-    <string name="restart_after_call">Restart the app after the call ends</string>
-    <string name="restart_now">Restart now</string>
-    <string name="restart_later">Later</string>
-</resources>

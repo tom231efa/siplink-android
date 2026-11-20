@@ -39,6 +39,22 @@ class LanguageCatalogTest {
     }
 
     @Test
+    fun `every text is in the file of its area`() {
+        for (qualifier in Texts.qualifiers()) {
+            for (file in Texts.files(qualifier)) {
+                val root = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(file).documentElement
+                val names = listOf("string", "plurals").flatMap { tag ->
+                    root.getElementsByTagName(tag).let { nodes -> (0 until nodes.length).map { (nodes.item(it) as org.w3c.dom.Element).getAttribute("name") } }
+                }
+                val area = file.name.removePrefix("strings").removeSuffix(".xml").removePrefix("_")
+                // strings.xml: only what every area shares; strings_{area}.xml: names that start with {area}_.
+                val misplaced = if (area.isEmpty()) names.filter { it !in SHARED && !it.startsWith("common_") } else names.filterNot { it.startsWith("${area}_") }
+                assertEquals("${file.parentFile?.name}/${file.name}", emptyList<String>(), misplaced)
+            }
+        }
+    }
+
+    @Test
     fun `no text is empty`() {
         for (texts in languages + default) {
             assertEquals(texts.qualifier, emptyList<String>(), texts.strings.filterValues { it.isBlank() }.keys.toList())
@@ -106,4 +122,9 @@ class LanguageCatalogTest {
 
     /** The BCP 47 tag of a resource qualifier: `b+zh+Hans` is zh-Hans, `fr` is fr. */
     private fun tagOf(qualifier: String): String = qualifier.removePrefix("b+").replace('+', '-').replace("-r", "-")
+
+    private companion object {
+        /** What strings.xml holds besides the common_* buttons: the texts every area shares. */
+        val SHARED = setOf("app_name", "list_separator")
+    }
 }

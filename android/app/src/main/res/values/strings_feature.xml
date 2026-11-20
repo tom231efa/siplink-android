@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The call features panel: the features of the PBX for one extension. -->
-<resources>
+<!-- PBX features: their names, the call features panel, the feature codes page. -->
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="feature_sheet_title">Call features</string>
     <string name="feature_sheet_extension">Extension %1$s</string>
     <string name="feature_sheet_target">Target extension</string>
@@ -8,4 +8,24 @@
     <string name="feature_sheet_call">Call</string>
     <string name="feature_sheet_add_shortcut">Add to shortcut keys</string>
     <string name="feature_sheet_force_confirm">Tap again to force hang-up %1$s</string>
+
+    <!-- PBX features reached by feature codes -->
+    <string name="feature_intercom">Intercom</string>
+    <string name="feature_listen">Listen</string>
+    <string name="feature_whisper">Whisper</string>
+    <string name="feature_barge">Barge</string>
+    <string name="feature_force_hang_up">Force hang-up</string>
+    <string name="feature_pickup">Directed pickup</string>
+    <string name="feature_voicemail">Voicemail</string>
+    <string name="feature_group_pickup">Group pickup</string>
+    <string name="feature_park">Park</string>
+    <string name="feature_dnd_on">DND on</string>
+    <string name="feature_dnd_off">DND off</string>
+    <string name="feature_to">%1$s %2$s</string>
+    <string name="feature_code_missing">No feature code set for %1$s</string>
+
+    <!-- The feature codes page -->
+    <string name="feature_codes_pickup">Directed pickup</string>
+    <string name="feature_codes_restored">Feature codes restored to defaults</string>
+    <string name="feature_codes_invalid" tools:ignore="TypographyDashes">Only 0-9 * #</string>
 </resources>

@@ -2,8 +2,6 @@
 <!-- Texts every area uses. Each area has its own strings_{area}.xml. -->
 <resources>
     <string name="list_separator">；</string>
-    <string name="managed_notice">配置由远程下发，不能在本机修改</string>
-    <string name="managed_locked">配置由远程下发</string>
 
     <!-- Buttons every area uses -->
     <string name="common_cancel">取消</string>

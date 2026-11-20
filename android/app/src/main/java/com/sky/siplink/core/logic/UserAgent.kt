@@ -24,9 +24,9 @@ object UserAgent {
      * @param full the error where no field stands next to it (a remote configuration's errors): it names the value
      */
     enum class Error(val message: Phrase, val full: Phrase) {
-        TOO_LONG(FormRules.maxChars(MAX_LENGTH), Phrase.count(R.plurals.user_agent_error_too_long, MAX_LENGTH)),
-        NOT_PRINTABLE_ASCII(Phrase.of(R.string.user_agent_error_ascii), Phrase.of(R.string.user_agent_error_ascii_full)),
-        SPACE_AT_ENDS(Phrase.of(R.string.user_agent_error_spaces), Phrase.of(R.string.user_agent_error_spaces_full)),
+        TOO_LONG(FormRules.maxChars(MAX_LENGTH), Phrase.count(R.plurals.advanced_user_agent_error_too_long, MAX_LENGTH)),
+        NOT_PRINTABLE_ASCII(Phrase.of(R.string.advanced_user_agent_error_ascii), Phrase.of(R.string.advanced_user_agent_error_ascii_full)),
+        SPACE_AT_ENDS(Phrase.of(R.string.advanced_user_agent_error_spaces), Phrase.of(R.string.advanced_user_agent_error_spaces_full)),
     }
 
     /** What is wrong with [value] as a name of the user's own; null when nothing. Empty stands for the default name. */

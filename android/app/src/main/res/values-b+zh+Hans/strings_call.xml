@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Calls: what the commands answer, why a call ended, the PBX features. -->
+<!-- Calls: what the commands answer, why a call ended, the call screen. -->
 <resources>
     <string name="call_busy_already">已有通话正在进行</string>
     <string name="call_none">当前无通话</string>
@@ -50,21 +50,6 @@
     <string name="call_camera_after_connect">通话接通后方可使用摄像头</string>
     <string name="call_no_video">此通话无视频</string>
     <string name="call_camera_permission">需要摄像头权限</string>
-
-    <!-- PBX features reached by feature codes -->
-    <string name="feature_intercom">对讲</string>
-    <string name="feature_listen">监听</string>
-    <string name="feature_whisper">耳语</string>
-    <string name="feature_barge">强插</string>
-    <string name="feature_force_hang_up">强拆</string>
-    <string name="feature_pickup">代接</string>
-    <string name="feature_voicemail">语音信箱</string>
-    <string name="feature_group_pickup">同组代接</string>
-    <string name="feature_park">驻留</string>
-    <string name="feature_dnd_on">开启免打扰</string>
-    <string name="feature_dnd_off">关闭免打扰</string>
-    <string name="feature_to">%1$s %2$s</string>
-    <string name="feature_code_missing">未配置“%1$s”功能码</string>
 
     <!-- Call screen -->
     <string name="call_status_incoming">来电</string>
@@ -127,4 +112,7 @@
     <string name="call_slide_description">来电：向右滑动接听，向左滑动挂断</string>
     <string name="call_slide_answer">接听</string>
     <string name="call_slide_decline">挂断</string>
+
+    <!-- Placing a call -->
+    <string name="call_microphone_permission">需要麦克风权限</string>
 </resources>

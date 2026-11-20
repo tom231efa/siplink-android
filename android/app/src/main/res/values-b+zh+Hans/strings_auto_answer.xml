@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Intercom and auto answer: the settings page. -->
+<resources>
+    <string name="auto_answer_section_intercom">对讲</string>
+    <string name="auto_answer_intercom">自动接听对讲呼叫</string>
+    <string name="auto_answer_intercom_speaker">对讲使用扬声器</string>
+    <string name="auto_answer_section_regular">常规呼叫</string>
+    <string name="auto_answer_regular">自动接听</string>
+    <string name="auto_answer_delay">自动接听时间</string>
+    <string name="auto_answer_now">立即</string>
+    <plurals name="auto_answer_seconds">
+        <item quantity="other">%1$s 秒</item>
+    </plurals>
+</resources>

@@ -27,4 +27,13 @@
     <string name="advanced_host_port_hint">主机[:端口]</string>
     <string name="advanced_section_identity">客户端标识</string>
     <string name="advanced_user_agent">客户端名称（User-Agent）</string>
+
+    <!-- The client name (User-Agent) -->
+    <plurals name="advanced_user_agent_error_too_long">
+        <item quantity="other">客户端名称（User-Agent）最多 %1$s 个字符</item>
+    </plurals>
+    <string name="advanced_user_agent_error_ascii">仅限可打印的 ASCII 字符</string>
+    <string name="advanced_user_agent_error_ascii_full">客户端名称（User-Agent）仅限可打印的 ASCII 字符</string>
+    <string name="advanced_user_agent_error_spaces">首尾不能包含空格</string>
+    <string name="advanced_user_agent_error_spaces_full">客户端名称（User-Agent）首尾不能包含空格</string>
 </resources>

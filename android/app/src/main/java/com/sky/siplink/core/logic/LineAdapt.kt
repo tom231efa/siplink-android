@@ -280,5 +280,5 @@ object LineAdapt {
     fun networkOf(key: String): String = key.substringAfterLast(SEPARATOR)
 
     /** What the account list shows next to a line that runs on another transport than its own. */
-    fun label(transport: SipTransport): Phrase = Phrase.of(R.string.line_transport_auto, transport.name)
+    fun label(transport: SipTransport): Phrase = Phrase.of(R.string.account_line_transport_auto, transport.name)
 }

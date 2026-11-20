@@ -3,8 +3,6 @@
 <resources>
     <string name="app_name" translatable="false">SipLink</string>
     <string name="list_separator">"; "</string>
-    <string name="managed_notice">Managed remotely; cannot be changed on this device</string>
-    <string name="managed_locked">Managed remotely</string>
 
     <!-- Buttons every area uses -->
     <string name="common_cancel">Cancel</string>

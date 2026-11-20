@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- TLS and CA certificates, media encryption. -->
+<!-- TLS and CA certificates, media encryption, the restart a change of them may need. -->
 <resources>
     <string name="tls_invalid_file">Not a valid X.509 certificate file (PEM / CRT / CER / DER)</string>
     <string name="tls_save_failed">The certificate could not be saved: %1$s</string>
@@ -29,4 +29,11 @@
         <item quantity="one">%1$s certificate imported; re-registering accounts</item>
         <item quantity="other">%1$s certificates imported; re-registering accounts</item>
     </plurals>
+
+    <!-- Restarting the app for a change of the CA certificates -->
+    <string name="tls_restart_ldap_title">Restart to apply to LDAP</string>
+    <string name="tls_restart_ldap_text">SIP accounts now use the new certificate settings. LDAP directories made their encrypted connection earlier in this run; restart the app to use the new CA certificates.</string>
+    <string name="tls_restart_after_call">Restart the app after the call ends</string>
+    <string name="tls_restart_now">Restart now</string>
+    <string name="tls_restart_later">Later</string>
 </resources>

@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Placing a call: what it needs first. -->
-<resources>
-    <string name="launcher_microphone_permission">需要麦克风权限</string>
-</resources>
