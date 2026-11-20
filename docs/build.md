@@ -140,6 +140,6 @@ Create `res/values-{qualifier}/` with every text of `res/values/` (`{qualifier}`
 - `LanguageCatalogTest` (unit test) compares every language with the default: the same keys, the same placeholders, the plural forms the language needs, no empty text; and the languages with `Language` and `locales_config.xml`.
 - `SourceTextTest` fails when a string literal of the Kotlin sources holds Chinese, Japanese or Korean characters outside its allow-list: data (`Language.kt`, the CSV words of `ShortcutRules.kt`) and the screens not moved yet, a list that only shrinks.
 - Unit tests assert on the real texts: `Texts` reads the resource files and renders a `Phrase` in a language (`zh(…)` for Simplified Chinese).
-- The integration tests set the app's own language to Simplified Chinese before each test (`PbxTestBase.pinLanguage`), through the app's setting; the phone's system language is not changed. `AppLanguageTest` covers choosing, following the system, falling back to English, the script of Chinese, a call during a change, and texts the core puts together.
+- The integration tests set the app's own language to Simplified Chinese before each test (`PbxTestBase.pinLanguage`), through the app's setting, and leave it so after a run; the phone's system language is not changed. `AppLanguageTest` covers choosing, following the system, falling back to English, the script of Chinese, a change made outside the app while it shows no screen, a call during a change, and texts the core puts together.
 
 For tests, see [Testing](testing.md).

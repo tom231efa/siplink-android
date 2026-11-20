@@ -1,6 +1,7 @@
 package com.sky.siplink.itest
 
 import android.app.LocaleManager
+import android.app.NotificationManager
 import android.os.Build
 import android.os.LocaleList
 import com.sky.siplink.R
@@ -9,6 +10,8 @@ import com.sky.siplink.core.model.CallPhase
 import com.sky.siplink.core.model.Language
 import com.sky.siplink.core.model.Phrase
 import com.sky.siplink.core.render
+import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
+import androidx.test.runner.lifecycle.Stage
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -22,7 +25,8 @@ import org.junit.Test
 /**
  * The language of the app: chosen in the settings it shows at once and stays; following the
  * system, a language the app does not have falls through the list to English; a call that is up
- * stays up while its screen changes language; and texts the core puts together follow too.
+ * stays up while its screen changes language; a change made outside the app is followed without
+ * a screen; and texts the core puts together follow too.
  *
  * Expects a phone whose system languages hold none of the app's but English (the test phone).
  * Every test starts in Simplified Chinese ([PbxTestBase.pinLanguage]) and ends in it.
@@ -89,6 +93,23 @@ class AppLanguageTest : RoomTestBase("languages") {
     }
 
     @Test
+    fun aLanguageChangedOutsideTheAppIsFollowedWithoutAScreen() {
+        assumeTrue("Per-app languages of the system: Android 13", Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+        register()
+        val monitor = ActivityLifecycleMonitorRegistry.getInstance()
+        assertTrue("An activity of the app exists", onMain { Stage.entries.filter { it != Stage.DESTROYED }.all { monitor.getActivitiesInStage(it).isEmpty() } })
+        val channels = context.getSystemService(NotificationManager::class.java)
+        fun serviceChannel() = channels.getNotificationChannel(SERVICE_CHANNEL)?.name?.toString()
+        // As the system's page of the app's language makes the change: from outside the app.
+        shell("cmd locale set-app-locales ${context.packageName} --locales en")
+        await("the core to speak English") { spoken() == english.getString(R.string.call_ended) }
+        await("the channels to be named in English") { serviceChannel() == english.getString(R.string.notification_channel_service_name) }
+        shell("cmd locale set-app-locales ${context.packageName} --locales zh-Hans")
+        await("the core to speak Chinese") { spoken() == chinese.getString(R.string.call_ended) }
+        await("the channels to be named in Chinese") { serviceChannel() == chinese.getString(R.string.notification_channel_service_name) }
+    }
+
+    @Test
     fun theScriptOfChineseDecidesTheTexts() {
         val simplified = chinese.getString(R.string.call_ended)
         for (tags in listOf("zh", "zh-CN", "zh-SG", "zh-Hans-HK", "de,zh-CN")) {
@@ -133,5 +154,10 @@ class AppLanguageTest : RoomTestBase("languages") {
         assertEquals(english.render(withheld), engine.history.entries.value.first().name)
         pinLanguage(Language.CHINESE_SIMPLIFIED)
         await("the call log to be in Chinese") { engine.history.entries.value.first().name == chinese.render(withheld) }
+    }
+
+    private companion object {
+        /** The channel of the notification that keeps the app online (CallNotifier). */
+        const val SERVICE_CHANNEL = "service"
     }
 }

@@ -140,6 +140,6 @@ android/app/src/main/java/com/sky/siplink/
 - `LanguageCatalogTest`（单元测试）把每种语言与默认语言比较：键相同、占位符相同、具备该语言需要的复数形式、没有空文字；并把语言与 `Language` 和 `locales_config.xml` 比较。
 - `SourceTextTest`：Kotlin 源码的字符串字面量中出现中日韩字符、且不在允许列表中时失败。允许列表是数据（`Language.kt`、`ShortcutRules.kt` 中 CSV 的词）和尚未迁移的界面，后者只减不增。
 - 单元测试断言真实文字：`Texts` 读取资源文件，以某种语言生成 `Phrase`（简体中文用 `zh(…)`）。
-- 集成测试在每个测试前通过应用自己的设置把应用语言设为简体中文（`PbxTestBase.pinLanguage`），不改手机的系统语言。`AppLanguageTest` 覆盖选择语言、跟随系统、回退到英文、中文的书写体系、通话中切换语言，以及 core 生成的文字。
+- 集成测试在每个测试前通过应用自己的设置把应用语言设为简体中文（`PbxTestBase.pinLanguage`），跑完后保持简体中文，不改手机的系统语言。`AppLanguageTest` 覆盖选择语言、跟随系统、回退到英文、中文的书写体系、应用没有界面时在应用外改语言、通话中切换语言，以及 core 生成的文字。
 
 测试见[测试](testing.md)。
