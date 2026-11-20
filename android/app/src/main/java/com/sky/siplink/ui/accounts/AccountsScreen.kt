@@ -359,7 +359,7 @@ private fun AccountRow(
                     }
                     FadingText(
                         "${adapted?.let(LineAdapt::label) ?: account.transport.name} · ${account.error ?: regStateLabel(account.state)}" +
-                            if (account.onBackup) " · 备用服务器" else "",
+                            if (account.onBackup) " · 备用代理服务器" else "",
                         style = MaterialTheme.typography.labelMedium,
                         color = regStateColor(account.state),
                     )
