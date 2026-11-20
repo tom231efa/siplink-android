@@ -41,8 +41,14 @@ import org.linphone.core.TransportType
  * ([own]) and shown and edited as they are. An account set to TLS sends nothing in clear: no
  * OPTIONS request with its identity. Release builds log no addresses. Main thread only.
  *
+ * The choice of the server comes first ([AccountRouter]), the adaptation second, on the server
+ * chosen: what is learned is kept for each server apart ([LineRecords]), and a failure while the
+ * router decides, or one of a server the line just left, does not count.
+ *
  * @param find the account with an id, [idOf] the id of an account
  * @param onChanged called after an account was changed, so that it is shown anew
+ * @param onBackup whether an account is on its backup server now
+ * @param routing whether the router is deciding where an account goes
  */
 internal class LineDoctor(
     private val core: Core,
@@ -50,6 +56,8 @@ internal class LineDoctor(
     private val find: (String) -> Account?,
     private val idOf: (Account) -> String,
     private val onChanged: (Account) -> Unit,
+    onBackup: (String) -> Boolean = { false },
+    private val routing: (String) -> Boolean = { false },
 ) {
     /** What is going on with one account on the current network. */
     private class State {
@@ -96,7 +104,7 @@ internal class LineDoctor(
             applyAll()
         }
 
-    private val records = LineRecords(core.config)
+    private val records = LineRecords(core.config, onBackup)
     private val prober = LineProber(handler)
     private val adapted = MutableStateFlow<Map<String, SipTransport>>(emptyMap())
 
@@ -128,8 +136,7 @@ internal class LineDoctor(
     }
 
     init {
-        // Both live as long as the core, which is as long as the process.
-        NetworkWatch.listen(::onNetwork)
+        // It lives as long as the core, which is as long as the process. The network comes from the account manager ([onNetwork]).
         core.addListener(calls)
         records.prune(System.currentTimeMillis())
         publish()
@@ -229,6 +236,15 @@ internal class LineDoctor(
     /** Whether the PBX of account [id] named an address of its own network as the next hop of its last call ([MediaAdapt.unreachableHop]). */
     fun pbxUnreachable(id: String): Boolean = records.pbxHop(id) != null
 
+    /**
+     * The router moved account [id] to its other server: what was pending for the line was about
+     * the server it left, and the line runs on what was learned for the new one.
+     */
+    fun onServerMoved(id: String) {
+        states.remove(id)?.let(::cancel)
+        applyAll()
+    }
+
     /** The core looks at the network anew (its connections may be new ones): where the server sees the lines starts over. */
     fun onReachable() {
         states.values.forEach { it.contact = null }
@@ -322,6 +338,11 @@ internal class LineDoctor(
      * again, when it is time.
      */
     private fun failed(account: Account, id: String, state: State) {
+        // Which server the line goes to is being decided: the failure may be the way to the server it leaves.
+        if (routing(id)) {
+            cancelConfirm(state)
+            return
+        }
         val current = transportOf(account.params.serverAddress)
         val onTrial = LineSteps.onTrial(state.trial, state.revertTo, current, ownTransport(id, account), records.record(id, network))
         when (LineSteps.failure(account.errorInfo.protocolCode, holds(), onTrial, records.proven(id))) {
@@ -505,7 +526,8 @@ internal class LineDoctor(
 
     // ---------------------------------------------------------------- the network
 
-    private fun onNetwork(next: NetworkFacts?) {
+    /** The phone is on [next] now ([NetworkWatch]); before the router hears of it. */
+    fun onNetwork(next: NetworkFacts?) {
         val before = facts
         facts = next
         if (next == null) return

@@ -134,4 +134,21 @@ data class LineReport(
     val adaptedIce: Boolean,
     val pbxUnreachable: Boolean,
     val lastCall: CallMediaSummary?,
+    val servers: ServerReport? = null,
+)
+
+/**
+ * The two servers of an account with a backup server, as the router last asked them.
+ *
+ * @param primary the first server answered; null: not asked to the end, or not asked yet
+ * @param backup likewise for the backup server
+ * @param checkedAt when they were asked (ms since the epoch); null: not yet
+ * @param timeoutMs the fast timeout; 0: off
+ */
+data class ServerReport(
+    val onBackup: Boolean,
+    val primary: Boolean?,
+    val backup: Boolean?,
+    val checkedAt: Long?,
+    val timeoutMs: Int,
 )

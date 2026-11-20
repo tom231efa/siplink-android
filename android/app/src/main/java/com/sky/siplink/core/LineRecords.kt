@@ -10,16 +10,23 @@ import org.linphone.core.Config
  * for each account on each network ([LineAdapt.Record]), the account settings it replaced in the
  * core ([LineSteps.Own]), the next hop of a PBX that nothing reaches, and whether an account's
  * login registered anywhere. Main thread only.
+ *
+ * What was learned on a network is kept apart for the two servers of an account with a backup
+ * server ([LineAdapt.slotted]): the way to one says nothing of the way to the other.
+ *
+ * @param onBackup whether an account is on its backup server now
  */
-internal class LineRecords(private val config: Config) {
+internal class LineRecords(private val config: Config, private val onBackup: (String) -> Boolean = { false }) {
+    private fun keyOf(id: String, network: String): String = LineAdapt.key(id, LineAdapt.slotted(network, onBackup(id)))
+
     fun record(id: String, network: String?): LineAdapt.Record? {
         val net = network ?: return null
-        return LineAdapt.decode(config.getString(SECTION, LineAdapt.key(id, net), null))
+        return LineAdapt.decode(config.getString(SECTION, keyOf(id, net), null))
     }
 
     fun store(id: String, network: String?, record: LineAdapt.Record) {
         val net = network ?: return
-        val key = LineAdapt.key(id, net)
+        val key = keyOf(id, net)
         if (record.isPlain) config.cleanEntry(SECTION, key) else config.setString(SECTION, key, LineAdapt.encode(record))
     }
 

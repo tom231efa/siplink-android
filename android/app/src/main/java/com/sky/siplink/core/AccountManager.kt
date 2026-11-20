@@ -7,6 +7,7 @@ import com.sky.siplink.core.logic.AccountRules
 import com.sky.siplink.core.model.AccountDraft
 import com.sky.siplink.core.model.CallMediaSummary
 import com.sky.siplink.core.model.RegState
+import com.sky.siplink.core.model.ServerReport
 import com.sky.siplink.core.model.SipAccount
 import com.sky.siplink.core.model.SipTransport
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,14 +48,22 @@ class AccountManager(private val core: Core, private val lock: ConfigLock) {
     /** The removed accounts that are still unregistering, by native pointer. */
     private val retired = HashMap<Long, Parting>()
 
-    /** How the lines adapt to the network they are on. */
-    private val doctor = LineDoctor(core, handler, ::find, ::idOf, ::noteChanged)
+    /** How the lines adapt to the network they are on, on the server the router chose. */
+    private val doctor: LineDoctor = LineDoctor(
+        core, handler, ::find, ::idOf, ::noteChanged,
+        onBackup = { router.isOnBackup(it) },
+        routing = { router.isRouting(it) },
+    )
 
     /** How the sound of the calls goes: for the line checks, the call screen, and what the lines learn from it. */
     internal val media = CallMediaWatch(core, ::idOf, doctor::onCallFinished)
 
     /** Backup servers and DNS servers of the accounts. */
-    private val router = AccountRouter(core, handler, ::find, ::idOf, ::noteChanged, doctor::holds)
+    private val router: AccountRouter = AccountRouter(
+        core, handler, ::find, ::idOf, ::noteChanged, doctor::holds,
+        ownTransport = { doctor.own(it)?.transport },
+        afterMove = doctor::onServerMoved,
+    )
 
     /** Whether the lines adapt to the network by themselves ([LineDoctor]). */
     var autoAdapt: Boolean
@@ -83,6 +92,12 @@ class AccountManager(private val core: Core, private val lock: ConfigLock) {
     init {
         refresh()
         router.refresh()
+        // Both live as long as the core, which is as long as the process. The doctor first: the
+        // router's moves then find the doctor on the new network already.
+        NetworkWatch.listen { facts ->
+            doctor.onNetwork(facts)
+            router.onNetwork(facts)
+        }
     }
 
     fun refresh() {
@@ -154,6 +169,24 @@ class AccountManager(private val core: Core, private val lock: ConfigLock) {
 
     /** How the sound of the last call of account [id] went; null without one since the app started. */
     fun lastCall(id: String): CallMediaSummary? = media.lastCall(id)
+
+    /**
+     * A call out on account [id] that went through [server] got no answer: [then] is told
+     * whether the account is on its other server now, because [server] is silent and the other
+     * one answers ([AccountRouter.leaveSilentServer]).
+     */
+    internal fun leaveSilentServer(id: String, server: String, then: (Boolean) -> Unit) = router.leaveSilentServer(id, server, then)
+
+    /** The two servers of account [id], for the line checks; null without a backup server. */
+    internal fun servers(id: String): ServerReport? {
+        val account = find(id) ?: return null
+        val view = router.view(id, account)?.takeIf { it.record.backup.isNotEmpty() } ?: return null
+        val seen = view.seen
+        return ServerReport(view.onBackup, seen?.primary, seen?.backup, seen?.at, view.record.timeoutMs)
+    }
+
+    /** The fast timeout of account [id] in ms; 0: off, or no backup server. */
+    internal fun serverTimeoutMs(id: String): Int = router.record(id)?.takeIf { it.backup.isNotEmpty() }?.timeoutMs ?: 0
 
     /** Puts the line of account [id] back on its own settings, everywhere, and forgets what was learned for it. */
     fun resetAdaptation(id: String) = doctor.forget(id)
@@ -286,7 +319,7 @@ class AccountManager(private val core: Core, private val lock: ConfigLock) {
         doctor.release(id, params, forget = rerouted, credentials = credentialsChanged || password != savedPassword)
         applyParams(id, params, draft, identity, server)
         account.params = params
-        if (rerouted) router.begin(id)
+        if (rerouted) router.begin(id) else router.setTimeout(id, draft.serverTimeoutMs)
         doctor.reapply()
         storeName(id, draft.name)
 
@@ -532,6 +565,7 @@ class AccountManager(private val core: Core, private val lock: ConfigLock) {
             name = core.config.getString(NAMES_SECTION, id, null).orEmpty(),
             backupServer = route?.record?.backup.orEmpty(),
             dnsServer = route?.record?.dns.orEmpty(),
+            serverTimeoutMs = route?.record?.takeIf { it.backup.isNotEmpty() }?.timeoutMs ?: 0,
             subscribeMwi = params.mwiServerAddress != null,
             onBackup = route?.onBackup == true,
         )

@@ -86,7 +86,11 @@ class NetworkWatch(context: Context) {
             listeners -= listener
         }
 
-        private fun publish(next: NetworkFacts?) {
+        /**
+         * Tells every listener of [next] when it differs from [facts]. The integration tests feed
+         * a change of network here, as Android's callbacks do; the phone's network stays as it is.
+         */
+        internal fun publish(next: NetworkFacts?) {
             if (next == facts) return
             facts = next
             listeners.toList().forEach { it(next) }
