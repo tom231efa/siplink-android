@@ -161,13 +161,24 @@ internal class LineDoctor(
     /** Puts the lines on what is remembered for them once the user's change is in the core. */
     fun reapply() = applyAll()
 
-    /** Account [id] is gone, or the user wants it on its own settings everywhere ("restore defaults"). */
+    /** Account [id] is gone: what was learned for it goes. Its parameters are left alone: it unregisters with them. */
+    fun drop(id: String) {
+        records.forget(id)
+        records.storePbxHop(id, null)
+        records.storeOwn(id, null)
+        states.remove(id)?.let(::cancel)
+        publish()
+    }
+
+    /** The user wants account [id] on its own settings everywhere ("restore defaults"). */
     fun forget(id: String) {
         records.forget(id)
         records.storePbxHop(id, null)
         states.remove(id)?.let(::cancel)
-        // Back on its own settings here and now: before the network is known the lines are not touched otherwise.
-        val account = find(id)
+        // Back on its own settings here and now: before the network is known the lines are not
+        // touched otherwise. Only an account the core still has (find also has one that a batch
+        // of changes is removing).
+        val account = core.accountList.firstOrNull { idOf(it) == id }
         val own = records.own(id)
         if (account != null && own != null) {
             account.params = account.params.clone().also { putOwn(it, own) }

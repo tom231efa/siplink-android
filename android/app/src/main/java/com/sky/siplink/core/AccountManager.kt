@@ -323,7 +323,7 @@ class AccountManager(private val core: Core, private val lock: ConfigLock) {
         core.removeAccount(account)
         storeName(id, "")
         router.forget(id)
-        doctor.forget(id)
+        doctor.drop(id)
         media.forget(id)
         when {
             auth == null -> Unit
