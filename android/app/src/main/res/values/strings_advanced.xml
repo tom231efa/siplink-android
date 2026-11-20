@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Advanced settings: incoming calls, forwarding, the conference room, media and network, the client name. -->
+<resources>
+    <string name="advanced_title">Advanced settings</string>
+    <string name="advanced_section_incoming">Incoming calls</string>
+    <string name="advanced_dnd_mode">DND mode</string>
+    <string name="advanced_dnd_software">Software</string>
+    <string name="advanced_dnd_server">Server</string>
+    <string name="advanced_dnd_codes">%1$s / %2$s</string>
+    <string name="advanced_call_waiting">Call waiting</string>
+    <string name="advanced_reject_anonymous">Reject anonymous calls</string>
+    <string name="advanced_dtmf_mode">DTMF mode</string>
+    <string name="advanced_section_forwarding">Call forwarding</string>
+    <string name="advanced_forward_always">Forward always</string>
+    <string name="advanced_forward_busy">Forward when busy</string>
+    <string name="advanced_forward_no_answer">Forward on no answer</string>
+    <string name="advanced_no_answer_seconds">No-answer wait (seconds)</string>
+    <string name="advanced_range">Must be %1$s–%2$s</string>
+    <string name="advanced_section_room">Conference room</string>
+    <string name="advanced_room_limit">Maximum members</string>
+    <string name="advanced_section_media">Media and network</string>
+    <string name="advanced_rate_control">Adaptive rate control</string>
+    <string name="advanced_echo_cancellation">Echo cancellation</string>
+    <string name="advanced_ipv6">Allow IPv6</string>
+    <string name="advanced_auto_network">Adapt to network automatically</string>
+    <string name="advanced_stun_server">STUN server</string>
+    <string name="advanced_host_port_hint">host[:port]</string>
+    <string name="advanced_section_identity">Client identity</string>
+    <string name="advanced_user_agent">Client name (User-Agent)</string>
+</resources>

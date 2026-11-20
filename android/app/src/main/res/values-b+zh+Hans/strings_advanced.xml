@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Advanced settings: incoming calls, forwarding, the conference room, media and network, the client name. -->
+<resources>
+    <string name="advanced_title">高级设置</string>
+    <string name="advanced_section_incoming">来电</string>
+    <string name="advanced_dnd_mode">免打扰方式</string>
+    <string name="advanced_dnd_software">软件</string>
+    <string name="advanced_dnd_server">服务器</string>
+    <string name="advanced_dnd_codes">%1$s / %2$s</string>
+    <string name="advanced_call_waiting">呼叫等待</string>
+    <string name="advanced_reject_anonymous">拒接匿名来电</string>
+    <string name="advanced_dtmf_mode">DTMF 方式</string>
+    <string name="advanced_section_forwarding">呼叫前转</string>
+    <string name="advanced_forward_always">无条件前转</string>
+    <string name="advanced_forward_busy">遇忙前转</string>
+    <string name="advanced_forward_no_answer">无应答前转</string>
+    <string name="advanced_no_answer_seconds">无应答等待时间（秒）</string>
+    <string name="advanced_range">应为 %1$s–%2$s</string>
+    <string name="advanced_section_room">会议室</string>
+    <string name="advanced_room_limit">会议室人数上限</string>
+    <string name="advanced_section_media">媒体与网络</string>
+    <string name="advanced_rate_control">自适应速率控制</string>
+    <string name="advanced_echo_cancellation">回声消除</string>
+    <string name="advanced_ipv6">允许 IPv6</string>
+    <string name="advanced_auto_network">自动适应网络</string>
+    <string name="advanced_stun_server">STUN 服务器</string>
+    <string name="advanced_host_port_hint">主机[:端口]</string>
+    <string name="advanced_section_identity">客户端标识</string>
+    <string name="advanced_user_agent">客户端名称（User-Agent）</string>
+</resources>

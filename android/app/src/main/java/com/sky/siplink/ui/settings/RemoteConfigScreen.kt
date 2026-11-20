@@ -34,10 +34,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sky.siplink.R
 import com.sky.siplink.core.RemoteConfig
 import com.sky.siplink.core.logic.RemoteAddress
 import com.sky.siplink.core.logic.RemoteSync
@@ -77,7 +80,7 @@ fun RemoteConfigScreen(onBack: () -> Unit) {
 
     // The camera is asked for only here, when the user wants to scan; typing works without it.
     val camera = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) scanning = true else messenger("未获得相机权限，请改为输入地址")
+        if (granted) scanning = true else messenger(resources.getString(R.string.remote_camera_denied))
     }
     val scan = {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
@@ -88,7 +91,7 @@ fun RemoteConfigScreen(onBack: () -> Unit) {
     }
 
     Personal {
-        SubScreen(title = "远程配置", onBack = onBack) {
+        SubScreen(title = stringResource(R.string.settings_remote_config), onBack = onBack) {
             if (status.enrolled) {
                 Enrolled(status, onSync = remote::syncNow, onDelete = { deleting = true })
             } else {
@@ -119,40 +122,34 @@ fun RemoteConfigScreen(onBack: () -> Unit) {
     pending?.let { enrollment ->
         AlertDialog(
             onDismissRequest = { pending = null },
-            title = { Text("载入远程配置？") },
+            title = { Text(stringResource(R.string.remote_load_title)) },
             text = {
-                Text(
-                    "来源：${enrollment.host}。载入后，本机的账号、通讯录、证书、编码和快捷键等配置将被远程配置替换，" +
-                        "且不可在本机修改。通话记录、免打扰和外观设置不受影响。",
-                )
+                Text(stringResource(R.string.remote_load_text, enrollment.host))
             },
             confirmButton = {
                 TextButton(onClick = {
                     pending = null
                     remote.enroll(enrollment, messenger)
-                }) { Text("载入") }
+                }) { Text(stringResource(R.string.remote_load)) }
             },
-            dismissButton = { TextButton(onClick = { pending = null }) { Text("取消") } },
+            dismissButton = { TextButton(onClick = { pending = null }) { Text(stringResource(R.string.common_cancel)) } },
         )
     }
 
     if (deleting) {
         AlertDialog(
             onDismissRequest = { deleting = false },
-            title = { Text("删除远程配置？") },
+            title = { Text(stringResource(R.string.remote_delete_title)) },
             text = {
-                Text(
-                    "将通知平台解除绑定，并删除远程下发的账号、通讯录、证书、快捷键及自建快捷键。" +
-                        "通话记录和外观设置将保留。",
-                )
+                Text(stringResource(R.string.remote_delete_text))
             },
             confirmButton = {
                 TextButton(onClick = {
                     deleting = false
                     remote.delete(messenger)
-                }) { Text("确认删除", color = MaterialTheme.colorScheme.error) }
+                }) { Text(stringResource(R.string.common_confirm_delete), color = MaterialTheme.colorScheme.error) }
             },
-            dismissButton = { TextButton(onClick = { deleting = false }) { Text("取消") } },
+            dismissButton = { TextButton(onClick = { deleting = false }) { Text(stringResource(R.string.common_cancel)) } },
         )
     }
 }
@@ -166,17 +163,17 @@ private fun NotEnrolled(status: RemoteConfig.Status, onScan: () -> Unit, onType:
                 FilledTonalButton(onClick = onScan, enabled = !status.busy, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Rounded.QrCodeScanner, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
-                    Text("扫描二维码", maxLines = 1)
+                    Text(stringResource(R.string.remote_scan), maxLines = 1)
                 }
                 OutlinedButton(onClick = onType, enabled = !status.busy, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Rounded.Link, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
-                    Text("输入地址", maxLines = 1)
+                    Text(stringResource(R.string.remote_enter_address), maxLines = 1)
                 }
             }
             if (status.busy) {
                 LinearProgressIndicator(Modifier.fillMaxWidth())
-                Text("正在载入…", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.remote_loading), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else if (status.lastError.isNotEmpty()) {
                 Text(status.lastError, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             }
@@ -188,30 +185,30 @@ private fun NotEnrolled(status: RemoteConfig.Status, onScan: () -> Unit, onType:
 private fun Enrolled(status: RemoteConfig.Status, onSync: () -> Unit, onDelete: () -> Unit) {
     val zone = remember { ZoneId.systemDefault() }
     var details by rememberSaveable { mutableStateOf(false) }
-    SectionCard(title = "平台") {
-        InfoRow("平台", status.platformName.ifEmpty { status.host })
-        if (status.clientName.isNotEmpty()) InfoRow("客户端", status.clientName)
-        if (status.region.isNotEmpty()) InfoRow("区域", status.region)
+    SectionCard(title = stringResource(R.string.remote_section_platform)) {
+        InfoRow(stringResource(R.string.remote_platform), status.platformName.ifEmpty { status.host })
+        if (status.clientName.isNotEmpty()) InfoRow(stringResource(R.string.remote_client), status.clientName)
+        if (status.region.isNotEmpty()) InfoRow(stringResource(R.string.remote_region), status.region)
     }
-    SectionCard(title = "同步") {
-        InfoRow("上次同步", if (status.lastSyncMs > 0) RemoteSync.shownTime(status.lastSyncMs, zone) else "尚未成功")
-        if (status.generatedAt.isNotEmpty()) InfoRow("配置更新于", RemoteSync.shownTime(status.generatedAt, zone))
-        if (status.lastError.isNotEmpty()) InfoRow("同步结果", status.lastError, error = true)
+    SectionCard(title = stringResource(R.string.remote_section_sync)) {
+        InfoRow(stringResource(R.string.remote_last_sync), if (status.lastSyncMs > 0) RemoteSync.shownTime(status.lastSyncMs, zone) else stringResource(R.string.remote_never_synced))
+        if (status.generatedAt.isNotEmpty()) InfoRow(stringResource(R.string.remote_generated_at), RemoteSync.shownTime(status.generatedAt, zone))
+        if (status.lastError.isNotEmpty()) InfoRow(stringResource(R.string.remote_sync_result), status.lastError, error = true)
         NavRow(
-            title = if (status.busy) "正在同步…" else "立即同步",
-            subtitle = "每 ${status.refreshMinutes} 分钟自动同步",
+            title = stringResource(if (status.busy) R.string.remote_syncing else R.string.remote_sync_now),
+            subtitle = pluralStringResource(R.plurals.remote_sync_interval, status.refreshMinutes, status.refreshMinutes.toString()),
             icon = Icons.Rounded.Sync,
             onClick = { if (!status.busy) onSync() },
         )
         if (status.busy) LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 16.dp))
     }
-    FoldingCard(title = "详细信息", open = details, onToggle = { details = !details }) {
-        InfoRow("地址", status.host)
-        InfoRow("配置版本", status.version.take(VERSION_SHOWN).ifEmpty { "—" })
-        InfoRow("平台证书", if (status.pinned) "扫码时已信任平台 CA" else "由系统 CA 校验")
+    FoldingCard(title = stringResource(R.string.remote_details), open = details, onToggle = { details = !details }) {
+        InfoRow(stringResource(R.string.remote_address), status.host)
+        InfoRow(stringResource(R.string.remote_version), status.version.take(VERSION_SHOWN).ifEmpty { "—" })
+        InfoRow(stringResource(R.string.remote_certificate), stringResource(if (status.pinned) R.string.remote_certificate_pinned else R.string.remote_certificate_system))
     }
     OutlinedButton(onClick = onDelete, enabled = !status.busy, modifier = Modifier.fillMaxWidth()) {
-        Text("删除远程配置", color = MaterialTheme.colorScheme.error)
+        Text(stringResource(R.string.remote_delete), color = MaterialTheme.colorScheme.error)
     }
     Spacer(Modifier.height(8.dp))
 }
@@ -261,7 +258,7 @@ private fun AddressDialog(offer: (String) -> String?, onDismiss: () -> Unit, onT
     var error by remember { mutableStateOf<String?>(null) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("输入地址") },
+        title = { Text(stringResource(R.string.remote_enter_address_title)) },
         text = {
             FormField(
                 value = text,
@@ -269,16 +266,16 @@ private fun AddressDialog(offer: (String) -> String?, onDismiss: () -> Unit, onT
                     text = it
                     error = null
                 },
-                label = "配置地址",
+                label = stringResource(R.string.remote_address_label),
                 placeholder = "https://example.com/p/…",
                 error = error,
                 singleLine = false,
             )
         },
         confirmButton = {
-            TextButton(onClick = { offer(text)?.let { error = it } ?: onTaken() }, enabled = text.isNotBlank()) { Text("下一步") }
+            TextButton(onClick = { offer(text)?.let { error = it } ?: onTaken() }, enabled = text.isNotBlank()) { Text(stringResource(R.string.remote_next)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } },
     )
 }
 

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The About page: version, updates, licenses. -->
+<resources>
+    <string name="about_license_app">SipLink: GNU AGPL-3.0</string>
+    <string name="about_license_sdk">SIP stack: Belledonne Communications Linphone SDK, GNU AGPLv3</string>
+    <string name="about_browser_failed">Cannot open the browser</string>
+    <string name="about_repository">GitHub repository</string>
+    <string name="about_version">Version %1$s</string>
+    <string name="about_auto_check">Check for updates automatically</string>
+    <string name="about_new_version">New version %1$s</string>
+    <string name="about_current_version">Current version %1$s</string>
+    <string name="about_download_failed">Download failed</string>
+    <string name="about_skip_version">Skip this version</string>
+    <string name="about_open_download_page">Open download page</string>
+    <string name="about_cancel_download">Cancel download</string>
+    <string name="about_install">Install</string>
+    <string name="about_download_again">Download again</string>
+    <string name="about_download_install">Download and install</string>
+</resources>

@@ -27,12 +27,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sky.siplink.BuildConfig
+import com.sky.siplink.R
 import com.sky.siplink.core.logic.DownloadState
 import com.sky.siplink.core.logic.FoundRelease
 import com.sky.siplink.core.logic.UpdateRules
@@ -68,7 +70,7 @@ internal fun UpdateRows() {
     }
 
     NavRow(
-        title = "版本 $installed",
+        title = stringResource(R.string.about_version, installed),
         subtitle = UpdateRules.status(update, installed, download).text(),
         icon = Icons.Rounded.SystemUpdate,
         onClick = {
@@ -79,7 +81,7 @@ internal fun UpdateRows() {
         },
     )
     SwitchRow(
-        title = "自动检查更新",
+        title = stringResource(R.string.about_auto_check),
         icon = Icons.Rounded.Update,
         checked = settings.autoUpdateCheck,
         onCheckedChange = { value -> engine.updateSettings { it.copy(autoUpdateCheck = value) } },
@@ -128,9 +130,9 @@ private fun ReleaseSheet(release: FoundRelease, installed: String, download: Dow
                 .padding(horizontal = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text("新版本 ${release.version}", style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.about_new_version, release.version), style = MaterialTheme.typography.titleLarge)
             Text(
-                "当前版本 $installed",
+                stringResource(R.string.about_current_version, installed),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -155,12 +157,12 @@ private fun ReleaseSheet(release: FoundRelease, installed: String, download: Dow
                         LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                     }
                     Text(
-                        "正在下载 ${UpdateRules.percent(mine)}",
+                        stringResource(R.string.update_downloading, UpdateRules.percent(mine)),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                is DownloadState.Failed -> Text("下载失败", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                is DownloadState.Failed -> Text(stringResource(R.string.about_download_failed), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                 else -> Unit
             }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -171,15 +173,16 @@ private fun ReleaseSheet(release: FoundRelease, installed: String, download: Dow
                         onDismiss()
                     },
                     modifier = Modifier.weight(1f),
-                ) { Text("跳过此版本") }
+                ) { Text(stringResource(R.string.about_skip_version)) }
                 val apk = release.apk
+                val browserFailed = stringResource(R.string.about_browser_failed)
                 FilledTonalButton(
                     onClick = {
                         when {
                             apk == null -> {
                                 // No package for this device: the release page, in the browser.
                                 runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, release.pageUrl.toUri())) }
-                                    .onFailure { messenger("无法打开浏览器") }
+                                    .onFailure { messenger(browserFailed) }
                                 onDismiss()
                             }
                             mine is DownloadState.Running -> updates.cancelDownload()
@@ -190,13 +193,15 @@ private fun ReleaseSheet(release: FoundRelease, installed: String, download: Dow
                     modifier = Modifier.weight(1f),
                 ) {
                     Text(
-                        when {
-                            apk == null -> "前往下载页"
-                            mine is DownloadState.Running -> "取消下载"
-                            mine is DownloadState.Ready -> "安装"
-                            mine is DownloadState.Failed -> "重新下载"
-                            else -> "下载并安装"
-                        },
+                        stringResource(
+                            when {
+                                apk == null -> R.string.about_open_download_page
+                                mine is DownloadState.Running -> R.string.about_cancel_download
+                                mine is DownloadState.Ready -> R.string.about_install
+                                mine is DownloadState.Failed -> R.string.about_download_again
+                                else -> R.string.about_download_install
+                            },
+                        ),
                     )
                 }
             }

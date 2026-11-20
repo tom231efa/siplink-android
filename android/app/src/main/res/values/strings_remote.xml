@@ -43,4 +43,42 @@
     <string name="remote_address_scheme">The address must start with https://</string>
     <string name="remote_address_not_enrollment">Not a remote configuration address</string>
     <string name="remote_address_pin">Invalid certificate fingerprint in the address</string>
+
+    <!-- The remote configuration page -->
+    <string name="remote_scan_not_ours">Not a remote configuration QR code</string>
+    <string name="remote_scan_no_camera">Cannot open the camera</string>
+    <string name="remote_camera_denied">Camera permission not granted; enter the address instead</string>
+    <string name="remote_load_title">Load remote configuration?</string>
+    <string name="remote_load_text">Source: %1$s. Once loaded, the accounts, directories, certificates, codecs, shortcut keys and other settings of this device are replaced by the remote configuration and cannot be changed on this device. Call history, do not disturb and appearance settings are not affected.</string>
+    <string name="remote_load">Load</string>
+    <string name="remote_delete_title">Remove remote configuration?</string>
+    <string name="remote_delete_text">The platform will be told to unbind this device, and the provisioned accounts, directories, certificates and shortcut keys, and your own shortcut keys, will be deleted. Call history and appearance settings are kept.</string>
+    <string name="remote_scan">Scan QR code</string>
+    <string name="remote_enter_address">Enter address</string>
+    <string name="remote_enter_address_title">Enter address</string>
+    <string name="remote_loading">Loading…</string>
+    <string name="remote_section_platform">Platform</string>
+    <string name="remote_platform">Platform</string>
+    <string name="remote_client">Client</string>
+    <string name="remote_region">Region</string>
+    <string name="remote_section_sync">Sync</string>
+    <string name="remote_last_sync">Last sync</string>
+    <string name="remote_never_synced">Not yet successful</string>
+    <string name="remote_generated_at">Configuration updated</string>
+    <string name="remote_sync_result">Sync result</string>
+    <string name="remote_syncing">Syncing…</string>
+    <string name="remote_sync_now">Sync now</string>
+    <string name="remote_details">Details</string>
+    <string name="remote_address">Address</string>
+    <string name="remote_version">Configuration version</string>
+    <string name="remote_certificate">Platform certificate</string>
+    <string name="remote_certificate_pinned">Platform CA trusted at scan</string>
+    <string name="remote_certificate_system">Verified by system CAs</string>
+    <string name="remote_delete">Remove remote configuration</string>
+    <string name="remote_address_label">Configuration address</string>
+    <string name="remote_next">Next</string>
+    <plurals name="remote_sync_interval">
+        <item quantity="one">Syncs every %1$s minute</item>
+        <item quantity="other">Syncs every %1$s minutes</item>
+    </plurals>
 </resources>

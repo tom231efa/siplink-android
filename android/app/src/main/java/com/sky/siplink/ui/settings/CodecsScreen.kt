@@ -35,8 +35,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sky.siplink.R
 import com.sky.siplink.core.logic.VideoRules
 import com.sky.siplink.core.model.Codec
 import com.sky.siplink.core.model.Settings
@@ -64,12 +67,15 @@ fun CodecsScreen(onBack: () -> Unit) {
     val messenger = LocalMessenger.current
     val locked = LocalConfigLocked.current
     val video = settings.videoCalls && videoCodecs.isNotEmpty()
+    val restored = stringResource(R.string.codec_restored)
+    val keepAudio = stringResource(R.string.codec_keep_audio)
+    val keepVideo = stringResource(R.string.codec_keep_video)
 
     Column(Modifier.fillMaxSize()) {
         TopAppBar(
-            title = { Text(if (video) "编码" else "音频编码") },
+            title = { Text(stringResource(if (video) R.string.settings_codecs else R.string.settings_audio_codecs)) },
             navigationIcon = {
-                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回") }
+                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.common_back)) }
             },
             actions = {
                 ManagedLock()
@@ -79,9 +85,9 @@ fun CodecsScreen(onBack: () -> Unit) {
                             manager.restoreDefaults()
                             val defaults = Settings()
                             engine.updateSettings { it.copy(videoSize = defaults.videoSize, videoFrameRate = defaults.videoFrameRate) }
-                            messenger("已恢复默认编码设置")
+                            messenger(restored)
                         },
-                    ) { Text("恢复默认") }
+                    ) { Text(stringResource(R.string.common_restore_defaults)) }
                 }
             },
         )
@@ -92,12 +98,12 @@ fun CodecsScreen(onBack: () -> Unit) {
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            if (video) item(key = "audioTitle", contentType = "title") { KindTitle("音频") }
+            if (video) item(key = "audioTitle", contentType = "title") { KindTitle(stringResource(R.string.codec_audio)) }
             codecRows(codecs, onMove = manager::move) { key, enabled ->
-                if (!manager.setEnabled(key, enabled)) messenger("至少保留一种音频编码")
+                if (!manager.setEnabled(key, enabled)) messenger(keepAudio)
             }
             if (video) {
-                item(key = "videoTitle", contentType = "title") { KindTitle("视频") }
+                item(key = "videoTitle", contentType = "title") { KindTitle(stringResource(R.string.codec_video)) }
                 item(key = "videoQuality", contentType = "quality") {
                     VideoQuality(
                         size = settings.videoSize,
@@ -107,7 +113,7 @@ fun CodecsScreen(onBack: () -> Unit) {
                     )
                 }
                 codecRows(videoCodecs, onMove = manager::move) { key, enabled ->
-                    if (!manager.setEnabled(key, enabled)) messenger("至少保留一种视频编码")
+                    if (!manager.setEnabled(key, enabled)) messenger(keepVideo)
                 }
             }
         }
@@ -144,16 +150,16 @@ private fun KindTitle(text: String) {
 
 private val videoSizes = listOf(VideoSize.QVGA to "240p", VideoSize.VGA to "480p", VideoSize.HD to "720p", VideoSize.FHD to "1080p")
 
-private val frameRates = VideoRules.FRAME_RATES.map { it to if (it == VideoRules.AUTO_FRAME_RATE) "自动" else "$it" }
-
 /** How large and how often the own camera is sent, above the video codecs. */
 @Composable
 private fun VideoQuality(size: VideoSize, frameRate: Int, onSize: (VideoSize) -> Unit, onFrameRate: (Int) -> Unit) {
     Surface(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainerLow) {
         Column(Modifier.padding(horizontal = 14.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("清晰度", style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(R.string.codec_resolution), style = MaterialTheme.typography.bodyMedium)
             ChoiceRow(options = videoSizes, selected = size, onSelect = onSize)
-            Text("帧率（帧/秒）", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 4.dp))
+            Text(stringResource(R.string.codec_frame_rate), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 4.dp))
+            val auto = stringResource(R.string.codec_frame_rate_auto)
+            val frameRates = VideoRules.FRAME_RATES.map { it to if (it == VideoRules.AUTO_FRAME_RATE) auto else "$it" }
             ChoiceRow(options = frameRates, selected = frameRate, onSelect = onFrameRate)
         }
     }
@@ -191,17 +197,21 @@ private fun CodecRow(
                 // A video codec's clock rate (90 kHz for all of them) says nothing to the user.
                 if (!codec.isVideo) {
                     Text(
-                        "${codec.clockRate} Hz" + if (codec.channels > 1) " · ${codec.channels} 声道" else "",
+                        if (codec.channels > 1) {
+                            pluralStringResource(R.plurals.codec_rate_channels, codec.channels, codec.clockRate.toString(), codec.channels.toString())
+                        } else {
+                            stringResource(R.string.codec_rate, codec.clockRate.toString())
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
             IconButton(onClick = { onMove(-1) }, enabled = canMoveUp && !locked) {
-                Icon(Icons.Rounded.KeyboardArrowUp, contentDescription = "提高 ${codec.mime} 的优先级")
+                Icon(Icons.Rounded.KeyboardArrowUp, contentDescription = stringResource(R.string.codec_move_up, codec.mime))
             }
             IconButton(onClick = { onMove(1) }, enabled = canMoveDown && !locked) {
-                Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = "降低 ${codec.mime} 的优先级")
+                Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = stringResource(R.string.codec_move_down, codec.mime))
             }
             Spacer(Modifier.width(4.dp))
             Switch(checked = codec.enabled, onCheckedChange = onEnabledChange, enabled = !locked)

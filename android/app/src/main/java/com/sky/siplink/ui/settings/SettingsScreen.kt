@@ -88,7 +88,7 @@ fun SettingsScreen(
     val launcher = rememberCallLauncher()
 
     Column(Modifier.fillMaxSize()) {
-        TopAppBar(title = { Text("设置") }, actions = { ManagedLock() })
+        TopAppBar(title = { Text(stringResource(R.string.settings_title)) }, actions = { ManagedLock() })
         Column(
             Modifier
                 .fillMaxSize()
@@ -96,9 +96,9 @@ fun SettingsScreen(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            SectionCard(title = "账号") {
+            SectionCard(title = stringResource(R.string.settings_section_accounts)) {
                 NavRow(
-                    title = "SIP 账号",
+                    title = stringResource(R.string.settings_sip_accounts),
                     // Registered / all.
                     trailing = "${accounts.count { it.state == RegState.OK }}/${accounts.size}".takeIf { accounts.isNotEmpty() },
                     icon = Icons.Rounded.ManageAccounts,
@@ -106,83 +106,85 @@ fun SettingsScreen(
                 )
             }
 
-            SectionCard(title = "话务功能") {
+            SectionCard(title = stringResource(R.string.settings_section_call_features)) {
                 // Whether to be disturbed stays the user's own switch under a managed configuration.
                 Personal {
                     SwitchRow(
-                        title = "免打扰",
+                        title = stringResource(R.string.settings_dnd),
                         icon = Icons.Rounded.DoNotDisturbOn,
                         checked = settings.doNotDisturb,
                         onCheckedChange = { value -> launcher.doNotDisturb(value) },
                     )
                 }
                 SwitchRow(
-                    title = "视频通话",
+                    title = stringResource(R.string.settings_video_calls),
                     icon = Icons.Rounded.Videocam,
                     checked = settings.videoCalls,
                     onCheckedChange = { value -> engine.updateSettings { it.copy(videoCalls = value) } },
                 )
                 NavRow(
-                    title = "录音",
+                    title = stringResource(R.string.settings_recording),
                     trailing = recordings.size.toString().takeIf { recordings.isNotEmpty() },
                     icon = Icons.Rounded.Mic,
                     onClick = onOpenRecordingSettings,
                 )
-                NavRow(title = "对讲与自动接听", icon = Icons.Rounded.Campaign, onClick = onOpenAutoAnswer)
+                NavRow(title = stringResource(R.string.settings_auto_answer), icon = Icons.Rounded.Campaign, onClick = onOpenAutoAnswer)
                 NavRow(
-                    title = "LDAP 通讯录",
+                    title = stringResource(R.string.settings_ldap),
                     trailing = directories.size.toString().takeIf { directories.isNotEmpty() },
                     icon = Icons.Rounded.Dns,
                     onClick = onOpenLdap,
                 )
-                NavRow(title = "功能码", icon = Icons.Rounded.Dialpad, onClick = onOpenFeatureCodes)
-                NavRow(title = if (settings.videoCalls) "编码" else "音频编码", icon = Icons.Rounded.GraphicEq, onClick = onOpenCodecs)
-                NavRow(title = "高级设置", icon = Icons.Rounded.Tune, onClick = onOpenAdvanced)
+                NavRow(title = stringResource(R.string.settings_feature_codes), icon = Icons.Rounded.Dialpad, onClick = onOpenFeatureCodes)
+                NavRow(title = stringResource(if (settings.videoCalls) R.string.settings_codecs else R.string.settings_audio_codecs), icon = Icons.Rounded.GraphicEq, onClick = onOpenCodecs)
+                NavRow(title = stringResource(R.string.settings_advanced), icon = Icons.Rounded.Tune, onClick = onOpenAdvanced)
             }
 
-            SectionCard(title = "安全") {
+            SectionCard(title = stringResource(R.string.settings_section_security)) {
                 NavRow(
-                    title = "TLS 与 CA 证书",
+                    title = stringResource(R.string.settings_tls),
                     trailing = certificates.size.toString().takeIf { certificates.isNotEmpty() },
                     icon = Icons.Rounded.VerifiedUser,
                     onClick = onOpenTls,
                 )
             }
 
-            SectionCard(title = "电池策略") {
+            SectionCard(title = stringResource(R.string.settings_section_battery)) {
                 SwitchRow(
-                    title = "后台保持在线",
+                    title = stringResource(R.string.settings_keep_alive),
                     icon = Icons.Rounded.Sync,
                     checked = settings.keepAlive,
                     onCheckedChange = { value -> engine.updateSettings { it.copy(keepAlive = value) } },
                 )
                 AnimatedVisibility(settings.keepAlive) {
+                    val batteryFailed = stringResource(R.string.settings_battery_open_failed)
                     NavRow(
-                        title = "电池优化",
+                        title = stringResource(R.string.settings_battery_optimization),
                         icon = Icons.Rounded.BatterySaver,
                         onClick = {
                             val intent = Intent(SystemSettings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
                                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                             runCatching { context.startActivity(intent) }
-                                .onFailure { messenger("无法打开电池优化设置") }
+                                .onFailure { messenger(batteryFailed) }
                         },
                     )
                 }
                 // Before Android 14 the system has no switch for this: it is always allowed.
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                     val lockScreenCalls by rememberLockScreenCallAccess()
+                    val lockScreenFailed = stringResource(R.string.settings_lock_screen_open_failed)
                     NavRow(
-                        title = "锁屏显示来电",
-                        trailing = if (lockScreenCalls) "已允许" else "未允许",
+                        title = stringResource(R.string.settings_lock_screen_calls),
+                        trailing = stringResource(if (lockScreenCalls) R.string.settings_lock_screen_allowed else R.string.settings_lock_screen_not_allowed),
                         icon = Icons.Rounded.ScreenLockPortrait,
-                        onClick = { if (!context.openLockScreenCallSettings()) messenger("无法打开全屏通知设置") },
+                        onClick = { if (!context.openLockScreenCallSettings()) messenger(lockScreenFailed) },
                     )
                 }
             }
 
             // The look of the app stays the user's own under a managed configuration.
             Personal {
-                SectionCard(title = "外观") {
+                SectionCard(title = stringResource(R.string.settings_section_appearance)) {
                     NavRow(
                         title = stringResource(R.string.settings_language),
                         trailing = languageLabel(engine.language),
@@ -190,11 +192,15 @@ fun SettingsScreen(
                         onClick = onOpenLanguage,
                     )
                     Text(
-                        "主题",
+                        stringResource(R.string.settings_theme),
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(start = 16.dp, top = 10.dp),
                     )
-                    val themes = listOf(ThemeMode.SYSTEM to "跟随系统", ThemeMode.LIGHT to "浅色", ThemeMode.DARK to "深色")
+                    val themes = listOf(
+                        ThemeMode.SYSTEM to stringResource(R.string.settings_theme_system),
+                        ThemeMode.LIGHT to stringResource(R.string.settings_theme_light),
+                        ThemeMode.DARK to stringResource(R.string.settings_theme_dark),
+                    )
                     ChoiceRow(
                         options = themes,
                         selected = settings.themeMode,
@@ -202,11 +208,14 @@ fun SettingsScreen(
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     )
                     Text(
-                        "通话横幅位置",
+                        stringResource(R.string.settings_banner_position),
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(start = 16.dp, top = 10.dp),
                     )
-                    val positions = listOf(BannerPosition.TOP to "顶部", BannerPosition.BOTTOM to "底部")
+                    val positions = listOf(
+                        BannerPosition.TOP to stringResource(R.string.settings_banner_top),
+                        BannerPosition.BOTTOM to stringResource(R.string.settings_banner_bottom),
+                    )
                     ChoiceRow(
                         options = positions,
                         selected = settings.callBannerPosition,
@@ -215,7 +224,7 @@ fun SettingsScreen(
                     )
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                         SwitchRow(
-                            title = "动态配色",
+                            title = stringResource(R.string.settings_dynamic_color),
                             icon = Icons.Rounded.Palette,
                             checked = settings.dynamicColor,
                             onCheckedChange = { value -> engine.updateSettings { it.copy(dynamicColor = value) } },
@@ -227,15 +236,15 @@ fun SettingsScreen(
             SectionCard(title = null) {
                 // Like the profiles of a proxy client: scanned or typed in, then in force until it is deleted here.
                 NavRow(
-                    title = "远程配置",
+                    title = stringResource(R.string.settings_remote_config),
                     subtitle = if (remote.enrolled) remote.clientName.ifEmpty { remote.platformName.ifEmpty { remote.host } } else null,
                     icon = Icons.Rounded.CloudSync,
                     onClick = onOpenRemoteConfig,
                 )
                 NavRow(
-                    title = "关于",
+                    title = stringResource(R.string.settings_about),
                     // A newer version is worth a word here; how a check failed is only told on the page itself.
-                    trailing = if (UpdateRules.offered(update, BuildConfig.VERSION_NAME) != null) "有新版本" else BuildConfig.VERSION_NAME,
+                    trailing = if (UpdateRules.offered(update, BuildConfig.VERSION_NAME) != null) stringResource(R.string.settings_update_available) else BuildConfig.VERSION_NAME,
                     icon = Icons.Rounded.Info,
                     onClick = onOpenAbout,
                 )

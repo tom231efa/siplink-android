@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- TLS and CA certificates, media encryption. -->
+<resources>
+    <string name="tls_invalid_file">Not a valid X.509 certificate file (PEM / CRT / CER / DER)</string>
+    <string name="tls_save_failed">The certificate could not be saved: %1$s</string>
+    <string name="tls_read_failed">Cannot read the selected file</string>
+    <string name="tls_file_too_large">File too large</string>
+    <string name="tls_already_trusted">Certificate already exists</string>
+    <string name="tls_section_imported">Imported CA certificates</string>
+    <string name="tls_none">No certificates imported</string>
+    <string name="tls_import">Import CA certificate</string>
+    <string name="tls_section_verification">Server certificate verification</string>
+    <string name="tls_verify_certificate">Verify server certificate</string>
+    <string name="tls_verify_hostname">Verify hostname</string>
+    <string name="tls_verification_off_warning">Turning verification off exposes calls to eavesdropping</string>
+    <string name="tls_section_srtp">Media encryption (SRTP)</string>
+    <string name="tls_srtp_off">Off</string>
+    <string name="tls_srtp_preferred">Preferred</string>
+    <string name="tls_srtp_mandatory">Mandatory</string>
+    <string name="tls_remove_title">Remove certificate?</string>
+    <string name="tls_remove_text">Server certificates issued by “%1$s” will no longer be trusted, and TLS accounts that rely on this certificate will fail to register.</string>
+    <string name="tls_remove_confirm">Remove</string>
+    <string name="tls_issuer">Issuer: %1$s</string>
+    <string name="tls_expired">Expired on %1$s</string>
+    <string name="tls_valid_until_not_ca">Valid until %1$s · Not a CA certificate</string>
+    <string name="tls_valid_until">Valid until %1$s</string>
+    <string name="tls_remove">Remove certificate</string>
+    <plurals name="tls_imported">
+        <item quantity="one">%1$s certificate imported; re-registering accounts</item>
+        <item quantity="other">%1$s certificates imported; re-registering accounts</item>
+    </plurals>
+</resources>

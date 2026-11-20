@@ -1,5 +1,6 @@
 package com.sky.siplink.ui.settings
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
@@ -12,8 +13,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.sky.siplink.R
 import com.sky.siplink.core.logic.FeatureDial
 import com.sky.siplink.core.model.FeatureCodes
 import com.sky.siplink.engine
@@ -23,25 +26,25 @@ import com.sky.siplink.ui.components.SectionCard
 import com.sky.siplink.ui.components.SubScreen
 
 private class CodeField(
-    val label: String,
+    @StringRes val label: Int,
     val read: (FeatureCodes) -> String,
     val write: (FeatureCodes, String) -> FeatureCodes,
 )
 
 private val fields = listOf(
     // Dialled with the extension they act on behind them.
-    CodeField("对讲", { it.intercom }) { c, v -> c.copy(intercom = v) },
-    CodeField("监听", { it.listen }) { c, v -> c.copy(listen = v) },
-    CodeField("耳语", { it.whisper }) { c, v -> c.copy(whisper = v) },
-    CodeField("强插", { it.barge }) { c, v -> c.copy(barge = v) },
-    CodeField("强拆", { it.forceHangUp }) { c, v -> c.copy(forceHangUp = v) },
-    CodeField("指定代接", { it.pickup }) { c, v -> c.copy(pickup = v) },
+    CodeField(R.string.feature_intercom, { it.intercom }) { c, v -> c.copy(intercom = v) },
+    CodeField(R.string.feature_listen, { it.listen }) { c, v -> c.copy(listen = v) },
+    CodeField(R.string.feature_whisper, { it.whisper }) { c, v -> c.copy(whisper = v) },
+    CodeField(R.string.feature_barge, { it.barge }) { c, v -> c.copy(barge = v) },
+    CodeField(R.string.feature_force_hang_up, { it.forceHangUp }) { c, v -> c.copy(forceHangUp = v) },
+    CodeField(R.string.feature_codes_pickup, { it.pickup }) { c, v -> c.copy(pickup = v) },
     // Dialled as they are.
-    CodeField("同组代接", { it.groupPickup }) { c, v -> c.copy(groupPickup = v) },
-    CodeField("驻留", { it.park }) { c, v -> c.copy(park = v) },
-    CodeField("语音信箱", { it.voicemail }) { c, v -> c.copy(voicemail = v) },
-    CodeField("开启免打扰", { it.dndOn }) { c, v -> c.copy(dndOn = v) },
-    CodeField("关闭免打扰", { it.dndOff }) { c, v -> c.copy(dndOff = v) },
+    CodeField(R.string.feature_group_pickup, { it.groupPickup }) { c, v -> c.copy(groupPickup = v) },
+    CodeField(R.string.feature_park, { it.park }) { c, v -> c.copy(park = v) },
+    CodeField(R.string.feature_voicemail, { it.voicemail }) { c, v -> c.copy(voicemail = v) },
+    CodeField(R.string.feature_dnd_on, { it.dndOn }) { c, v -> c.copy(dndOn = v) },
+    CodeField(R.string.feature_dnd_off, { it.dndOff }) { c, v -> c.copy(dndOff = v) },
 )
 
 /** Dial codes of the PBX features; they must match the PBX dial plan. */
@@ -51,6 +54,7 @@ fun FeatureCodesScreen(onBack: () -> Unit) {
     val messenger = LocalMessenger.current
     // Edited locally: an invalid code is shown with its error but never stored.
     var codes by remember { mutableStateOf(engine.settings.current.features) }
+    val restored = stringResource(R.string.feature_codes_restored)
 
     fun change(next: FeatureCodes) {
         codes = next
@@ -58,14 +62,14 @@ fun FeatureCodesScreen(onBack: () -> Unit) {
     }
 
     SubScreen(
-        title = "功能码",
+        title = stringResource(R.string.settings_feature_codes),
         onBack = onBack,
         actions = {
             TextButton(onClick = {
                 codes = FeatureCodes()
                 engine.updateSettings { it.copy(features = FeatureCodes()) }
-                messenger("已恢复默认功能码")
-            }) { Text("恢复默认") }
+                messenger(restored)
+            }) { Text(stringResource(R.string.common_restore_defaults)) }
         },
     ) {
         SectionCard(title = null) {
@@ -78,8 +82,8 @@ fun FeatureCodesScreen(onBack: () -> Unit) {
                     FormField(
                         value = value,
                         onValueChange = { typed -> change(field.write(codes, typed.filterNot(Char::isWhitespace))) },
-                        label = field.label,
-                        error = "仅限 0-9 * #".takeIf { !FeatureDial.isValidCode(value) },
+                        label = stringResource(field.label),
+                        error = if (FeatureDial.isValidCode(value)) null else stringResource(R.string.feature_codes_invalid),
                         keyboardType = KeyboardType.Phone,
                     )
                 }

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- TLS and CA certificates, media encryption. -->
+<resources>
+    <string name="tls_invalid_file">无效的 X.509 证书文件（支持 PEM / CRT / CER / DER）</string>
+    <string name="tls_save_failed">证书保存失败：%1$s</string>
+    <string name="tls_read_failed">无法读取所选文件</string>
+    <string name="tls_file_too_large">文件过大</string>
+    <string name="tls_already_trusted">证书已存在</string>
+    <string name="tls_section_imported">已导入的 CA 证书</string>
+    <string name="tls_none">尚未导入证书</string>
+    <string name="tls_import">导入 CA 证书</string>
+    <string name="tls_section_verification">服务器证书校验</string>
+    <string name="tls_verify_certificate">校验服务器证书</string>
+    <string name="tls_verify_hostname">校验主机名</string>
+    <string name="tls_verification_off_warning">关闭校验存在被窃听风险</string>
+    <string name="tls_section_srtp">媒体加密（SRTP）</string>
+    <string name="tls_srtp_off">关闭</string>
+    <string name="tls_srtp_preferred">优先</string>
+    <string name="tls_srtp_mandatory">强制</string>
+    <string name="tls_remove_title">移除证书？</string>
+    <string name="tls_remove_text">将不再信任“%1$s”签发的服务器证书，依赖该证书的 TLS 账号将注册失败。</string>
+    <string name="tls_remove_confirm">确认移除</string>
+    <string name="tls_issuer">签发者：%1$s</string>
+    <string name="tls_expired">已于 %1$s 过期</string>
+    <string name="tls_valid_until_not_ca">有效期至 %1$s · 非 CA 证书</string>
+    <string name="tls_valid_until">有效期至 %1$s</string>
+    <string name="tls_remove">移除证书</string>
+    <plurals name="tls_imported">
+        <item quantity="other">已导入 %1$s 个证书，正在重新注册账号</item>
+    </plurals>
+</resources>

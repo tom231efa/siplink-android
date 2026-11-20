@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import com.sky.siplink.R
@@ -38,7 +39,7 @@ import com.sky.siplink.ui.components.SubScreen
 fun AboutScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val messenger = LocalMessenger.current
-    SubScreen(title = "关于", onBack = onBack) {
+    SubScreen(title = stringResource(R.string.settings_about), onBack = onBack) {
         Column(
             Modifier
                 .fillMaxWidth()
@@ -78,18 +79,19 @@ fun AboutScreen(onBack: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            listOf("SipLink：GNU AGPL-3.0", "SIP 协议栈：Belledonne Communications Linphone SDK，GNU AGPLv3").forEach {
+            listOf(stringResource(R.string.about_license_app), stringResource(R.string.about_license_sdk)).forEach {
                 Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+            val browserFailed = stringResource(R.string.about_browser_failed)
             IconButton(
                 onClick = {
                     runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, UpdateRules.REPOSITORY_PAGE.toUri())) }
-                        .onFailure { messenger("无法打开浏览器") }
+                        .onFailure { messenger(browserFailed) }
                 },
             ) {
                 Icon(
                     painterResource(R.drawable.ic_github),
-                    contentDescription = "GitHub 仓库",
+                    contentDescription = stringResource(R.string.about_repository),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(24.dp),
                 )

@@ -13,8 +13,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sky.siplink.R
 import com.sky.siplink.core.logic.AutoAnswerRules
 import com.sky.siplink.engine
 import com.sky.siplink.ui.components.ChoiceRow
@@ -28,25 +31,25 @@ fun AutoAnswerScreen(onBack: () -> Unit) {
     val engine = LocalContext.current.engine
     val settings by engine.settings.settings.collectAsStateWithLifecycle()
 
-    SubScreen(title = "对讲与自动接听", onBack = onBack) {
-        SectionCard(title = "对讲") {
+    SubScreen(title = stringResource(R.string.settings_auto_answer), onBack = onBack) {
+        SectionCard(title = stringResource(R.string.auto_answer_section_intercom)) {
             SwitchRow(
-                title = "自动接听对讲呼叫",
+                title = stringResource(R.string.auto_answer_intercom),
                 icon = Icons.Rounded.Campaign,
                 checked = settings.intercomAutoAnswer,
                 onCheckedChange = { value -> engine.updateSettings { it.copy(intercomAutoAnswer = value) } },
             )
             SwitchRow(
-                title = "对讲使用扬声器",
+                title = stringResource(R.string.auto_answer_intercom_speaker),
                 icon = Icons.AutoMirrored.Rounded.VolumeUp,
                 checked = settings.intercomSpeaker,
                 onCheckedChange = { value -> engine.updateSettings { it.copy(intercomSpeaker = value) } },
             )
         }
 
-        SectionCard(title = "常规呼叫") {
+        SectionCard(title = stringResource(R.string.auto_answer_section_regular)) {
             SwitchRow(
-                title = "自动接听",
+                title = stringResource(R.string.auto_answer_regular),
                 icon = Icons.Rounded.PhoneInTalk,
                 checked = settings.autoAnswer,
                 onCheckedChange = { value -> engine.updateSettings { it.copy(autoAnswer = value) } },
@@ -54,7 +57,7 @@ fun AutoAnswerScreen(onBack: () -> Unit) {
             AnimatedVisibility(settings.autoAnswer) {
                 Column {
                     Text(
-                        "自动接听时间",
+                        stringResource(R.string.auto_answer_delay),
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(start = 16.dp, top = 10.dp),
                     )
@@ -70,4 +73,6 @@ fun AutoAnswerScreen(onBack: () -> Unit) {
     }
 }
 
-private fun secondsLabel(seconds: Int): String = if (seconds == 0) "立即" else "$seconds 秒"
+@Composable
+private fun secondsLabel(seconds: Int): String =
+    if (seconds == 0) stringResource(R.string.auto_answer_now) else pluralStringResource(R.plurals.auto_answer_seconds, seconds, seconds.toString())

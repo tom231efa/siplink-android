@@ -43,4 +43,41 @@
     <string name="remote_address_scheme">地址须以 https:// 开头</string>
     <string name="remote_address_not_enrollment">非远程配置地址</string>
     <string name="remote_address_pin">地址中的证书指纹无效</string>
+
+    <!-- The remote configuration page -->
+    <string name="remote_scan_not_ours">非远程配置二维码</string>
+    <string name="remote_scan_no_camera">无法打开相机</string>
+    <string name="remote_camera_denied">未获得相机权限，请改为输入地址</string>
+    <string name="remote_load_title">载入远程配置？</string>
+    <string name="remote_load_text">来源：%1$s。载入后，本机的账号、通讯录、证书、编码和快捷键等配置将被远程配置替换，且不可在本机修改。通话记录、免打扰和外观设置不受影响。</string>
+    <string name="remote_load">载入</string>
+    <string name="remote_delete_title">删除远程配置？</string>
+    <string name="remote_delete_text">将通知平台解除绑定，并删除远程下发的账号、通讯录、证书、快捷键及自建快捷键。通话记录和外观设置将保留。</string>
+    <string name="remote_scan">扫描二维码</string>
+    <string name="remote_enter_address">输入地址</string>
+    <string name="remote_enter_address_title">输入地址</string>
+    <string name="remote_loading">正在载入…</string>
+    <string name="remote_section_platform">平台</string>
+    <string name="remote_platform">平台</string>
+    <string name="remote_client">客户端</string>
+    <string name="remote_region">区域</string>
+    <string name="remote_section_sync">同步</string>
+    <string name="remote_last_sync">上次同步</string>
+    <string name="remote_never_synced">尚未成功</string>
+    <string name="remote_generated_at">配置更新于</string>
+    <string name="remote_sync_result">同步结果</string>
+    <string name="remote_syncing">正在同步…</string>
+    <string name="remote_sync_now">立即同步</string>
+    <string name="remote_details">详细信息</string>
+    <string name="remote_address">地址</string>
+    <string name="remote_version">配置版本</string>
+    <string name="remote_certificate">平台证书</string>
+    <string name="remote_certificate_pinned">扫码时已信任平台 CA</string>
+    <string name="remote_certificate_system">由系统 CA 校验</string>
+    <string name="remote_delete">删除远程配置</string>
+    <string name="remote_address_label">配置地址</string>
+    <string name="remote_next">下一步</string>
+    <plurals name="remote_sync_interval">
+        <item quantity="other">每 %1$s 分钟自动同步</item>
+    </plurals>
 </resources>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Settings: the language of the app, updates, CA certificates. -->
-<resources>
+<!-- Settings: the main list, the language of the app, updates, intercom and auto answer, recording, feature codes. -->
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="settings_language">Language</string>
     <string name="settings_language_system">System default</string>
 
@@ -15,7 +15,64 @@
     <string name="update_latest">Up to date</string>
     <string name="update_tap_to_check">Tap to check for updates</string>
 
-    <!-- CA certificates -->
-    <string name="tls_invalid_file">Not a valid X.509 certificate file (PEM / CRT / CER / DER)</string>
-    <string name="tls_save_failed">The certificate could not be saved: %1$s</string>
+    <!-- The main list -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_section_accounts">Accounts</string>
+    <string name="settings_sip_accounts">SIP accounts</string>
+    <string name="settings_section_call_features">Call features</string>
+    <string name="settings_dnd">Do not disturb</string>
+    <string name="settings_video_calls">Video calls</string>
+    <string name="settings_recording">Recording</string>
+    <string name="settings_auto_answer">Intercom and auto answer</string>
+    <string name="settings_ldap">LDAP directories</string>
+    <string name="settings_feature_codes">Feature codes</string>
+    <string name="settings_codecs">Codecs</string>
+    <string name="settings_audio_codecs">Audio codecs</string>
+    <string name="settings_advanced">Advanced settings</string>
+    <string name="settings_section_security">Security</string>
+    <string name="settings_tls">TLS and CA certificates</string>
+    <string name="settings_section_battery">Battery</string>
+    <string name="settings_keep_alive">Stay online in background</string>
+    <string name="settings_battery_optimization">Battery optimization</string>
+    <string name="settings_battery_open_failed">Cannot open the battery optimization settings</string>
+    <string name="settings_lock_screen_calls">Show calls on lock screen</string>
+    <string name="settings_lock_screen_allowed">Allowed</string>
+    <string name="settings_lock_screen_not_allowed">Not allowed</string>
+    <string name="settings_lock_screen_open_failed">Cannot open the full-screen notification settings</string>
+    <string name="settings_section_appearance">Appearance</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_theme_system">Follow system</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_banner_position">Call banner position</string>
+    <string name="settings_banner_top">Top</string>
+    <string name="settings_banner_bottom">Bottom</string>
+    <string name="settings_dynamic_color">Dynamic color</string>
+    <string name="settings_remote_config">Remote configuration</string>
+    <string name="settings_about">About</string>
+    <string name="settings_update_available">Update available</string>
+
+    <!-- Intercom and auto answer -->
+    <string name="auto_answer_section_intercom">Intercom</string>
+    <string name="auto_answer_intercom">Auto answer intercom calls</string>
+    <string name="auto_answer_intercom_speaker">Use speaker for intercom</string>
+    <string name="auto_answer_section_regular">Regular calls</string>
+    <string name="auto_answer_regular">Auto answer</string>
+    <string name="auto_answer_delay">Auto answer delay</string>
+    <string name="auto_answer_now">Immediately</string>
+
+    <!-- Recording -->
+    <string name="settings_recording_calls">Call recording</string>
+    <string name="settings_recording_by_default">Record by default</string>
+    <string name="settings_recording_kept">Recordings to keep</string>
+    <string name="settings_recording_files">Recordings</string>
+
+    <!-- Feature codes -->
+    <string name="feature_codes_pickup">Directed pickup</string>
+    <string name="feature_codes_restored">Feature codes restored to defaults</string>
+    <string name="feature_codes_invalid" tools:ignore="TypographyDashes">Only 0-9 * #</string>
+    <plurals name="auto_answer_seconds">
+        <item quantity="one">%1$s second</item>
+        <item quantity="other">%1$s seconds</item>
+    </plurals>
 </resources>

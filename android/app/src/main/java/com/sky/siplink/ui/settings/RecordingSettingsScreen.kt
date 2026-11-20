@@ -12,8 +12,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sky.siplink.R
 import com.sky.siplink.core.logic.RecordingRules
 import com.sky.siplink.engine
 import com.sky.siplink.ui.components.ChoiceRow
@@ -30,17 +32,17 @@ fun RecordingSettingsScreen(onBack: () -> Unit, onOpenRecordings: () -> Unit) {
     val settings by engine.settings.settings.collectAsStateWithLifecycle()
     val recordings by engine.recordings.recordings.collectAsStateWithLifecycle()
 
-    SubScreen(title = "录音", onBack = onBack) {
+    SubScreen(title = stringResource(R.string.settings_recording), onBack = onBack) {
         SectionCard(title = null) {
             SwitchRow(
-                title = "通话录音",
+                title = stringResource(R.string.settings_recording_calls),
                 icon = Icons.Rounded.Mic,
                 checked = settings.callRecording,
                 onCheckedChange = { value -> engine.updateSettings { it.copy(callRecording = value) } },
             )
             AnimatedVisibility(settings.callRecording) {
                 SwitchRow(
-                    title = "默认录音",
+                    title = stringResource(R.string.settings_recording_by_default),
                     icon = Icons.Rounded.FiberManualRecord,
                     checked = settings.recordByDefault,
                     onCheckedChange = { value -> engine.updateSettings { it.copy(recordByDefault = value) } },
@@ -49,7 +51,7 @@ fun RecordingSettingsScreen(onBack: () -> Unit, onOpenRecordings: () -> Unit) {
             // How many recordings are kept is the user's own, like the recordings themselves.
             Personal {
                 Text(
-                    "保留条数",
+                    stringResource(R.string.settings_recording_kept),
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(start = 16.dp, top = 10.dp),
                 )
@@ -61,7 +63,7 @@ fun RecordingSettingsScreen(onBack: () -> Unit, onOpenRecordings: () -> Unit) {
                 )
             }
             NavRow(
-                title = "录音文件",
+                title = stringResource(R.string.settings_recording_files),
                 trailing = recordings.size.toString().takeIf { recordings.isNotEmpty() },
                 icon = Icons.Rounded.LibraryMusic,
                 onClick = onOpenRecordings,

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Codecs: audio and video codecs, resolution and frame rate. -->
+<resources>
+    <string name="codec_restored">Codec settings restored to defaults</string>
+    <string name="codec_keep_audio">Keep at least one audio codec</string>
+    <string name="codec_keep_video">Keep at least one video codec</string>
+    <string name="codec_audio">Audio</string>
+    <string name="codec_video">Video</string>
+    <string name="codec_resolution">Resolution</string>
+    <string name="codec_frame_rate">Frame rate (fps)</string>
+    <string name="codec_frame_rate_auto">Auto</string>
+    <string name="codec_rate">%1$s Hz</string>
+    <string name="codec_move_up">Raise the priority of %1$s</string>
+    <string name="codec_move_down">Lower the priority of %1$s</string>
+    <plurals name="codec_rate_channels">
+        <item quantity="one">%1$s Hz · %2$s channel</item>
+        <item quantity="other">%1$s Hz · %2$s channels</item>
+    </plurals>
+</resources>

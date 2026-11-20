@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Settings: the language of the app, updates, CA certificates. -->
-<resources>
+<!-- Settings: the main list, the language of the app, updates, intercom and auto answer, recording, feature codes. -->
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="settings_language">语言</string>
     <string name="settings_language_system">跟随系统</string>
 
@@ -15,7 +15,63 @@
     <string name="update_latest">已是最新版本</string>
     <string name="update_tap_to_check">点按检查更新</string>
 
-    <!-- CA certificates -->
-    <string name="tls_invalid_file">无效的 X.509 证书文件（支持 PEM / CRT / CER / DER）</string>
-    <string name="tls_save_failed">证书保存失败：%1$s</string>
+    <!-- The main list -->
+    <string name="settings_title">设置</string>
+    <string name="settings_section_accounts">账号</string>
+    <string name="settings_sip_accounts">SIP 账号</string>
+    <string name="settings_section_call_features">话务功能</string>
+    <string name="settings_dnd">免打扰</string>
+    <string name="settings_video_calls">视频通话</string>
+    <string name="settings_recording">录音</string>
+    <string name="settings_auto_answer">对讲与自动接听</string>
+    <string name="settings_ldap">LDAP 通讯录</string>
+    <string name="settings_feature_codes">功能码</string>
+    <string name="settings_codecs">编码</string>
+    <string name="settings_audio_codecs">音频编码</string>
+    <string name="settings_advanced">高级设置</string>
+    <string name="settings_section_security">安全</string>
+    <string name="settings_tls">TLS 与 CA 证书</string>
+    <string name="settings_section_battery">电池策略</string>
+    <string name="settings_keep_alive">后台保持在线</string>
+    <string name="settings_battery_optimization">电池优化</string>
+    <string name="settings_battery_open_failed">无法打开电池优化设置</string>
+    <string name="settings_lock_screen_calls">锁屏显示来电</string>
+    <string name="settings_lock_screen_allowed">已允许</string>
+    <string name="settings_lock_screen_not_allowed">未允许</string>
+    <string name="settings_lock_screen_open_failed">无法打开全屏通知设置</string>
+    <string name="settings_section_appearance">外观</string>
+    <string name="settings_theme">主题</string>
+    <string name="settings_theme_system">跟随系统</string>
+    <string name="settings_theme_light">浅色</string>
+    <string name="settings_theme_dark">深色</string>
+    <string name="settings_banner_position">通话横幅位置</string>
+    <string name="settings_banner_top">顶部</string>
+    <string name="settings_banner_bottom">底部</string>
+    <string name="settings_dynamic_color">动态配色</string>
+    <string name="settings_remote_config">远程配置</string>
+    <string name="settings_about">关于</string>
+    <string name="settings_update_available">有新版本</string>
+
+    <!-- Intercom and auto answer -->
+    <string name="auto_answer_section_intercom">对讲</string>
+    <string name="auto_answer_intercom">自动接听对讲呼叫</string>
+    <string name="auto_answer_intercom_speaker">对讲使用扬声器</string>
+    <string name="auto_answer_section_regular">常规呼叫</string>
+    <string name="auto_answer_regular">自动接听</string>
+    <string name="auto_answer_delay">自动接听时间</string>
+    <string name="auto_answer_now">立即</string>
+
+    <!-- Recording -->
+    <string name="settings_recording_calls">通话录音</string>
+    <string name="settings_recording_by_default">默认录音</string>
+    <string name="settings_recording_kept">保留条数</string>
+    <string name="settings_recording_files">录音文件</string>
+
+    <!-- Feature codes -->
+    <string name="feature_codes_pickup">指定代接</string>
+    <string name="feature_codes_restored">已恢复默认功能码</string>
+    <string name="feature_codes_invalid" tools:ignore="TypographyDashes">仅限 0-9 * #</string>
+    <plurals name="auto_answer_seconds">
+        <item quantity="other">%1$s 秒</item>
+    </plurals>
 </resources>

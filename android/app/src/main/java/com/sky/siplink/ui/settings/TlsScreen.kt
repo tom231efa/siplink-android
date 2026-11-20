@@ -40,9 +40,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sky.siplink.R
 import com.sky.siplink.core.TlsManager
 import com.sky.siplink.core.logic.ManagedConfig
 import com.sky.siplink.core.model.CertInfo
@@ -72,6 +75,7 @@ private val dateFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 @Composable
 fun TlsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val engine = context.engine
     val settings by engine.settings.settings.collectAsStateWithLifecycle()
     val certificates by engine.tls.certificates.collectAsStateWithLifecycle()
@@ -100,27 +104,27 @@ fun TlsScreen(onBack: () -> Unit) {
                 }.getOrNull()
             }
             val message = when {
-                data == null -> "无法读取所选文件"
-                data.size > MAX_CERT_FILE_BYTES -> "文件过大"
+                data == null -> resources.getString(R.string.tls_read_failed)
+                data.size > MAX_CERT_FILE_BYTES -> resources.getString(R.string.tls_file_too_large)
                 else -> when (val result = engine.tls.import(data)) {
                     is TlsManager.ImportResult.Added -> {
                         restartPrompt = engine.directory.tlsChangeNeedsRestart
-                        "已导入 ${result.count} 个证书，正在重新注册账号"
+                        resources.getQuantityString(R.plurals.tls_imported, result.count, result.count.toString())
                     }
-                    TlsManager.ImportResult.AlreadyTrusted -> "证书已存在"
-                    is TlsManager.ImportResult.Invalid -> context.render(result.reason)
-                    TlsManager.ImportResult.Managed -> context.render(ManagedConfig.NOTICE)
+                    TlsManager.ImportResult.AlreadyTrusted -> resources.getString(R.string.tls_already_trusted)
+                    is TlsManager.ImportResult.Invalid -> resources.render(result.reason)
+                    TlsManager.ImportResult.Managed -> resources.render(ManagedConfig.NOTICE)
                 }
             }
             messenger(message)
         }
     }
 
-    SubScreen(title = "TLS 与 CA 证书", onBack = onBack) {
-        SectionCard(title = "已导入的 CA 证书") {
+    SubScreen(title = stringResource(R.string.settings_tls), onBack = onBack) {
+        SectionCard(title = stringResource(R.string.tls_section_imported)) {
             if (certificates.isEmpty()) {
                 Text(
-                    "尚未导入证书",
+                    stringResource(R.string.tls_none),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
@@ -138,20 +142,20 @@ fun TlsScreen(onBack: () -> Unit) {
                 ) {
                     Icon(Icons.Rounded.FileOpen, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
-                    Text("导入 CA 证书")
+                    Text(stringResource(R.string.tls_import))
                 }
             }
         }
 
-        SectionCard(title = "服务器证书校验") {
+        SectionCard(title = stringResource(R.string.tls_section_verification)) {
             SwitchRow(
-                title = "校验服务器证书",
+                title = stringResource(R.string.tls_verify_certificate),
                 icon = Icons.Rounded.VerifiedUser,
                 checked = settings.verifyTlsCertificate,
                 onCheckedChange = { value -> engine.updateSettings { it.copy(verifyTlsCertificate = value) } },
             )
             SwitchRow(
-                title = "校验主机名",
+                title = stringResource(R.string.tls_verify_hostname),
                 icon = Icons.Rounded.VerifiedUser,
                 checked = settings.verifyTlsHostname,
                 enabled = settings.verifyTlsCertificate,
@@ -162,7 +166,7 @@ fun TlsScreen(onBack: () -> Unit) {
                     Icon(Icons.Rounded.GppMaybe, contentDescription = null, tint = Brand.Amber)
                     Spacer(Modifier.width(12.dp))
                     Text(
-                        "关闭校验存在被窃听风险",
+                        stringResource(R.string.tls_verification_off_warning),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -170,11 +174,11 @@ fun TlsScreen(onBack: () -> Unit) {
             }
         }
 
-        SectionCard(title = "媒体加密（SRTP）") {
+        SectionCard(title = stringResource(R.string.tls_section_srtp)) {
             val options = listOf(
-                MediaSecurity.NONE to "关闭",
-                MediaSecurity.SRTP_OPTIONAL to "优先",
-                MediaSecurity.SRTP_MANDATORY to "强制",
+                MediaSecurity.NONE to stringResource(R.string.tls_srtp_off),
+                MediaSecurity.SRTP_OPTIONAL to stringResource(R.string.tls_srtp_preferred),
+                MediaSecurity.SRTP_MANDATORY to stringResource(R.string.tls_srtp_mandatory),
             )
             ChoiceRow(
                 options = options,
@@ -189,16 +193,16 @@ fun TlsScreen(onBack: () -> Unit) {
     pendingRemoval?.let { certificate ->
         AlertDialog(
             onDismissRequest = { pendingRemoval = null },
-            title = { Text("移除证书？") },
-            text = { Text("将不再信任“${certificate.subject}”签发的服务器证书，依赖该证书的 TLS 账号将注册失败。") },
+            title = { Text(stringResource(R.string.tls_remove_title)) },
+            text = { Text(stringResource(R.string.tls_remove_text, certificate.subject)) },
             confirmButton = {
                 TextButton(onClick = {
                     engine.tls.remove(certificate.fingerprint)
                     pendingRemoval = null
                     restartPrompt = engine.directory.tlsChangeNeedsRestart
-                }) { Text("确认移除", color = MaterialTheme.colorScheme.error) }
+                }) { Text(stringResource(R.string.tls_remove_confirm), color = MaterialTheme.colorScheme.error) }
             },
-            dismissButton = { TextButton(onClick = { pendingRemoval = null }) { Text("取消") } },
+            dismissButton = { TextButton(onClick = { pendingRemoval = null }) { Text(stringResource(R.string.common_cancel)) } },
         )
     }
 
@@ -228,16 +232,16 @@ private fun CertificateRow(certificate: CertInfo, onRemove: (() -> Unit)?) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             FadingText(certificate.subject, style = MaterialTheme.typography.titleMedium)
             FadingText(
-                "签发者：${certificate.issuer}",
+                stringResource(R.string.tls_issuer, certificate.issuer),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             val expiry = Instant.ofEpochMilli(certificate.notAfterMs).atZone(zone).format(dateFormat)
             Text(
                 when {
-                    certificate.expired -> "已于 $expiry 过期"
-                    !certificate.isCa -> "有效期至 $expiry · 非 CA 证书"
-                    else -> "有效期至 $expiry"
+                    certificate.expired -> stringResource(R.string.tls_expired, expiry)
+                    !certificate.isCa -> stringResource(R.string.tls_valid_until_not_ca, expiry)
+                    else -> stringResource(R.string.tls_valid_until, expiry)
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = if (certificate.expired) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -251,7 +255,7 @@ private fun CertificateRow(certificate: CertInfo, onRemove: (() -> Unit)?) {
         }
         if (onRemove != null) {
             IconButton(onClick = onRemove) {
-                Icon(Icons.Rounded.Delete, contentDescription = "移除证书")
+                Icon(Icons.Rounded.Delete, contentDescription = stringResource(R.string.tls_remove))
             }
         }
     }

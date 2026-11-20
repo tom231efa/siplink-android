@@ -33,12 +33,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.sky.siplink.R
 import com.sky.siplink.core.logic.QrDecoder
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.awaitCancellation
@@ -57,7 +59,8 @@ fun QrScanner(accepts: (String) -> Boolean, onFound: (String) -> Unit, onClose: 
         val context = LocalContext.current
         val lifecycleOwner = LocalLifecycleOwner.current
         val preview = remember { PreviewView(context) }
-        var refused by remember { mutableStateOf<String?>(null) }
+        var refused by remember { mutableStateOf(false) }
+        val noCamera by rememberUpdatedState(stringResource(R.string.remote_scan_no_camera))
         val found by rememberUpdatedState(onFound)
         val failed by rememberUpdatedState(onFailed)
         val takes by rememberUpdatedState(accepts)
@@ -74,7 +77,7 @@ fun QrScanner(accepts: (String) -> Boolean, onFound: (String) -> Unit, onClose: 
                 throw e
             } catch (e: Exception) {
                 analyzer.shutdown()
-                failed(NO_CAMERA)
+                failed(noCamera)
                 return@LaunchedEffect
             }
             val analysis = ImageAnalysis.Builder().setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST).build()
@@ -87,7 +90,7 @@ fun QrScanner(accepts: (String) -> Boolean, onFound: (String) -> Unit, onClose: 
                             done = true
                             found(text)
                         }
-                        else -> refused = NOT_OURS
+                        else -> refused = true
                     }
                 }
             }
@@ -102,9 +105,9 @@ fun QrScanner(accepts: (String) -> Boolean, onFound: (String) -> Unit, onClose: 
                 throw e
             } catch (e: IllegalArgumentException) {
                 // No back camera.
-                failed(NO_CAMERA)
+                failed(noCamera)
             } catch (e: IllegalStateException) {
-                failed(NO_CAMERA)
+                failed(noCamera)
             } finally {
                 provider.unbindAll()
                 analyzer.shutdown()
@@ -129,11 +132,11 @@ fun QrScanner(accepts: (String) -> Boolean, onFound: (String) -> Unit, onClose: 
                     .statusBarsPadding()
                     .padding(8.dp),
             ) {
-                Icon(Icons.Rounded.Close, contentDescription = "关闭", tint = Color.White)
+                Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.common_close), tint = Color.White)
             }
-            refused?.let { message ->
+            if (refused) {
                 Text(
-                    message,
+                    stringResource(R.string.remote_scan_not_ours),
                     color = Color.White,
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier
@@ -153,6 +156,3 @@ private fun decode(image: ImageProxy): String? {
     val bytes = ByteArray(buffer.remaining()).also { buffer.get(it) }
     return QrDecoder.decode(bytes, image.width, image.height, plane.rowStride)
 }
-
-private const val NOT_OURS = "非远程配置二维码"
-private const val NO_CAMERA = "无法打开相机"

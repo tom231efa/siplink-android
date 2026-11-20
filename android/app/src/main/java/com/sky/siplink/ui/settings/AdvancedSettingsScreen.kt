@@ -19,9 +19,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sky.siplink.R
 import com.sky.siplink.core.logic.FeatureDial
 import com.sky.siplink.core.logic.IncomingPolicy
 import com.sky.siplink.core.logic.MediaAdapt
@@ -62,19 +64,19 @@ fun AdvancedSettingsScreen(onBack: () -> Unit) {
     var userAgent by remember(settings.userAgent) { mutableStateOf(settings.userAgent) }
     var stunServer by remember(settings.stunServer) { mutableStateOf(settings.stunServer) }
 
-    SubScreen(title = "高级设置", onBack = onBack) {
-        SectionCard(title = "来电") {
+    SubScreen(title = stringResource(R.string.advanced_title), onBack = onBack) {
+        SectionCard(title = stringResource(R.string.advanced_section_incoming)) {
             Text(
-                "免打扰方式",
+                stringResource(R.string.advanced_dnd_mode),
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(start = 16.dp, top = 10.dp),
             )
             ChoiceRow(
-                options = listOf(DndMode.SOFTWARE to "软件", DndMode.SERVER to "服务器"),
+                options = listOf(DndMode.SOFTWARE to stringResource(R.string.advanced_dnd_software), DndMode.SERVER to stringResource(R.string.advanced_dnd_server)),
                 selected = settings.dndMode,
                 onSelect = { mode ->
                     if (mode == DndMode.SERVER && !serverDnd) {
-                        messenger(context.render(FeatureDial.missingCode(Phrase.plain("开启免打扰 / 关闭免打扰"))))
+                        messenger(context.render(FeatureDial.missingCode(Phrase.of(R.string.advanced_dnd_codes, Phrase.of(R.string.feature_dnd_on), Phrase.of(R.string.feature_dnd_off)))))
                     } else {
                         // What the other side was last told says nothing about this one: start switched off.
                         engine.updateSettings { it.copy(dndMode = mode, doNotDisturb = false) }
@@ -84,19 +86,19 @@ fun AdvancedSettingsScreen(onBack: () -> Unit) {
                 dimmed = { it == DndMode.SERVER && !serverDnd },
             )
             SwitchRow(
-                title = "呼叫等待",
+                title = stringResource(R.string.advanced_call_waiting),
                 icon = Icons.Rounded.PhonePaused,
                 checked = settings.callWaiting,
                 onCheckedChange = { value -> engine.updateSettings { it.copy(callWaiting = value) } },
             )
             SwitchRow(
-                title = "拒接匿名来电",
+                title = stringResource(R.string.advanced_reject_anonymous),
                 icon = Icons.Rounded.Block,
                 checked = settings.rejectAnonymous,
                 onCheckedChange = { value -> engine.updateSettings { it.copy(rejectAnonymous = value) } },
             )
             Text(
-                "DTMF 方式",
+                stringResource(R.string.advanced_dtmf_mode),
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(start = 16.dp, top = 10.dp),
             )
@@ -108,7 +110,7 @@ fun AdvancedSettingsScreen(onBack: () -> Unit) {
             )
         }
 
-        SectionCard(title = "呼叫前转") {
+        SectionCard(title = stringResource(R.string.advanced_section_forwarding)) {
             Column(
                 Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -116,19 +118,19 @@ fun AdvancedSettingsScreen(onBack: () -> Unit) {
                 FormField(
                     value = settings.forwardAlways,
                     onValueChange = { value -> engine.updateSettings { it.copy(forwardAlways = value.trim()) } },
-                    label = "无条件前转",
+                    label = stringResource(R.string.advanced_forward_always),
                     keyboardType = KeyboardType.Email,
                 )
                 FormField(
                     value = settings.forwardBusy,
                     onValueChange = { value -> engine.updateSettings { it.copy(forwardBusy = value.trim()) } },
-                    label = "遇忙前转",
+                    label = stringResource(R.string.advanced_forward_busy),
                     keyboardType = KeyboardType.Email,
                 )
                 FormField(
                     value = settings.forwardNoAnswer,
                     onValueChange = { value -> engine.updateSettings { it.copy(forwardNoAnswer = value.trim()) } },
-                    label = "无应答前转",
+                    label = stringResource(R.string.advanced_forward_no_answer),
                     keyboardType = KeyboardType.Email,
                 )
                 FormField(
@@ -140,10 +142,10 @@ fun AdvancedSettingsScreen(onBack: () -> Unit) {
                             engine.updateSettings { it.copy(forwardNoAnswerSeconds = parsed) }
                         }
                     },
-                    label = "无应答等待时间（秒）",
+                    label = stringResource(R.string.advanced_no_answer_seconds),
                     error = when {
-                        seconds.isEmpty() -> "必填"
-                        seconds.toIntOrNull() !in range -> "应为 ${range.first}–${range.last}"
+                        seconds.isEmpty() -> stringResource(R.string.form_required)
+                        seconds.toIntOrNull() !in range -> stringResource(R.string.advanced_range, range.first.toString(), range.last.toString())
                         else -> null
                     },
                     keyboardType = KeyboardType.Number,
@@ -151,7 +153,7 @@ fun AdvancedSettingsScreen(onBack: () -> Unit) {
             }
         }
 
-        SectionCard(title = "会议室") {
+        SectionCard(title = stringResource(R.string.advanced_section_room)) {
             Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
                 FormField(
                     value = roomLimit,
@@ -160,10 +162,10 @@ fun AdvancedSettingsScreen(onBack: () -> Unit) {
                         val parsed = roomLimit.toIntOrNull()
                         if (parsed != null && parsed in roomRange) engine.updateSettings { it.copy(roomLimit = parsed) }
                     },
-                    label = "会议室人数上限",
+                    label = stringResource(R.string.advanced_room_limit),
                     error = when {
-                        roomLimit.isEmpty() -> "必填"
-                        roomLimit.toIntOrNull() !in roomRange -> "应为 ${roomRange.first}–${roomRange.last}"
+                        roomLimit.isEmpty() -> stringResource(R.string.form_required)
+                        roomLimit.toIntOrNull() !in roomRange -> stringResource(R.string.advanced_range, roomRange.first.toString(), roomRange.last.toString())
                         else -> null
                     },
                     keyboardType = KeyboardType.Number,
@@ -171,27 +173,27 @@ fun AdvancedSettingsScreen(onBack: () -> Unit) {
             }
         }
 
-        SectionCard(title = "媒体与网络") {
+        SectionCard(title = stringResource(R.string.advanced_section_media)) {
             SwitchRow(
-                title = "自适应速率控制",
+                title = stringResource(R.string.advanced_rate_control),
                 icon = Icons.Rounded.Speed,
                 checked = settings.adaptiveRateControl,
                 onCheckedChange = { value -> engine.updateSettings { it.copy(adaptiveRateControl = value) } },
             )
             SwitchRow(
-                title = "回声消除",
+                title = stringResource(R.string.advanced_echo_cancellation),
                 icon = Icons.Rounded.Hearing,
                 checked = settings.echoCancellation,
                 onCheckedChange = { value -> engine.updateSettings { it.copy(echoCancellation = value) } },
             )
             SwitchRow(
-                title = "允许 IPv6",
+                title = stringResource(R.string.advanced_ipv6),
                 icon = Icons.Rounded.Lan,
                 checked = settings.ipv6,
                 onCheckedChange = { value -> engine.updateSettings { it.copy(ipv6 = value) } },
             )
             SwitchRow(
-                title = "自动适应网络",
+                title = stringResource(R.string.advanced_auto_network),
                 icon = Icons.Rounded.NetworkCheck,
                 checked = settings.autoNetwork,
                 onCheckedChange = { value -> engine.updateSettings { it.copy(autoNetwork = value) } },
@@ -204,15 +206,15 @@ fun AdvancedSettingsScreen(onBack: () -> Unit) {
                         stunServer = value
                         if (MediaAdapt.isValidStunServer(value.trim())) engine.updateSettings { it.copy(stunServer = value.trim()) }
                     },
-                    label = "STUN 服务器",
-                    placeholder = "主机[:端口]",
-                    error = if (usable) null else "应为 主机[:端口]",
+                    label = stringResource(R.string.advanced_stun_server),
+                    placeholder = stringResource(R.string.advanced_host_port_hint),
+                    error = if (usable) null else stringResource(R.string.form_host_port),
                     keyboardType = KeyboardType.Uri,
                 )
             }
         }
 
-        SectionCard(title = "客户端标识") {
+        SectionCard(title = stringResource(R.string.advanced_section_identity)) {
             Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
                 val refused = UserAgent.error(userAgent)
                 FormField(
@@ -221,7 +223,7 @@ fun AdvancedSettingsScreen(onBack: () -> Unit) {
                         userAgent = value
                         if (UserAgent.error(value) == null) engine.updateSettings { it.copy(userAgent = value) }
                     },
-                    label = "客户端名称（User-Agent）",
+                    label = stringResource(R.string.advanced_user_agent),
                     placeholder = engine.defaultUserAgent,
                     error = refused?.message?.text(),
                 )
