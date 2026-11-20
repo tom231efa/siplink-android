@@ -429,20 +429,10 @@ func (s *Server) importRow(r *http.Request, row rules.CsvRow, col *csvHeader, gr
 			}
 		}
 	}
-	if n, _ := s.clientNameTaken(r, c.RegionID, c.Name); n {
+	if taken, _ := s.St.ClientNameTaken(r.Context(), c.RegionID, c.Name); taken {
 		ic.Problems = append(ic.Problems, tr(r).T("clients.import.name_taken"))
 	}
 	return ic, nil
-}
-
-func (s *Server) clientNameTaken(r *http.Request, region int64, name string) (bool, error) {
-	list, _, err := s.St.ListClients(r.Context(), store.ClientFilter{All: true, Region: region, Query: name})
-	for _, c := range list {
-		if strings.EqualFold(c.Name, name) {
-			return true, err
-		}
-	}
-	return false, err
 }
 
 func (s *Server) clientImportConfirm(w http.ResponseWriter, r *http.Request) {

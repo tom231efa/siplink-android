@@ -375,6 +375,15 @@ func (s *Store) DirectoryPasswords(ctx context.Context, clientID int64) (map[int
 	return out, rows.Err()
 }
 
+// ClientNameTaken reports whether a region has a client of this name, compared as the
+// unique index clients_name compares (letters A to Z in any case) and through it.
+func (s *Store) ClientNameTaken(ctx context.Context, region int64, name string) (bool, error) {
+	var taken bool
+	err := s.DB.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM clients WHERE region_id = ? AND name = ? COLLATE NOCASE)`,
+		region, name).Scan(&taken)
+	return taken, err
+}
+
 func clientsOfTemplate(ctx context.Context, q querier, id int64) (int, error) {
 	var n int
 	err := q.QueryRowContext(ctx, `SELECT count(*) FROM clients WHERE client_template_id = ?`, id).Scan(&n)
