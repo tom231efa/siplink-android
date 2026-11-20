@@ -266,10 +266,11 @@ const (
 // Port of RoomRules.limitOf (android/app/src/main/java/com/sky/siplink/core/logic/RoomRules.kt).
 func RoomLimitOf(setting int) int { return min(max(setting, MinRoomLimit), RoomLimit) }
 
-// IsValidStunServer reports whether value can be the STUN server of the line checks: empty
-// for none, else `host[:port]` as IsValidHostPort takes it (a name or an IPv4 address, an IPv6
-// address in brackets, a port 1–65535). The app has no rule of its own for it yet; this is
-// the rule of an account's server address (AccountRules.isValidHostPort).
+// IsValidStunServer reports whether value can be the STUN server of the line checks and of the
+// lines' ICE: empty for none, else `host[:port]` as IsValidHostPort takes it (a name or an IPv4
+// address, an IPv6 address in brackets, a port 1–65535). The app checks the same rule
+// (MediaAdapt.isValidStunServer, on AccountRules.isValidHostPort) and refuses a document whose
+// value breaks it.
 func IsValidStunServer(value string) bool { return value == "" || IsValidHostPort(value) }
 
 const (
