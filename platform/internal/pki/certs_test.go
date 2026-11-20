@@ -9,6 +9,9 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"io"
+	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"siplink/internal/i18n"
@@ -504,3 +507,40 @@ func TestReprintWarning(t *testing.T) {
 
 // zh is a message in Simplified Chinese, the texts these tests were written against.
 func zh(m i18n.Msg) string { return i18n.For(i18n.Source).Msg(m) }
+
+// TestHTTPSOffersHTTP2: the HTTP listener as serve runs it (http.Server.Serve on a TLS
+// listener of HTTPSConfig) speaks HTTP/2 with a client that offers it and HTTP/1.1 with
+// one that does not; the LDAP listener offers no application protocol.
+func TestHTTPSOffersHTTP2(t *testing.T) {
+	e := newCertEnv(t)
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := e.certs.HTTPSConfig() // set on the server and the listener, as serve does
+	srv := &http.Server{TLSConfig: cfg, Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { io.WriteString(w, r.Proto) })}
+	go srv.Serve(tls.NewListener(ln, cfg))
+	defer srv.Close()
+	roots := x509.NewCertPool()
+	roots.AddCert(e.certs.CA().CA())
+	for _, want := range []string{"HTTP/2.0", "HTTP/1.1"} {
+		tr := &http.Transport{TLSClientConfig: &tls.Config{RootCAs: roots, ServerName: "platform.example.com"}, ForceAttemptHTTP2: true}
+		if want == "HTTP/1.1" {
+			tr.TLSClientConfig.NextProtos = []string{"http/1.1"}
+			tr.TLSNextProto = map[string]func(string, *tls.Conn) http.RoundTripper{} // no HTTP/2 in this client
+		}
+		resp, err := (&http.Client{Transport: tr}).Get("https://" + ln.Addr().String() + "/")
+		if err != nil {
+			t.Fatal(err)
+		}
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if resp.Proto != want || string(body) != want {
+			t.Errorf("protocol %s (server saw %s), want %s", resp.Proto, body, want)
+		}
+		tr.CloseIdleConnections()
+	}
+	if p := e.certs.LDAPConfig().NextProtos; len(p) != 0 {
+		t.Errorf("LDAP offers %v", p)
+	}
+}

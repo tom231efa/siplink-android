@@ -664,6 +664,8 @@ The document contains SIP and LDAP passwords in clear, so:
   Android's system CAs (`Trust.System`). This bootstraps a private CA without asking users to
   install it.
 - HSTS on the admin UI when TLS is on.
+- The HTTPS listener offers HTTP/2 by ALPN (`h2`, then `http/1.1`); with `SIPLINK_TLS=off` the
+  platform speaks HTTP/1.1 to its proxy.
 - The enrollment token is single-use and expires; it appears in reverse-proxy access logs only
   until the first scan. Device keys travel in a header, which proxies do not log by default.
 

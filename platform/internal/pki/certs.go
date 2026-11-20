@@ -260,15 +260,18 @@ func (c *Certs) served(src Source, files *Own) (*tls.Certificate, error) {
 	return c.ca.GetCertificate(nil)
 }
 
-// HTTPSConfig is the TLS configuration of the HTTP listener, nil with SIPLINK_TLS=off.
+// HTTPSConfig is the TLS configuration of the HTTP listener, nil with SIPLINK_TLS=off. It
+// offers HTTP/2 by ALPN: http.Server.Serve speaks HTTP/2 on the connections of a TLS
+// listener whose configuration names "h2" in NextProtos.
 func (c *Certs) HTTPSConfig() *tls.Config {
 	if https, _ := c.Sources(); https == SourceOff {
 		return nil
 	}
-	return &tls.Config{MinVersion: tls.VersionTLS12, GetCertificate: func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
-		https, _ := c.Sources()
-		return c.served(https, c.httpsFiles)
-	}}
+	return &tls.Config{MinVersion: tls.VersionTLS12, NextProtos: []string{"h2", "http/1.1"},
+		GetCertificate: func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
+			https, _ := c.Sources()
+			return c.served(https, c.httpsFiles)
+		}}
 }
 
 // LDAPConfig is the TLS configuration of StartTLS and LDAPS.
