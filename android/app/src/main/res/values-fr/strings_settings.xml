@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_language">Langue</string>
+    <string name="settings_language_system">Suivre le système</string>
+
+    <!-- Liste principale -->
+    <string name="settings_title">Paramètres</string>
+    <string name="settings_section_accounts">Comptes</string>
+    <string name="settings_sip_accounts">Comptes SIP</string>
+    <string name="settings_section_call_features">Fonctions d\'appel</string>
+    <string name="settings_dnd">Ne pas déranger</string>
+    <string name="settings_video_calls">Appels vidéo</string>
+    <string name="settings_recording">Enregistrement des appels</string>
+    <string name="settings_auto_answer">Interphone et réponse automatique</string>
+    <string name="settings_ldap">Annuaires LDAP</string>
+    <string name="settings_feature_codes">Codes de fonction</string>
+    <string name="settings_codecs">Codecs</string>
+    <string name="settings_audio_codecs">Codecs audio</string>
+    <string name="settings_advanced">Paramètres avancés</string>
+    <string name="settings_section_security">Sécurité</string>
+    <string name="settings_tls">TLS et certificats CA</string>
+    <string name="settings_section_battery">Batterie</string>
+    <string name="settings_keep_alive">Rester en ligne en arrière-plan</string>
+    <string name="settings_battery_optimization">Optimisation de la batterie</string>
+    <string name="settings_battery_open_failed">Impossible d\'ouvrir les paramètres d\'optimisation de la batterie</string>
+    <string name="settings_lock_screen_calls">Afficher les appels sur l\'écran de verrouillage</string>
+    <string name="settings_lock_screen_allowed">Autorisé</string>
+    <string name="settings_lock_screen_not_allowed">Non autorisé</string>
+    <string name="settings_lock_screen_open_failed">Impossible d\'ouvrir les paramètres des notifications en plein écran</string>
+    <string name="settings_section_appearance">Apparence</string>
+    <string name="settings_theme">Thème</string>
+    <string name="settings_theme_system">Suivre le système</string>
+    <string name="settings_theme_light">Clair</string>
+    <string name="settings_theme_dark">Sombre</string>
+    <string name="settings_banner_position">Position du bandeau d\'appel</string>
+    <string name="settings_banner_top">En haut</string>
+    <string name="settings_banner_bottom">En bas</string>
+    <string name="settings_dynamic_color">Couleurs dynamiques</string>
+    <string name="settings_remote_config">Configuration à distance</string>
+    <string name="settings_about">À propos</string>
+    <string name="settings_update_available">Mise à jour disponible</string>
+
+    <!-- Enregistrement des appels -->
+    <string name="settings_recording_calls">Enregistrement des appels</string>
+    <string name="settings_recording_by_default">Enregistrer par défaut</string>
+    <string name="settings_recording_kept">Enregistrements à conserver</string>
+    <string name="settings_recording_files">Enregistrements</string>
+</resources>

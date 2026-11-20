@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="notification_running">SipLink est en cours d\'exécution</string>
+    <string name="notification_no_accounts">Aucun compte SIP activé</string>
+    <plurals name="notification_registered">
+        <item quantity="one">%1$s / %2$s compte enregistré</item>
+        <item quantity="many">%1$s / %2$s comptes enregistrés</item>
+        <item quantity="other">%1$s / %2$s comptes enregistrés</item>
+    </plurals>
+    <string name="notification_calling">Appel en cours…</string>
+    <string name="notification_intercom">Appel d\'interphone</string>
+    <string name="notification_video_call">Appel vidéo entrant</string>
+    <string name="notification_incoming">Appel entrant</string>
+    <string name="notification_incoming_text">%1$s · %2$s</string>
+    <string name="notification_missed">Appel manqué</string>
+    <string name="notification_missed_text">%1$s (%2$s)</string>
+
+    <!-- Canaux -->
+    <string name="notification_channel_service_name">Rester en ligne en arrière-plan</string>
+    <string name="notification_channel_service_desc">Maintient l\'enregistrement des comptes SIP pour recevoir les appels</string>
+    <string name="notification_channel_incoming_name">Appels entrants</string>
+    <string name="notification_channel_incoming_desc">Alertes d\'appel entrant et écran d\'appel en plein écran</string>
+    <string name="notification_channel_call_name">Appels en cours</string>
+    <string name="notification_channel_call_desc">Communications en cours</string>
+    <string name="notification_channel_missed_name">Appels manqués</string>
+    <string name="notification_channel_missed_desc">Alertes d\'appel manqué</string>
+</resources>

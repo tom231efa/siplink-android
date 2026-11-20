@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="auto_answer_section_intercom">Interphone</string>
+    <string name="auto_answer_intercom">Réponse automatique de l\'interphone</string>
+    <string name="auto_answer_intercom_speaker">Interphone sur haut-parleur</string>
+    <string name="auto_answer_section_regular">Appels ordinaires</string>
+    <string name="auto_answer_regular">Réponse automatique</string>
+    <string name="auto_answer_delay">Délai de réponse automatique</string>
+    <string name="auto_answer_now">Immédiatement</string>
+    <plurals name="auto_answer_seconds">
+        <item quantity="one">%1$s seconde</item>
+        <item quantity="many">%1$s secondes</item>
+        <item quantity="other">%1$s secondes</item>
+    </plurals>
+</resources>

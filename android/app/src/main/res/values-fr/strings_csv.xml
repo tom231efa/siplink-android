@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="csv_unclosed_quote">Guillemet non fermé</string>
+    <string name="csv_too_few_fields">Champs insuffisants ; format : %1$s</string>
+    <string name="csv_unknown_type">Type inconnu « %1$s » ; disponibles : %2$s</string>
+    <string name="csv_unknown_icon">Icône inconnue « %1$s » ; disponibles : %2$s</string>
+    <string name="csv_unknown_transport">Transport inconnu « %1$s » ; disponibles : %2$s</string>
+    <string name="csv_choose_file">Choisir un fichier</string>
+    <string name="csv_import">Importer</string>
+    <string name="csv_file_unreadable">Le fichier sélectionné ne peut pas être lu</string>
+    <plurals name="csv_imported_accounts">
+        <item quantity="one">%1$s compte importé</item>
+        <item quantity="many">%1$s comptes importés</item>
+        <item quantity="other">%1$s comptes importés</item>
+    </plurals>
+    <plurals name="csv_imported_shortcuts">
+        <item quantity="one">%1$s touche rapide importée</item>
+        <item quantity="many">%1$s touches rapides importées</item>
+        <item quantity="other">%1$s touches rapides importées</item>
+    </plurals>
+    <plurals name="csv_report_skipped">
+        <item quantity="one">" ; %1$s élément ignoré, au-delà de la limite de %2$s"</item>
+        <item quantity="many">" ; %1$s éléments ignorés, au-delà de la limite de %2$s"</item>
+        <item quantity="other">" ; %1$s éléments ignorés, au-delà de la limite de %2$s"</item>
+    </plurals>
+    <plurals name="csv_report_errors">
+        <item quantity="one">" ; %1$s ligne avec des erreurs :"</item>
+        <item quantity="many">" ; %1$s lignes avec des erreurs :"</item>
+        <item quantity="other">" ; %1$s lignes avec des erreurs :"</item>
+    </plurals>
+    <string name="csv_report_line">\nLigne %1$s : %2$s</string>
+    <string name="csv_report_more">\n…</string>
+</resources>

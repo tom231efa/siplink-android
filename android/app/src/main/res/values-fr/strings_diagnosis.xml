@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="diagnosis_title">Diagnostic de ligne</string>
+    <string name="diagnosis_rerun">Relancer</string>
+    <string name="diagnosis_reset_title">Rétablir les valeurs par défaut ?</string>
+    <string name="diagnosis_reset_text">Les ajustements automatiques de ce compte seront effacés.</string>
+    <string name="diagnosis_reset_confirm">Rétablir</string>
+    <string name="diagnosis_reset_done">Valeurs par défaut rétablies</string>
+    <string name="diagnosis_not_tested">Non testé</string>
+    <string name="diagnosis_unknown">Inconnu</string>
+    <string name="diagnosis_no_response">Aucune réponse</string>
+    <string name="diagnosis_cannot_connect">Connexion impossible</string>
+    <plurals name="diagnosis_seconds">
+        <item quantity="one">%1$s seconde</item>
+        <item quantity="many">%1$s secondes</item>
+        <item quantity="other">%1$s secondes</item>
+    </plurals>
+
+    <!-- Réseau -->
+    <string name="diagnosis_network">Réseau</string>
+    <string name="diagnosis_type">Type</string>
+    <string name="diagnosis_type_cellular">Données mobiles</string>
+    <string name="diagnosis_type_ethernet">Ethernet</string>
+    <string name="diagnosis_type_other">Autre</string>
+    <string name="diagnosis_type_vpn">%1$s · VPN</string>
+    <string name="diagnosis_no_network">Aucun réseau</string>
+    <string name="diagnosis_local_address">Adresse locale</string>
+    <string name="diagnosis_public_address">Adresse publique</string>
+    <string name="diagnosis_nat_none">Aucun</string>
+    <string name="diagnosis_nat_present">Présent</string>
+    <string name="diagnosis_nat_carrier">Niveau opérateur</string>
+    <string name="diagnosis_nat_symmetric">Symétrique</string>
+    <string name="diagnosis_ipv6_yes">Oui</string>
+    <string name="diagnosis_ipv6_no">Non</string>
+    <string name="diagnosis_validation">Validation du réseau</string>
+    <string name="diagnosis_validation_login">Connexion requise</string>
+    <string name="diagnosis_validation_passed">Réussie</string>
+    <string name="diagnosis_validation_failed">Échouée</string>
+    <string name="diagnosis_battery">Optimisation de la batterie</string>
+    <string name="diagnosis_battery_unrestricted">Non restreinte</string>
+    <string name="diagnosis_battery_restricted">Restreinte</string>
+    <string name="diagnosis_battery_settings">Paramètres</string>
+
+    <!-- Serveur -->
+    <string name="diagnosis_server">Serveur</string>
+    <string name="diagnosis_address">Adresse</string>
+    <string name="diagnosis_resolved">Résolu en</string>
+    <string name="diagnosis_resolve_failed">Échec de la résolution</string>
+    <string name="diagnosis_udp_large">Grands paquets UDP</string>
+    <string name="diagnosis_large_passed">Réussi</string>
+    <string name="diagnosis_large_fragments_lost">Fragments perdus</string>
+    <string name="diagnosis_large_lost">Perdus</string>
+    <string name="diagnosis_alg_suspected">Suspecté</string>
+    <string name="diagnosis_alg_not_found">Non détecté</string>
+    <string name="diagnosis_call_address">Adresse d\'appel</string>
+    <string name="diagnosis_call_address_internal">Interne</string>
+
+    <!-- Serveurs principal et de secours -->
+    <string name="diagnosis_servers">Serveurs principal et de secours</string>
+    <string name="diagnosis_current">Actuel</string>
+    <string name="diagnosis_on_proxy">Serveur proxy</string>
+    <string name="diagnosis_on_backup">Serveur de secours</string>
+    <string name="diagnosis_proxy">Serveur proxy</string>
+    <string name="diagnosis_backup">Serveur de secours</string>
+    <string name="diagnosis_reachable">Joignable</string>
+    <string name="diagnosis_probed_at">Dernière vérification</string>
+    <string name="diagnosis_fast_timeout">Délai rapide</string>
+    <string name="diagnosis_off">Désactivé</string>
+
+    <!-- Enregistrement -->
+    <string name="diagnosis_registration">Enregistrement</string>
+    <string name="diagnosis_state">État</string>
+    <string name="diagnosis_transport">Transport</string>
+    <string name="diagnosis_expires">Expiration</string>
+
+    <!-- Dernier appel -->
+    <string name="diagnosis_last_call">Dernier appel</string>
+    <string name="diagnosis_sound">Son</string>
+    <string name="diagnosis_sound_both">Dans les deux sens</string>
+    <string name="diagnosis_sound_send_only">Émission seule</string>
+    <string name="diagnosis_sound_receive_only">Réception seule</string>
+    <string name="diagnosis_sound_none">Aucun</string>
+    <string name="diagnosis_loss">Perte de paquets</string>
+    <string name="diagnosis_loss_value">↓ %1$s · ↑ %2$s</string>
+    <string name="diagnosis_jitter">Gigue</string>
+    <string name="diagnosis_round_trip">Aller-retour</string>
+    <string name="diagnosis_ended">Terminé</string>
+
+    <!-- Ajustements automatiques -->
+    <string name="diagnosis_adaptation">Ajustements automatiques</string>
+    <string name="diagnosis_adapted_transport">Transport</string>
+    <string name="diagnosis_adapted_expires">Expiration de l\'enregistrement</string>
+    <string name="diagnosis_on">Activé</string>
+</resources>

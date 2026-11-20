@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="recording_title">Enregistrements</string>
+    <plurals name="recording_selected">
+        <item quantity="one">%1$s sélectionné</item>
+        <item quantity="many">%1$s sélectionnés</item>
+        <item quantity="other">%1$s sélectionnés</item>
+    </plurals>
+    <string name="recording_clear_selection">Désélectionner</string>
+    <string name="recording_export">Exporter</string>
+    <plurals name="recording_exported">
+        <item quantity="one">%1$s enregistrement exporté</item>
+        <item quantity="many">%1$s enregistrements exportés</item>
+        <item quantity="other">%1$s enregistrements exportés</item>
+    </plurals>
+    <string name="recording_export_failed">Échec de l\'exportation</string>
+    <plurals name="recording_summary">
+        <item quantity="one">%1$s enregistrement · %2$s</item>
+        <item quantity="many">%1$s enregistrements · %2$s</item>
+        <item quantity="other">%1$s enregistrements · %2$s</item>
+    </plurals>
+    <string name="recording_empty">Aucun enregistrement</string>
+    <string name="recording_cannot_play">Lecture impossible</string>
+    <plurals name="recording_delete_title">
+        <item quantity="one">Supprimer %1$s enregistrement ?</item>
+        <item quantity="many">Supprimer %1$s enregistrements ?</item>
+        <item quantity="other">Supprimer %1$s enregistrements ?</item>
+    </plurals>
+
+    <!-- Filtre de période -->
+    <string name="recording_period_all">Tous</string>
+    <string name="recording_period_today">Aujourd\'hui</string>
+    <plurals name="recording_period_days">
+        <item quantity="one">%1$s jour</item>
+        <item quantity="many">%1$s jours</item>
+        <item quantity="other">%1$s jours</item>
+    </plurals>
+    <string name="recording_period_custom">Personnalisé</string>
+    <string name="recording_period_range">%1$s–%2$s</string>
+
+    <!-- Un enregistrement : sens, heure de début, durée, taille -->
+    <string name="recording_unknown_number">Numéro inconnu</string>
+    <string name="recording_detail_incoming">Entrant · %1$s · %2$s · %3$s</string>
+    <string name="recording_detail_outgoing">Sortant · %1$s · %2$s · %3$s</string>
+    <string name="recording_play">Lire</string>
+    <string name="recording_stop">Arrêter</string>
+</resources>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="dialer_call_features">Fonctions d\'appel</string>
+    <string name="dialer_switch_to_pad">Passer au clavier numérique</string>
+    <string name="dialer_switch_to_keyboard">Passer au clavier texte</string>
+    <string name="dialer_add_account">Ajouter un compte SIP</string>
+    <string name="dialer_no_accounts">Aucun compte SIP</string>
+    <string name="dialer_choose_account">Choisir le compte sortant</string>
+    <string name="dialer_dnd_on">Ne pas déranger activé</string>
+    <plurals name="dialer_new_voicemail">
+        <item quantity="one">%1$s nouveau message vocal</item>
+        <item quantity="many">%1$s nouveaux messages vocaux</item>
+        <item quantity="other">%1$s nouveaux messages vocaux</item>
+    </plurals>
+    <string name="dialer_number_hint">Saisissez un numéro ou une adresse SIP</string>
+    <string name="dialer_address_label">Numéro ou adresse SIP</string>
+    <string name="dialer_address_example">Ex. : %1$s ou %2$s</string>
+
+    <!-- Touches à côté du bouton d'appel -->
+    <string name="dialer_video_call">Appel vidéo</string>
+    <string name="dialer_shortcuts">Touches rapides</string>
+    <string name="dialer_backspace">Effacer</string>
+    <string name="dialer_call">Appeler</string>
+</resources>

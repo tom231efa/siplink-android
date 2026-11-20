@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="list_separator">" ; "</string>
+
+    <string name="common_cancel">Annuler</string>
+    <string name="common_back">Retour</string>
+    <string name="common_delete">Supprimer</string>
+    <string name="common_confirm_delete">Confirmer la suppression</string>
+    <string name="common_save">Enregistrer</string>
+    <string name="common_ok">OK</string>
+    <string name="common_edit">Modifier</string>
+    <string name="common_done">Terminé</string>
+    <string name="common_close">Fermer</string>
+    <string name="common_more">Plus</string>
+    <string name="common_clear">Effacer</string>
+    <string name="common_restore_defaults">Rétablir les valeurs par défaut</string>
+</resources>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="codec_restored">Paramètres des codecs rétablis par défaut</string>
+    <string name="codec_keep_audio">Conservez au moins un codec audio</string>
+    <string name="codec_keep_video">Conservez au moins un codec vidéo</string>
+    <string name="codec_audio">Audio</string>
+    <string name="codec_video">Vidéo</string>
+    <string name="codec_resolution">Résolution</string>
+    <string name="codec_frame_rate">Fréquence d\'images (fps)</string>
+    <string name="codec_frame_rate_auto">Auto</string>
+    <string name="codec_rate">%1$s Hz</string>
+    <string name="codec_move_up">Augmenter la priorité de %1$s</string>
+    <string name="codec_move_down">Diminuer la priorité de %1$s</string>
+    <plurals name="codec_rate_channels">
+        <item quantity="one">%1$s Hz · %2$s canal</item>
+        <item quantity="many">%1$s Hz · %2$s canaux</item>
+        <item quantity="other">%1$s Hz · %2$s canaux</item>
+    </plurals>
+</resources>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="update_check_failed">Échec de la recherche de mises à jour</string>
+    <string name="update_rate_limited">Trop de requêtes</string>
+    <string name="update_downloading">Téléchargement de %1$s</string>
+    <string name="update_downloaded">Version %1$s téléchargée</string>
+    <string name="update_checking">Recherche…</string>
+    <string name="update_available">Mise à jour disponible : %1$s</string>
+    <string name="update_skipped">Version %1$s ignorée</string>
+    <string name="update_latest">À jour</string>
+    <string name="update_tap_to_check">Appuyez pour rechercher des mises à jour</string>
+</resources>

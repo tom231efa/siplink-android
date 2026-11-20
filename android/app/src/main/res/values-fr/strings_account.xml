@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="account_limit">
+        <item quantity="one">%1$s compte au maximum</item>
+        <item quantity="many">%1$s comptes au maximum</item>
+        <item quantity="other">%1$s comptes au maximum</item>
+    </plurals>
+    <plurals name="account_error_name_too_long">
+        <item quantity="one">Nom du compte : %1$s caractère au maximum</item>
+        <item quantity="many">Nom du compte : %1$s caractères au maximum</item>
+        <item quantity="other">Nom du compte : %1$s caractères au maximum</item>
+    </plurals>
+    <string name="account_error_name_taken">Ce nom de compte existe déjà</string>
+    <string name="account_error_username_empty">Le nom d\'utilisateur est obligatoire</string>
+    <string name="account_error_invalid_chars">Contient des caractères non valides</string>
+    <string name="account_error_username_invalid">Le nom d\'utilisateur contient des caractères non valides</string>
+    <string name="account_error_domain_empty">Le domaine est obligatoire</string>
+    <string name="account_error_domain_invalid">Le domaine n\'est pas valide</string>
+    <string name="account_error_port_invalid">Le port doit être compris entre 1 et 65535</string>
+    <string name="account_error_server_invalid">Le serveur proxy doit être au format hôte[:port]</string>
+    <string name="account_error_backup_invalid">Le serveur de secours doit être au format hôte[:port]</string>
+    <string name="account_error_same_as_proxy">Identique au serveur proxy</string>
+    <string name="account_error_backup_same">Le serveur de secours est identique au serveur proxy</string>
+    <string name="account_error_dns_format">Doit être au format IP[:port]</string>
+    <string name="account_error_dns_invalid">Le serveur DNS doit être au format IP[:port]</string>
+    <string name="account_error_timeout_range">Doit être compris entre %1$s et %2$s ms</string>
+    <string name="account_error_timeout_invalid">Le délai rapide doit être compris entre %1$s et %2$s ms</string>
+    <string name="account_error_expires_range">Doit être compris entre %1$s et %2$s secondes</string>
+    <string name="account_error_expires_invalid">L\'expiration de l\'enregistrement doit être comprise entre %1$s et %2$s secondes</string>
+    <string name="account_error_duplicate">Le compte existe déjà</string>
+    <string name="account_error_password_required">Obligatoire (nom d\'utilisateur, domaine ou port modifié)</string>
+    <string name="account_error_password_required_full">Le mot de passe est obligatoire (nom d\'utilisateur, domaine ou port modifié)</string>
+    <string name="account_error_address_rejected">L\'adresse ne peut pas être résolue</string>
+    <string name="account_error_not_found">Le compte n\'existe pas</string>
+    <string name="account_csv_format">nom d\'utilisateur,mot de passe,domaine[,transport[,nom affiché[,proxy[,nom du compte]]]]</string>
+
+    <!-- Enregistrement -->
+    <string name="account_dns_failed">Échec de la résolution DNS</string>
+    <string name="account_register_failed">Échec de l\'enregistrement</string>
+    <string name="account_line_transport_auto">%1$s (auto)</string>
+
+    <!-- État d'enregistrement d'un compte -->
+    <string name="account_state_registered">Enregistré</string>
+    <string name="account_state_registering">Enregistrement…</string>
+    <string name="account_state_failed">Échec de l\'enregistrement</string>
+    <string name="account_state_none">Non enregistré</string>
+    <string name="account_state_disabled">Désactivé</string>
+
+    <!-- Liste des comptes -->
+    <string name="account_list_title">Comptes SIP</string>
+    <string name="account_import_action">Importer des comptes en masse</string>
+    <string name="account_search_action">Rechercher des comptes</string>
+    <string name="account_search_placeholder">Rechercher des comptes</string>
+    <string name="account_search_close">Fermer la recherche</string>
+    <string name="account_empty">Aucun compte SIP</string>
+    <string name="account_add">Ajouter un compte</string>
+    <string name="account_no_match">Aucun compte correspondant</string>
+    <plurals name="account_summary_total">
+        <item quantity="one">%1$s / %2$s compte</item>
+        <item quantity="many">%1$s / %2$s comptes</item>
+        <item quantity="other">%1$s / %2$s comptes</item>
+    </plurals>
+    <string name="account_summary_registered">Enregistrés : %1$s</string>
+    <string name="account_summary_failed">Échecs : %1$s</string>
+    <string name="account_summary_disabled">Désactivés : %1$s</string>
+    <string name="account_default_marker">Compte par défaut</string>
+    <string name="account_row_status">%1$s · %2$s</string>
+    <string name="account_row_status_backup">%1$s · %2$s · Serveur de secours</string>
+
+    <!-- Éditeur de compte -->
+    <string name="account_added">Compte ajouté</string>
+    <string name="account_saved">Compte enregistré</string>
+    <string name="account_edit_title_new">Ajouter un compte</string>
+    <string name="account_edit_title_view">Détails du compte</string>
+    <string name="account_edit_title_edit">Modifier le compte</string>
+    <string name="account_section_info">Compte</string>
+    <string name="account_field_name">Nom du compte (facultatif)</string>
+    <string name="account_field_name_hint">Ex. : Accueil, Ventes ligne 1</string>
+    <string name="account_field_username">Nom d\'utilisateur</string>
+    <string name="account_field_username_hint">Ex. : 1001</string>
+    <string name="account_field_port">Port</string>
+    <string name="account_field_domain">Domaine / serveur</string>
+    <string name="account_field_domain_hint">pbx.example.com ou 192.168.1.10</string>
+    <string name="account_field_password">Mot de passe</string>
+    <string name="account_field_password_keep">Laisser vide pour conserver le mot de passe actuel</string>
+    <string name="account_field_display_name">Nom affiché (facultatif)</string>
+    <string name="account_section_transport">Transport</string>
+    <string name="account_tls">TLS et certificats CA</string>
+    <string name="account_section_advanced">Paramètres avancés</string>
+    <string name="account_field_auth_user">Utilisateur d\'authentification (facultatif)</string>
+    <string name="account_field_proxy">Serveur proxy (facultatif)</string>
+    <string name="account_field_backup_proxy">Serveur de secours (facultatif)</string>
+    <string name="account_field_fast_timeout">Délai rapide (ms, facultatif)</string>
+    <string name="account_field_dns">Serveur DNS (facultatif)</string>
+    <string name="account_field_dns_hint">IP[:port]</string>
+    <string name="account_field_expires">Expiration de l\'enregistrement (secondes)</string>
+    <string name="account_subscribe_mwi">S\'abonner à la messagerie vocale</string>
+    <string name="account_line_diagnosis">Diagnostic de ligne</string>
+    <string name="account_enable">Activer ce compte</string>
+    <string name="account_default_set">Compte par défaut défini</string>
+    <string name="account_is_default">Compte par défaut</string>
+    <string name="account_set_default">Définir par défaut</string>
+    <string name="account_delete">Supprimer le compte</string>
+    <string name="account_delete_title">Supprimer le compte ?</string>
+    <string name="account_delete_text">%1$s sera retiré de ce téléphone et son enregistrement annulé.</string>
+    <plurals name="account_delete_keys">
+        <item quantity="one">\n%1$s touche rapide n\'utilise que cette ligne ; une ligne sera demandée lors de l\'appel.</item>
+        <item quantity="many">\n%1$s touches rapides n\'utilisent que cette ligne ; une ligne sera demandée lors de l\'appel.</item>
+        <item quantity="other">\n%1$s touches rapides n\'utilisent que cette ligne ; une ligne sera demandée lors de l\'appel.</item>
+    </plurals>
+
+    <!-- Choix du compte d'un appel -->
+    <string name="account_picker_title">Choisir le compte sortant</string>
+    <string name="account_picker_default">Utiliser le compte par défaut</string>
+    <string name="account_picker_search">Rechercher un nom, un numéro ou un domaine</string>
+    <string name="account_picker_not_set">Non défini</string>
+    <string name="account_picker_row">%1$s · %2$s</string>
+    <string name="account_picker_row_status">%1$s · %2$s</string>
+    <string name="account_picker_row_pinned">Choisi sur le clavier · %1$s · %2$s</string>
+
+    <!-- Import en masse de comptes -->
+    <string name="account_import_title">Importer des comptes en masse</string>
+    <string name="account_import_example">1001,password,pbx.example.com,tls,Jean Martin,,Accueil</string>
+</resources>

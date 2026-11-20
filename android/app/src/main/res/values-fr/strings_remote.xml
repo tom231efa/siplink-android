@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="remote_no_connection">Impossible de joindre la plateforme</string>
+    <string name="remote_pin_mismatch">Le certificat de la plateforme ne correspond pas au code QR</string>
+    <string name="remote_untrusted">Certificat de la plateforme non approuvé</string>
+    <string name="remote_unauthorized">Échec de l\'authentification de la configuration à distance</string>
+    <string name="remote_qr_invalid">Code QR non valide, déjà utilisé ou expiré</string>
+    <string name="remote_rate_limited">Trop de requêtes, réessayez plus tard</string>
+    <string name="remote_platform_unavailable">Plateforme temporairement indisponible (HTTP %1$s)</string>
+    <string name="remote_platform_error">La plateforme a renvoyé une erreur (HTTP %1$s)</string>
+    <string name="remote_answer_too_long">Réponse de la plateforme trop longue</string>
+    <string name="remote_no_device_key">La plateforme n\'a renvoyé aucune clé d\'appareil</string>
+    <string name="remote_loaded">Configuration à distance chargée</string>
+    <string name="remote_removed">Configuration à distance supprimée</string>
+    <string name="remote_removed_untold">Configuration à distance supprimée (la plateforme n\'a pas pu être informée)</string>
+    <string name="remote_revoked">Configuration à distance révoquée par la plateforme</string>
+    <string name="remote_invalid">Configuration à distance non valide : %1$s</string>
+    <string name="remote_partly_applied">Certains paramètres n\'ont pas pu être appliqués : %1$s</string>
+    <string name="remote_needs_update">Veuillez mettre à jour SipLink</string>
+    <string name="remote_no_audio_codec">Aucun codec audio disponible ; codecs par défaut rétablis</string>
+    <string name="remote_keys_not_loaded">Touches rapides pas encore chargées ; non mises à jour</string>
+
+    <!-- Erreurs d'un document -->
+    <string name="remote_error_json">La configuration n\'est pas un JSON valide</string>
+    <string name="remote_error_json_object">La configuration n\'est pas un objet JSON</string>
+    <string name="remote_error_field">%1$s : format non valide</string>
+    <string name="remote_error_ca">Certificat CA %1$s : illisible</string>
+    <string name="remote_error_schema">Format de configuration non pris en charge</string>
+    <string name="remote_error_no_version">La configuration n\'a pas de version</string>
+    <string name="remote_error_password_hash">Format du mot de passe de configuration non valide</string>
+    <string name="remote_error_no_answer_range">Le délai de renvoi sur non-réponse doit être compris entre %1$s et %2$s secondes</string>
+    <string name="remote_error_frame_rate">La fréquence d\'images vidéo doit être %1$s</string>
+    <string name="remote_error_codec_name">Un codec n\'a pas de nom</string>
+    <string name="remote_error_account">Compte « %1$s » : %2$s</string>
+    <string name="remote_error_directory">Annuaire « %1$s » : %2$s</string>
+    <string name="remote_error_key">Touche « %1$s » : %2$s</string>
+    <string name="remote_error_key_missing">Le champ « key » est manquant</string>
+    <string name="remote_error_key_twice">Le champ « key » apparaît deux fois</string>
+
+    <!-- Adresse d'une configuration à distance -->
+    <string name="remote_address_invalid">Adresse non valide</string>
+    <string name="remote_address_scheme">L\'adresse doit commencer par https://</string>
+    <string name="remote_address_not_enrollment">Ce n\'est pas une adresse de configuration à distance</string>
+    <string name="remote_address_pin">Empreinte de certificat non valide dans l\'adresse</string>
+
+    <!-- Page de configuration à distance -->
+    <string name="remote_scan_not_ours">Ce n\'est pas un code QR de configuration à distance</string>
+    <string name="remote_scan_no_camera">Impossible d\'ouvrir la caméra</string>
+    <string name="remote_camera_denied">Accès à la caméra non autorisé ; saisissez plutôt l\'adresse</string>
+    <string name="remote_load_title">Charger la configuration à distance ?</string>
+    <string name="remote_load_text">Source : %1$s. Une fois chargée, la configuration à distance remplace les comptes, annuaires, certificats, codecs, touches rapides et autres paramètres de cet appareil, qui ne pourront plus y être modifiés. L\'historique des appels, le mode Ne pas déranger et les paramètres d\'apparence ne sont pas concernés.</string>
+    <string name="remote_load">Charger</string>
+    <string name="remote_delete_title">Supprimer la configuration à distance ?</string>
+    <string name="remote_delete_text">La plateforme sera invitée à dissocier cet appareil, et les comptes, annuaires, certificats et touches rapides distribués, ainsi que vos propres touches rapides, seront supprimés. L\'historique des appels et les paramètres d\'apparence sont conservés.</string>
+    <string name="remote_scan">Scanner le code QR</string>
+    <string name="remote_enter_address">Saisir l\'adresse</string>
+    <string name="remote_enter_address_title">Saisir l\'adresse</string>
+    <string name="remote_loading">Chargement…</string>
+    <string name="remote_section_platform">Plateforme</string>
+    <string name="remote_platform">Plateforme</string>
+    <string name="remote_client">Client</string>
+    <string name="remote_region">Région</string>
+    <string name="remote_section_sync">Synchronisation</string>
+    <string name="remote_last_sync">Dernière synchronisation</string>
+    <string name="remote_never_synced">Pas encore réussie</string>
+    <string name="remote_generated_at">Configuration mise à jour</string>
+    <string name="remote_sync_result">Résultat de la synchronisation</string>
+    <string name="remote_syncing">Synchronisation…</string>
+    <string name="remote_sync_now">Synchroniser maintenant</string>
+    <string name="remote_details">Détails</string>
+    <string name="remote_address">Adresse</string>
+    <string name="remote_version">Version de la configuration</string>
+    <string name="remote_certificate">Certificat de la plateforme</string>
+    <string name="remote_certificate_pinned">CA de la plateforme approuvée lors du scan</string>
+    <string name="remote_certificate_system">Vérifié par les CA du système</string>
+    <string name="remote_delete">Supprimer la configuration à distance</string>
+    <string name="remote_address_label">Adresse de configuration</string>
+    <string name="remote_next">Suivant</string>
+    <plurals name="remote_sync_interval">
+        <item quantity="one">Synchronisation : intervalle de %1$s minute</item>
+        <item quantity="many">Synchronisation : intervalle de %1$s minutes</item>
+        <item quantity="other">Synchronisation : intervalle de %1$s minutes</item>
+    </plurals>
+</resources>

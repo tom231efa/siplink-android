@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="main_tab_dialer">Clavier</string>
+    <string name="main_tab_history">Historique</string>
+    <string name="main_tab_directory">Annuaire</string>
+    <string name="main_tab_settings">Paramètres</string>
+    <string name="main_tab_update_news">%1$s, mise à jour disponible</string>
+
+    <!-- Bandeau de retour à l'appel -->
+    <string name="main_banner_incoming">Appel entrant : %1$s</string>
+    <string name="main_banner_outgoing">Appel vers %1$s</string>
+    <string name="main_banner_in_call">En communication : %1$s</string>
+    <string name="main_banner_return">Revenir à l\'appel</string>
+
+    <!-- Appels sur l'écran de verrouillage -->
+    <string name="main_lock_screen_title">Autoriser les appels sur l\'écran de verrouillage</string>
+    <string name="main_lock_screen_text">SipLink n\'a pas l\'autorisation d\'afficher des notifications en plein écran. Sur l\'écran de verrouillage, un appel entrant n\'affiche qu\'une notification, pas l\'écran d\'appel.</string>
+    <string name="main_lock_screen_settings_failed">Impossible d\'ouvrir les paramètres des notifications en plein écran</string>
+    <string name="main_lock_screen_open_settings">Accéder aux paramètres</string>
+    <string name="main_lock_screen_never">Ne plus me le rappeler</string>
+</resources>

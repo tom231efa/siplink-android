@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="managed_password_title">Afficher le mot de passe</string>
+    <string name="managed_password_text">Le mot de passe est protégé. Saisissez le mot de passe de configuration pour l\'afficher.</string>
+    <string name="managed_password_field">Mot de passe de configuration</string>
+    <string name="managed_password_wrong">Mot de passe incorrect</string>
+    <string name="managed_password_view">Afficher</string>
+
+    <!-- Configuration gérée à distance -->
+    <string name="managed_notice">Géré à distance ; non modifiable sur cet appareil</string>
+    <string name="managed_locked">Géré à distance</string>
+</resources>

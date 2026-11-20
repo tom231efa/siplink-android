@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="feature_sheet_title">Fonctions d\'appel</string>
+    <string name="feature_sheet_extension">Poste %1$s</string>
+    <string name="feature_sheet_target">Poste cible</string>
+    <string name="feature_sheet_target_hint">Ex. : 1002</string>
+    <string name="feature_sheet_call">Appeler</string>
+    <string name="feature_sheet_add_shortcut">Ajouter aux touches rapides</string>
+    <string name="feature_sheet_force_confirm">Appuyez à nouveau pour forcer le raccrochage de %1$s</string>
+
+    <!-- Fonctions du PBX appelées par codes de fonction -->
+    <string name="feature_intercom">Interphone</string>
+    <string name="feature_listen">Écoute</string>
+    <string name="feature_whisper">Chuchotement</string>
+    <string name="feature_barge">Intrusion</string>
+    <string name="feature_force_hang_up">Raccrochage forcé</string>
+    <string name="feature_pickup">Interception</string>
+    <string name="feature_voicemail">Messagerie vocale</string>
+    <string name="feature_group_pickup">Interception de groupe</string>
+    <string name="feature_park">Parcage</string>
+    <string name="feature_dnd_on">Activer Ne pas déranger</string>
+    <string name="feature_dnd_off">Désactiver Ne pas déranger</string>
+    <string name="feature_to">%1$s %2$s</string>
+    <string name="feature_code_missing">Aucun code de fonction défini pour %1$s</string>
+
+    <!-- Page des codes de fonction -->
+    <string name="feature_codes_pickup">Interception dirigée</string>
+    <string name="feature_codes_restored">Codes de fonction rétablis par défaut</string>
+    <string name="feature_codes_invalid" tools:ignore="TypographyDashes">Uniquement 0-9 * #</string>
+</resources>

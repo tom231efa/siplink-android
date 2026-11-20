@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="history_title">Historique des appels</string>
+    <string name="history_clear">Effacer l\'historique des appels</string>
+    <string name="history_empty">Aucun appel dans l\'historique</string>
+    <string name="history_clear_title">Effacer l\'historique des appels ?</string>
+    <plurals name="history_clear_text">
+        <item quantity="one">%1$s entrée sera supprimée. Cette action est irréversible.</item>
+        <item quantity="many">Les %1$s entrées seront toutes supprimées. Cette action est irréversible.</item>
+        <item quantity="other">Les %1$s entrées seront toutes supprimées. Cette action est irréversible.</item>
+    </plurals>
+    <string name="history_clear_confirm">Tout effacer</string>
+
+    <!-- En-têtes de jour -->
+    <string name="history_today">Aujourd\'hui</string>
+    <string name="history_yesterday">Hier</string>
+
+    <!-- Une entrée : heure et type d'appel -->
+    <string name="history_time_detail">%1$s · %2$s</string>
+    <string name="history_outgoing">Sortant · %1$s</string>
+    <string name="history_incoming">Entrant · %1$s</string>
+    <string name="history_missed">Appel manqué</string>
+    <string name="history_failed">Non abouti</string>
+    <string name="history_call_back">Rappeler</string>
+    <string name="history_add_shortcut">Ajouter aux touches rapides</string>
+    <string name="history_call_features">Fonctions d\'appel…</string>
+    <string name="history_delete">Supprimer l\'entrée</string>
+</resources>

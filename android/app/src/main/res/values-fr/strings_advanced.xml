@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="advanced_title">Paramètres avancés</string>
+    <string name="advanced_section_incoming">Appels entrants</string>
+    <string name="advanced_dnd_mode">Mode Ne pas déranger</string>
+    <string name="advanced_dnd_software">Téléphone</string>
+    <string name="advanced_dnd_server">Serveur</string>
+    <string name="advanced_dnd_codes">%1$s / %2$s</string>
+    <string name="advanced_call_waiting">Appel en attente</string>
+    <string name="advanced_reject_anonymous">Refuser les appels anonymes</string>
+    <string name="advanced_dtmf_mode">Mode DTMF</string>
+    <string name="advanced_section_forwarding">Renvoi d\'appel</string>
+    <string name="advanced_forward_always">Renvoi inconditionnel</string>
+    <string name="advanced_forward_busy">Renvoi sur occupation</string>
+    <string name="advanced_forward_no_answer">Renvoi sur non-réponse</string>
+    <string name="advanced_no_answer_seconds">Délai de non-réponse (secondes)</string>
+    <string name="advanced_range">Doit être compris entre %1$s et %2$s</string>
+    <string name="advanced_section_room">Salle de conférence</string>
+    <string name="advanced_room_limit">Nombre maximal de participants</string>
+    <string name="advanced_section_media">Médias et réseau</string>
+    <string name="advanced_rate_control">Contrôle adaptatif du débit</string>
+    <string name="advanced_echo_cancellation">Annulation d\'écho</string>
+    <string name="advanced_ipv6">Autoriser IPv6</string>
+    <string name="advanced_auto_network">S\'adapter automatiquement au réseau</string>
+    <string name="advanced_stun_server">Serveur STUN</string>
+    <string name="advanced_host_port_hint">hôte[:port]</string>
+    <string name="advanced_section_identity">Identité du client</string>
+    <string name="advanced_user_agent">Nom du client (User-Agent)</string>
+
+    <!-- Nom du client (User-Agent) -->
+    <plurals name="advanced_user_agent_error_too_long">
+        <item quantity="one">Nom du client (User-Agent) : %1$s caractère au maximum</item>
+        <item quantity="many">Nom du client (User-Agent) : %1$s caractères au maximum</item>
+        <item quantity="other">Nom du client (User-Agent) : %1$s caractères au maximum</item>
+    </plurals>
+    <string name="advanced_user_agent_error_ascii">Caractères ASCII imprimables uniquement</string>
+    <string name="advanced_user_agent_error_ascii_full">Nom du client (User-Agent) : caractères ASCII imprimables uniquement</string>
+    <string name="advanced_user_agent_error_spaces">Pas d\'espace au début ni à la fin</string>
+    <string name="advanced_user_agent_error_spaces_full">Le nom du client (User-Agent) ne doit ni commencer ni se terminer par un espace</string>
+</resources>

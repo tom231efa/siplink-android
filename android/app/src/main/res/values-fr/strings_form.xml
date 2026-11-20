@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="form_required">Obligatoire</string>
+    <string name="form_taken">Existe déjà</string>
+    <string name="form_invalid">Format non valide</string>
+    <string name="form_host_port">Doit être au format hôte[:port]</string>
+    <string name="form_port_range">Doit être compris entre 1 et 65535</string>
+    <plurals name="form_max_chars">
+        <item quantity="one">%1$s caractère au maximum</item>
+        <item quantity="many">%1$s caractères au maximum</item>
+        <item quantity="other">%1$s caractères au maximum</item>
+    </plurals>
+
+    <!-- Éléments des lignes de formulaire -->
+    <string name="form_expand">Développer</string>
+    <string name="form_collapse">Réduire</string>
+    <string name="form_password_show">Afficher le mot de passe</string>
+    <string name="form_password_hide">Masquer le mot de passe</string>
+    <string name="form_placeholder_host_port">hôte[:port]</string>
+</resources>
