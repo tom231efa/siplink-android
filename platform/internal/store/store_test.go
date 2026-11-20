@@ -174,3 +174,40 @@ func TestMigrateClientsNameOrder(t *testing.T) {
 		t.Errorf("first page: %v of %d", names, total)
 	}
 }
+
+// TestClientReportsForLists: the reports of a list carry everything but the sealed last
+// document, which only the report of one client (the device API) reads.
+func TestClientReportsForLists(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.Store(t)
+	must := func(err error) {
+		t.Helper()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	reg := &store.Region{Name: "华东"}
+	must(st.CreateRegion(ctx, reg))
+	cfg := &store.ConfigTemplate{Name: "标准", SettingsJSON: "{}", RefreshMinutes: 60}
+	must(st.CreateConfigTemplate(ctx, cfg))
+	tpl := &store.ClientTemplate{Name: "标准", ConfigTemplateID: cfg.ID}
+	must(st.CreateClientTemplate(ctx, tpl))
+	c := &store.Client{Name: "前台", RegionID: reg.ID, ClientTemplateID: tpl.ID}
+	testutil.OldClient(t, st, testutil.Box(t), c, nil, nil)
+	want := &store.Report{ClientID: c.ID, LastSeenAt: "2026-11-20T08:00:00Z", LastIP: "192.0.2.1", AppVersion: "0.2.2", AppVersionCode: 6,
+		UserAgent: "SipLink", AndroidRelease: "16", AndroidSDK: 36, DeviceModel: "Phone", SentVersion: "v1", RevisionKey: "k",
+		LastDocEnc: "sealed", AppliedVersion: "v1", AppliedAt: "2026-11-20T08:00:01Z", ApplyError: "e", RegistrationsJSON: "[]", BuildError: "b"}
+	must(st.SaveReport(ctx, want))
+	one, err := st.ClientReport(ctx, c.ID)
+	must(err)
+	if *one != *want {
+		t.Errorf("report of one client: %+v", one)
+	}
+	list, err := st.ClientReports(ctx, []int64{c.ID})
+	must(err)
+	lean := *want
+	lean.LastDocEnc = ""
+	if got := list[c.ID]; got == nil || *got != lean {
+		t.Errorf("report of a list: %+v", got)
+	}
+}

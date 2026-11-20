@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"strconv"
+	"strings"
 	"time"
 
 	"siplink/internal/secret"
@@ -165,6 +166,10 @@ type Report struct {
 const reportCols = `client_id, last_seen_at, last_ip, app_version, app_version_code, user_agent, android_release, android_sdk,
 	device_model, sent_version, revision_key, last_doc_enc, applied_version, applied_at, apply_error, registrations_json, build_error`
 
+// reportListCols are the columns of reportCols without the sealed last document (about
+// 4 KB a client), which only the device API opens: LastDocEnc reads as "".
+var reportListCols = strings.Replace(reportCols, "last_doc_enc", "''", 1)
+
 func scanReport(row interface{ Scan(...any) error }) (*Report, error) {
 	r := &Report{}
 	err := row.Scan(&r.ClientID, &r.LastSeenAt, &r.LastIP, &r.AppVersion, &r.AppVersionCode, &r.UserAgent, &r.AndroidRelease, &r.AndroidSDK,
@@ -182,13 +187,14 @@ func (s *Store) ClientReport(ctx context.Context, clientID int64) (*Report, erro
 	return r, err
 }
 
-// ClientReports returns the reports of several clients by client id.
+// ClientReports returns the reports of several clients by client id, for lists: without
+// the last document sent (LastDocEnc is "").
 func (s *Store) ClientReports(ctx context.Context, ids []int64) (map[int64]*Report, error) {
 	out := map[int64]*Report{}
 	if len(ids) == 0 {
 		return out, nil
 	}
-	rows, err := s.DB.QueryContext(ctx, `SELECT `+reportCols+` FROM client_reports WHERE client_id IN (`+placeholders(len(ids))+`)`,
+	rows, err := s.DB.QueryContext(ctx, `SELECT `+reportListCols+` FROM client_reports WHERE client_id IN (`+placeholders(len(ids))+`)`,
 		int64Args(ids)...)
 	if err != nil {
 		return nil, err
