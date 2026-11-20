@@ -8,6 +8,7 @@
 #                              takes commands on 7000/tcp (see tools/ctl.go)
 #   inet   172.31.252.0/24   internal: only through the box, from this host as well
 #     natc  172.31.252.2       the address the PBX sees every client at
+#           172.31.252.30      and SIP over TCP while the box's tcp-alias is on
 #     pbx   172.31.252.10      accounts and numbers: see pbx/entrypoint.sh
 #     stun  172.31.252.20
 #
@@ -29,6 +30,7 @@ services:
       INET_ADDRESS: 172.31.252.2
       PBX_ADDRESS: 172.31.252.10
       STUN_ADDRESS: 172.31.252.20
+      TCP_ALIAS_ADDRESS: 172.31.252.30
     networks:
       client:
         ipv4_address: 172.31.251.2
@@ -47,6 +49,7 @@ services:
       LAB_SIP_PORT: "5060"
       LAB_SIGNALLING_PORT: "5064"
       PBX_ADDRESS: 172.31.252.10
+      TCP_ALIAS_ADDRESS: 172.31.252.30
     volumes:
       - ./pbx/entrypoint.sh:/natlab-entrypoint.sh:ro
     networks:

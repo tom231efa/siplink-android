@@ -15,7 +15,10 @@ package main
 //	alg on|off            on: SIP over UDP passes the ALG of alg.go
 //	rtp on|off|half       off: RTP between the clients and the PBX is dropped, both ways; half:
 //	                      only on its way to the clients (they send and hear nothing)
-//	reset                 all of the above back to the start: cone, on, on, 0, off, on
+//	tcp-alias on|off      on: SIP over TCP reaches the PBX from another address of the box
+//	                      (TCP_ALIAS_ADDRESS), which the PBX refuses for some accounts: a PBX
+//	                      that takes them over UDP only
+//	reset                 all of the above back to the start: cone, on, on, 0, off, on, off
 //	state                 tells the settings
 //
 // Like a home router, the box drops what comes to its own address from the PBX's side unasked: a
@@ -45,6 +48,7 @@ type labState struct {
 	timeout   int
 	alg       bool
 	rtp       string // on, off or half
+	tcpAlias  bool
 }
 
 func (s labState) String() string {
@@ -52,7 +56,7 @@ func (s labState) String() string {
 	if s.symmetric {
 		mode = "symmetric"
 	}
-	return fmt.Sprintf("mode=%s udp-sip=%s fragments=%s timeout=%d alg=%s rtp=%s", mode, onOff(s.udpSip), onOff(s.fragments), s.timeout, onOff(s.alg), s.rtp)
+	return fmt.Sprintf("mode=%s udp-sip=%s fragments=%s timeout=%d alg=%s rtp=%s tcp-alias=%s", mode, onOff(s.udpSip), onOff(s.fragments), s.timeout, onOff(s.alg), s.rtp, onOff(s.tcpAlias))
 }
 
 func onOff(b bool) string {
@@ -73,6 +77,7 @@ type box struct {
 	client, inet  string // interface names
 	clientAddress string
 	pbx, stun     string
+	alias         string // the box's second address on the PBX's side; empty: none
 }
 
 func runCtl(listen string) error {
@@ -81,6 +86,7 @@ func runCtl(listen string) error {
 		clientAddress: os.Getenv("CLIENT_ADDRESS"),
 		pbx:           os.Getenv("PBX_ADDRESS"),
 		stun:          os.Getenv("STUN_ADDRESS"),
+		alias:         os.Getenv("TCP_ALIAS_ADDRESS"),
 	}
 	var err error
 	if b.client, err = interfaceWith(b.clientAddress); err != nil {
@@ -88,6 +94,12 @@ func runCtl(listen string) error {
 	}
 	if b.inet, err = interfaceWith(os.Getenv("INET_ADDRESS")); err != nil {
 		return err
+	}
+	if b.alias != "" {
+		// "replace": the address may be there from a start before.
+		if out, err := exec.Command("ip", "address", "replace", b.alias+"/32", "dev", b.inet).CombinedOutput(); err != nil {
+			return fmt.Errorf("ip: %v: %s", err, strings.TrimSpace(string(out)))
+		}
 	}
 	if err := b.apply(); err != nil {
 		return err
@@ -153,12 +165,17 @@ func (b *box) command(words []string) string {
 		next.symmetric = words[1] == "symmetric"
 	case words[0] == "rtp" && len(words) == 2 && (words[1] == "on" || words[1] == "off" || words[1] == "half"):
 		next.rtp = words[1]
-	case (words[0] == "udp-sip" || words[0] == "alg" || words[0] == "fragments") && len(words) == 2 && (words[1] == "on" || words[1] == "off"):
+	case (words[0] == "udp-sip" || words[0] == "alg" || words[0] == "fragments" || words[0] == "tcp-alias") && len(words) == 2 && (words[1] == "on" || words[1] == "off"):
 		switch words[0] {
 		case "alg":
 			next.alg = words[1] == "on"
 		case "fragments":
 			next.fragments = words[1] == "on"
+		case "tcp-alias":
+			if b.alias == "" {
+				return "error the box has no TCP_ALIAS_ADDRESS"
+			}
+			next.tcpAlias = words[1] == "on"
 		default:
 			next.udpSip = words[1] == "on"
 		}
@@ -176,6 +193,11 @@ func (b *box) command(words []string) string {
 	if err := b.apply(); err != nil {
 		b.state = previous
 		return "error " + err.Error()
+	}
+	if next.tcpAlias != previous.tcpAlias {
+		// A SIP connection kept from before would still come from the other address: it goes, and
+		// the client's next one comes the new way. Exits with 1 when there is nothing to delete.
+		_ = exec.Command("conntrack", "-D", "-p", "tcp", "--dport", "5060").Run()
 	}
 	return "ok " + b.state.String()
 }
@@ -222,7 +244,11 @@ func (b *box) apply() error {
 	if s.symmetric {
 		random = " fully-random"
 	}
-	fmt.Fprintf(&r, "  chain post {\n    type nat hook postrouting priority srcnat; policy accept;\n    oifname %q masquerade%s\n  }\n}\n", b.inet, random)
+	r.WriteString("  chain post {\n    type nat hook postrouting priority srcnat; policy accept;\n")
+	if s.tcpAlias {
+		fmt.Fprintf(&r, "    iifname %q oifname %q tcp dport 5060 snat to %s\n", b.client, b.inet, b.alias)
+	}
+	fmt.Fprintf(&r, "    oifname %q masquerade%s\n  }\n}\n", b.inet, random)
 
 	nft := exec.Command("nft", "-f", "-")
 	nft.Stdin = strings.NewReader(r.String())

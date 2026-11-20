@@ -10,9 +10,10 @@
 #   6001-6010  as 1001-1010, on port 5064, which announces the box's address for SIP
 #              (LAB_SIGNALLING_PORT) and the PBX's own address for the sound: a PBX that knows its
 #              external signalling address but not its media address
-#   7001-7010  as 1001-1010, with one registration that stands until it expires: a second one
-#              (another contact, as over another transport) is refused with 403 (max_contacts = 1,
-#              remove_existing = no)
+#   7001-7010  as 1001-1010, refused from the box's second address (TCP_ALIAS_ADDRESS), where SIP
+#              over TCP comes from while the box's tcp-alias is on: a PBX that takes these accounts
+#              over UDP only. An endpoint ACL (deny); Asterisk answers it with 401, also to the right
+#              password
 #   600        answers and echoes        601  answers and sends a tone        602  answers, silent
 #
 # The PBX sits behind the NAT box and announces the box's client-side address (LAB_ADDRESS, SIP
@@ -26,6 +27,7 @@ set -eu
 : "${AMI_SECRET:?AMI_SECRET is required}"
 : "${LAB_ADDRESS:?LAB_ADDRESS is required}"
 : "${PBX_ADDRESS:?PBX_ADDRESS is required}"
+: "${TCP_ALIAS_ADDRESS:?TCP_ALIAS_ADDRESS is required}"
 LAB_SIP_PORT=${LAB_SIP_PORT:-5060}
 LAB_SIGNALLING_PORT=${LAB_SIGNALLING_PORT:-5064}
 
@@ -115,8 +117,8 @@ endpoint/ice_support = yes
 [signalling](!,handling)
 endpoint/transport = transport-signalling
 
-[single](!,nat)
-aor/remove_existing = no
+[notcp](!,nat)
+endpoint/deny = $TCP_ALIAS_ADDRESS/32
 
 EOF
   for first in 1000 3000 4000 5000 6000 7000; do
@@ -125,7 +127,7 @@ EOF
     [ "$first" = 4000 ] && template=behind
     [ "$first" = 5000 ] && template=ice
     [ "$first" = 6000 ] && template=signalling
-    [ "$first" = 7000 ] && template=single
+    [ "$first" = 7000 ] && template=notcp
     i=1
     while [ "$i" -le 10 ]; do
       n=$((first + i))
