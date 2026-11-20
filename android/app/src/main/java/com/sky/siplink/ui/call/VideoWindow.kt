@@ -38,6 +38,7 @@ import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
@@ -45,6 +46,7 @@ import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import com.sky.siplink.R
 import com.sky.siplink.core.logic.PreviewDock
 import com.sky.siplink.core.logic.PreviewDock.Area
 import com.sky.siplink.core.logic.PreviewDock.Place
@@ -158,6 +160,7 @@ internal fun FollowSpot(state: SmallPictureState, spot: PreviewDock.Spot, contro
  *
  * @param scope where its moves run
  * @param frame what it is placed by now
+ * @param labels what a screen reader says of it
  * @param own the small picture is the own camera's (not swapped)
  * @param onPlace the user put it somewhere else
  */
@@ -165,6 +168,7 @@ internal fun Modifier.smallPicture(
     state: SmallPictureState,
     scope: CoroutineScope,
     frame: SmallPictureState.Frame,
+    labels: SmallPictureLabels,
     own: Boolean,
     canSwap: Boolean,
     onSwap: () -> Unit,
@@ -182,18 +186,18 @@ internal fun Modifier.smallPicture(
     val place = frame.place
     return this
         .semantics {
-            contentDescription = if (own) "自己的画面" else "对方的画面"
+            contentDescription = if (own) labels.own else labels.other
             if (canSwap) {
-                onClick(label = "交换画面") {
+                onClick(label = labels.swap) {
                     onSwap()
                     true
                 }
             }
             customActions = listOfNotNull(
-                CustomAccessibilityAction("移到左侧") { put(place.copy(side = DockSide.LEFT), frame); true }.takeIf { place.side == DockSide.RIGHT },
-                CustomAccessibilityAction("移到右侧") { put(place.copy(side = DockSide.RIGHT), frame); true }.takeIf { place.side == DockSide.LEFT },
-                CustomAccessibilityAction("上移") { put(PreviewDock.moved(place, up = true), frame); true }.takeIf { PreviewDock.canMove(place, up = true) },
-                CustomAccessibilityAction("下移") { put(PreviewDock.moved(place, up = false), frame); true }.takeIf { PreviewDock.canMove(place, up = false) },
+                CustomAccessibilityAction(labels.left) { put(place.copy(side = DockSide.LEFT), frame); true }.takeIf { place.side == DockSide.RIGHT },
+                CustomAccessibilityAction(labels.right) { put(place.copy(side = DockSide.RIGHT), frame); true }.takeIf { place.side == DockSide.LEFT },
+                CustomAccessibilityAction(labels.up) { put(PreviewDock.moved(place, up = true), frame); true }.takeIf { PreviewDock.canMove(place, up = true) },
+                CustomAccessibilityAction(labels.down) { put(PreviewDock.moved(place, up = false), frame); true }.takeIf { PreviewDock.canMove(place, up = false) },
             )
         }
         // Taken here, the tap never reaches the picture behind: the controls stay as they are.
@@ -260,6 +264,30 @@ internal fun Modifier.smallPicture(
         .background(Color(0xFF202328))
 }
 
+/** What a screen reader says of the small picture and offers to do with it. */
+internal class SmallPictureLabels(
+    val own: String,
+    val other: String,
+    val swap: String,
+    val left: String,
+    val right: String,
+    val up: String,
+    val down: String,
+) {
+    companion object {
+        @Composable
+        fun current() = SmallPictureLabels(
+            own = stringResource(R.string.video_own_picture),
+            other = stringResource(R.string.video_other_picture),
+            swap = stringResource(R.string.video_swap),
+            left = stringResource(R.string.video_move_left),
+            right = stringResource(R.string.video_move_right),
+            up = stringResource(R.string.video_move_up),
+            down = stringResource(R.string.video_move_down),
+        )
+    }
+}
+
 /** The buttons of a video call in the row at the top, after the record button: fill or whole, switch camera, camera on or off. */
 @Composable
 internal fun VideoButtons(video: CallVideo, stage: VideoStageState, onSwitchCamera: () -> Unit, onToggleCamera: () -> Unit) {
@@ -268,13 +296,13 @@ internal fun VideoButtons(video: CallVideo, stage: VideoStageState, onSwitchCame
         val filled = stage.filled
         TopButton(
             if (filled) Icons.Rounded.FullscreenExit else Icons.Rounded.Fullscreen,
-            if (filled) "显示完整画面" else "铺满屏幕",
+            stringResource(if (filled) R.string.video_show_whole else R.string.video_fill),
         ) { stage.fillChosen = !filled }
     }
-    if (video.sending) TopButton(Icons.Rounded.Cameraswitch, "切换摄像头", onSwitchCamera)
+    if (video.sending) TopButton(Icons.Rounded.Cameraswitch, stringResource(R.string.video_switch_camera), onSwitchCamera)
     TopButton(
         if (video.sending) Icons.Rounded.Videocam else Icons.Rounded.VideocamOff,
-        if (video.sending) "关闭摄像头" else "打开摄像头",
+        stringResource(if (video.sending) R.string.video_camera_off else R.string.video_camera_on),
         onToggleCamera,
     )
 }

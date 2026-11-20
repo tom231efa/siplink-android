@@ -51,12 +51,14 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sky.siplink.R
 import com.sky.siplink.engine
 import com.sky.siplink.ui.components.AppBottomSheet
 import com.sky.siplink.ui.components.FieldText
@@ -108,7 +110,7 @@ internal fun DtmfPanel(onDigit: (Char) -> Unit, onClose: () -> Unit, sideways: B
                 IconButton(onClick = onClose) {
                     // It goes back the way it came.
                     val icon = if (sideways) Icons.AutoMirrored.Rounded.KeyboardArrowLeft else Icons.Rounded.KeyboardArrowDown
-                    Icon(icon, contentDescription = "收起键盘", tint = Color.White)
+                    Icon(icon, contentDescription = stringResource(R.string.call_keypad_close), tint = Color.White)
                 }
             }
             if (!sideways) Spacer(Modifier.height(8.dp))
@@ -169,13 +171,13 @@ internal fun TransferSheet(
                 .padding(horizontal = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text("转接通话", style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.call_transfer_title), style = MaterialTheme.typography.titleLarge)
             OutlinedTextField(
                 value = target,
                 onValueChange = { target = it },
                 modifier = Modifier.fillMaxWidth(),
-                label = { FieldText("转接到") },
-                placeholder = { FieldText("分机号或 SIP 地址") },
+                label = { FieldText(stringResource(R.string.call_transfer_to)) },
+                placeholder = { FieldText(stringResource(R.string.call_transfer_hint)) },
                 singleLine = true,
                 shape = MaterialTheme.shapes.medium,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
@@ -185,12 +187,12 @@ internal fun TransferSheet(
                     onClick = { onConsult(target) },
                     enabled = target.isNotBlank() && canConsult,
                     modifier = Modifier.weight(1f),
-                ) { Text("咨询转") }
+                ) { Text(stringResource(R.string.call_transfer_attended)) }
                 Button(
                     onClick = { onBlind(target) },
                     enabled = target.isNotBlank(),
                     modifier = Modifier.weight(1f),
-                ) { Text("盲转") }
+                ) { Text(stringResource(R.string.call_transfer_blind)) }
             }
             Spacer(Modifier.height(12.dp))
         }
@@ -214,7 +216,7 @@ internal fun ShortcutsSheet(onDismiss: () -> Unit, onNotice: (String) -> Unit) {
         AppBottomSheet(onDismiss) {
             if (all.isEmpty()) {
                 Text(
-                    "暂无快捷键",
+                    stringResource(R.string.call_shortcuts_empty),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 32.dp),

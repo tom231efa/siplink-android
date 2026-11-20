@@ -65,4 +65,66 @@
     <string name="feature_dnd_off">DND off</string>
     <string name="feature_to">%1$s %2$s</string>
     <string name="feature_code_missing">No feature code set for %1$s</string>
+
+    <!-- Call screen -->
+    <string name="call_status_incoming">Incoming call</string>
+    <string name="call_status_intercom">Intercom call</string>
+    <string name="call_status_video">Incoming video call</string>
+    <string name="call_status_calling">Calling…</string>
+    <string name="call_status_connected">Connected</string>
+    <string name="call_status_held">Call on hold</string>
+    <string name="call_intercom_chip">Intercom</string>
+    <string name="call_room_button">Conference room</string>
+    <string name="call_room_open_title">Open conference room?</string>
+    <string name="call_room_open_text">The conference room is voice only; video will stop.</string>
+    <string name="call_room_open">Open</string>
+    <string name="call_transferring">Transferring…</string>
+    <string name="call_transfer_succeeded">Transfer complete</string>
+    <string name="call_parked_listen">Parked; listen for the parking slot the PBX announces</string>
+    <string name="call_transfer_failed">Transfer failed; the call is still on hold</string>
+
+    <!-- Controls -->
+    <string name="call_complete_transfer">Complete transfer: %1$s to the other party</string>
+    <string name="call_mute">Mute</string>
+    <string name="call_muted">Muted</string>
+    <string name="call_keypad">Keypad</string>
+    <string name="call_hold">Hold</string>
+    <string name="call_resume">Resume</string>
+    <string name="call_transfer">Transfer</string>
+    <string name="call_park">Park</string>
+    <string name="call_swap">Swap</string>
+    <string name="call_merge">Merge</string>
+    <string name="call_shortcuts">Shortcut keys</string>
+    <string name="call_hang_up">Hang up</string>
+    <string name="call_video">Video</string>
+    <string name="call_supervision_listen">Listen</string>
+    <string name="call_supervision_whisper">Whisper</string>
+    <string name="call_supervision_barge">Barge</string>
+    <string name="call_route_earpiece">Earpiece</string>
+    <string name="call_route_speaker">Speaker</string>
+    <string name="call_route_bluetooth">Bluetooth</string>
+    <string name="call_route_headset">Headset</string>
+    <string name="call_route_wired_headset">Wired headset</string>
+    <string name="call_record_start">Start recording</string>
+    <string name="call_record_stop">Stop recording</string>
+
+    <!-- Keypad, transfer and shortcut keys -->
+    <string name="call_keypad_close">Close keypad</string>
+    <string name="call_transfer_title">Transfer call</string>
+    <string name="call_transfer_to">Transfer to</string>
+    <string name="call_transfer_hint">Extension or SIP address</string>
+    <string name="call_transfer_attended">Attended transfer</string>
+    <string name="call_transfer_blind">Blind transfer</string>
+    <string name="call_shortcuts_empty">No shortcut keys</string>
+
+    <!-- A second call, and answering -->
+    <string name="call_waiting_new">New call</string>
+    <string name="call_waiting_decline">Decline new call</string>
+    <string name="call_waiting_answer">Hold and answer</string>
+    <string name="call_held_consulting">Waiting to transfer (on hold)</string>
+    <string name="call_held_label">On hold</string>
+    <string name="call_swap_calls">Swap calls</string>
+    <string name="call_slide_description">Incoming call: slide right to answer, slide left to decline</string>
+    <string name="call_slide_answer">Answer</string>
+    <string name="call_slide_decline">Decline</string>
 </resources>

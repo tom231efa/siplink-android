@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Video calls: the request, answering with video, the pictures and their buttons. -->
+<resources>
+    <string name="video_request">The other party asks to turn on video</string>
+    <string name="video_request_decline">Decline</string>
+    <string name="video_request_accept">Turn on</string>
+    <string name="video_answer_with_video">Answer with video</string>
+    <string name="video_answer_with_audio">Answer with audio</string>
+    <string name="video_own_picture">Your picture</string>
+    <string name="video_other_picture">Other party\'s picture</string>
+    <string name="video_swap">Swap pictures</string>
+    <string name="video_move_left">Move left</string>
+    <string name="video_move_right">Move right</string>
+    <string name="video_move_up">Move up</string>
+    <string name="video_move_down">Move down</string>
+    <string name="video_show_whole">Show whole picture</string>
+    <string name="video_fill">Fill screen</string>
+    <string name="video_switch_camera">Switch camera</string>
+    <string name="video_camera_off">Turn camera off</string>
+    <string name="video_camera_on">Turn camera on</string>
+</resources>

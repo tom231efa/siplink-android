@@ -29,4 +29,55 @@
     <string name="room_refused">PBX 拒绝</string>
     <string name="room_busy">忙</string>
     <string name="room_unavailable">暂时无法接通</string>
+
+    <!-- The room screen -->
+    <string name="room_end_title">结束会议？</string>
+    <plurals name="room_end_text">
+        <item quantity="other">全部 %1$s 方通话将被挂断。</item>
+    </plurals>
+    <string name="room_end_confirm">确认结束</string>
+    <string name="room_end">结束会议</string>
+    <string name="room_add_members">添加成员</string>
+    <string name="room_show_readings">查看测量值</string>
+    <string name="room_warning_heat">设备温度过高</string>
+    <string name="room_warning_load">设备负载过高</string>
+    <string name="room_warning_memory">内存不足</string>
+    <string name="room_warning_network">网络质量差</string>
+    <string name="room_reading_cpu">处理器</string>
+    <string name="room_reading_thread">最忙线程</string>
+    <string name="room_reading_temperature">设备温度</string>
+    <string name="room_reading_memory">内存</string>
+    <string name="room_memory_low">不足</string>
+    <string name="room_memory_normal">正常</string>
+    <string name="room_thermal_unknown">未知</string>
+    <string name="room_thermal_none">正常</string>
+    <string name="room_thermal_light">轻度</string>
+    <string name="room_thermal_moderate">中度</string>
+    <string name="room_thermal_severe">严重</string>
+    <string name="room_thermal_critical">危急</string>
+    <string name="room_thermal_emergency">紧急</string>
+    <string name="room_thermal_shutdown">即将关机</string>
+    <string name="room_link_readings">"丢包 ↑%1$s%% ↓%2$s%%  抖动 %3$s ms  往返 %4$s ms"</string>
+    <string name="room_member_retry">重拨 %1$s</string>
+    <string name="room_member_remove">移除 %1$s</string>
+    <string name="room_member_hang_up">挂断 %1$s</string>
+    <string name="room_signal_poor">通话质量差</string>
+    <string name="room_signal">通话质量 %1$s/%2$s</string>
+    <string name="room_away">已暂离</string>
+    <string name="room_return">返回会议室</string>
+    <string name="room_waiting_new">新来电</string>
+    <string name="room_waiting_decline">拒接</string>
+    <string name="room_join">加入会议室</string>
+
+    <!-- Adding members -->
+    <string name="room_add_title">添加成员</string>
+    <string name="room_source_recent">最近通话</string>
+    <string name="room_source_directory">通讯录</string>
+    <string name="room_source_shortcuts">快捷键</string>
+    <string name="room_add_field">号码或姓名</string>
+    <string name="room_add_number">添加号码</string>
+    <string name="room_pick_remove">移除 %1$s</string>
+    <string name="room_call">呼叫</string>
+    <string name="room_call_count">呼叫（%1$s）</string>
+    <string name="room_candidate_in_room">%1$s · 已在会议室中</string>
 </resources>

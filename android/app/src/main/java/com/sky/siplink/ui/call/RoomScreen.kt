@@ -1,6 +1,7 @@
 package com.sky.siplink.ui.call
 
 import android.os.SystemClock
+import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -73,10 +74,13 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sky.siplink.R
 import com.sky.siplink.core.CallManager
 import com.sky.siplink.core.logic.CallRules
 import com.sky.siplink.core.logic.Formatters
@@ -94,6 +98,7 @@ import com.sky.siplink.ui.components.Avatar
 import com.sky.siplink.ui.components.FadingText
 import com.sky.siplink.ui.components.text
 import com.sky.siplink.ui.theme.Brand
+import java.util.Locale
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filter
 
@@ -121,15 +126,15 @@ internal fun RoomContent(
     if (confirmEnd) {
         AlertDialog(
             onDismissRequest = { onConfirmEnd(false) },
-            title = { Text("结束会议？") },
-            text = { Text("全部 ${room.present} 方通话将被挂断。") },
+            title = { Text(stringResource(R.string.room_end_title)) },
+            text = { Text(pluralStringResource(R.plurals.room_end_text, room.present, room.present.toString())) },
             confirmButton = {
                 TextButton(onClick = {
                     onConfirmEnd(false)
                     calls.hangUp()
-                }) { Text("确认结束", color = MaterialTheme.colorScheme.error) }
+                }) { Text(stringResource(R.string.room_end_confirm), color = MaterialTheme.colorScheme.error) }
             },
-            dismissButton = { TextButton(onClick = { onConfirmEnd(false) }) { Text("取消") } },
+            dismissButton = { TextButton(onClick = { onConfirmEnd(false) }) { Text(stringResource(R.string.common_cancel)) } },
         )
     }
     BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -185,7 +190,7 @@ private fun ColumnScope.RoomHead(info: CallInfo, room: RoomInfo, calls: CallMana
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.Bottom) {
                 FadingText(
-                    "会议室",
+                    stringResource(R.string.room_name),
                     style = MaterialTheme.typography.headlineSmall,
                     color = Color.White,
                     modifier = Modifier.weight(1f, fill = false),
@@ -242,7 +247,7 @@ private fun WarningChip(warning: RoomWarning, onClick: () -> Unit) {
             .widthIn(max = 200.dp)
             .clip(CircleShape)
             .background(Brand.Amber.copy(alpha = 0.9f))
-            .clickable(onClickLabel = "查看测量值", onClick = onClick)
+            .clickable(onClickLabel = stringResource(R.string.room_show_readings), onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -254,12 +259,15 @@ private fun WarningChip(warning: RoomWarning, onClick: () -> Unit) {
 
 private val WARNING_ORDER = listOf(RoomWarning.HEAT, RoomWarning.LOAD, RoomWarning.MEMORY, RoomWarning.NETWORK)
 
-private fun warningText(warning: RoomWarning): String = when (warning) {
-    RoomWarning.HEAT -> "设备温度过高"
-    RoomWarning.LOAD -> "设备负载过高"
-    RoomWarning.MEMORY -> "内存不足"
-    RoomWarning.NETWORK -> "网络质量差"
-}
+@Composable
+private fun warningText(warning: RoomWarning): String = stringResource(
+    when (warning) {
+        RoomWarning.HEAT -> R.string.room_warning_heat
+        RoomWarning.LOAD -> R.string.room_warning_load
+        RoomWarning.MEMORY -> R.string.room_warning_memory
+        RoomWarning.NETWORK -> R.string.room_warning_network
+    },
+)
 
 /** What was measured last: of the phone, and of the members whose connection is poor. Only this follows the measurements. */
 @Composable
@@ -275,12 +283,12 @@ private fun Readings(room: RoomInfo, calls: CallManager) {
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Reading("处理器", device?.let { percent(it.cpuPercent) }, device != null && device.cpuPercent >= RoomHealth.CPU_PERCENT)
-        Reading("最忙线程", device?.let { percent(it.busiestThreadPercent) }, device != null && device.busiestThreadPercent >= RoomHealth.THREAD_PERCENT)
-        Reading("设备温度", device?.let { thermalText(it.thermalStatus) }, device != null && RoomHealth.hot(device))
-        Reading("内存", device?.let { if (it.lowMemory) "不足" else "正常" }, device?.lowMemory == true)
+        Reading(stringResource(R.string.room_reading_cpu), device?.let { percent(it.cpuPercent) }, device != null && device.cpuPercent >= RoomHealth.CPU_PERCENT)
+        Reading(stringResource(R.string.room_reading_thread), device?.let { percent(it.busiestThreadPercent) }, device != null && device.busiestThreadPercent >= RoomHealth.THREAD_PERCENT)
+        Reading(stringResource(R.string.room_reading_temperature), device?.let { stringResource(thermalText(it.thermalStatus)) }, device != null && RoomHealth.hot(device))
+        Reading(stringResource(R.string.room_reading_memory), device?.let { stringResource(if (it.lowMemory) R.string.room_memory_low else R.string.room_memory_normal) }, device?.lowMemory == true)
         room.members.filter { it.poorLink }.take(MAX_POOR_SHOWN).forEach { member ->
-            Reading(member.name, readings?.poorLinks?.get(member.id)?.let(::linkText), highlighted = true)
+            Reading(member.name, readings?.poorLinks?.get(member.id)?.let { linkText(it) }, highlighted = true)
         }
     }
 }
@@ -304,21 +312,25 @@ private fun Reading(label: String, value: String?, highlighted: Boolean) {
     }
 }
 
-private fun percent(value: Float): String = "%.0f%%".format(value)
+private fun percent(value: Float): String = "%.0f%%".format(Locale.ROOT, value)
 
-private fun thermalText(status: Int?): String = when (status) {
-    null -> "未知"
-    0 -> "正常"
-    1 -> "轻度"
-    2 -> "中度"
-    3 -> "严重"
-    4 -> "危急"
-    5 -> "紧急"
-    else -> "即将关机"
+@StringRes
+private fun thermalText(status: Int?): Int = when (status) {
+    null -> R.string.room_thermal_unknown
+    0 -> R.string.room_thermal_none
+    1 -> R.string.room_thermal_light
+    2 -> R.string.room_thermal_moderate
+    3 -> R.string.room_thermal_severe
+    4 -> R.string.room_thermal_critical
+    5 -> R.string.room_thermal_emergency
+    else -> R.string.room_thermal_shutdown
 }
 
+@Composable
 private fun linkText(link: LinkReadings): String =
-    "丢包 ↑%.0f%% ↓%.0f%%  抖动 %.0f ms  往返 %.0f ms".format(link.lossUp, link.lossDown, link.jitterMs, link.roundTripMs)
+    stringResource(R.string.room_link_readings, whole(link.lossUp), whole(link.lossDown), whole(link.jitterMs), whole(link.roundTripMs))
+
+private fun whole(value: Float): String = "%.0f".format(Locale.ROOT, value)
 
 /** At most this many members with a poor connection are named in the readings. */
 private const val MAX_POOR_SHOWN = 5
@@ -419,11 +431,11 @@ private fun MemberRow(member: RoomMember, onHangUp: () -> Unit, onRetry: () -> U
         when {
             left -> Unit
             heldBack -> {
-                RowAction(Icons.Rounded.Call, "重拨 ${member.name}", Color.White, onRetry)
-                RowAction(Icons.Rounded.Close, "移除 ${member.name}", Color.White, onHangUp)
+                RowAction(Icons.Rounded.Call, stringResource(R.string.room_member_retry, member.name), Color.White, onRetry)
+                RowAction(Icons.Rounded.Close, stringResource(R.string.room_member_remove, member.name), Color.White, onHangUp)
             }
-            member.state == MemberState.QUEUED -> RowAction(Icons.Rounded.Close, "移除 ${member.name}", Color.White, onHangUp)
-            else -> RowAction(Icons.Rounded.CallEnd, "挂断 ${member.name}", Brand.HangUpRed, onHangUp)
+            member.state == MemberState.QUEUED -> RowAction(Icons.Rounded.Close, stringResource(R.string.room_member_remove, member.name), Color.White, onHangUp)
+            else -> RowAction(Icons.Rounded.CallEnd, stringResource(R.string.room_member_hang_up, member.name), Brand.HangUpRed, onHangUp)
         }
     }
 }
@@ -459,10 +471,11 @@ private fun SignalBars(bars: Int?, poor: Boolean) {
     val shown = bars ?: if (poor) 1 else return
     val on = if (poor) Brand.Amber else Color.White.copy(alpha = 0.7f)
     val off = Color.White.copy(alpha = 0.18f)
+    val description = if (poor) stringResource(R.string.room_signal_poor) else stringResource(R.string.room_signal, shown.toString(), "3")
     Canvas(
         Modifier
             .size(width = 14.dp, height = 11.dp)
-            .semantics { contentDescription = if (poor) "通话质量差" else "通话质量 $shown/3" },
+            .semantics { contentDescription = description },
     ) {
         val gap = size.width / 7f
         val width = (size.width - 2 * gap) / 3f
@@ -490,11 +503,11 @@ private fun Away(onReturn: () -> Unit) {
             .padding(start = 16.dp, end = 12.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text("已暂离", style = MaterialTheme.typography.titleMedium, color = Brand.Amber, modifier = Modifier.weight(1f))
+        Text(stringResource(R.string.room_away), style = MaterialTheme.typography.titleMedium, color = Brand.Amber, modifier = Modifier.weight(1f))
         Button(
             onClick = onReturn,
             colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Brand.CallSurface),
-        ) { Text("返回会议室") }
+        ) { Text(stringResource(R.string.room_return)) }
     }
 }
 
@@ -509,14 +522,14 @@ private fun WaitingForRoom(waiting: SideCall?, onJoin: () -> Unit, onDecline: ()
             .background(Color.White.copy(alpha = 0.16f))
             .padding(start = 16.dp, end = 12.dp, top = 10.dp, bottom = 8.dp),
     ) {
-        Text("新来电", style = MaterialTheme.typography.labelMedium, color = Brand.Amber)
+        Text(stringResource(R.string.room_waiting_new), style = MaterialTheme.typography.labelMedium, color = Brand.Amber)
         FadingText(waiting?.name.orEmpty(), style = MaterialTheme.typography.titleMedium, color = Color.White)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
-            TextButton(onClick = onDecline) { Text("拒接", color = Color.White.copy(alpha = 0.85f)) }
+            TextButton(onClick = onDecline) { Text(stringResource(R.string.room_waiting_decline), color = Color.White.copy(alpha = 0.85f)) }
             Button(
                 onClick = onJoin,
                 colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Brand.CallSurface),
-            ) { Text("加入会议室") }
+            ) { Text(stringResource(R.string.room_join)) }
         }
     }
 }
@@ -542,22 +555,22 @@ private fun RoomControls(
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
             ControlToggle(
                 icon = if (info.muted) Icons.Rounded.MicOff else Icons.Rounded.Mic,
-                label = if (info.muted) "已静音" else "静音",
+                label = stringResource(if (info.muted) R.string.call_muted else R.string.call_mute),
                 active = info.muted,
                 onClick = calls::toggleMute,
             )
             RouteToggle(info, calls)
             ControlToggle(
                 Icons.Rounded.PersonAdd,
-                "添加成员",
+                stringResource(R.string.room_add_members),
                 active = false,
                 // Full, the key is grey and its tap says why.
                 dimmed = full != null,
                 onClick = { if (full != null) onNotice(full) else onAddMembers() },
             )
             // Nothing of video is shown while video calls are switched off; in a room it cannot be switched on.
-            if (settings.videoCalls) ControlToggle(Icons.Rounded.Videocam, "视频", active = false, enabled = false, onClick = {})
+            if (settings.videoCalls) ControlToggle(Icons.Rounded.Videocam, stringResource(R.string.call_video), active = false, enabled = false, onClick = {})
         }
-        RoundAction(Brand.HangUpRed, Icons.Rounded.CallEnd, "结束会议", onEnd, size = 72.dp)
+        RoundAction(Brand.HangUpRed, Icons.Rounded.CallEnd, stringResource(R.string.room_end), onEnd, size = 72.dp)
     }
 }

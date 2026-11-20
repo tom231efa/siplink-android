@@ -22,8 +22,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import com.sky.siplink.R
 import com.sky.siplink.core.logic.Formatters
 import kotlinx.coroutines.delay
 
@@ -36,20 +38,21 @@ import kotlinx.coroutines.delay
 @Composable
 internal fun RecordControl(since: Long?, onToggle: () -> Unit, modifier: Modifier = Modifier) {
     val recording = since != null
+    val label = stringResource(if (recording) R.string.call_record_stop else R.string.call_record_start)
     Row(
         modifier
             .heightIn(min = 40.dp)
             .widthIn(min = 40.dp)
             .clip(CircleShape)
             .background(Color.Black.copy(alpha = if (recording) 0.5f else 0.32f))
-            .clickable(role = Role.Button, onClickLabel = if (recording) "停止录音" else "开始录音", onClick = onToggle)
+            .clickable(role = Role.Button, onClickLabel = label, onClick = onToggle)
             .padding(horizontal = if (recording) 12.dp else 9.dp, vertical = 9.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
             Icons.Rounded.FiberManualRecord,
-            contentDescription = if (recording) "停止录音" else "开始录音",
+            contentDescription = label,
             tint = if (recording) RecordingDot else Color.White.copy(alpha = 0.8f),
             modifier = Modifier.size(if (recording) 12.dp else 22.dp),
         )

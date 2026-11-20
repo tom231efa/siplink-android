@@ -73,6 +73,7 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -80,6 +81,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sky.siplink.R
 import com.sky.siplink.core.CallManager
 import com.sky.siplink.core.CallSupport
 import com.sky.siplink.core.logic.CallRules
@@ -218,7 +220,7 @@ fun CallScreen(
     AutoHideControls(
         controls,
         canHide = video?.received != null && !keypadOpen && !transferOpen && !shortcutsOpen && notice == null &&
-            info.waitingCall == null && !info.videoOffer && transferLabel(info) == null && !touchExplorationOn(),
+            info.waitingCall == null && !info.videoOffer && info.transfer == null && !touchExplorationOn(),
     )
     Box(
         Modifier
@@ -325,15 +327,15 @@ fun CallScreen(
             if (confirmRoom) {
                 AlertDialog(
                     onDismissRequest = { confirmRoom = false },
-                    title = { Text("开启会议室？") },
-                    text = { Text("会议室仅支持语音，视频将关闭。") },
+                    title = { Text(stringResource(R.string.call_room_open_title)) },
+                    text = { Text(stringResource(R.string.call_room_open_text)) },
                     confirmButton = {
                         TextButton(onClick = {
                             confirmRoom = false
                             calls.openRoom()?.let { notice = it }
-                        }) { Text("开启") }
+                        }) { Text(stringResource(R.string.call_room_open)) }
                     },
-                    dismissButton = { TextButton(onClick = { confirmRoom = false }) { Text("取消") } },
+                    dismissButton = { TextButton(onClick = { confirmRoom = false }) { Text(stringResource(R.string.common_cancel)) } },
                 )
             }
         }
@@ -561,7 +563,7 @@ private fun RoomButton(onClick: () -> Unit, modifier: Modifier) {
     ) {
         Icon(Icons.Rounded.Groups, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(6.dp))
-        FadingText("会议室", style = MaterialTheme.typography.labelLarge, color = Color.White, modifier = Modifier.weight(1f, fill = false))
+        FadingText(stringResource(R.string.call_room_button), style = MaterialTheme.typography.labelLarge, color = Color.White, modifier = Modifier.weight(1f, fill = false))
     }
 }
 
@@ -580,7 +582,7 @@ private fun ColumnScope.CallHead(
         // Over video the corner belongs to the own picture: the line is left out there.
         // A long line name gives way to the chips beside it.
         if (info.accountLabel.isNotEmpty() && !videoMode) Chip(text = info.accountLabel, modifier = Modifier.weight(1f, fill = false))
-        if (info.intercom) Chip(text = "对讲", icon = Icons.Rounded.Campaign, highlighted = true)
+        if (info.intercom) Chip(text = stringResource(R.string.call_intercom_chip), icon = Icons.Rounded.Campaign, highlighted = true)
     }
 
     AnimatedVisibility(
@@ -646,12 +648,13 @@ internal val SidePaneWidth = SideControlsWidth + 24.dp
 /** A screen on its side lower than this has the controls closed up. */
 private val CompactBelow = 420.dp
 
+@Composable
 private fun transferLabel(info: CallInfo): String? = when (info.transfer) {
-    TransferStatus.IN_PROGRESS -> "正在转接…"
-    TransferStatus.SUCCEEDED -> if (info.parked) "已驻留，请收听 PBX 播报的车位号" else "转接成功"
-    TransferStatus.FAILED -> "转接失败，通话仍处于保留状态"
+    TransferStatus.IN_PROGRESS -> R.string.call_transferring
+    TransferStatus.SUCCEEDED -> if (info.parked) R.string.call_parked_listen else R.string.call_transfer_succeeded
+    TransferStatus.FAILED -> R.string.call_transfer_failed
     null -> null
-}
+}?.let { stringResource(it) }
 
 @Composable
 private fun noSoundLabel(info: CallInfo): String? = CallSupport.NO_SOUND.text().takeIf { info.noSound && info.phase == CallPhase.CONNECTED }
@@ -702,14 +705,14 @@ private fun StatusLine(info: CallInfo) {
         } else {
             val text = when (phase) {
                 CallPhase.INCOMING -> when {
-                    info.intercom -> "对讲呼叫"
-                    info.videoOffer -> "视频来电"
-                    else -> "来电"
+                    info.intercom -> stringResource(R.string.call_status_intercom)
+                    info.videoOffer -> stringResource(R.string.call_status_video)
+                    else -> stringResource(R.string.call_status_incoming)
                 }
-                CallPhase.OUTGOING -> "正在呼叫…"
-                CallPhase.CONNECTED -> "已接通"
-                CallPhase.HELD -> "通话已保留"
-                CallPhase.ENDED -> info.endReason ?: "通话结束"
+                CallPhase.OUTGOING -> stringResource(R.string.call_status_calling)
+                CallPhase.CONNECTED -> stringResource(R.string.call_status_connected)
+                CallPhase.HELD -> stringResource(R.string.call_status_held)
+                CallPhase.ENDED -> info.endReason ?: stringResource(R.string.call_ended)
             }
             Text(text, style = style)
         }

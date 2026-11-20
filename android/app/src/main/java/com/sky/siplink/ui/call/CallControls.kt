@@ -59,9 +59,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sky.siplink.R
 import com.sky.siplink.core.CallManager
 import com.sky.siplink.core.model.AudioRoute
 import com.sky.siplink.core.model.CallInfo
@@ -122,22 +124,22 @@ internal fun ActiveControls(
             ) {
                 Icon(Icons.AutoMirrored.Rounded.PhoneForwarded, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.size(8.dp))
-                Text("完成转接：将 ${info.heldCall?.name.orEmpty()} 转给对方")
+                Text(stringResource(R.string.call_complete_transfer, info.heldCall?.name.orEmpty()))
             }
         }
 
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
             ControlToggle(
                 icon = if (info.muted) Icons.Rounded.MicOff else Icons.Rounded.Mic,
-                label = if (info.muted) "已静音" else "静音",
+                label = stringResource(if (info.muted) R.string.call_muted else R.string.call_mute),
                 active = info.muted,
                 onClick = calls::toggleMute,
             )
-            ControlToggle(Icons.Rounded.Dialpad, "键盘", active = false, onClick = onOpenKeypad)
+            ControlToggle(Icons.Rounded.Dialpad, stringResource(R.string.call_keypad), active = false, onClick = onOpenKeypad)
             RouteToggle(info, calls)
             ControlToggle(
                 icon = if (info.phase == CallPhase.HELD) Icons.Rounded.PlayArrow else Icons.Rounded.Pause,
-                label = if (info.phase == CallPhase.HELD) "恢复" else "保留",
+                label = stringResource(if (info.phase == CallPhase.HELD) R.string.call_resume else R.string.call_hold),
                 active = info.phase == CallPhase.HELD,
                 enabled = established,
                 onClick = calls::toggleHold,
@@ -146,14 +148,14 @@ internal fun ActiveControls(
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
             ControlToggle(
                 Icons.AutoMirrored.Rounded.PhoneForwarded,
-                "转接",
+                stringResource(R.string.call_transfer),
                 active = false,
                 enabled = established,
                 onClick = onOpenTransfer,
             )
             ControlToggle(
                 Icons.Rounded.LocalParking,
-                "驻留",
+                stringResource(R.string.call_park),
                 active = false,
                 enabled = established && !twoCalls,
                 // Without a parking code the key is grey, and park() answers the tap with the notice.
@@ -162,7 +164,7 @@ internal fun ActiveControls(
             )
             ControlToggle(
                 Icons.Rounded.SwapCalls,
-                "切换",
+                stringResource(R.string.call_swap),
                 active = false,
                 enabled = twoCalls,
                 onClick = calls::swap,
@@ -170,7 +172,7 @@ internal fun ActiveControls(
             // Merging the two calls opens the conference room with them.
             ControlToggle(
                 Icons.AutoMirrored.Rounded.CallMerge,
-                "合并",
+                stringResource(R.string.call_merge),
                 active = false,
                 enabled = twoCalls && info.phase == CallPhase.CONNECTED,
                 onClick = onOpenRoom,
@@ -179,15 +181,15 @@ internal fun ActiveControls(
         // The shortcut keys sit next to the hang up button, which stays in the middle.
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                ControlToggle(Icons.Rounded.Apps, "快捷键", active = false, onClick = onOpenShortcuts)
+                ControlToggle(Icons.Rounded.Apps, stringResource(R.string.call_shortcuts), active = false, onClick = onOpenShortcuts)
             }
-            RoundAction(Brand.HangUpRed, Icons.Rounded.CallEnd, "挂断", calls::hangUp, size = if (compact) 64.dp else 72.dp)
+            RoundAction(Brand.HangUpRed, Icons.Rounded.CallEnd, stringResource(R.string.call_hang_up), calls::hangUp, size = if (compact) 64.dp else 72.dp)
             Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                 // Nothing of video is shown while video calls are switched off.
                 if (info.videoAllowed || info.video != null) {
                     ControlToggle(
                         Icons.Rounded.Videocam,
-                        "视频",
+                        stringResource(R.string.call_video),
                         active = info.video != null,
                         enabled = info.phase == CallPhase.CONNECTED && info.videoAllowed && !info.videoOffer,
                         onClick = onToggleVideo,
@@ -202,9 +204,9 @@ internal fun ActiveControls(
 @Composable
 private fun SupervisionSwitch(mode: SupervisionMode, onSelect: (SupervisionMode) -> Unit) {
     val options = listOf(
-        SupervisionMode.LISTEN to "监听",
-        SupervisionMode.WHISPER to "耳语",
-        SupervisionMode.BARGE to "强插",
+        SupervisionMode.LISTEN to stringResource(R.string.call_supervision_listen),
+        SupervisionMode.WHISPER to stringResource(R.string.call_supervision_whisper),
+        SupervisionMode.BARGE to stringResource(R.string.call_supervision_barge),
     )
     ChoiceRow(
         options = options,
@@ -226,9 +228,9 @@ internal fun RouteToggle(info: CallInfo, calls: CallManager) {
     // An open menu keeps the controls of a video call on screen.
     if (menuOpen) KeepControlsShown()
     val (icon, label) = when (info.route) {
-        AudioRoute.BLUETOOTH -> Icons.Rounded.Bluetooth to "蓝牙"
-        AudioRoute.HEADSET -> Icons.Rounded.Headset to "耳机"
-        else -> Icons.AutoMirrored.Rounded.VolumeUp to "扬声器"
+        AudioRoute.BLUETOOTH -> Icons.Rounded.Bluetooth to stringResource(R.string.call_route_bluetooth)
+        AudioRoute.HEADSET -> Icons.Rounded.Headset to stringResource(R.string.call_route_headset)
+        else -> Icons.AutoMirrored.Rounded.VolumeUp to stringResource(R.string.call_route_speaker)
     }
     val simple = info.availableRoutes.all { it == AudioRoute.EARPIECE || it == AudioRoute.SPEAKER }
     Box {
@@ -264,12 +266,15 @@ internal fun RouteToggle(info: CallInfo, calls: CallManager) {
     }
 }
 
-private fun routeName(route: AudioRoute): String = when (route) {
-    AudioRoute.EARPIECE -> "听筒"
-    AudioRoute.SPEAKER -> "扬声器"
-    AudioRoute.BLUETOOTH -> "蓝牙"
-    AudioRoute.HEADSET -> "有线耳机"
-}
+@Composable
+private fun routeName(route: AudioRoute): String = stringResource(
+    when (route) {
+        AudioRoute.EARPIECE -> R.string.call_route_earpiece
+        AudioRoute.SPEAKER -> R.string.call_route_speaker
+        AudioRoute.BLUETOOTH -> R.string.call_route_bluetooth
+        AudioRoute.HEADSET -> R.string.call_route_wired_headset
+    },
+)
 
 /** @param dimmed drawn like a disabled key although it can be tapped (the tap explains why it does nothing) */
 @Composable

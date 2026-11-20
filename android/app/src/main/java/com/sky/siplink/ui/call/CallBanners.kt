@@ -24,7 +24,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.sky.siplink.R
 import com.sky.siplink.core.model.CallInfo
 import com.sky.siplink.core.model.SideCall
 import com.sky.siplink.ui.components.FadingText
@@ -45,16 +47,16 @@ internal fun WaitingCallBanner(waiting: SideCall?, onAnswer: () -> Unit, onDecli
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Text("新来电", style = MaterialTheme.typography.labelMedium, color = Brand.Amber)
+            Text(stringResource(R.string.call_waiting_new), style = MaterialTheme.typography.labelMedium, color = Brand.Amber)
             FadingText(
                 waiting?.name.orEmpty(),
                 style = MaterialTheme.typography.titleMedium,
                 color = Color.White,
             )
         }
-        SmallRound(Brand.HangUpRed, Icons.Rounded.CallEnd, "拒绝新来电", onDecline)
+        SmallRound(Brand.HangUpRed, Icons.Rounded.CallEnd, stringResource(R.string.call_waiting_decline), onDecline)
         Spacer(Modifier.width(10.dp))
-        SmallRound(Brand.CallGreen, Icons.Rounded.Call, "保留当前通话并接听", onAnswer)
+        SmallRound(Brand.CallGreen, Icons.Rounded.Call, stringResource(R.string.call_waiting_answer), onAnswer)
     }
 }
 
@@ -74,7 +76,7 @@ internal fun HeldCallBanner(info: CallInfo, onSwap: () -> Unit) {
     ) {
         Column(Modifier.weight(1f)) {
             Text(
-                if (info.consulting) "等待转接（保留中）" else "保留中",
+                stringResource(if (info.consulting) R.string.call_held_consulting else R.string.call_held_label),
                 style = MaterialTheme.typography.labelMedium,
                 color = Color.White.copy(alpha = 0.7f),
             )
@@ -84,7 +86,7 @@ internal fun HeldCallBanner(info: CallInfo, onSwap: () -> Unit) {
                 color = Color.White,
             )
         }
-        Icon(Icons.Rounded.SwapCalls, contentDescription = "切换通话", tint = Color.White)
+        Icon(Icons.Rounded.SwapCalls, contentDescription = stringResource(R.string.call_swap_calls), tint = Color.White)
     }
 }
 

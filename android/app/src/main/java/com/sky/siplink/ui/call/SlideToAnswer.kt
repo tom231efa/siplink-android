@@ -40,12 +40,14 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import com.sky.siplink.R
 import com.sky.siplink.ui.theme.Brand
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -103,6 +105,9 @@ internal fun SlideToAnswer(onAnswer: () -> Unit, onDecline: () -> Unit, modifier
         }
     }
 
+    val description = stringResource(R.string.call_slide_description)
+    val answerLabel = stringResource(R.string.call_slide_answer)
+    val declineLabel = stringResource(R.string.call_slide_decline)
     BoxWithConstraints(
         modifier
             .widthIn(max = MaxTrackWidth)
@@ -126,13 +131,13 @@ internal fun SlideToAnswer(onAnswer: () -> Unit, onDecline: () -> Unit, modifier
                     )
                 }
                 .semantics(mergeDescendants = true) {
-                    contentDescription = "来电：向右滑动接听，向左滑动挂断"
+                    contentDescription = description
                     customActions = listOf(
-                        CustomAccessibilityAction("接听") {
+                        CustomAccessibilityAction(answerLabel) {
                             answer()
                             true
                         },
-                        CustomAccessibilityAction("挂断") {
+                        CustomAccessibilityAction(declineLabel) {
                             decline()
                             true
                         },

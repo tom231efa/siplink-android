@@ -65,4 +65,66 @@
     <string name="feature_dnd_off">关闭免打扰</string>
     <string name="feature_to">%1$s %2$s</string>
     <string name="feature_code_missing">未配置“%1$s”功能码</string>
+
+    <!-- Call screen -->
+    <string name="call_status_incoming">来电</string>
+    <string name="call_status_intercom">对讲呼叫</string>
+    <string name="call_status_video">视频来电</string>
+    <string name="call_status_calling">正在呼叫…</string>
+    <string name="call_status_connected">已接通</string>
+    <string name="call_status_held">通话已保留</string>
+    <string name="call_intercom_chip">对讲</string>
+    <string name="call_room_button">会议室</string>
+    <string name="call_room_open_title">开启会议室？</string>
+    <string name="call_room_open_text">会议室仅支持语音，视频将关闭。</string>
+    <string name="call_room_open">开启</string>
+    <string name="call_transferring">正在转接…</string>
+    <string name="call_transfer_succeeded">转接成功</string>
+    <string name="call_parked_listen">已驻留，请收听 PBX 播报的车位号</string>
+    <string name="call_transfer_failed">转接失败，通话仍处于保留状态</string>
+
+    <!-- Controls -->
+    <string name="call_complete_transfer">完成转接：将 %1$s 转给对方</string>
+    <string name="call_mute">静音</string>
+    <string name="call_muted">已静音</string>
+    <string name="call_keypad">键盘</string>
+    <string name="call_hold">保留</string>
+    <string name="call_resume">恢复</string>
+    <string name="call_transfer">转接</string>
+    <string name="call_park">驻留</string>
+    <string name="call_swap">切换</string>
+    <string name="call_merge">合并</string>
+    <string name="call_shortcuts">快捷键</string>
+    <string name="call_hang_up">挂断</string>
+    <string name="call_video">视频</string>
+    <string name="call_supervision_listen">监听</string>
+    <string name="call_supervision_whisper">耳语</string>
+    <string name="call_supervision_barge">强插</string>
+    <string name="call_route_earpiece">听筒</string>
+    <string name="call_route_speaker">扬声器</string>
+    <string name="call_route_bluetooth">蓝牙</string>
+    <string name="call_route_headset">耳机</string>
+    <string name="call_route_wired_headset">有线耳机</string>
+    <string name="call_record_start">开始录音</string>
+    <string name="call_record_stop">停止录音</string>
+
+    <!-- Keypad, transfer and shortcut keys -->
+    <string name="call_keypad_close">收起键盘</string>
+    <string name="call_transfer_title">转接通话</string>
+    <string name="call_transfer_to">转接到</string>
+    <string name="call_transfer_hint">分机号或 SIP 地址</string>
+    <string name="call_transfer_attended">咨询转</string>
+    <string name="call_transfer_blind">盲转</string>
+    <string name="call_shortcuts_empty">暂无快捷键</string>
+
+    <!-- A second call, and answering -->
+    <string name="call_waiting_new">新来电</string>
+    <string name="call_waiting_decline">拒绝新来电</string>
+    <string name="call_waiting_answer">保留当前通话并接听</string>
+    <string name="call_held_consulting">等待转接（保留中）</string>
+    <string name="call_held_label">保留中</string>
+    <string name="call_swap_calls">切换通话</string>
+    <string name="call_slide_description">来电：向右滑动接听，向左滑动挂断</string>
+    <string name="call_slide_answer">接听</string>
+    <string name="call_slide_decline">挂断</string>
 </resources>

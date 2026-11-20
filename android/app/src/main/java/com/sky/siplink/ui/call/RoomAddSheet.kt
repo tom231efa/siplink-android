@@ -49,10 +49,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sky.siplink.R
 import com.sky.siplink.core.CallManager
 import com.sky.siplink.core.logic.Formatters
 import com.sky.siplink.core.logic.ListKeys
@@ -92,10 +94,13 @@ internal fun RoomAddSheet(room: RoomInfo, calls: CallManager, onDismiss: () -> U
 
     val directory = directories.firstOrNull { it.enabled }?.takeIf { engine.directory.isAvailable }
     val speedDials = shortcuts.filter { it.action == ShortcutAction.SPEED_DIAL && it.number.isNotBlank() }
+    val recentLabel = stringResource(R.string.room_source_recent)
+    val directoryLabel = stringResource(R.string.room_source_directory)
+    val shortcutsLabel = stringResource(R.string.room_source_shortcuts)
     val sources = buildList {
-        add(Source.RECENT to "最近通话")
-        if (directory != null) add(Source.DIRECTORY to "通讯录")
-        if (speedDials.isNotEmpty()) add(Source.SHORTCUTS to "快捷键")
+        add(Source.RECENT to recentLabel)
+        if (directory != null) add(Source.DIRECTORY to directoryLabel)
+        if (speedDials.isNotEmpty()) add(Source.SHORTCUTS to shortcutsLabel)
     }
     val shownSource = source.takeIf { chosen -> sources.any { it.first == chosen } } ?: Source.RECENT
     val query = typed.trim()
@@ -142,7 +147,7 @@ internal fun RoomAddSheet(room: RoomInfo, calls: CallManager, onDismiss: () -> U
                 .padding(horizontal = 24.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("添加成员", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+            Text(stringResource(R.string.room_add_title), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
             Text(
                 RoomRules.count(room.present, room.limit),
                 style = MaterialTheme.typography.titleMedium,
@@ -156,14 +161,14 @@ internal fun RoomAddSheet(room: RoomInfo, calls: CallManager, onDismiss: () -> U
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp),
-            label = { FieldText("号码或姓名") },
+            label = { FieldText(stringResource(R.string.room_add_field)) },
             singleLine = true,
             shape = MaterialTheme.shapes.medium,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { addTyped() }),
             trailingIcon = {
                 IconButton(onClick = ::addTyped, enabled = query.isNotEmpty()) {
-                    Icon(Icons.Rounded.Add, contentDescription = "添加号码")
+                    Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.room_add_number))
                 }
             },
         )
@@ -179,7 +184,7 @@ internal fun RoomAddSheet(room: RoomInfo, calls: CallManager, onDismiss: () -> U
                         selected = true,
                         onClick = { picked.remove(candidate) },
                         label = { FadingText(candidate.name, modifier = Modifier.widthIn(max = 160.dp)) },
-                        trailingIcon = { Icon(Icons.Rounded.Close, contentDescription = "移除 ${candidate.name}", modifier = Modifier.size(18.dp)) },
+                        trailingIcon = { Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.room_pick_remove, candidate.name), modifier = Modifier.size(18.dp)) },
                     )
                 }
             }
@@ -228,7 +233,7 @@ internal fun RoomAddSheet(room: RoomInfo, calls: CallManager, onDismiss: () -> U
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp, vertical = 12.dp),
         ) {
-            Text(if (picked.isEmpty()) "呼叫" else "呼叫（${picked.size}）")
+            Text(if (picked.isEmpty()) stringResource(R.string.room_call) else stringResource(R.string.room_call_count, picked.size.toString()))
         }
     }
 
@@ -278,7 +283,7 @@ private fun CandidateRow(candidate: Candidate, inRoom: Boolean, picked: Boolean,
         Column(Modifier.weight(1f)) {
             FadingText(candidate.name, style = MaterialTheme.typography.titleMedium)
             FadingText(
-                if (inRoom) "${candidate.number} · 已在会议室中" else candidate.number,
+                if (inRoom) stringResource(R.string.room_candidate_in_room, candidate.number) else candidate.number,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

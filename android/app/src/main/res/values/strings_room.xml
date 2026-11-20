@@ -31,4 +31,56 @@
     <string name="room_refused">Refused by PBX</string>
     <string name="room_busy">Busy</string>
     <string name="room_unavailable">Unavailable</string>
+
+    <!-- The room screen -->
+    <string name="room_end_title">End conference?</string>
+    <plurals name="room_end_text">
+        <item quantity="one">%1$s call will be hung up.</item>
+        <item quantity="other">All %1$s calls will be hung up.</item>
+    </plurals>
+    <string name="room_end_confirm">End</string>
+    <string name="room_end">End conference</string>
+    <string name="room_add_members">Add members</string>
+    <string name="room_show_readings">Show measured values</string>
+    <string name="room_warning_heat">Device too hot</string>
+    <string name="room_warning_load">Device overloaded</string>
+    <string name="room_warning_memory">Low memory</string>
+    <string name="room_warning_network">Poor network</string>
+    <string name="room_reading_cpu">CPU</string>
+    <string name="room_reading_thread">Busiest thread</string>
+    <string name="room_reading_temperature">Device temperature</string>
+    <string name="room_reading_memory">Memory</string>
+    <string name="room_memory_low">Low</string>
+    <string name="room_memory_normal">Normal</string>
+    <string name="room_thermal_unknown">Unknown</string>
+    <string name="room_thermal_none">Normal</string>
+    <string name="room_thermal_light">Light</string>
+    <string name="room_thermal_moderate">Moderate</string>
+    <string name="room_thermal_severe">Severe</string>
+    <string name="room_thermal_critical">Critical</string>
+    <string name="room_thermal_emergency">Emergency</string>
+    <string name="room_thermal_shutdown">Shutting down</string>
+    <string name="room_link_readings">"Loss ↑%1$s%% ↓%2$s%%  jitter %3$s ms  round trip %4$s ms"</string>
+    <string name="room_member_retry">Call %1$s again</string>
+    <string name="room_member_remove">Remove %1$s</string>
+    <string name="room_member_hang_up">Hang up %1$s</string>
+    <string name="room_signal_poor">Poor call quality</string>
+    <string name="room_signal">Call quality %1$s/%2$s</string>
+    <string name="room_away">Away</string>
+    <string name="room_return">Return to room</string>
+    <string name="room_waiting_new">New call</string>
+    <string name="room_waiting_decline">Decline</string>
+    <string name="room_join">Join room</string>
+
+    <!-- Adding members -->
+    <string name="room_add_title">Add members</string>
+    <string name="room_source_recent">Recent calls</string>
+    <string name="room_source_directory">Directory</string>
+    <string name="room_source_shortcuts">Shortcut keys</string>
+    <string name="room_add_field">Number or name</string>
+    <string name="room_add_number">Add number</string>
+    <string name="room_pick_remove">Remove %1$s</string>
+    <string name="room_call">Call</string>
+    <string name="room_call_count">Call (%1$s)</string>
+    <string name="room_candidate_in_room">%1$s · Already in the room</string>
 </resources>

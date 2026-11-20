@@ -51,11 +51,13 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sky.siplink.R
 import com.sky.siplink.core.logic.PreviewDock
 import com.sky.siplink.core.logic.VideoRules
 import com.sky.siplink.core.model.CallVideo
@@ -125,10 +127,11 @@ internal fun VideoStage(video: CallVideo, stage: VideoStageState, chrome: Boolea
         FollowSpot(small, PreviewDock.spot(place, widthPx, heightPx, shown, now), controlsShown = chrome)
         val frame = SmallPictureState.Frame(widthPx, heightPx, shown, now, place, with(density) { FlingSpeed.toPx() })
         SideEffect { small.frame = frame }
+        val labels = SmallPictureLabels.current()
         val smallWindow = Modifier
             .size(smallWidth.dp, smallHeight.dp)
             .smallPicture(
-                small, scope, frame,
+                small, scope, frame, labels,
                 own = !swapped,
                 canSwap = canSwap,
                 onSwap = { stage.swapChosen = !stage.swapChosen },
@@ -287,9 +290,9 @@ internal fun VideoRequestBanner(onAccept: () -> Unit, onDecline: () -> Unit) {
     ) {
         Icon(Icons.Rounded.Videocam, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(10.dp))
-        Text("对方请求开启视频", style = MaterialTheme.typography.titleSmall, color = Color.White, modifier = Modifier.weight(1f))
-        TextButton(onClick = onDecline) { Text("拒绝", color = Color.White.copy(alpha = 0.8f)) }
-        TextButton(onClick = onAccept) { Text("开启", color = Brand.Blue) }
+        Text(stringResource(R.string.video_request), style = MaterialTheme.typography.titleSmall, color = Color.White, modifier = Modifier.weight(1f))
+        TextButton(onClick = onDecline) { Text(stringResource(R.string.video_request_decline), color = Color.White.copy(alpha = 0.8f)) }
+        TextButton(onClick = onAccept) { Text(stringResource(R.string.video_request_accept), color = Brand.Blue) }
     }
 }
 
@@ -311,7 +314,7 @@ internal fun AnswerWithVideoToggle(on: Boolean, onChange: (Boolean) -> Unit) {
     ) {
         Icon(if (on) Icons.Rounded.Videocam else Icons.Rounded.VideocamOff, contentDescription = null, tint = content, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(6.dp))
-        Text(if (on) "视频接听" else "语音接听", style = MaterialTheme.typography.labelLarge, color = content)
+        Text(stringResource(if (on) R.string.video_answer_with_video else R.string.video_answer_with_audio), style = MaterialTheme.typography.labelLarge, color = content)
     }
 }
 
