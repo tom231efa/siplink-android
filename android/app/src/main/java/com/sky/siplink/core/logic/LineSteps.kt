@@ -94,7 +94,10 @@ object LineSteps {
     /**
      * A line still fails after the probe found [probe]: the next transport the probe finds open,
      * or its own one when the transport on test failed and none is left. Null when nothing
-     * changes: its own transport is not UDP, the server is down, or nothing is left to try.
+     * changes: its own transport is not UDP, the server is down, nothing is left to try, or the
+     * line registered on the transport it runs on and that is still open (the server's trouble
+     * for a while; its retest comes as planned). A transport refused again once its wait was over
+     * waits longer the next time ([LineAdapt.retestDelay] of the reverts).
      *
      * @param current the transport it runs on; [trial] the one on test (null: its own)
      * @param refused the server answered on [trial] and refused the line there: open, and no good
@@ -110,17 +113,21 @@ object LineSteps {
             SipTransport.TLS -> probe.tls == true
             else -> false
         }
-        val known = LineAdapt.failedAt(record, now)
+        // Registered there before and still open: the server's trouble (a 503 for a while), not the transport's.
+        if (!refused && open && record.registered && record.transport == trial) return null
         val marked = trial != null && open
-        val failed = if (marked) known + trial else known
-        val failedUntil = if (marked) now + LineAdapt.retestDelay(record.reverts) else record.failedUntil.takeIf { known.isNotEmpty() } ?: 0
+        // What failed stays in the record past its wait as well: one that fails again waits longer.
+        val reverts = if (marked && trial in record.failed) record.reverts + 1 else record.reverts
+        val failed = if (marked) record.failed + trial else record.failed
+        val failedUntil = if (marked) now + LineAdapt.retestDelay(reverts) else record.failedUntil
+        val known = LineAdapt.failedAt(record, now)
         val udpUnfit = probe.udp == true && probe.udpLarge == false
-        val next = LineAdapt.nextTransport(own, current, failed, probe, udpUnfit)
-        val base = record.copy(failed = failed, failedUntil = failedUntil, registered = false, usedAt = now)
+        val next = LineAdapt.nextTransport(own, current, if (marked) known + trial else known, probe, udpUnfit)
+        val base = record.copy(failed = failed, failedUntil = failedUntil, reverts = reverts, registered = false, usedAt = now)
         return when {
             next != null -> {
                 val left = if (current != SipTransport.UDP) record.left else if (udpUnfit) Leave.LARGE_LOST else Leave.NO_ANSWER
-                Change(base.copy(transport = next, left = left, retestAt = now + LineAdapt.retestAfter(next, record.reverts)), next)
+                Change(base.copy(transport = next, left = left, retestAt = now + LineAdapt.retestAfter(next, reverts)), next)
             }
             trial != null -> Change(base.copy(transport = null, left = null, backAt = 0), null)
             else -> null

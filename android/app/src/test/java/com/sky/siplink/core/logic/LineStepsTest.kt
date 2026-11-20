@@ -107,6 +107,40 @@ class LineStepsTest {
     }
 
     @Test
+    fun `a line settled on its transport keeps it while that is open, whatever the server answers`() {
+        val settled = Record(transport = TCP, registered = true, retestAt = now + day)
+        // 503 for longer than the confirmation wait, the TCP port open: the server's trouble.
+        assertNull(LineSteps.afterFailure(settled, UDP, TCP, TCP, blocked, refused = false, now = now))
+        // TCP closed: on to what is open, without marking TCP.
+        val closed = LineSteps.afterFailure(settled, UDP, TCP, TCP, blocked.copy(tcp = false), refused = false, now = now)!!
+        assertEquals(TLS, closed.trial)
+        assertEquals(emptySet<Any>(), closed.record.failed)
+        // Not settled there yet: an open transport that does not register is marked as before.
+        val onTest = LineSteps.afterFailure(settled.copy(registered = false), UDP, TCP, TCP, blocked, refused = false, now = now)!!
+        assertEquals(setOf(TCP), onTest.record.failed)
+    }
+
+    @Test
+    fun `a transport refused again waits longer each time, up to a week`() {
+        val tcpOnly = blocked.copy(tls = false)
+        var record = Record(transport = TCP)
+        var at = now
+        val waits = (1..5).map {
+            val back = LineSteps.afterFailure(record, UDP, TCP, TCP, tcpOnly, refused = true, now = at)!!
+            assertNull(back.record.transport)
+            val wait = back.record.failedUntil - at
+            // Its wait over, UDP still gets no answer: TCP again, which refuses again.
+            at = back.record.failedUntil
+            record = LineSteps.afterFailure(back.record, UDP, UDP, null, tcpOnly, refused = false, now = at)!!.record
+            assertEquals(TCP, record.transport)
+            wait
+        }
+        assertEquals(listOf(day, 2 * day, 4 * day, 7 * day, 7 * day), waits)
+        // A new login starts over.
+        assertEquals(emptySet<Any>(), LineSteps.credentialsChanged(record).failed)
+    }
+
+    @Test
     fun `a transport that did not register is tried again once its time is over`() {
         val refused = LineSteps.afterFailure(Record(transport = TCP), UDP, TCP, TCP, blocked.copy(tls = false), refused = true, now = now)!!
         assertEquals(setOf(TCP), LineAdapt.failedAt(refused.record, now + day - 1))
@@ -115,7 +149,9 @@ class LineStepsTest {
         assertNull(LineSteps.afterFailure(refused.record, UDP, UDP, null, blocked.copy(tls = false), refused = false, now = now + 1))
         val later = LineSteps.afterFailure(refused.record, UDP, UDP, null, blocked.copy(tls = false), refused = false, now = now + day)!!
         assertEquals(TCP, later.trial)
-        assertEquals(emptySet<Any>(), later.record.failed)
+        // Still known, past its wait: refused once more, it waits longer.
+        assertEquals(setOf(TCP), later.record.failed)
+        assertEquals(emptySet<Any>(), LineAdapt.failedAt(later.record, now + day))
         // A new password: what was refused may register now.
         val changed = LineSteps.credentialsChanged(refused.record)
         assertEquals(emptySet<Any>(), changed.failed)
@@ -138,8 +174,8 @@ class LineStepsTest {
         // On its own transport nothing is marked.
         assertFalse(LineSteps.registeredOn(Record(), UDP).registered)
         assertFalse(LineSteps.onTrial(null, null, UDP, UDP, null))
-        // The mark goes with the transport: moved on, the line is on test again.
-        val moved = LineSteps.afterFailure(settled, UDP, TCP, TCP, blocked, refused = false, now = now)!!
+        // The mark goes with the transport: moved on (TCP closed now), the line is on test again.
+        val moved = LineSteps.afterFailure(settled, UDP, TCP, TCP, blocked.copy(tcp = false), refused = false, now = now)!!
         assertEquals(TLS, moved.record.transport)
         assertFalse(moved.record.registered)
     }

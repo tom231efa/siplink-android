@@ -68,6 +68,9 @@ internal class LineDoctor(
         /** Probes asked for too soon after the last one: they run once [LineSteps.MIN_PROBE_GAP_MS] is over. */
         val later = ArrayList<Runnable>()
 
+        /** Looks again at a line that still fails once what failed may be tried again ([LineAdapt.Record.failedUntil]). */
+        var recheck: Runnable? = null
+
         /** Where the server saw the line at its last registration, and over which server and when. */
         var contact: String? = null
         var contactServer: String? = null
@@ -248,6 +251,7 @@ internal class LineDoctor(
 
     private fun registered(account: Account, id: String, state: State) {
         cancelConfirm(state)
+        cancelRecheck(state)
         state.trial = null
         val now = System.currentTimeMillis()
         val stored = records.record(id, network)
@@ -355,6 +359,7 @@ internal class LineDoctor(
     /** Stops whatever is pending for a line whose state is dropped. */
     private fun cancel(state: State) {
         cancelConfirm(state)
+        cancelRecheck(state)
         state.later.forEach(handler::removeCallbacks)
         state.later.clear()
     }
@@ -389,11 +394,41 @@ internal class LineDoctor(
             val record = records.record(id, network) ?: LineAdapt.Record()
             // A line found on another transport (as after a start) is on test as well.
             val trial = state.trial ?: asked.takeIf { it != own }
-            val change = LineSteps.afterFailure(record, own, asked, trial, probe, refused, System.currentTimeMillis()) ?: return@probe
-            state.trial = change.trial
-            records.store(id, network, change.record)
-            applyAll()
+            val change = LineSteps.afterFailure(record, own, asked, trial, probe, refused, System.currentTimeMillis())
+            if (change != null) {
+                state.trial = change.trial
+                records.store(id, network, change.record)
+                applyAll()
+            }
+            recheckAt(id, state, (change?.record ?: record).failedUntil)
         }
+    }
+
+    /**
+     * Looks again at [at] (ms since the epoch) whether the line of account [id] still fails, when
+     * what failed may be tried again: the SIP core reports a failed registration once, and the
+     * REGISTERs it keeps sending after it fail without a notice (over blocked UDP in the NAT lab,
+     * one every 34 seconds).
+     * Nothing when that time is over already.
+     */
+    private fun recheckAt(id: String, state: State, at: Long) {
+        cancelRecheck(state)
+        val wait = at - System.currentTimeMillis()
+        if (wait <= 0) return
+        val task = Runnable {
+            state.recheck = null
+            val current = find(id)
+            if (current != null && enabled && states[id] === state && current.state == RegistrationState.Failed && !holds()) {
+                stillFailing(current, id, state, refused = false)
+            }
+        }
+        state.recheck = task
+        handler.postDelayed(task, wait)
+    }
+
+    private fun cancelRecheck(state: State) {
+        state.recheck?.let(handler::removeCallbacks)
+        state.recheck = null
     }
 
     /**
