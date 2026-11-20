@@ -2,12 +2,11 @@ package com.sky.siplink.ui
 
 import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -16,32 +15,25 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.recalculateWindowInsets
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Contacts
-import androidx.compose.material.icons.outlined.Dialpad
-import androidx.compose.material.icons.outlined.History
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.rounded.Contacts
-import androidx.compose.material.icons.rounded.Dialpad
-import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.PhoneInTalk
-import androidx.compose.material.icons.rounded.Settings
-import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -55,15 +47,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavGraph.Companion.findStartDestination
-import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -107,13 +94,6 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
-private enum class Tab(val route: String, val label: String, val icon: ImageVector, val selectedIcon: ImageVector) {
-    DIALER("dialer", "拨号", Icons.Outlined.Dialpad, Icons.Rounded.Dialpad),
-    HISTORY("history", "记录", Icons.Outlined.History, Icons.Rounded.History),
-    DIRECTORY("directory", "通讯录", Icons.Outlined.Contacts, Icons.Rounded.Contacts),
-    SETTINGS("settings", "设置", Icons.Outlined.Settings, Icons.Rounded.Settings),
-}
-
 private object Routes {
     const val ACCOUNTS = "accounts"
     const val ACCOUNT_NEW = "account/new"
@@ -154,6 +134,7 @@ fun AppRoot() {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val route = backStackEntry?.destination?.route
     val topLevel = route == null || isTab(route)
+    val rail = usesRail(LocalWindowInfo.current.containerDpSize.width)
     val call by engine.calls.call.collectAsStateWithLifecycle()
     // A managed configuration is only looked at: the screens below read this through LocalConfigLocked.
     val managed by engine.lock.managed.collectAsStateWithLifecycle()
@@ -188,229 +169,199 @@ fun AppRoot() {
     CompositionLocalProvider(LocalMessenger provides messenger, LocalConfigLocked provides managed) {
         StartupPermissions()
         if (restartForLdap) LdapRestartDialog(onDismiss = engine.remote::restartHandled)
-        Scaffold(
-            contentWindowInsets = WindowInsets(0, 0, 0, 0),
-            snackbarHost = {
-                SnackbarHost(
-                    snackbarHostState,
-                    modifier = if (topLevel) Modifier else Modifier.navigationBarsPadding().imePadding(),
-                )
-            },
-            topBar = {
-                // The banner takes the status bar inset over from the screen below it.
-                ActiveCallBanner(call, visible = bannerWanted && bannerAtTop, onClick = openCall, modifier = Modifier.statusBarsPadding())
-            },
-            bottomBar = {
-                Column {
-                    ActiveCallBanner(
-                        call,
-                        visible = bannerWanted && !bannerAtTop,
-                        onClick = openCall,
-                        modifier = if (topLevel) Modifier else Modifier.navigationBarsPadding(),
-                    )
-                    AnimatedVisibility(
-                        visible = topLevel,
-                        enter = expandVertically(Motion.spatial()) + fadeIn(Motion.fade(160)),
-                        exit = shrinkVertically(Motion.spatial()) + fadeOut(Motion.fade(100)),
-                    ) {
-                        BottomBar(route, navController, updateOffered)
-                    }
+        // On a wide window (a phone on its side) the tabs stand in a rail at the start, which keeps
+        // clear of the system bars and the cutout on its side. The screens beside it work out from
+        // where they stand which insets are still theirs: no gap is left twice.
+        Row(Modifier.fillMaxSize()) {
+            if (rail) {
+                AnimatedVisibility(
+                    visible = topLevel,
+                    // In from the edge of the screen and back out to it.
+                    enter = expandHorizontally(Motion.spatial()) + fadeIn(Motion.fade(160)),
+                    exit = shrinkHorizontally(Motion.spatial()) + fadeOut(Motion.fade(100)),
+                ) {
+                    SideRail(route, navController, updateOffered)
                 }
-            },
-        ) { padding ->
-            NavHost(
-                navController = navController,
-                startDestination = Tab.DIALER.route,
-                // On its side the phone has the camera cutout, and with three-button navigation the
-                // navigation bar, on the left or the right: no screen puts anything under them.
+            }
+            Scaffold(
                 modifier = Modifier
-                    .padding(padding)
-                    .consumeWindowInsets(padding)
-                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
-                enterTransition = {
-                    if (isTab(initialState.destination.route) && isTab(targetState.destination.route)) Motion.tabEnter else Motion.pushEnter
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .recalculateWindowInsets(),
+                contentWindowInsets = WindowInsets(0, 0, 0, 0),
+                snackbarHost = {
+                    SnackbarHost(
+                        snackbarHostState,
+                        modifier = if (topLevel) Modifier else Modifier.navigationBarsPadding().imePadding(),
+                    )
                 },
-                exitTransition = {
-                    if (isTab(initialState.destination.route) && isTab(targetState.destination.route)) Motion.tabExit else Motion.pushExit
+                topBar = {
+                    // The banner takes the status bar inset over from the screen below it.
+                    ActiveCallBanner(call, visible = bannerWanted && bannerAtTop, onClick = openCall, modifier = Modifier.statusBarsPadding())
                 },
-                popEnterTransition = { Motion.popEnter },
-                popExitTransition = { Motion.popExit },
-            ) {
-                composable(Tab.DIALER.route) {
-                    DialerScreen(
-                        // Without an account the dial pad leads to the form for one, which a managed configuration has no use for.
-                        onAddAccount = { if (managed) messenger(ManagedConfig.NOTICE) else navController.navigate(Routes.ACCOUNT_NEW) },
-                        onOpenShortcuts = { accountId -> navController.navigate(Routes.shortcuts(accountId)) },
-                    )
-                }
-                composable(Tab.HISTORY.route) { HistoryScreen() }
-                composable(Tab.DIRECTORY.route) {
-                    DirectoryScreen(onOpenSettings = { navController.navigate(Routes.LDAP) })
-                }
-                composable(Routes.ACCOUNTS) {
-                    AccountsScreen(
-                        onBack = { navController.popBackStack() },
-                        onAdd = { navController.navigate(Routes.ACCOUNT_NEW) },
-                        onEdit = { navController.navigate(Routes.accountEdit(it)) },
-                    )
-                }
-                composable(Tab.SETTINGS.route) {
-                    SettingsScreen(
-                        onOpenAccounts = { navController.navigate(Routes.ACCOUNTS) },
-                        onOpenTls = { navController.navigate(Routes.TLS) },
-                        onOpenLdap = { navController.navigate(Routes.LDAP) },
-                        onOpenAdvanced = { navController.navigate(Routes.ADVANCED) },
-                        onOpenFeatureCodes = { navController.navigate(Routes.FEATURE_CODES) },
-                        onOpenCodecs = { navController.navigate(Routes.CODECS) },
-                        onOpenRemoteConfig = { navController.navigate(Routes.REMOTE_CONFIG) },
-                        onOpenRecordingSettings = { navController.navigate(Routes.RECORDING_SETTINGS) },
-                        onOpenAutoAnswer = { navController.navigate(Routes.AUTO_ANSWER) },
-                        onOpenAbout = { navController.navigate(Routes.ABOUT) },
-                    )
-                }
-                composable(Routes.ACCOUNT_NEW) {
-                    AccountEditScreen(
-                        accountId = null,
-                        onBack = { navController.popBackStack() },
-                        onOpenTls = { navController.navigate(Routes.TLS) },
-                    )
-                }
-                composable(
-                    Routes.ACCOUNT_EDIT,
-                    arguments = listOf(navArgument("id") { type = NavType.StringType }),
-                ) { entry ->
-                    AccountEditScreen(
-                        accountId = entry.arguments?.getString("id"),
-                        onBack = { navController.popBackStack() },
-                        onOpenTls = { navController.navigate(Routes.TLS) },
-                        onOpenLine = { navController.navigate(Routes.lineDiagnosis(it)) },
-                    )
-                }
-                composable(
-                    Routes.LINE_DIAGNOSIS,
-                    arguments = listOf(navArgument("id") { type = NavType.StringType }),
-                ) { entry ->
-                    LineDiagnosisScreen(
-                        accountId = entry.arguments?.getString("id").orEmpty(),
-                        onBack = { navController.popBackStack() },
-                    )
-                }
-                composable(Routes.LDAP) {
-                    LdapListScreen(
-                        onBack = { navController.popBackStack() },
-                        onAdd = { navController.navigate(Routes.LDAP_NEW) },
-                        onEdit = { navController.navigate(Routes.ldapEdit(it)) },
-                    )
-                }
-                composable(Routes.LDAP_NEW) {
-                    LdapEditScreen(
-                        directoryId = null,
-                        onBack = { navController.popBackStack() },
-                        onOpenTls = { navController.navigate(Routes.TLS) },
-                    )
-                }
-                composable(
-                    Routes.LDAP_EDIT,
-                    arguments = listOf(navArgument("id") { type = NavType.StringType }),
-                ) { entry ->
-                    LdapEditScreen(
-                        directoryId = entry.arguments?.getString("id"),
-                        onBack = { navController.popBackStack() },
-                        onOpenTls = { navController.navigate(Routes.TLS) },
-                    )
-                }
-                composable(Routes.TLS) { TlsScreen(onBack = { navController.popBackStack() }) }
-                composable(Routes.ADVANCED) { AdvancedSettingsScreen(onBack = { navController.popBackStack() }) }
-                composable(Routes.FEATURE_CODES) { FeatureCodesScreen(onBack = { navController.popBackStack() }) }
-                composable(Routes.CODECS) { CodecsScreen(onBack = { navController.popBackStack() }) }
-                composable(Routes.REMOTE_CONFIG) { RemoteConfigScreen(onBack = { navController.popBackStack() }) }
-                composable(Routes.RECORDING_SETTINGS) {
-                    RecordingSettingsScreen(
-                        onBack = { navController.popBackStack() },
-                        onOpenRecordings = { navController.navigate(Routes.RECORDINGS) },
-                    )
-                }
-                composable(Routes.RECORDINGS) { RecordingsScreen(onBack = { navController.popBackStack() }) }
-                composable(Routes.AUTO_ANSWER) { AutoAnswerScreen(onBack = { navController.popBackStack() }) }
-                composable(Routes.ABOUT) { AboutScreen(onBack = { navController.popBackStack() }) }
-                composable(
-                    Routes.SHORTCUTS,
-                    arguments = listOf(
-                        navArgument("account") {
-                            type = NavType.StringType
-                            nullable = true
-                            defaultValue = null
-                        },
-                    ),
-                ) { entry ->
-                    ShortcutsScreen(
-                        accountId = entry.arguments?.getString("account"),
-                        onBack = { navController.popBackStack() },
-                    )
+                bottomBar = {
+                    Column {
+                        ActiveCallBanner(
+                            call,
+                            visible = bannerWanted && !bannerAtTop,
+                            onClick = openCall,
+                            modifier = if (topLevel) Modifier else Modifier.navigationBarsPadding(),
+                        )
+                        AnimatedVisibility(
+                            visible = topLevel,
+                            enter = expandVertically(Motion.spatial()) + fadeIn(Motion.fade(160)),
+                            exit = shrinkVertically(Motion.spatial()) + fadeOut(Motion.fade(100)),
+                        ) {
+                            // Beside the rail the main screens still end above the navigation bar.
+                            if (rail) {
+                                Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
+                            } else {
+                                BottomBar(route, navController, updateOffered)
+                            }
+                        }
+                    }
+                },
+            ) { padding ->
+                NavHost(
+                    navController = navController,
+                    startDestination = Tab.DIALER.route,
+                    // On its side the phone has the camera cutout, and with three-button navigation the
+                    // navigation bar, on the left or the right: no screen puts anything under them.
+                    modifier = Modifier
+                        .padding(padding)
+                        .consumeWindowInsets(padding)
+                        .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
+                    enterTransition = {
+                        if (isTab(initialState.destination.route) && isTab(targetState.destination.route)) Motion.tabEnter else Motion.pushEnter
+                    },
+                    exitTransition = {
+                        if (isTab(initialState.destination.route) && isTab(targetState.destination.route)) Motion.tabExit else Motion.pushExit
+                    },
+                    popEnterTransition = { Motion.popEnter },
+                    popExitTransition = { Motion.popExit },
+                ) {
+                    composable(Tab.DIALER.route) {
+                        DialerScreen(
+                            // Without an account the dial pad leads to the form for one, which a managed configuration has no use for.
+                            onAddAccount = { if (managed) messenger(ManagedConfig.NOTICE) else navController.navigate(Routes.ACCOUNT_NEW) },
+                            onOpenShortcuts = { accountId -> navController.navigate(Routes.shortcuts(accountId)) },
+                        )
+                    }
+                    composable(Tab.HISTORY.route) { HistoryScreen() }
+                    composable(Tab.DIRECTORY.route) {
+                        DirectoryScreen(onOpenSettings = { navController.navigate(Routes.LDAP) })
+                    }
+                    composable(Routes.ACCOUNTS) {
+                        AccountsScreen(
+                            onBack = { navController.popBackStack() },
+                            onAdd = { navController.navigate(Routes.ACCOUNT_NEW) },
+                            onEdit = { navController.navigate(Routes.accountEdit(it)) },
+                        )
+                    }
+                    composable(Tab.SETTINGS.route) {
+                        SettingsScreen(
+                            onOpenAccounts = { navController.navigate(Routes.ACCOUNTS) },
+                            onOpenTls = { navController.navigate(Routes.TLS) },
+                            onOpenLdap = { navController.navigate(Routes.LDAP) },
+                            onOpenAdvanced = { navController.navigate(Routes.ADVANCED) },
+                            onOpenFeatureCodes = { navController.navigate(Routes.FEATURE_CODES) },
+                            onOpenCodecs = { navController.navigate(Routes.CODECS) },
+                            onOpenRemoteConfig = { navController.navigate(Routes.REMOTE_CONFIG) },
+                            onOpenRecordingSettings = { navController.navigate(Routes.RECORDING_SETTINGS) },
+                            onOpenAutoAnswer = { navController.navigate(Routes.AUTO_ANSWER) },
+                            onOpenAbout = { navController.navigate(Routes.ABOUT) },
+                        )
+                    }
+                    composable(Routes.ACCOUNT_NEW) {
+                        AccountEditScreen(
+                            accountId = null,
+                            onBack = { navController.popBackStack() },
+                            onOpenTls = { navController.navigate(Routes.TLS) },
+                        )
+                    }
+                    composable(
+                        Routes.ACCOUNT_EDIT,
+                        arguments = listOf(navArgument("id") { type = NavType.StringType }),
+                    ) { entry ->
+                        AccountEditScreen(
+                            accountId = entry.arguments?.getString("id"),
+                            onBack = { navController.popBackStack() },
+                            onOpenTls = { navController.navigate(Routes.TLS) },
+                            onOpenLine = { navController.navigate(Routes.lineDiagnosis(it)) },
+                        )
+                    }
+                    composable(
+                        Routes.LINE_DIAGNOSIS,
+                        arguments = listOf(navArgument("id") { type = NavType.StringType }),
+                    ) { entry ->
+                        LineDiagnosisScreen(
+                            accountId = entry.arguments?.getString("id").orEmpty(),
+                            onBack = { navController.popBackStack() },
+                        )
+                    }
+                    composable(Routes.LDAP) {
+                        LdapListScreen(
+                            onBack = { navController.popBackStack() },
+                            onAdd = { navController.navigate(Routes.LDAP_NEW) },
+                            onEdit = { navController.navigate(Routes.ldapEdit(it)) },
+                        )
+                    }
+                    composable(Routes.LDAP_NEW) {
+                        LdapEditScreen(
+                            directoryId = null,
+                            onBack = { navController.popBackStack() },
+                            onOpenTls = { navController.navigate(Routes.TLS) },
+                        )
+                    }
+                    composable(
+                        Routes.LDAP_EDIT,
+                        arguments = listOf(navArgument("id") { type = NavType.StringType }),
+                    ) { entry ->
+                        LdapEditScreen(
+                            directoryId = entry.arguments?.getString("id"),
+                            onBack = { navController.popBackStack() },
+                            onOpenTls = { navController.navigate(Routes.TLS) },
+                        )
+                    }
+                    composable(Routes.TLS) { TlsScreen(onBack = { navController.popBackStack() }) }
+                    composable(Routes.ADVANCED) { AdvancedSettingsScreen(onBack = { navController.popBackStack() }) }
+                    composable(Routes.FEATURE_CODES) { FeatureCodesScreen(onBack = { navController.popBackStack() }) }
+                    composable(Routes.CODECS) { CodecsScreen(onBack = { navController.popBackStack() }) }
+                    composable(Routes.REMOTE_CONFIG) { RemoteConfigScreen(onBack = { navController.popBackStack() }) }
+                    composable(Routes.RECORDING_SETTINGS) {
+                        RecordingSettingsScreen(
+                            onBack = { navController.popBackStack() },
+                            onOpenRecordings = { navController.navigate(Routes.RECORDINGS) },
+                        )
+                    }
+                    composable(Routes.RECORDINGS) { RecordingsScreen(onBack = { navController.popBackStack() }) }
+                    composable(Routes.AUTO_ANSWER) { AutoAnswerScreen(onBack = { navController.popBackStack() }) }
+                    composable(Routes.ABOUT) { AboutScreen(onBack = { navController.popBackStack() }) }
+                    composable(
+                        Routes.SHORTCUTS,
+                        arguments = listOf(
+                            navArgument("account") {
+                                type = NavType.StringType
+                                nullable = true
+                                defaultValue = null
+                            },
+                        ),
+                    ) { entry ->
+                        ShortcutsScreen(
+                            accountId = entry.arguments?.getString("account"),
+                            onBack = { navController.popBackStack() },
+                        )
+                    }
                 }
             }
         }
     }
 }
 
-/** @param updateOffered whether the settings tab carries the dot of a newer version */
-@Composable
-private fun BottomBar(route: String?, navController: NavHostController, updateOffered: Boolean) {
-    NavigationBar {
-        Tab.entries.forEach { tab ->
-            val selected = route == tab.route
-            // The icon of the chosen tab pops a little; the outline turns into the filled shape.
-            val scale by animateFloatAsState(
-                targetValue = if (selected) 1.12f else 1f,
-                animationSpec = spring(dampingRatio = 0.5f, stiffness = 600f),
-                label = "tabIcon",
-            )
-            NavigationBarItem(
-                selected = selected,
-                onClick = {
-                    navController.navigate(tab.route) {
-                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                },
-                icon = {
-                    BadgedBox(
-                        badge = {
-                            if (tab == Tab.SETTINGS && updateOffered) {
-                                // A small dot in a neutral colour: news, not an alarm.
-                                Badge(containerColor = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        },
-                    ) {
-                        Crossfade(selected, animationSpec = Motion.fade(140), label = "tabIconShape") { on ->
-                            Icon(
-                                if (on) tab.selectedIcon else tab.icon,
-                                contentDescription = null,
-                                modifier = Modifier.graphicsLayer {
-                                    scaleX = scale
-                                    scaleY = scale
-                                },
-                            )
-                        }
-                    }
-                },
-                // The icon slot, dot included, is hidden from accessibility while a label is shown
-                // (Material clears its semantics), so the label tells of the news. A description
-                // stands in for the text when it is read out: it names the tab as well.
-                label = {
-                    val news = tab == Tab.SETTINGS && updateOffered
-                    Text(tab.label, modifier = if (news) Modifier.semantics { contentDescription = "${tab.label}，$UPDATE_NEWS" } else Modifier)
-                },
-            )
-        }
-    }
-}
-
-/** What the settings tab adds to its name for a screen reader while it carries the dot. */
-private const val UPDATE_NEWS = "有新版本可用"
-
-/** Green strip, at the top or above the navigation bar, that leads back to the running call. */
+/**
+ * Green strip, at the top or above the navigation bar, that leads back to the running call. On
+ * its side the phone may have the cutout or the navigation bar at either end of it.
+ */
 @Composable
 private fun ActiveCallBanner(call: CallInfo?, visible: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val active = visible && call != null && call.phase != CallPhase.ENDED
@@ -423,6 +374,7 @@ private fun ActiveCallBanner(call: CallInfo?, visible: Boolean, onClick: () -> U
             color = Brand.CallGreen,
             shape = MaterialTheme.shapes.large,
             modifier = modifier
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp, vertical = 6.dp)
                 .pressScale(0.97f),

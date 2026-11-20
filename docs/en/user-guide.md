@@ -23,7 +23,7 @@ When the configuration is provisioned by the management platform, most settings 
 
 ## Interface
 
-The bottom navigation has four tabs: **Dialer**, **History**, **Directory**, **Settings**. Shortcut keys open from the shortcut keys button on the dialer, and from the call screen during a call.
+The navigation has four tabs: **Dialer**, **History**, **Directory**, **Settings**, at the bottom in portrait and on the left in landscape (a window narrower than 600 dp, as in split screen, keeps them at the bottom). Shortcut keys open from the shortcut keys button on the dialer, and from the call screen during a call.
 
 During a call, the other pages show a banner that returns to the call; its position is set in **Settings → Appearance → Call banner position** (Top / Bottom, default Bottom).
 
