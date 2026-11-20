@@ -44,7 +44,7 @@ blind transfer / 盲转 → слепой перевод
 attended transfer / 咨询转 → перевод с консультацией
 consultation call / 咨询 → консультационный вызов
 park / 驻留 → парковка; call parked → вызов припаркован
-swap / 切换 → Переключить
+swap / 切换 → Переключить; the key of the call screen, one of four in a row: Перекл. (the word does not fit one line there)
 merge / 合并 → Объединить
 mute / 静音 → Без звука; muted → Звук откл.
 keypad / 键盘 → клавиатура

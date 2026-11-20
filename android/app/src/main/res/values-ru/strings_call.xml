@@ -66,7 +66,7 @@
     <string name="call_resume">Продолжить</string>
     <string name="call_transfer">Перевести</string>
     <string name="call_park">Парковка</string>
-    <string name="call_swap">Переключить</string>
+    <string name="call_swap">Перекл.</string>
     <string name="call_merge">Объединить</string>
     <string name="call_shortcuts">Быстрые клавиши</string>
     <string name="call_hang_up">Завершить</string>
