@@ -106,10 +106,25 @@ func (s *Store) ListAdmins(ctx context.Context) ([]*Admin, error) {
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-	for _, a := range out {
-		if err := s.loadAdminRegions(ctx, s.DB, a); err != nil {
+	// The regions of all of them in one query, in the order of loadAdminRegions.
+	rows, err = s.DB.QueryContext(ctx, `SELECT admin_id, region_id FROM admin_regions ORDER BY admin_id, region_id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	regions := map[int64][]int64{}
+	for rows.Next() {
+		var admin, region int64
+		if err := rows.Scan(&admin, &region); err != nil {
 			return nil, err
 		}
+		regions[admin] = append(regions[admin], region)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	for _, a := range out {
+		a.RegionIDs = regions[a.ID]
 	}
 	return out, nil
 }

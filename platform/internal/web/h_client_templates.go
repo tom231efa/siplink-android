@@ -25,22 +25,35 @@ func (s *Server) clientTplList(w http.ResponseWriter, r *http.Request) {
 		s.internal(w, r, err)
 		return
 	}
+	ctx := r.Context()
 	names, _ := s.allRegionNames(r)
 	tl := tr(r)
+	clients, _ := s.St.ClientCountsByTemplate(ctx)
+	all := store.BookScope{All: true}
+	configs, keys := map[int64]string{}, map[int64]string{}
+	if cs, err := s.St.ListConfigTemplates(ctx, all); err == nil {
+		for _, c := range cs {
+			configs[c.ID] = c.Name
+		}
+	}
+	if ks, err := s.St.ListKeyTemplates(ctx, all); err == nil {
+		for _, k := range ks {
+			keys[k.ID] = k.Name
+		}
+	}
 	var rows []templateRow
 	for _, t := range list {
-		n, _ := s.St.ClientCountOfTemplate(r.Context(), t.ID)
 		config, extra := "", ""
-		if c, err := s.St.ConfigTemplateByID(r.Context(), t.ConfigTemplateID); err == nil {
-			config, extra = c.Name, tl.T("clienttpl.list.content", "config", c.Name)
+		if name, ok := configs[t.ConfigTemplateID]; ok {
+			config, extra = name, tl.T("clienttpl.list.content", "config", name)
 		}
 		if t.KeyTemplateID != nil {
-			if k, err := s.St.KeyTemplateByID(r.Context(), *t.KeyTemplateID); err == nil {
-				extra = tl.T("clienttpl.list.content_keys", "config", config, "keys", k.Name)
+			if name, ok := keys[*t.KeyTemplateID]; ok {
+				extra = tl.T("clienttpl.list.content_keys", "config", config, "keys", name)
 			}
 		}
 		rows = append(rows, templateRow{ID: t.ID, Name: t.Name, Note: t.Note, Region: regionLabel(names, t.RegionID),
-			Global: t.RegionID == nil, Clients: n, Extra: extra})
+			Global: t.RegionID == nil, Clients: clients[t.ID], Extra: extra})
 	}
 	s.ok(w, r, "templates", &Page{Title: tl.T("nav.client_templates"), Nav: "clienttpl", Data: templatesData{Rows: rows,
 		Base: "/client-templates", New: tl.T("templates.new.clienttpl"), Empty: tl.T("templates.empty.clienttpl")}})

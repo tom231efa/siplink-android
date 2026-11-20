@@ -306,3 +306,35 @@ func (s *Store) ClientCountOfTemplate(ctx context.Context, id int64) (int, error
 func (s *Store) ClientCountOfConfigTemplate(ctx context.Context, id int64) (int, error) {
 	return clientsOfConfigTemplate(ctx, s.DB, id)
 }
+
+// ClientCountsByTemplate returns how many clients use each client template, by its id
+// (a template without clients is missing).
+func (s *Store) ClientCountsByTemplate(ctx context.Context) (map[int64]int, error) {
+	return s.countsBy(ctx, `SELECT client_template_id, count(*) FROM clients GROUP BY client_template_id`)
+}
+
+// ClientCountsByConfigTemplate returns how many clients use each configuration template,
+// by its id (a template without clients is missing).
+func (s *Store) ClientCountsByConfigTemplate(ctx context.Context) (map[int64]int, error) {
+	return s.countsBy(ctx, `SELECT t.config_template_id, count(*) FROM clients c JOIN client_templates t ON t.id = c.client_template_id
+		GROUP BY t.config_template_id`)
+}
+
+// countsBy runs a query of (id, count) rows and returns the counts by id.
+func (s *Store) countsBy(ctx context.Context, query string, args ...any) (map[int64]int, error) {
+	rows, err := s.DB.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[int64]int{}
+	for rows.Next() {
+		var id int64
+		var n int
+		if err := rows.Scan(&id, &n); err != nil {
+			return nil, err
+		}
+		out[id] = n
+	}
+	return out, rows.Err()
+}

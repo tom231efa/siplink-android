@@ -71,12 +71,12 @@ func (s *Server) configList(w http.ResponseWriter, r *http.Request) {
 	}
 	names, _ := s.allRegionNames(r)
 	tl := tr(r)
+	clients, _ := s.St.ClientCountsByConfigTemplate(r.Context())
+	profiles, _ := s.St.ProfileCounts(r.Context())
 	var rows []templateRow
 	for _, t := range list {
-		n, _ := s.St.ClientCountOfConfigTemplate(r.Context(), t.ID)
-		profiles, _ := s.St.Profiles(r.Context(), t.ID)
 		rows = append(rows, templateRow{ID: t.ID, Name: t.Name, Note: t.Note, Region: regionLabel(names, t.RegionID),
-			Global: t.RegionID == nil, Clients: n, Extra: tl.T("config.list.accounts", "n", len(profiles))})
+			Global: t.RegionID == nil, Clients: clients[t.ID], Extra: tl.T("config.list.accounts", "n", profiles[t.ID])})
 	}
 	s.ok(w, r, "templates", &Page{Title: tl.T("nav.config_templates"), Nav: "config", Data: templatesData{Rows: rows,
 		Base: "/config-templates", New: tl.T("config.list.new"), Empty: tl.T("config.list.empty")}})

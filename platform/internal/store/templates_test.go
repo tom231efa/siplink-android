@@ -2,6 +2,8 @@ package store_test
 
 import (
 	"errors"
+	"fmt"
+	"strconv"
 	"testing"
 
 	"siplink/internal/store"
@@ -101,3 +103,79 @@ func TestTemplateStore(t *testing.T) {
 		t.Errorf("reported codecs: %v", got)
 	}
 }
+
+// TestGroupedCounts: the counts of the template lists, read for all templates at once,
+// equal the counts of each template read alone; ListAdmins gives each administrator the
+// regions AdminByID gives.
+func TestGroupedCounts(t *testing.T) {
+	st := testutil.Store(t)
+	ctx := t.Context()
+	must := func(err error) {
+		t.Helper()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	var regions []int64
+	for _, name := range []string{"华东", "华西"} {
+		r := &store.Region{Name: name}
+		must(st.CreateRegion(ctx, r))
+		regions = append(regions, r.ID)
+	}
+	var configs []*store.ConfigTemplate
+	var tpls []*store.ClientTemplate
+	for i, name := range []string{"甲", "乙", "丙"} {
+		c := &store.ConfigTemplate{Name: name, SettingsJSON: "{}", RefreshMinutes: 60}
+		must(st.CreateConfigTemplate(ctx, c))
+		configs = append(configs, c)
+		for k := range i {
+			must(st.SaveProfile(ctx, &store.Profile{TemplateID: c.ID, Name: name + itoa(k), Domain: "pbx.example.com", Transport: "UDP",
+				Expires: 3600, Enabled: true}, 10))
+		}
+		for k := range 2 {
+			tpl := &store.ClientTemplate{Name: name + itoa(k), ConfigTemplateID: c.ID}
+			must(st.CreateClientTemplate(ctx, tpl))
+			tpls = append(tpls, tpl)
+		}
+	}
+	for i := range 7 {
+		tpl := tpls[i%3] // the templates of 甲 and the first of 乙
+		testutil.OldClient(t, st, testutil.Box(t), &store.Client{Name: "c" + itoa(i), RegionID: regions[i%2], ClientTemplateID: tpl.ID}, nil, nil)
+	}
+	byTemplate, err := st.ClientCountsByTemplate(ctx)
+	must(err)
+	for _, tpl := range tpls {
+		if n, _ := st.ClientCountOfTemplate(ctx, tpl.ID); byTemplate[tpl.ID] != n {
+			t.Errorf("client template %s: %d clients, alone %d", tpl.Name, byTemplate[tpl.ID], n)
+		}
+	}
+	byConfig, err := st.ClientCountsByConfigTemplate(ctx)
+	must(err)
+	profiles, err := st.ProfileCounts(ctx)
+	must(err)
+	for _, c := range configs {
+		n, _ := st.ClientCountOfConfigTemplate(ctx, c.ID)
+		ps, _ := st.Profiles(ctx, c.ID)
+		if byConfig[c.ID] != n || profiles[c.ID] != len(ps) {
+			t.Errorf("configuration template %s: %d clients and %d profiles, alone %d and %d", c.Name, byConfig[c.ID], profiles[c.ID], n, len(ps))
+		}
+	}
+	if byConfig[configs[2].ID] != 0 || profiles[configs[0].ID] != 0 || byConfig[configs[0].ID] != 5 {
+		t.Errorf("counts: %v %v", byConfig, profiles)
+	}
+
+	must(st.CreateAdmin(ctx, &store.Admin{Username: "root", PasswordHash: "x", Role: store.RoleSuper}))
+	must(st.CreateAdmin(ctx, &store.Admin{Username: "both", PasswordHash: "x", Role: store.RoleRegion, RegionIDs: []int64{regions[1], regions[0]}}))
+	must(st.CreateAdmin(ctx, &store.Admin{Username: "east", PasswordHash: "x", Role: store.RoleRegion, RegionIDs: regions[:1]}))
+	admins, err := st.ListAdmins(ctx)
+	must(err)
+	for _, a := range admins {
+		alone, err := st.AdminByID(ctx, a.ID)
+		must(err)
+		if fmt.Sprint(a.RegionIDs) != fmt.Sprint(alone.RegionIDs) || (a.RegionIDs == nil) != (alone.RegionIDs == nil) {
+			t.Errorf("%s: regions %v, alone %v", a.Username, a.RegionIDs, alone.RegionIDs)
+		}
+	}
+}
+
+func itoa(n int) string { return strconv.Itoa(n) }

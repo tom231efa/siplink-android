@@ -59,21 +59,7 @@ func (s *Store) GroupByID(ctx context.Context, id int64) (*Group, error) {
 
 // GroupClients counts the clients of every group that has any.
 func (s *Store) GroupClients(ctx context.Context) (map[int64]int, error) {
-	rows, err := s.DB.QueryContext(ctx, `SELECT group_id, count(*) FROM clients WHERE group_id IS NOT NULL GROUP BY group_id`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	out := map[int64]int{}
-	for rows.Next() {
-		var id int64
-		var n int
-		if err := rows.Scan(&id, &n); err != nil {
-			return nil, err
-		}
-		out[id] = n
-	}
-	return out, rows.Err()
+	return s.countsBy(ctx, `SELECT group_id, count(*) FROM clients WHERE group_id IS NOT NULL GROUP BY group_id`)
 }
 
 // SaveGroup creates a group (ID 0), while its region has fewer than max, or renames one;

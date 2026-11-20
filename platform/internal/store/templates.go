@@ -286,6 +286,12 @@ func (s *Store) Profiles(ctx context.Context, templateID int64) ([]*Profile, err
 	return out, rows.Err()
 }
 
+// ProfileCounts returns the number of profiles of each configuration template, by its id
+// (a template without profiles is missing).
+func (s *Store) ProfileCounts(ctx context.Context) (map[int64]int, error) {
+	return s.countsBy(ctx, `SELECT config_template_id, count(*) FROM account_profiles GROUP BY config_template_id`)
+}
+
 // ProfileByID loads one profile of a template.
 func (s *Store) ProfileByID(ctx context.Context, templateID, id int64) (*Profile, error) {
 	return scanProfile(s.DB.QueryRowContext(ctx, `SELECT `+profileCols+` FROM account_profiles WHERE id = ? AND config_template_id = ?`, id, templateID))
