@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Video calls: the request, answering with video, the pictures and their buttons. -->
+<resources>
+    <string name="video_request">對方要求開啟視訊</string>
+    <string name="video_request_decline">拒絕</string>
+    <string name="video_request_accept">開啟</string>
+    <string name="video_answer_with_video">視訊接聽</string>
+    <string name="video_answer_with_audio">語音接聽</string>
+    <string name="video_own_picture">自己的畫面</string>
+    <string name="video_other_picture">對方的畫面</string>
+    <string name="video_swap">交換畫面</string>
+    <string name="video_move_left">移至左側</string>
+    <string name="video_move_right">移至右側</string>
+    <string name="video_move_up">上移</string>
+    <string name="video_move_down">下移</string>
+    <string name="video_show_whole">顯示完整畫面</string>
+    <string name="video_fill">填滿螢幕</string>
+    <string name="video_switch_camera">切換鏡頭</string>
+    <string name="video_camera_off">關閉相機</string>
+    <string name="video_camera_on">開啟相機</string>
+</resources>

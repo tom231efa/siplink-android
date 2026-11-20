@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- TLS and CA certificates, media encryption, the restart a change of them may need. -->
+<resources>
+    <string name="tls_invalid_file">無效的 X.509 憑證檔案（支援 PEM / CRT / CER / DER）</string>
+    <string name="tls_save_failed">憑證儲存失敗：%1$s</string>
+    <string name="tls_read_failed">無法讀取所選檔案</string>
+    <string name="tls_file_too_large">檔案過大</string>
+    <string name="tls_already_trusted">憑證已存在</string>
+    <string name="tls_section_imported">已匯入的 CA 憑證</string>
+    <string name="tls_none">尚未匯入憑證</string>
+    <string name="tls_import">匯入 CA 憑證</string>
+    <string name="tls_section_verification">伺服器憑證驗證</string>
+    <string name="tls_verify_certificate">驗證伺服器憑證</string>
+    <string name="tls_verify_hostname">驗證主機名稱</string>
+    <string name="tls_verification_off_warning">關閉驗證有遭竊聽的風險</string>
+    <string name="tls_section_srtp">媒體加密（SRTP）</string>
+    <string name="tls_srtp_off">關閉</string>
+    <string name="tls_srtp_preferred">優先</string>
+    <string name="tls_srtp_mandatory">強制</string>
+    <string name="tls_remove_title">要移除憑證嗎？</string>
+    <string name="tls_remove_text">將不再信任「%1$s」簽發的伺服器憑證，依賴此憑證的 TLS 帳號將註冊失敗。</string>
+    <string name="tls_remove_confirm">確認移除</string>
+    <string name="tls_issuer">簽發者：%1$s</string>
+    <string name="tls_expired">已於 %1$s 過期</string>
+    <string name="tls_valid_until_not_ca">有效期限至 %1$s · 非 CA 憑證</string>
+    <string name="tls_valid_until">有效期限至 %1$s</string>
+    <string name="tls_remove">移除憑證</string>
+    <plurals name="tls_imported">
+        <item quantity="other">已匯入 %1$s 個憑證，正在重新註冊帳號</item>
+    </plurals>
+
+    <!-- Restarting the app for a change of the CA certificates -->
+    <string name="tls_restart_ldap_title">重新啟動後對 LDAP 生效</string>
+    <string name="tls_restart_ldap_text">SIP 帳號已啟用新的憑證設定。LDAP 通訊錄的加密連線已在本次執行中建立，需重新啟動應用程式後才能使用新的 CA 憑證。</string>
+    <string name="tls_restart_after_call">請在通話結束後重新啟動應用程式</string>
+    <string name="tls_restart_now">立即重新啟動</string>
+    <string name="tls_restart_later">稍後</string>
+</resources>

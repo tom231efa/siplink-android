@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- PBX features: their names, the call features panel, the feature codes page. -->
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="feature_sheet_title">通話功能</string>
+    <string name="feature_sheet_extension">分機 %1$s</string>
+    <string name="feature_sheet_target">目標分機</string>
+    <string name="feature_sheet_target_hint">例如 1002</string>
+    <string name="feature_sheet_call">撥號</string>
+    <string name="feature_sheet_add_shortcut">新增至快速鍵</string>
+    <string name="feature_sheet_force_confirm">再次輕觸以確認強制掛斷 %1$s</string>
+
+    <!-- PBX features reached by feature codes -->
+    <string name="feature_intercom">對講</string>
+    <string name="feature_listen">監聽</string>
+    <string name="feature_whisper">密語</string>
+    <string name="feature_barge">強插</string>
+    <string name="feature_force_hang_up">強制掛斷</string>
+    <string name="feature_pickup">代接</string>
+    <string name="feature_voicemail">語音信箱</string>
+    <string name="feature_group_pickup">群組代接</string>
+    <string name="feature_park">駐留</string>
+    <string name="feature_dnd_on">開啟勿擾</string>
+    <string name="feature_dnd_off">關閉勿擾</string>
+    <string name="feature_to">%1$s %2$s</string>
+    <string name="feature_code_missing">未設定「%1$s」功能碼</string>
+
+    <!-- The feature codes page -->
+    <string name="feature_codes_pickup">指定代接</string>
+    <string name="feature_codes_restored">已還原預設功能碼</string>
+    <string name="feature_codes_invalid" tools:ignore="TypographyDashes">僅限 0-9 * #</string>
+</resources>

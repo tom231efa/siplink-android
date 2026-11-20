@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The conference room. -->
+<resources>
+    <string name="room_name">會議室</string>
+    <plurals name="room_full">
+        <item quantity="other">會議室已滿（最多 %1$s 方）</item>
+    </plurals>
+    <plurals name="room_free">
+        <item quantity="other">最多還可新增 %1$s 方</item>
+    </plurals>
+    <string name="room_not_now">請稍後再試</string>
+    <string name="room_retry_later">請稍後重試</string>
+    <string name="room_create_failed">無法建立會議室</string>
+    <string name="room_rejoin_failed">無法返回會議室</string>
+    <string name="room_join_failed">無法加入會議室</string>
+    <string name="room_already_in">已在會議室中</string>
+
+    <!-- The state of a member -->
+    <string name="room_member_queued">等待呼叫</string>
+    <string name="room_member_calling">呼叫中</string>
+    <string name="room_member_ringing">響鈴中</string>
+    <string name="room_member_connected">已接通</string>
+    <string name="room_member_held">已保留</string>
+    <string name="room_member_left">已離開</string>
+    <string name="room_member_held_back">未呼叫</string>
+
+    <!-- Why a member was not called -->
+    <string name="room_line_full">線路已滿</string>
+    <string name="room_refused">PBX 拒絕</string>
+    <string name="room_busy">忙線</string>
+    <string name="room_unavailable">暫時無法接通</string>
+
+    <!-- The room screen -->
+    <string name="room_end_title">要結束會議嗎？</string>
+    <plurals name="room_end_text">
+        <item quantity="other">全部 %1$s 方通話將被掛斷。</item>
+    </plurals>
+    <string name="room_end_confirm">確認結束</string>
+    <string name="room_end">結束會議</string>
+    <string name="room_add_members">新增成員</string>
+    <string name="room_show_readings">檢視測量值</string>
+    <string name="room_warning_heat">裝置溫度過高</string>
+    <string name="room_warning_load">裝置負載過高</string>
+    <string name="room_warning_memory">記憶體不足</string>
+    <string name="room_warning_network">網路品質不佳</string>
+    <string name="room_reading_cpu">處理器</string>
+    <string name="room_reading_thread">最忙碌的執行緒</string>
+    <string name="room_reading_temperature">裝置溫度</string>
+    <string name="room_reading_memory">記憶體</string>
+    <string name="room_memory_low">不足</string>
+    <string name="room_memory_normal">正常</string>
+    <string name="room_thermal_unknown">不明</string>
+    <string name="room_thermal_none">正常</string>
+    <string name="room_thermal_light">輕度</string>
+    <string name="room_thermal_moderate">中度</string>
+    <string name="room_thermal_severe">嚴重</string>
+    <string name="room_thermal_critical">危急</string>
+    <string name="room_thermal_emergency">緊急</string>
+    <string name="room_thermal_shutdown">即將關機</string>
+    <string name="room_link_readings">"封包遺失 ↑%1$s%% ↓%2$s%%  抖動 %3$s ms  往返 %4$s ms"</string>
+    <string name="room_member_retry">重撥 %1$s</string>
+    <string name="room_member_remove">移除 %1$s</string>
+    <string name="room_member_hang_up">掛斷 %1$s</string>
+    <string name="room_signal_poor">通話品質不佳</string>
+    <string name="room_signal">通話品質 %1$s/%2$s</string>
+    <string name="room_away">已暫時離開</string>
+    <string name="room_return">返回會議室</string>
+    <string name="room_waiting_new">新來電</string>
+    <string name="room_waiting_decline">拒接</string>
+    <string name="room_join">加入會議室</string>
+
+    <!-- Adding members -->
+    <string name="room_add_title">新增成員</string>
+    <string name="room_source_recent">最近通話</string>
+    <string name="room_source_directory">通訊錄</string>
+    <string name="room_source_shortcuts">快速鍵</string>
+    <string name="room_add_field">號碼或姓名</string>
+    <string name="room_add_number">新增號碼</string>
+    <string name="room_pick_remove">移除 %1$s</string>
+    <string name="room_call">呼叫</string>
+    <string name="room_call_count">呼叫（%1$s）</string>
+    <string name="room_candidate_in_room">%1$s · 已在會議室中</string>
+</resources>

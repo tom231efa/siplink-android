@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The main screen: its tabs, the banner of a call, the questions asked at start. -->
+<resources>
+    <string name="main_tab_dialer">撥號</string>
+    <string name="main_tab_history">紀錄</string>
+    <string name="main_tab_directory">通訊錄</string>
+    <string name="main_tab_settings">設定</string>
+    <string name="main_tab_update_news">%1$s，有可用的新版本</string>
+
+    <!-- The banner that returns to the call -->
+    <string name="main_banner_incoming">來電：%1$s</string>
+    <string name="main_banner_outgoing">正在呼叫 %1$s</string>
+    <string name="main_banner_in_call">通話中：%1$s</string>
+    <string name="main_banner_return">返回通話</string>
+
+    <!-- Calls on the lock screen -->
+    <string name="main_lock_screen_title">允許在鎖定畫面顯示來電</string>
+    <string name="main_lock_screen_text">SipLink 未取得全螢幕通知權限，螢幕鎖定時，來電僅顯示通知，不顯示來電畫面。</string>
+    <string name="main_lock_screen_settings_failed">無法開啟全螢幕通知設定</string>
+    <string name="main_lock_screen_open_settings">前往設定</string>
+    <string name="main_lock_screen_never">不再提醒</string>
+</resources>

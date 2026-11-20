@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Notifications and their channels. -->
+<resources>
+    <string name="notification_running">SipLink 執行中</string>
+    <string name="notification_no_accounts">沒有已啟用的 SIP 帳號</string>
+    <plurals name="notification_registered">
+        <item quantity="other">%1$s / %2$s 個帳號已註冊</item>
+    </plurals>
+    <string name="notification_calling">正在呼叫…</string>
+    <string name="notification_intercom">對講來電</string>
+    <string name="notification_video_call">視訊來電</string>
+    <string name="notification_incoming">來電</string>
+    <string name="notification_incoming_text">%1$s · %2$s</string>
+    <string name="notification_missed">未接來電</string>
+    <string name="notification_missed_text">%1$s（%2$s）</string>
+
+    <!-- Channels -->
+    <string name="notification_channel_service_name">背景保持連線</string>
+    <string name="notification_channel_service_desc">保持 SIP 帳號註冊以便接收來電</string>
+    <string name="notification_channel_incoming_name">來電</string>
+    <string name="notification_channel_incoming_desc">來電通知與全螢幕來電畫面</string>
+    <string name="notification_channel_call_name">通話中</string>
+    <string name="notification_channel_call_desc">進行中的通話</string>
+    <string name="notification_channel_missed_name">未接來電</string>
+    <string name="notification_channel_missed_desc">未接來電通知</string>
+</resources>

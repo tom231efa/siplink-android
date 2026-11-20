@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Shortcut keys: their types and icons, their rules, their CSV format. -->
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="shortcut_type_speed">快速撥號</string>
+    <string name="shortcut_type_bxfer">直接轉接</string>
+    <string name="shortcut_type_axfer">詢問轉接</string>
+    <string name="shortcut_type_dtmf">傳送按鍵</string>
+    <string name="shortcut_type_forward">來電轉接</string>
+    <string name="shortcut_type_dnd">勿擾</string>
+
+    <!-- Category lists: their names are reserved -->
+    <string name="shortcut_category_all">全部</string>
+    <string name="shortcut_category_none">未分類</string>
+    <string name="shortcut_category_new">新增分類</string>
+
+    <!-- Rules -->
+    <plurals name="shortcut_limit">
+        <item quantity="other">最多 %1$s 個快速鍵</item>
+    </plurals>
+    <plurals name="shortcut_own_limit">
+        <item quantity="other">最多自建 %1$s 個快速鍵</item>
+    </plurals>
+    <string name="shortcut_error_number_empty">號碼為必填</string>
+    <string name="shortcut_error_spaces">不得包含空格</string>
+    <string name="shortcut_error_number_spaces">號碼不得包含空格</string>
+    <string name="shortcut_error_dtmf" tools:ignore="TypographyDashes">僅限 0-9 * #</string>
+    <string name="shortcut_error_dtmf_full" tools:ignore="TypographyDashes">按鍵僅限 0-9 * #</string>
+    <plurals name="shortcut_error_number_too_long">
+        <item quantity="other">號碼最多 %1$s 個字元</item>
+    </plurals>
+    <plurals name="shortcut_error_name_too_long">
+        <item quantity="other">名稱最多 %1$s 個字元</item>
+    </plurals>
+    <plurals name="shortcut_error_category_too_long">
+        <item quantity="other">分類最多 %1$s 個字元</item>
+    </plurals>
+    <string name="shortcut_error_category_empty">分類為必填</string>
+    <string name="shortcut_error_reserved">無法使用此名稱</string>
+    <string name="shortcut_error_category_reserved">無法使用此分類名稱</string>
+    <string name="shortcut_error_category_taken">分類已存在</string>
+    <string name="shortcut_csv_format">名稱,號碼[,類型[,分類[,線路[,圖示]]]]</string>
+
+    <!-- Icons -->
+    <string name="shortcut_icon_phone">電話</string>
+    <string name="shortcut_icon_person">個人</string>
+    <string name="shortcut_icon_group">團隊</string>
+    <string name="shortcut_icon_star">收藏</string>
+    <string name="shortcut_icon_home">住家</string>
+    <string name="shortcut_icon_office">辦公大樓</string>
+    <string name="shortcut_icon_store">門市</string>
+    <string name="shortcut_icon_reception">櫃檯</string>
+    <string name="shortcut_icon_support">客服</string>
+    <string name="shortcut_icon_speaker">廣播</string>
+    <string name="shortcut_icon_meeting">會議</string>
+    <string name="shortcut_icon_door">門</string>
+    <string name="shortcut_icon_lock">鎖</string>
+    <string name="shortcut_icon_key">鑰匙</string>
+    <string name="shortcut_icon_garage">車庫</string>
+    <string name="shortcut_icon_car">車輛</string>
+    <string name="shortcut_icon_elevator">電梯</string>
+    <string name="shortcut_icon_security">警衛</string>
+    <string name="shortcut_icon_camera">監視器</string>
+    <string name="shortcut_icon_bell">門鈴</string>
+    <string name="shortcut_icon_alarm">警報</string>
+    <string name="shortcut_icon_medical">醫護</string>
+    <string name="shortcut_icon_fire">消防</string>
+    <string name="shortcut_icon_food">餐廳</string>
+    <string name="shortcut_icon_hotel">客房</string>
+    <string name="shortcut_icon_warehouse">倉庫</string>
+    <string name="shortcut_icon_factory">廠房</string>
+    <string name="shortcut_icon_school">教室</string>
+    <string name="shortcut_icon_repair">維修</string>
+    <string name="shortcut_icon_computer">機房</string>
+    <string name="shortcut_icon_delivery">物流</string>
+    <string name="shortcut_icon_light">照明</string>
+
+    <!-- The board of keys -->
+    <string name="shortcut_title">快速鍵</string>
+    <string name="shortcut_count_of">%1$s / %2$s</string>
+    <string name="shortcut_new">新增快速鍵</string>
+    <string name="shortcut_bulk_import">批次匯入</string>
+    <string name="shortcut_export_csv">匯出為 CSV</string>
+    <string name="shortcut_export_failed">匯出失敗</string>
+    <plurals name="shortcut_exported">
+        <item quantity="other">已匯出 %1$s 個快速鍵</item>
+    </plurals>
+    <string name="shortcut_edit_category">編輯分類「%1$s」</string>
+    <string name="shortcut_empty">尚無快速鍵</string>
+    <string name="shortcut_search">搜尋名稱、號碼、分類或類型</string>
+    <string name="shortcut_chip_all">全部 %1$s</string>
+    <string name="shortcut_chip_category">%1$s %2$s</string>
+    <string name="shortcut_no_match">沒有相符的快速鍵</string>
+    <string name="shortcut_category_title">分類</string>
+    <string name="shortcut_delete_category">刪除分類</string>
+
+    <!-- Bulk import: %1$s is the format, %2$s the words of the types, %3$s those of the icons -->
+    <string name="shortcut_import_title">批次匯入快速鍵</string>
+    <string name="shortcut_import_hint">%1$s\n類型：%2$s\n線路：帳號名稱或 user@domain；留空則撥出時選擇\n圖示：%3$s；留空則依類型</string>
+    <string name="shortcut_import_example">櫃檯,1001,speed,常用,,reception\n對講倉庫,*801005,speed,對講,,warehouse\n開門,#9,dtmf,門禁,,door\n轉總機,1000,bxfer,轉接</string>
+
+    <!-- A key -->
+    <string name="shortcut_new_title">新增快速鍵</string>
+    <string name="shortcut_edit_title">編輯快速鍵</string>
+    <string name="shortcut_added">快速鍵已新增</string>
+    <string name="shortcut_saved">快速鍵已儲存</string>
+    <string name="shortcut_deleted">快速鍵已刪除</string>
+    <string name="shortcut_field_name">名稱</string>
+    <string name="shortcut_field_keys">按鍵</string>
+    <string name="shortcut_field_forward_to">轉接至</string>
+    <string name="shortcut_field_number">號碼或功能碼</string>
+    <string name="shortcut_field_type">類型</string>
+    <string name="shortcut_field_line_mode">撥出線路</string>
+    <string name="shortcut_field_line">線路</string>
+    <string name="shortcut_field_icon">圖示</string>
+    <string name="shortcut_icon_default">預設（依類型）</string>
+    <string name="shortcut_field_category">分類</string>
+    <string name="shortcut_new_category_title">新增分類</string>
+    <string name="shortcut_create">建立</string>
+    <string name="shortcut_line_fixed">固定線路</string>
+    <string name="shortcut_line_ask">撥出時選擇</string>
+    <string name="shortcut_line_named">%1$s · %2$s</string>
+    <string name="shortcut_line_disabled">%1$s · 已停用</string>
+    <string name="shortcut_line_gone">線路「%1$s」已不存在</string>
+
+    <!-- Pressing a key -->
+    <string name="shortcut_choose_line_title">%1$s · 選擇撥出線路</string>
+    <string name="shortcut_line_unavailable">固定線路「%1$s」無法使用</string>
+    <string name="shortcut_dtmf_sent">已傳送 %1$s</string>
+    <string name="shortcut_forward_on">所有來電將轉接至 %1$s</string>
+    <string name="shortcut_forward_off">已關閉來電轉接</string>
+    <string name="shortcut_dnd_on">已開啟勿擾</string>
+    <string name="shortcut_dnd_off">已關閉勿擾</string>
+</resources>

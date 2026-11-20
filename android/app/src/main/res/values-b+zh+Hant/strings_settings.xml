@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Settings: the main list, the language of the app, recording. -->
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="settings_language">語言</string>
+    <string name="settings_language_system">跟隨系統</string>
+
+    <!-- The main list -->
+    <string name="settings_title">設定</string>
+    <string name="settings_section_accounts">帳號</string>
+    <string name="settings_sip_accounts">SIP 帳號</string>
+    <string name="settings_section_call_features">通話功能</string>
+    <string name="settings_dnd">勿擾</string>
+    <string name="settings_video_calls">視訊通話</string>
+    <string name="settings_recording">錄音</string>
+    <string name="settings_auto_answer">對講與自動接聽</string>
+    <string name="settings_ldap">LDAP 通訊錄</string>
+    <string name="settings_feature_codes">功能碼</string>
+    <string name="settings_codecs">編解碼器</string>
+    <string name="settings_audio_codecs">音訊編解碼器</string>
+    <string name="settings_advanced">進階設定</string>
+    <string name="settings_section_security">安全性</string>
+    <string name="settings_tls">TLS 與 CA 憑證</string>
+    <string name="settings_section_battery">電池策略</string>
+    <string name="settings_keep_alive">背景保持連線</string>
+    <string name="settings_battery_optimization">電池最佳化</string>
+    <string name="settings_battery_open_failed">無法開啟電池最佳化設定</string>
+    <string name="settings_lock_screen_calls">在鎖定畫面顯示來電</string>
+    <string name="settings_lock_screen_allowed">已允許</string>
+    <string name="settings_lock_screen_not_allowed">未允許</string>
+    <string name="settings_lock_screen_open_failed">無法開啟全螢幕通知設定</string>
+    <string name="settings_section_appearance">外觀</string>
+    <string name="settings_theme">主題</string>
+    <string name="settings_theme_system">跟隨系統</string>
+    <string name="settings_theme_light">淺色</string>
+    <string name="settings_theme_dark">深色</string>
+    <string name="settings_banner_position">通話橫幅位置</string>
+    <string name="settings_banner_top">頂部</string>
+    <string name="settings_banner_bottom">底部</string>
+    <string name="settings_dynamic_color">動態色彩</string>
+    <string name="settings_remote_config">遠端設定</string>
+    <string name="settings_about">關於</string>
+    <string name="settings_update_available">有新版本</string>
+
+    <!-- Recording -->
+    <string name="settings_recording_calls">通話錄音</string>
+    <string name="settings_recording_by_default">預設錄音</string>
+    <string name="settings_recording_kept">保留數量</string>
+    <string name="settings_recording_files">錄音檔案</string>
+</resources>

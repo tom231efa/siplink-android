@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Advanced settings: incoming calls, forwarding, the conference room, media and network, the client name. -->
+<resources>
+    <string name="advanced_title">進階設定</string>
+    <string name="advanced_section_incoming">來電</string>
+    <string name="advanced_dnd_mode">勿擾方式</string>
+    <string name="advanced_dnd_software">軟體</string>
+    <string name="advanced_dnd_server">伺服器</string>
+    <string name="advanced_dnd_codes">%1$s / %2$s</string>
+    <string name="advanced_call_waiting">來電等待</string>
+    <string name="advanced_reject_anonymous">拒接匿名來電</string>
+    <string name="advanced_dtmf_mode">DTMF 方式</string>
+    <string name="advanced_section_forwarding">來電轉接</string>
+    <string name="advanced_forward_always">無條件轉接</string>
+    <string name="advanced_forward_busy">忙線轉接</string>
+    <string name="advanced_forward_no_answer">無人接聽轉接</string>
+    <string name="advanced_no_answer_seconds">無人接聽等待時間（秒）</string>
+    <string name="advanced_range">應為 %1$s–%2$s</string>
+    <string name="advanced_section_room">會議室</string>
+    <string name="advanced_room_limit">會議室人數上限</string>
+    <string name="advanced_section_media">媒體與網路</string>
+    <string name="advanced_rate_control">自適應速率控制</string>
+    <string name="advanced_echo_cancellation">回音消除</string>
+    <string name="advanced_ipv6">允許 IPv6</string>
+    <string name="advanced_auto_network">自動適應網路</string>
+    <string name="advanced_stun_server">STUN 伺服器</string>
+    <string name="advanced_host_port_hint">主機[:連接埠]</string>
+    <string name="advanced_section_identity">用戶端識別</string>
+    <string name="advanced_user_agent">用戶端名稱（User-Agent）</string>
+
+    <!-- The client name (User-Agent) -->
+    <plurals name="advanced_user_agent_error_too_long">
+        <item quantity="other">用戶端名稱（User-Agent）最多 %1$s 個字元</item>
+    </plurals>
+    <string name="advanced_user_agent_error_ascii">僅限可列印的 ASCII 字元</string>
+    <string name="advanced_user_agent_error_ascii_full">用戶端名稱（User-Agent）僅限可列印的 ASCII 字元</string>
+    <string name="advanced_user_agent_error_spaces">開頭和結尾不得包含空格</string>
+    <string name="advanced_user_agent_error_spaces_full">用戶端名稱（User-Agent）開頭和結尾不得包含空格</string>
+</resources>

@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Remote configuration: the platform, its documents, its addresses. -->
+<resources>
+    <string name="remote_no_connection">無法連線至平台</string>
+    <string name="remote_pin_mismatch">平台憑證與 QR 碼不符</string>
+    <string name="remote_untrusted">平台憑證不受信任</string>
+    <string name="remote_unauthorized">遠端設定驗證失敗</string>
+    <string name="remote_qr_invalid">QR 碼無效、已使用或已過期</string>
+    <string name="remote_rate_limited">請求過於頻繁，請稍後再試</string>
+    <string name="remote_platform_unavailable">平台暫時無法使用（HTTP %1$s）</string>
+    <string name="remote_platform_error">平台傳回錯誤（HTTP %1$s）</string>
+    <string name="remote_answer_too_long">平台回應過長</string>
+    <string name="remote_no_device_key">平台未傳回裝置金鑰</string>
+    <string name="remote_loaded">已載入遠端設定</string>
+    <string name="remote_removed">已刪除遠端設定</string>
+    <string name="remote_removed_untold">已刪除遠端設定（未能通知平台）</string>
+    <string name="remote_revoked">遠端設定已被平台撤銷</string>
+    <string name="remote_invalid">遠端設定無效：%1$s</string>
+    <string name="remote_partly_applied">部分設定未能套用：%1$s</string>
+    <string name="remote_needs_update">請更新 SipLink</string>
+    <string name="remote_no_audio_codec">沒有可用的音訊編解碼器，已還原預設編解碼器</string>
+    <string name="remote_keys_not_loaded">快速鍵尚未載入，未能更新</string>
+
+    <!-- Faults of a document -->
+    <string name="remote_error_json">設定不是有效的 JSON</string>
+    <string name="remote_error_json_object">設定不是 JSON 物件</string>
+    <string name="remote_error_field">%1$s 格式不正確</string>
+    <string name="remote_error_ca">CA 憑證 %1$s：無法解析</string>
+    <string name="remote_error_schema">不支援的設定格式</string>
+    <string name="remote_error_no_version">設定缺少版本</string>
+    <string name="remote_error_password_hash">設定密碼格式不正確</string>
+    <string name="remote_error_no_answer_range">無人接聽等待時間應為 %1$s–%2$s 秒</string>
+    <string name="remote_error_frame_rate">視訊影格速率應為 %1$s</string>
+    <string name="remote_error_codec_name">編解碼器缺少名稱</string>
+    <string name="remote_error_account">帳號「%1$s」：%2$s</string>
+    <string name="remote_error_directory">通訊錄「%1$s」：%2$s</string>
+    <string name="remote_error_key">快速鍵「%1$s」：%2$s</string>
+    <string name="remote_error_key_missing">缺少 key</string>
+    <string name="remote_error_key_twice">key 重複</string>
+
+    <!-- The address of a remote configuration -->
+    <string name="remote_address_invalid">無效的位址</string>
+    <string name="remote_address_scheme">位址須以 https:// 開頭</string>
+    <string name="remote_address_not_enrollment">非遠端設定位址</string>
+    <string name="remote_address_pin">位址中的憑證指紋無效</string>
+
+    <!-- The remote configuration page -->
+    <string name="remote_scan_not_ours">非遠端設定 QR 碼</string>
+    <string name="remote_scan_no_camera">無法開啟相機</string>
+    <string name="remote_camera_denied">未取得相機權限，請改為輸入位址</string>
+    <string name="remote_load_title">要載入遠端設定嗎？</string>
+    <string name="remote_load_text">來源：%1$s。載入後，本機的帳號、通訊錄、憑證、編解碼器和快速鍵等設定將由遠端設定取代，且無法在本機修改。通話紀錄、勿擾和外觀設定不受影響。</string>
+    <string name="remote_load">載入</string>
+    <string name="remote_delete_title">要刪除遠端設定嗎？</string>
+    <string name="remote_delete_text">將通知平台解除綁定，並刪除遠端提供的帳號、通訊錄、憑證、快速鍵及自建快速鍵。通話紀錄和外觀設定將保留。</string>
+    <string name="remote_scan">掃描 QR 碼</string>
+    <string name="remote_enter_address">輸入位址</string>
+    <string name="remote_enter_address_title">輸入位址</string>
+    <string name="remote_loading">正在載入…</string>
+    <string name="remote_section_platform">平台</string>
+    <string name="remote_platform">平台</string>
+    <string name="remote_client">用戶端</string>
+    <string name="remote_region">區域</string>
+    <string name="remote_section_sync">同步</string>
+    <string name="remote_last_sync">上次同步</string>
+    <string name="remote_never_synced">尚未成功</string>
+    <string name="remote_generated_at">設定更新於</string>
+    <string name="remote_sync_result">同步結果</string>
+    <string name="remote_syncing">正在同步…</string>
+    <string name="remote_sync_now">立即同步</string>
+    <string name="remote_details">詳細資訊</string>
+    <string name="remote_address">位址</string>
+    <string name="remote_version">設定版本</string>
+    <string name="remote_certificate">平台憑證</string>
+    <string name="remote_certificate_pinned">掃描 QR 碼時已信任平台 CA</string>
+    <string name="remote_certificate_system">由系統 CA 驗證</string>
+    <string name="remote_delete">刪除遠端設定</string>
+    <string name="remote_address_label">設定位址</string>
+    <string name="remote_next">下一步</string>
+    <plurals name="remote_sync_interval">
+        <item quantity="other">每 %1$s 分鐘自動同步</item>
+    </plurals>
+</resources>

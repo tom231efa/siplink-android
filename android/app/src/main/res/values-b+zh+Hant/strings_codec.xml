@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Codecs: audio and video codecs, resolution and frame rate. -->
+<resources>
+    <string name="codec_restored">已還原預設的編解碼器設定</string>
+    <string name="codec_keep_audio">至少保留一種音訊編解碼器</string>
+    <string name="codec_keep_video">至少保留一種視訊編解碼器</string>
+    <string name="codec_audio">音訊</string>
+    <string name="codec_video">視訊</string>
+    <string name="codec_resolution">解析度</string>
+    <string name="codec_frame_rate">影格速率（影格/秒）</string>
+    <string name="codec_frame_rate_auto">自動</string>
+    <string name="codec_rate">%1$s Hz</string>
+    <string name="codec_move_up">提高 %1$s 的優先順序</string>
+    <string name="codec_move_down">降低 %1$s 的優先順序</string>
+    <plurals name="codec_rate_channels">
+        <item quantity="other">%1$s Hz · %2$s 聲道</item>
+    </plurals>
+</resources>

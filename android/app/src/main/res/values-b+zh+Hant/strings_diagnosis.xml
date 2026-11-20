@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The line diagnosis of an account: what it checks and what it found. -->
+<resources>
+    <string name="diagnosis_title">線路診斷</string>
+    <string name="diagnosis_rerun">重新診斷</string>
+    <string name="diagnosis_reset_title">要還原預設值嗎？</string>
+    <string name="diagnosis_reset_text">將清除此帳號的自動調整。</string>
+    <string name="diagnosis_reset_confirm">還原</string>
+    <string name="diagnosis_reset_done">已還原預設值</string>
+    <string name="diagnosis_not_tested">未測試</string>
+    <string name="diagnosis_unknown">不明</string>
+    <string name="diagnosis_no_response">無回應</string>
+    <string name="diagnosis_cannot_connect">無法連線</string>
+    <plurals name="diagnosis_seconds">
+        <item quantity="other">%1$s 秒</item>
+    </plurals>
+
+    <!-- Network -->
+    <string name="diagnosis_network">網路</string>
+    <string name="diagnosis_type">類型</string>
+    <string name="diagnosis_type_cellular">行動數據</string>
+    <string name="diagnosis_type_ethernet">乙太網路</string>
+    <string name="diagnosis_type_other">其他</string>
+    <string name="diagnosis_type_vpn">%1$s · VPN</string>
+    <string name="diagnosis_no_network">沒有網路</string>
+    <string name="diagnosis_local_address">本機位址</string>
+    <string name="diagnosis_public_address">公用位址</string>
+    <string name="diagnosis_nat_none">無</string>
+    <string name="diagnosis_nat_present">有</string>
+    <string name="diagnosis_nat_carrier">電信業者級</string>
+    <string name="diagnosis_nat_symmetric">對稱</string>
+    <string name="diagnosis_ipv6_yes">有</string>
+    <string name="diagnosis_ipv6_no">無</string>
+    <string name="diagnosis_validation">網路驗證</string>
+    <string name="diagnosis_validation_login">需要登入</string>
+    <string name="diagnosis_validation_passed">已通過</string>
+    <string name="diagnosis_validation_failed">未通過</string>
+    <string name="diagnosis_battery">電池最佳化</string>
+    <string name="diagnosis_battery_unrestricted">不受限制</string>
+    <string name="diagnosis_battery_restricted">受限制</string>
+    <string name="diagnosis_battery_settings">設定</string>
+
+    <!-- Server -->
+    <string name="diagnosis_server">伺服器</string>
+    <string name="diagnosis_address">位址</string>
+    <string name="diagnosis_resolved">解析</string>
+    <string name="diagnosis_resolve_failed">解析失敗</string>
+    <string name="diagnosis_udp_large">UDP 大封包</string>
+    <string name="diagnosis_large_passed">通過</string>
+    <string name="diagnosis_large_fragments_lost">分段遺失</string>
+    <string name="diagnosis_large_lost">遺失</string>
+    <string name="diagnosis_alg_suspected">疑似</string>
+    <string name="diagnosis_alg_not_found">未發現</string>
+    <string name="diagnosis_call_address">通話位址</string>
+    <string name="diagnosis_call_address_internal">內部網路</string>
+
+    <!-- Primary and backup servers -->
+    <string name="diagnosis_servers">主要與備用伺服器</string>
+    <string name="diagnosis_current">目前</string>
+    <string name="diagnosis_on_proxy">代理伺服器</string>
+    <string name="diagnosis_on_backup">備用代理伺服器</string>
+    <string name="diagnosis_proxy">代理伺服器</string>
+    <string name="diagnosis_backup">備用代理伺服器</string>
+    <string name="diagnosis_reachable">可連線</string>
+    <string name="diagnosis_probed_at">偵測時間</string>
+    <string name="diagnosis_fast_timeout">快速逾時</string>
+    <string name="diagnosis_off">關</string>
+
+    <!-- Registration -->
+    <string name="diagnosis_registration">註冊</string>
+    <string name="diagnosis_state">狀態</string>
+    <string name="diagnosis_transport">傳輸協定</string>
+    <string name="diagnosis_expires">有效期限</string>
+
+    <!-- The last call -->
+    <string name="diagnosis_last_call">上次通話</string>
+    <string name="diagnosis_sound">聲音</string>
+    <string name="diagnosis_sound_both">雙向</string>
+    <string name="diagnosis_sound_send_only">僅傳送</string>
+    <string name="diagnosis_sound_receive_only">僅接收</string>
+    <string name="diagnosis_sound_none">無</string>
+    <string name="diagnosis_loss">封包遺失</string>
+    <string name="diagnosis_loss_value">↓ %1$s · ↑ %2$s</string>
+    <string name="diagnosis_jitter">抖動</string>
+    <string name="diagnosis_round_trip">往返</string>
+    <string name="diagnosis_ended">結束</string>
+
+    <!-- Automatic adjustments -->
+    <string name="diagnosis_adaptation">自動調整</string>
+    <string name="diagnosis_adapted_transport">傳輸協定</string>
+    <string name="diagnosis_adapted_expires">註冊有效期限</string>
+    <string name="diagnosis_on">開啟</string>
+</resources>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- What forms say under their fields, and the parts of their rows. -->
+<resources>
+    <string name="form_required">必填</string>
+    <string name="form_taken">已存在</string>
+    <string name="form_invalid">格式不正確</string>
+    <string name="form_host_port">應為 主機[:連接埠]</string>
+    <string name="form_port_range">應為 1–65535</string>
+    <plurals name="form_max_chars">
+        <item quantity="other">最多 %1$s 個字元</item>
+    </plurals>
+
+    <!-- Parts of the form rows -->
+    <string name="form_expand">展開</string>
+    <string name="form_collapse">收合</string>
+    <string name="form_password_show">顯示密碼</string>
+    <string name="form_password_hide">隱藏密碼</string>
+    <string name="form_placeholder_host_port">主機[:連接埠]</string>
+</resources>

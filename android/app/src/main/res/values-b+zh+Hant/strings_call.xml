@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Calls: what the commands answer, why a call ended, the call screen. -->
+<resources>
+    <string name="call_busy_already">已有通話正在進行</string>
+    <string name="call_none">目前沒有通話</string>
+    <string name="call_two_already">已有兩路通話</string>
+    <string name="call_consult_after_connect">通話接通後才能進行詢問轉接</string>
+    <string name="call_enter_number">請輸入號碼</string>
+    <string name="call_add_account_first">請先新增 SIP 帳號</string>
+    <string name="call_line_off">線路已停用</string>
+    <string name="call_invalid_address">號碼或位址無效</string>
+    <string name="call_failed">呼叫失敗</string>
+    <string name="call_dtmf_in_call_only">僅可在通話中傳送按鍵</string>
+    <string name="call_room_no_video">會議室不支援視訊</string>
+    <string name="call_no_pending_transfer">沒有待完成的轉接</string>
+    <string name="call_room_after_connect">通話接通後才能開啟會議室</string>
+    <string name="call_room_transferring">轉接進行中</string>
+    <string name="call_room_supervised">監聽通話無法加入會議室</string>
+    <string name="call_withheld">匿名來電</string>
+
+    <!-- Why a call ended -->
+    <string name="call_ended">通話結束</string>
+    <string name="call_hung_up">已掛斷</string>
+    <string name="call_cancelled">已取消</string>
+    <string name="call_end_busy">對方忙線中</string>
+    <string name="call_end_declined">對方已拒接</string>
+    <string name="call_end_not_found">號碼不存在</string>
+    <string name="call_end_not_answered">無人接聽</string>
+    <string name="call_end_no_response">對方無回應</string>
+    <string name="call_end_dnd">對方已開啟勿擾</string>
+    <string name="call_end_unavailable">對方暫時無法接通</string>
+    <string name="call_end_forbidden">無權撥打</string>
+    <string name="call_end_network">網路連線失敗</string>
+    <string name="call_end_media">媒體協商失敗</string>
+    <string name="call_no_sound">未收到對方聲音</string>
+    <string name="call_server_silent">伺服器無回應</string>
+
+    <!-- Transfer and park -->
+    <string name="call_transfer_after_connect">通話接通後才能轉接</string>
+    <string name="call_enter_transfer_number">請輸入轉接號碼</string>
+    <string name="call_transfer_after_answer">對方接聽後才能轉接</string>
+    <string name="call_parked">通話已駐留</string>
+    <string name="call_transferred">轉接成功</string>
+    <string name="call_transfer_send_failed">轉接請求傳送失敗</string>
+
+    <!-- Video -->
+    <string name="call_video_after_connect">通話接通後才能開啟視訊</string>
+    <string name="call_video_not_supported">此通話不支援視訊</string>
+    <string name="call_cannot_change">無法變更通話</string>
+    <string name="call_camera_after_connect">通話接通後才能使用相機</string>
+    <string name="call_no_video">此通話沒有視訊</string>
+    <string name="call_camera_permission">需要相機權限</string>
+
+    <!-- Call screen -->
+    <string name="call_status_incoming">來電</string>
+    <string name="call_status_intercom">對講來電</string>
+    <string name="call_status_video">視訊來電</string>
+    <string name="call_status_calling">正在呼叫…</string>
+    <string name="call_status_connected">已接通</string>
+    <string name="call_status_held">通話已保留</string>
+    <string name="call_intercom_chip">對講</string>
+    <string name="call_room_button">會議室</string>
+    <string name="call_room_open_title">要開啟會議室嗎？</string>
+    <string name="call_room_open_text">會議室僅支援語音，視訊將關閉。</string>
+    <string name="call_room_open">開啟</string>
+    <string name="call_transferring">正在轉接…</string>
+    <string name="call_transfer_succeeded">轉接成功</string>
+    <string name="call_parked_listen">已駐留，請收聽 PBX 播報的駐留位置號碼</string>
+    <string name="call_transfer_failed">轉接失敗，通話仍處於保留狀態</string>
+
+    <!-- Controls -->
+    <string name="call_complete_transfer">完成轉接：將 %1$s 轉給對方</string>
+    <string name="call_mute">靜音</string>
+    <string name="call_muted">已靜音</string>
+    <string name="call_keypad">鍵盤</string>
+    <string name="call_hold">保留</string>
+    <string name="call_resume">恢復</string>
+    <string name="call_transfer">轉接</string>
+    <string name="call_park">駐留</string>
+    <string name="call_swap">切換</string>
+    <string name="call_merge">合併</string>
+    <string name="call_shortcuts">快速鍵</string>
+    <string name="call_hang_up">掛斷</string>
+    <string name="call_video">視訊</string>
+    <string name="call_supervision_listen">監聽</string>
+    <string name="call_supervision_whisper">密語</string>
+    <string name="call_supervision_barge">強插</string>
+    <string name="call_route_earpiece">聽筒</string>
+    <string name="call_route_speaker">擴音器</string>
+    <string name="call_route_bluetooth">藍牙</string>
+    <string name="call_route_headset">耳機</string>
+    <string name="call_route_wired_headset">有線耳機</string>
+    <string name="call_record_start">開始錄音</string>
+    <string name="call_record_stop">停止錄音</string>
+
+    <!-- Keypad, transfer and shortcut keys -->
+    <string name="call_keypad_close">收合鍵盤</string>
+    <string name="call_transfer_title">轉接通話</string>
+    <string name="call_transfer_to">轉接至</string>
+    <string name="call_transfer_hint">分機號碼或 SIP 位址</string>
+    <string name="call_transfer_attended">詢問轉接</string>
+    <string name="call_transfer_blind">直接轉接</string>
+    <string name="call_shortcuts_empty">尚無快速鍵</string>
+
+    <!-- A second call, and answering -->
+    <string name="call_waiting_new">新來電</string>
+    <string name="call_waiting_decline">拒接新來電</string>
+    <string name="call_waiting_answer">保留目前通話並接聽</string>
+    <string name="call_held_consulting">等待轉接（保留中）</string>
+    <string name="call_held_label">保留中</string>
+    <string name="call_swap_calls">切換通話</string>
+    <string name="call_slide_description">來電：向右滑動接聽，向左滑動掛斷</string>
+    <string name="call_slide_answer">接聽</string>
+    <string name="call_slide_decline">掛斷</string>
+
+    <!-- Placing a call -->
+    <string name="call_microphone_permission">需要麥克風權限</string>
+</resources>

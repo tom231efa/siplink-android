@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SIP accounts (lines): their rules, their registration, their CSV import. -->
+<resources>
+    <plurals name="account_limit">
+        <item quantity="other">最多 %1$s 個帳號</item>
+    </plurals>
+    <plurals name="account_error_name_too_long">
+        <item quantity="other">帳號名稱最多 %1$s 個字元</item>
+    </plurals>
+    <string name="account_error_name_taken">帳號名稱已存在</string>
+    <string name="account_error_username_empty">使用者名稱為必填</string>
+    <string name="account_error_invalid_chars">含無效字元</string>
+    <string name="account_error_username_invalid">使用者名稱含無效字元</string>
+    <string name="account_error_domain_empty">網域為必填</string>
+    <string name="account_error_domain_invalid">網域格式不正確</string>
+    <string name="account_error_port_invalid">連接埠應為 1–65535</string>
+    <string name="account_error_server_invalid">代理伺服器應為 主機[:連接埠]</string>
+    <string name="account_error_backup_invalid">備用代理伺服器應為 主機[:連接埠]</string>
+    <string name="account_error_same_as_proxy">與代理伺服器相同</string>
+    <string name="account_error_backup_same">備用代理伺服器與代理伺服器相同</string>
+    <string name="account_error_dns_format">應為 IP[:連接埠]</string>
+    <string name="account_error_dns_invalid">DNS 伺服器應為 IP[:連接埠]</string>
+    <string name="account_error_timeout_range">應為 %1$s–%2$s 毫秒</string>
+    <string name="account_error_timeout_invalid">快速逾時應為 %1$s–%2$s 毫秒</string>
+    <string name="account_error_expires_range">應為 %1$s–%2$s 秒</string>
+    <string name="account_error_expires_invalid">註冊有效期限應為 %1$s–%2$s 秒</string>
+    <string name="account_error_duplicate">帳號已存在</string>
+    <string name="account_error_password_required">必填（使用者名稱、網域或連接埠已變更）</string>
+    <string name="account_error_password_required_full">密碼為必填（使用者名稱、網域或連接埠已變更）</string>
+    <string name="account_error_address_rejected">位址無法解析</string>
+    <string name="account_error_not_found">帳號不存在</string>
+    <string name="account_csv_format">使用者名稱,密碼,網域[,傳輸協定[,顯示名稱[,代理伺服器[,帳號名稱]]]]</string>
+
+    <!-- Registration -->
+    <string name="account_dns_failed">DNS 解析失敗</string>
+    <string name="account_register_failed">註冊失敗</string>
+    <string name="account_line_transport_auto">%1$s（自動）</string>
+
+    <!-- The registration state of an account -->
+    <string name="account_state_registered">已註冊</string>
+    <string name="account_state_registering">註冊中</string>
+    <string name="account_state_failed">註冊失敗</string>
+    <string name="account_state_none">未註冊</string>
+    <string name="account_state_disabled">已停用</string>
+
+    <!-- The account list -->
+    <string name="account_list_title">SIP 帳號</string>
+    <string name="account_import_action">批次匯入帳號</string>
+    <string name="account_search_action">搜尋帳號</string>
+    <string name="account_search_placeholder">搜尋帳號</string>
+    <string name="account_search_close">關閉搜尋</string>
+    <string name="account_empty">尚無 SIP 帳號</string>
+    <string name="account_add">新增帳號</string>
+    <string name="account_no_match">沒有相符的帳號</string>
+    <plurals name="account_summary_total">
+        <item quantity="other">%1$s / %2$s 個帳號</item>
+    </plurals>
+    <string name="account_summary_registered">已註冊 %1$s</string>
+    <string name="account_summary_failed">失敗 %1$s</string>
+    <string name="account_summary_disabled">停用 %1$s</string>
+    <string name="account_default_marker">預設帳號</string>
+    <string name="account_row_status">%1$s · %2$s</string>
+    <string name="account_row_status_backup">%1$s · %2$s · 備用代理伺服器</string>
+
+    <!-- The account editor -->
+    <string name="account_added">帳號已新增</string>
+    <string name="account_saved">帳號已儲存</string>
+    <string name="account_edit_title_new">新增帳號</string>
+    <string name="account_edit_title_view">帳號詳細資料</string>
+    <string name="account_edit_title_edit">編輯帳號</string>
+    <string name="account_section_info">帳號資訊</string>
+    <string name="account_field_name">帳號名稱（選填）</string>
+    <string name="account_field_name_hint">例如 櫃檯、業務專線</string>
+    <string name="account_field_username">使用者名稱</string>
+    <string name="account_field_username_hint">例如 1001</string>
+    <string name="account_field_port">連接埠</string>
+    <string name="account_field_domain">網域 / 伺服器</string>
+    <string name="account_field_domain_hint">pbx.example.com 或 192.168.1.10</string>
+    <string name="account_field_password">密碼</string>
+    <string name="account_field_password_keep">留空則不變更密碼</string>
+    <string name="account_field_display_name">顯示名稱（選填）</string>
+    <string name="account_section_transport">傳輸協定</string>
+    <string name="account_tls">TLS 與 CA 憑證</string>
+    <string name="account_section_advanced">進階設定</string>
+    <string name="account_field_auth_user">驗證使用者名稱（選填）</string>
+    <string name="account_field_proxy">代理伺服器（選填）</string>
+    <string name="account_field_backup_proxy">備用代理伺服器（選填）</string>
+    <string name="account_field_fast_timeout">快速逾時（毫秒，選填）</string>
+    <string name="account_field_dns">DNS 伺服器（選填）</string>
+    <string name="account_field_dns_hint">IP[:連接埠]</string>
+    <string name="account_field_expires">註冊有效期限（秒）</string>
+    <string name="account_subscribe_mwi">訂閱語音信箱通知</string>
+    <string name="account_line_diagnosis">線路診斷</string>
+    <string name="account_enable">啟用此帳號</string>
+    <string name="account_default_set">已設為預設帳號</string>
+    <string name="account_is_default">目前的預設帳號</string>
+    <string name="account_set_default">設為預設帳號</string>
+    <string name="account_delete">刪除帳號</string>
+    <string name="account_delete_title">要刪除帳號嗎？</string>
+    <string name="account_delete_text">%1$s 將從本機移除並取消註冊。</string>
+    <plurals name="account_delete_keys">
+        <item quantity="other">\n%1$s 個快速鍵固定使用此線路，將改為撥出時選擇。</item>
+    </plurals>
+
+    <!-- Choosing the account of a call -->
+    <string name="account_picker_title">選擇撥出帳號</string>
+    <string name="account_picker_default">跟隨預設帳號</string>
+    <string name="account_picker_search">搜尋名稱、號碼或網域</string>
+    <string name="account_picker_not_set">尚未設定</string>
+    <string name="account_picker_row">%1$s · %2$s</string>
+    <string name="account_picker_row_status">%1$s · %2$s</string>
+    <string name="account_picker_row_pinned">撥號頁目前選擇 · %1$s · %2$s</string>
+
+    <!-- Bulk import of accounts -->
+    <string name="account_import_title">批次匯入帳號</string>
+    <string name="account_import_example">1001,password,pbx.example.com,tls,王小明,,櫃檯</string>
+</resources>

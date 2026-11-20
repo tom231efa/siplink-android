@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- LDAP directories. -->
+<resources>
+    <plurals name="directory_limit">
+        <item quantity="other">最多 %1$s 個通訊錄</item>
+    </plurals>
+    <string name="directory_error_name_taken">名稱已存在</string>
+    <plurals name="directory_error_name_too_long">
+        <item quantity="other">名稱最多 %1$s 個字元</item>
+    </plurals>
+    <string name="directory_error_host_empty">伺服器位址為必填</string>
+    <string name="directory_error_host_invalid">伺服器位址應為 主機[:連接埠]</string>
+    <string name="directory_error_ldaps">不支援 ldaps://，請使用 StartTLS</string>
+    <string name="directory_error_host_ldaps">伺服器位址不支援 ldaps://，請使用 StartTLS</string>
+    <string name="directory_error_starttls_name">StartTLS 需使用網域名稱</string>
+    <string name="directory_error_host_starttls_name">伺服器位址：StartTLS 需使用網域名稱</string>
+    <string name="directory_error_port_range">連接埠應為 1–65535</string>
+    <string name="directory_error_host_port_range">伺服器位址的連接埠應為 1–65535</string>
+    <string name="directory_error_user_for_password">必填（已填寫密碼）</string>
+    <string name="directory_error_user_for_password_full">使用者名稱為必填（已填寫密碼）</string>
+    <string name="directory_error_base_dn_empty">搜尋基準為必填</string>
+    <string name="directory_error_max_results_range">應為 1–%1$s</string>
+    <string name="directory_error_max_results_invalid">最大結果數應為 1–%1$s</string>
+    <string name="directory_error_name_attributes_empty">姓名屬性為必填</string>
+    <string name="directory_error_number_attributes_empty">號碼屬性為必填</string>
+    <string name="directory_error_placeholder">需包含 %</string>
+    <string name="directory_error_name_filter_placeholder">姓名篩選器需包含 %</string>
+    <string name="directory_error_number_filter_placeholder">號碼篩選器需包含 %</string>
+
+    <!-- The directory tab -->
+    <string name="directory_title">通訊錄</string>
+    <string name="directory_ldap_settings">LDAP 設定</string>
+    <string name="directory_no_ldap">目前的 SDK 不支援 LDAP</string>
+    <string name="directory_add_account_first">請先新增 SIP 帳號</string>
+    <string name="directory_none_configured">尚未設定 LDAP 通訊錄</string>
+    <string name="directory_all_disabled">LDAP 通訊錄已停用</string>
+    <string name="directory_search">搜尋姓名或號碼</string>
+    <string name="directory_no_match">沒有相符的聯絡人</string>
+    <string name="directory_cache_searching">本機快取，正在查詢伺服器…</string>
+    <string name="directory_from_cache">來自本機快取</string>
+    <plurals name="directory_first_only">
+        <item quantity="other">僅顯示前 %1$s 筆</item>
+    </plurals>
+    <string name="directory_number_organization">%1$s · %2$s</string>
+    <string name="directory_call_contact">撥打給 %1$s</string>
+    <string name="directory_more_for">%1$s 的更多功能</string>
+
+    <!-- The list of LDAP directories -->
+    <string name="directory_ldap_title">LDAP 通訊錄</string>
+    <string name="directory_add">新增通訊錄</string>
+    <plurals name="directory_count">
+        <item quantity="other">%1$s / %2$s 個通訊錄</item>
+    </plurals>
+    <string name="directory_disabled_summary">已停用 · %1$s</string>
+    <string name="directory_cache_title">本機快取</string>
+    <plurals name="directory_cache_usage">
+        <item quantity="other">已快取 %1$s 筆，佔用 %2$s / %3$s MB</item>
+    </plurals>
+    <string name="directory_cache_cleared">已清除通訊錄快取</string>
+    <string name="directory_cache_clear">清除快取</string>
+
+    <!-- A directory -->
+    <string name="directory_add_title">新增通訊錄</string>
+    <string name="directory_details_title">通訊錄詳細資料</string>
+    <string name="directory_edit_title">編輯通訊錄</string>
+    <string name="directory_user_required">使用者名稱為必填</string>
+    <string name="directory_saved">通訊錄已儲存</string>
+    <string name="directory_section_server">伺服器</string>
+    <string name="directory_name_optional">名稱（選填）</string>
+    <string name="directory_server_address">伺服器位址</string>
+    <string name="directory_server_placeholder">主機[:連接埠]</string>
+    <string name="directory_base_dn">搜尋基準</string>
+    <string name="directory_encryption">加密</string>
+    <string name="directory_encryption_none">不加密</string>
+    <string name="directory_ca_certificates">CA 憑證</string>
+    <string name="directory_section_sign_in">登入</string>
+    <string name="directory_sign_in_account">帳號</string>
+    <string name="directory_sign_in_anonymous">匿名</string>
+    <string name="directory_user_name">使用者名稱</string>
+    <string name="directory_password">密碼</string>
+    <string name="directory_password_keep">留空則保留已儲存的密碼</string>
+    <string name="directory_section_calls">來電與撥出</string>
+    <string name="directory_line">線路</string>
+    <string name="directory_all_lines">全部線路</string>
+    <string name="directory_line_named">%1$s · %2$s</string>
+    <string name="directory_lookup_incoming">來電顯示姓名</string>
+    <string name="directory_lookup_outgoing">撥出顯示姓名</string>
+    <string name="directory_advanced">進階設定</string>
+    <string name="directory_name_attributes">姓名屬性</string>
+    <string name="directory_number_attributes">號碼屬性</string>
+    <string name="directory_max_results">最大結果數</string>
+    <string name="directory_filter">篩選器</string>
+    <string name="directory_filter_auto">自動</string>
+    <string name="directory_filter_custom">自訂</string>
+    <string name="directory_name_filter">姓名篩選器</string>
+    <string name="directory_number_filter">號碼篩選器</string>
+    <string name="directory_enable">啟用此通訊錄</string>
+    <string name="directory_delete">刪除通訊錄</string>
+    <string name="directory_delete_title">要刪除「%1$s」嗎？</string>
+    <string name="directory_delete_text">其設定及本機快取的聯絡人將被移除。</string>
+</resources>

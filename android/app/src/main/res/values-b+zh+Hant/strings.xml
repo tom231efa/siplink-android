@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Texts every area uses. Each area has its own strings_{area}.xml. -->
+<resources>
+    <string name="list_separator">；</string>
+
+    <!-- Buttons every area uses -->
+    <string name="common_cancel">取消</string>
+    <string name="common_back">返回</string>
+    <string name="common_delete">刪除</string>
+    <string name="common_confirm_delete">確認刪除</string>
+    <string name="common_save">儲存</string>
+    <string name="common_ok">確定</string>
+    <string name="common_edit">編輯</string>
+    <string name="common_done">完成</string>
+    <string name="common_close">關閉</string>
+    <string name="common_more">更多</string>
+    <string name="common_clear">清除</string>
+    <string name="common_restore_defaults">還原預設值</string>
+</resources>
