@@ -6,6 +6,8 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
 import android.content.pm.ActivityInfo
+import android.graphics.Rect
+import android.os.SystemClock
 import android.util.Log
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.test.platform.app.InstrumentationRegistry
@@ -291,24 +293,48 @@ class ConferenceTest : RoomTestBase("conference") {
     @Test
     fun aTapOnARowThatMovedUnderTheFingerIsNotTaken() {
         openRoom("2501", "2502", "2503")
-        val (leaving, staying) = listOf("2502", "2503").map { number -> room()!!.members.first { it.address.startsWith("$number@") }.name }
+        val staying = room()!!.members.first { it.address.startsWith("2503@") }.name
         val stayingLeg = legOf("2503")!!
-        await("the rows") { shown("挂断 $staying").isNotEmpty() }
+        // What the room's own set-up moved has stood still past the guard: only the row that goes below can keep the tap back.
+        awaitRowsStill("挂断 $staying")
         // The PBX ends the call of the member above; its row stays a moment, then goes, and the row below moves up.
         pbx.command("channel request hangup ${legOf("2502")}")
         awaitRoom("the member to leave") { room -> room.members.any { it.address.startsWith("2502@") && it.state == MemberState.LEFT } }
-        var button: AccessibilityNodeInfo? = null
-        val deadline = System.currentTimeMillis() + TIMEOUT_MS
-        while (button == null && System.currentTimeMillis() < deadline) {
-            val now = nodes()
-            if (now.none { says(it, leaving) }) button = now.firstOrNull { says(it, "挂断 $staying") }
+        awaitRowsStill("挂断 $staying")
+        val button = chain(shown("挂断 $staying").single()).first { it.isClickable }
+        val bounds = Rect()
+        button.getBoundsInScreen(bounds)
+        val stoodAt = bounds.top
+        assertTrue("The row of the member that left went before the rows stood still", room()!!.members.any { it.address.startsWith("2502@") })
+        val goneAt = until("the row of the member that left to go") { room()!!.members.none { it.address.startsWith("2502@") } }
+        val movingAt = until("the row below to move") {
+            button.refresh()
+            button.getBoundsInScreen(bounds)
+            bounds.top != stoodAt
         }
-        // A tap right then, aimed at the row while it was still lower down, is not taken.
-        assertTrue(chain(button!!).first { it.isClickable }.performAction(AccessibilityNodeInfo.ACTION_CLICK))
+        // A tap right then, aimed at the row where it stood, is not taken.
+        assertTrue(button.performAction(AccessibilityNodeInfo.ACTION_CLICK))
+        val tappedAt = SystemClock.uptimeMillis()
+        Log.i(TAG, "row gone, the row below moving after ${movingAt - goneAt} ms, tapped after ${tappedAt - goneAt} ms")
+        // The tap must have come while the row's going still kept taps back; a phone too slow for that fails here, as it tested nothing.
+        assertTrue(
+            "The tap came ${tappedAt - goneAt} ms after the row went, later than the ${RoomRules.ROW_TAP_GUARD_MS} ms a tap is kept back: it tests nothing",
+            tappedAt - goneAt < RoomRules.ROW_TAP_GUARD_MS,
+        )
         never("the member hung up by a tap on a row that moved under the finger", QUIET_WINDOW_MS) { pbxChannel(stayingLeg) == null }
         // Once the rows are still, it is.
         tapRow("挂断 $staying")
         await("the member's leg to go") { pbxChannel(stayingLeg) == null }
+    }
+
+    /** Waits, looking every few milliseconds, until [condition] holds. @return SystemClock.uptimeMillis() when it was seen to */
+    private fun until(what: String, condition: () -> Boolean): Long {
+        val deadline = SystemClock.uptimeMillis() + TIMEOUT_MS
+        while (!condition()) {
+            if (SystemClock.uptimeMillis() > deadline) throw AssertionError("Timed out waiting for $what. App call: ${call()}")
+            Thread.sleep(QUICK_POLL_MS)
+        }
+        return SystemClock.uptimeMillis()
     }
 
     @Test
@@ -368,6 +394,9 @@ class ConferenceTest : RoomTestBase("conference") {
 
         /** Longer than the animation that turns the screen. */
         const val TURN_MS = 1_000L
+
+        /** How often [until] looks: well under the time a tap is kept back after the rows moved. */
+        const val QUICK_POLL_MS = 5L
         const val TAG = "SipLinkConferenceTest"
     }
 }

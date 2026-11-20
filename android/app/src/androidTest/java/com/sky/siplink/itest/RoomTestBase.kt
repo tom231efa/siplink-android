@@ -52,6 +52,12 @@ abstract class RoomTestBase(pictures: String) : ScreenTestBase(pictures) {
      * moves those after it.
      */
     protected fun tapRow(text: String) {
+        awaitRowsStill(text)
+        tap(text)
+    }
+
+    /** Waits until the rows of the members show [text] and have stood still for longer than a tap is kept back after they moved. */
+    protected fun awaitRowsStill(text: String) {
         val bounds = Rect()
         var before = ""
         var since = System.currentTimeMillis()
@@ -64,7 +70,6 @@ abstract class RoomTestBase(pictures: String) : ScreenTestBase(pictures) {
             }
             now.contains(text) && System.currentTimeMillis() - since > STILL_MS
         }
-        tap(text)
     }
 
     /** A room with [first] and [others] in it, on screen. */
