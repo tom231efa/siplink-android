@@ -64,15 +64,12 @@ import com.sky.siplink.ui.components.FeatureSheet
 import com.sky.siplink.ui.components.rememberCallLauncher
 import com.sky.siplink.ui.shortcuts.NewShortcutSheet
 import com.sky.siplink.ui.theme.Brand
-import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
-import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
-import java.util.Date
+import java.time.format.DecimalStyle
 import java.util.Locale
-import java.util.TimeZone
 
 private val timeFormat = DateTimeFormatter.ofPattern("HH:mm")
 
@@ -85,13 +82,13 @@ private class DayWords(val today: String, val yesterday: String)
 /**
  * [day] as a header of the list writes it in [locale], the language of the app: month and day,
  * and the year as well when it is not [today]'s ("11月21日", "2026年11月21日" in Chinese). The
- * pattern is the locale's own for the skeleton, as Android's DateFormat gives it.
+ * pattern is the locale's own for the skeleton, as Android's DateFormat gives it; its digits are
+ * Western in every language, like every other number of the app (DecimalStyle.STANDARD).
  */
 internal fun historyDate(day: LocalDate, today: LocalDate, locale: Locale): String {
     val skeleton = if (day.year == today.year) "MMMd" else "yMMMd"
-    val format = SimpleDateFormat(DateFormat.getBestDateTimePattern(locale, skeleton), locale)
-    format.timeZone = TimeZone.getTimeZone("UTC")
-    return format.format(Date(day.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()))
+    val pattern = DateFormat.getBestDateTimePattern(locale, skeleton)
+    return DateTimeFormatter.ofPattern(pattern, locale).withDecimalStyle(DecimalStyle.STANDARD).format(day)
 }
 
 private fun historyRows(entries: List<HistoryEntry>, zone: ZoneId, locale: Locale, words: DayWords): List<HistoryListRow> {

@@ -172,6 +172,18 @@ class AppLanguageTest : RoomTestBase("languages") {
         }
         assertEquals("Nov 21", historyDate(thisYear, today, Locale.forLanguageTag("en")))
         assertEquals("Nov 21, 2025", historyDate(lastYear, today, Locale.forLanguageTag("en")))
+        // Arabic: the month in its own words, the numbers in Western digits like every number of the app.
+        val arabic = historyDate(lastYear, today, Locale.forLanguageTag("ar"))
+        assertTrue(arabic, arabic.any { Character.UnicodeScript.of(it.code) == Character.UnicodeScript.ARABIC && Character.isLetter(it) })
+        assertTrue(arabic, "21" in arabic && "2025" in arabic)
+        // Every language of the app takes the pattern Android gives it, and writes Western digits only.
+        for (language in Language.entries) {
+            for (day in listOf(thisYear, lastYear)) {
+                val text = historyDate(day, today, Locale.forLanguageTag(language.tag))
+                assertTrue("${language.tag}: $text", text.filter(Character::isDigit).all { it in '0'..'9' })
+                assertTrue("${language.tag}: $text", "21" in text)
+            }
+        }
     }
 
     private companion object {
