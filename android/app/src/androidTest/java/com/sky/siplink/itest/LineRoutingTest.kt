@@ -276,15 +276,18 @@ class LineRoutingTest : PbxTestBase() {
     /** What the user set before the call rang, the microphone off and the speaker, stays across the retry. */
     @Test
     fun aCallPlacedAgainKeepsItsMicrophoneAndRoute() {
+        // With file audio the SDK reports no output device: the real ones, with a party that stays
+        // silent (2002), so that nothing comes out of the loudspeaker (VideoCallTest).
+        onMain { engine.core.useFiles = false }
         addRoutedAccount(timeoutMs = FAST_MS)
         relay!!.silent = true
-        dial("2000") // echo
+        dial("2002")
         await("the call to be on screen") { call()?.phase == CallPhase.OUTGOING }
         onMain {
             engine.calls.toggleMute()
             engine.calls.setRoute(AudioRoute.SPEAKER)
         }
-        val connected = awaitConnected("2000")
+        val connected = awaitConnected("2002")
         assertTrue(account(APP)!!.onBackup)
         assertTrue("The microphone is on again", connected.muted)
         await("the sound on the speaker") { call()?.route == AudioRoute.SPEAKER }
