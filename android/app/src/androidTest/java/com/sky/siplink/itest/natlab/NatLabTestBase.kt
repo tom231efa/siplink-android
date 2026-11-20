@@ -150,17 +150,19 @@ abstract class NatLabTestBase {
 
     protected fun account(extension: Int): SipAccount? = engine.accounts.accounts.value.firstOrNull { it.username == "$extension" }
 
-    /** Adds the account of [extension] on the PBX at [port] (the lab's SIP port unless told). */
+    /** The account of [extension] on the PBX at [port] (the lab's SIP port unless told). */
+    protected fun draft(extension: Int, transport: SipTransport = SipTransport.UDP, expires: Int = 3600, port: Int = lab.sipPort) = AccountDraft(
+        username = "$extension",
+        password = lab.sipPassword,
+        domain = lab.host,
+        port = if (port == DEFAULT_SIP_PORT) "" else "$port",
+        transport = transport,
+        expires = expires,
+    )
+
+    /** Adds the account of [extension] ([draft]). */
     protected fun addAccount(extension: Int, transport: SipTransport = SipTransport.UDP, expires: Int = 3600, port: Int = lab.sipPort) {
-        val draft = AccountDraft(
-            username = "$extension",
-            password = lab.sipPassword,
-            domain = lab.host,
-            port = if (port == DEFAULT_SIP_PORT) "" else "$port",
-            transport = transport,
-            expires = expires,
-        )
-        val errors = onMain { engine.accounts.add(draft) }
+        val errors = onMain { engine.accounts.add(draft(extension, transport, expires, port)) }
         assertTrue("Account rejected: $errors", errors.isEmpty())
     }
 
@@ -240,8 +242,11 @@ abstract class NatLabTestBase {
         /** As [NAT_ACCOUNT], at a PBX that knows its address for SIP but not for the sound. */
         const val SIGNALLING_ACCOUNT = 6001
 
-        /** As [NAT_ACCOUNT], with one registration that stands until it expires: a second one is refused (403). */
-        const val SINGLE_ACCOUNT = 7001
+        /**
+         * As [NAT_ACCOUNT], refused over TCP while the box's tcp-alias is on: it comes from an
+         * address the PBX's ACL denies (Asterisk answers 401, to the right password as well).
+         */
+        const val NO_TCP_ACCOUNT = 7001
         const val DEFAULT_SIP_PORT = 5060
         const val ECHO = "600"
         const val TONE = "601"

@@ -12,7 +12,8 @@ import org.junit.runner.RunWith
 /**
  * A network that does not let UDP to the SIP port through, or drops the IP fragments of a large
  * one: the line moves to TCP by itself, and only while it adapts at all. A transport the server
- * refuses ends its test: the line goes back to its own one.
+ * refuses ends its test: the line goes back to its own one. A line that registered on TCP is
+ * settled there: a refusal of the account changes nothing.
  */
 @RunWith(AndroidJUnit4::class)
 class NatTransportTest : NatLabTestBase() {
@@ -83,21 +84,47 @@ class NatTransportTest : NatLabTestBase() {
 
     @Test
     fun aTransportTheServerRefusesEndsItsTestAndTheLineGoesBack() {
-        addAccount(SINGLE_ACCOUNT)
-        awaitRegistered(SINGLE_ACCOUNT)
+        addAccount(NO_TCP_ACCOUNT)
+        awaitRegistered(NO_TCP_ACCOUNT)
+        // The PBX takes this account over UDP only, whatever it sends over TCP.
+        box("tcp-alias on")
         box("udp-sip off")
         onMain { engine.accounts.registerAnew() }
-        // Over TCP the PBX refuses a second registration while the one over UDP stands (403).
-        await("the line on TCP for a test", ADAPT_TIMEOUT_MS) { adapted(SINGLE_ACCOUNT) == SipTransport.TCP }
-        await("the line back on its own transport", ADAPT_TIMEOUT_MS) { adapted(SINGLE_ACCOUNT) == null }
-        println("natlab evidence: refused over TCP: ${account(SINGLE_ACCOUNT)?.error}, PBX contacts ${pbxContacts(SINGLE_ACCOUNT)}")
-        assertTrue(pbxContacts(SINGLE_ACCOUNT).none { "transport=tcp" in it.lowercase() })
+        await("the line on TCP for a test", ADAPT_TIMEOUT_MS) { adapted(NO_TCP_ACCOUNT) == SipTransport.TCP }
+        await("the line back on its own transport", ADAPT_TIMEOUT_MS) { adapted(NO_TCP_ACCOUNT) == null }
+        println("natlab evidence: refused over TCP: ${account(NO_TCP_ACCOUNT)?.error}, PBX contacts ${pbxContacts(NO_TCP_ACCOUNT)}")
+        assertTrue(pbxContacts(NO_TCP_ACCOUNT).none { "transport=tcp" in it.lowercase() })
+        // UDP still gets no answer: TCP, which refused it, is not tried again for now.
+        never("the line on TCP again", BLOCKED_WINDOW_MS) { adapted(NO_TCP_ACCOUNT) != null }
 
-        // Nothing learned puts it on TCP again: once UDP gets through, it registers there.
+        // Once UDP gets through, it registers there.
         box("udp-sip on")
         onMain { engine.accounts.registerAnew() }
-        await("the registration over UDP", CALL_FAIL_MS) { account(SINGLE_ACCOUNT)?.state == RegState.OK }
-        assertEquals(null, adapted(SINGLE_ACCOUNT))
+        await("the registration over UDP", CALL_FAIL_MS) { account(NO_TCP_ACCOUNT)?.state == RegState.OK }
+        assertEquals(null, adapted(NO_TCP_ACCOUNT))
+    }
+
+    @Test
+    fun aLineSettledOnTcpStaysThereWhenTheServerRefusesTheAccount() {
+        box("udp-sip off")
+        addAccount(NAT_ACCOUNT)
+        await("the line to register over TCP", ADAPT_TIMEOUT_MS) {
+            account(NAT_ACCOUNT)?.state == RegState.OK && adapted(NAT_ACCOUNT) == SipTransport.TCP
+        }
+        // The password on the PBX changed and the app has the old one: the account is refused, not TCP.
+        val id = account(NAT_ACCOUNT)!!.id
+        val wrong = onMain { engine.accounts.update(id, draft(NAT_ACCOUNT).copy(password = "${lab.sipPassword}-old")) }
+        assertTrue("Change rejected: $wrong", wrong.isEmpty())
+        await("the refusal over TCP", CALL_FAIL_MS) { account(NAT_ACCOUNT)?.state == RegState.FAILED }
+        println("natlab evidence: settled on TCP, refused: ${account(NAT_ACCOUNT)?.error}")
+        never("the line to leave TCP", SETTLED_WINDOW_MS) { adapted(NAT_ACCOUNT) != SipTransport.TCP }
+
+        // The right password again: it registers where it was.
+        val right = onMain { engine.accounts.update(id, draft(NAT_ACCOUNT)) }
+        assertTrue("Change rejected: $right", right.isEmpty())
+        await("the registration over TCP", CALL_FAIL_MS) {
+            account(NAT_ACCOUNT)?.state == RegState.OK && adapted(NAT_ACCOUNT) == SipTransport.TCP
+        }
     }
 
     private companion object {
@@ -106,5 +133,8 @@ class NatTransportTest : NatLabTestBase() {
 
         /** How long a UDP request of the SIP core waits for its answer (64 × T1), with a margin. */
         const val CALL_FAIL_MS = 90_000L
+
+        /** Longer than a line on test takes to be sent back after a refusal: a probe at most every half minute, and its answer. */
+        const val SETTLED_WINDOW_MS = 60_000L
     }
 }
