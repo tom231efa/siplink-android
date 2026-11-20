@@ -13,7 +13,6 @@ import com.sky.siplink.core.logic.Formatters
 import com.sky.siplink.core.logic.IncomingPolicy
 import com.sky.siplink.core.logic.NameLookup
 import com.sky.siplink.core.logic.OngoingNotice
-import com.sky.siplink.core.logic.PartyName
 import com.sky.siplink.core.logic.VideoRules
 import com.sky.siplink.core.model.AudioRoute
 import com.sky.siplink.core.model.CallInfo
@@ -85,24 +84,12 @@ class CallManager(
             it == CallPhase.OUTGOING || it == CallPhase.CONNECTED || it == CallPhase.HELD
         }
 
-    /** Facts about a call that the SIP core does not keep for us. */
-    private class Meta(
-        var intercom: Boolean = false,
-        var supervision: SupervisionMode? = null,
-        var connectedAt: Long? = null,
-        var speakerApplied: Boolean = false,
-        var endReason: String? = null,
-        /** The call had video the last time it was looked at (sound moves to the speaker as video starts). */
-        var hadVideo: Boolean = false,
-        /** It came in next to another call or the room and waited there: it is never answered by itself (CallRules, rule 2). */
-        var waited: Boolean = false,
-    )
-
     /** What the next outgoing call started by [invite] is meant to be. */
     private class Pending(val supervision: SupervisionMode?, val consultation: Boolean)
 
     private val handler = Handler(Looper.getMainLooper())
-    private val metas = HashMap<Long, Meta>()
+    private val describer = CallDescriber(core, settings, accounts, names)
+    private val metas = HashMap<Long, CallMeta>()
 
     private var current: Call? = null
     private var other: Call? = null
@@ -574,7 +561,7 @@ class CallManager(
         handler.post { if (!isEnded(call)) call.terminate() }
     }
 
-    private fun onCurrentStreaming(call: Call, meta: Meta) {
+    private fun onCurrentStreaming(call: Call, meta: CallMeta) {
         // The call we were referred to is up: the original one is not needed any more.
         referredFrom?.let { old ->
             referredFrom = null
@@ -645,7 +632,7 @@ class CallManager(
     }
 
     /** Last call gone: keep the "call ended" state on screen for a moment, then clear it. */
-    private fun finish(meta: Meta?) {
+    private fun finish(meta: CallMeta?) {
         val last = state.value
         current = null
         other = null
@@ -677,16 +664,9 @@ class CallManager(
 
     private fun live(call: Call?): Call? = call?.takeIf { !isEnded(it) }
 
-    private fun metaOf(call: Call): Meta = metas.getOrPut(call.nativePointer) { Meta() }
+    private fun metaOf(call: Call): CallMeta = metas.getOrPut(call.nativePointer) { CallMeta() }
 
-    /** The other side of a call, by its name in the directory when it has one there. */
-    private fun partyOf(call: Call): SideCall {
-        val party = CallSupport.party(call)
-        val outgoing = call.dir == Call.Dir.Outgoing
-        val line = call.params.account?.let(accounts::idOf)
-        val name = PartyName.of(party.name, party.address, outgoing, settings.current.features) { names.nameOf(it, !outgoing, line) }
-        return party.copy(name = name)
-    }
+    private fun partyOf(call: Call): SideCall = describer.partyOf(call)
 
     /** The directory found a name: show it on the call that is up, and where that call is being announced. */
     private fun onNamesFound() {
@@ -706,31 +686,7 @@ class CallManager(
     }
 
     /** Snapshot of a single call, without the second-call fields. */
-    private fun describe(call: Call): CallInfo {
-        val meta = metaOf(call)
-        val party = partyOf(call)
-        val ringing = isRinging(call)
-        return CallInfo(
-            phase = phaseOf(call),
-            remoteName = party.name,
-            remoteAddress = party.address,
-            accountLabel = CallSupport.lineOf(call.params.account),
-            incoming = call.dir == Call.Dir.Incoming,
-            intercom = meta.intercom,
-            muted = call.microphoneMuted,
-            route = CallSupport.routeOf(call.outputAudioDevice?.type) ?: state.value?.route ?: AudioRoute.EARPIECE,
-            availableRoutes = CallSupport.availableRoutes(core),
-            connectedAt = meta.connectedAt,
-            endReason = meta.endReason,
-            supervision = meta.supervision,
-            video = if (videoAllowed && !ringing) CallVideoSupport.stateOf(call) else null,
-            videoOffer = videoAllowed && (if (ringing) CallVideoSupport.offered(call) else video.isRequesting(call)),
-            videoAllowed = videoAllowed,
-            recordable = recorder.recordable(call),
-            recordingSince = recorder.startedAt(call),
-            noSound = accounts.media.hearsNothing(call),
-        )
-    }
+    private fun describe(call: Call): CallInfo = describer.describe(call, metaOf(call), state.value?.route, video, recorder)
 
     private fun publish(): CallInfo? {
         val previous = state.value
