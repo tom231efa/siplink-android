@@ -32,6 +32,9 @@ class AppLanguage(private val app: Context) {
      */
     var onChanged: ((recreate: Boolean) -> Unit)? = null
 
+    /** The app's own language list, as the setting has it; empty: the system's languages. Read at the start, on a choice and by [refresh]. */
+    private var own: LocaleList = stored()
+
     /** The languages the texts are rendered in: the app's own, or the system's. */
     private var current: LocaleList = effective()
     private var localizedContext: Context? = null
@@ -40,34 +43,43 @@ class AppLanguage(private val app: Context) {
         if (!SYSTEM_KEEPS_IT) LocaleList.setDefault(current)
     }
 
-    /** The app's own language list; empty: the system's languages. */
-    private fun locales(): LocaleList =
+    private fun stored(): LocaleList =
         if (SYSTEM_KEEPS_IT) app.getSystemService(LocaleManager::class.java).applicationLocales else storedLocales(app) ?: LocaleList.getEmptyLocaleList()
 
-    /** The languages of the texts for the app's own list [own]. */
-    private fun effective(own: LocaleList = locales()): LocaleList = own.takeIf { !it.isEmpty } ?: systemLocales(app)
+    private fun effective(): LocaleList = own.takeIf { !it.isEmpty } ?: systemLocales(app)
 
     /** Whether the app follows the system's languages. */
-    val followsSystem: Boolean get() = locales().isEmpty
+    val followsSystem: Boolean get() = own.isEmpty
 
     /** The language chosen for the app; null while it follows the system, or for a language the app does not speak. */
-    val chosen: Language? get() = locales().takeIf { !it.isEmpty }?.get(0)?.let { Language.of(it.language, ULocale.addLikelySubtags(ULocale.forLocale(it)).script) }
+    val chosen: Language? get() = own.takeIf { !it.isEmpty }?.get(0)?.let { Language.of(it.language, ULocale.addLikelySubtags(ULocale.forLocale(it)).script) }
 
     /** Sets the language of the app; null: the system's. */
     fun choose(language: Language?) {
-        val own = LocaleList.forLanguageTags(language?.tag.orEmpty())
+        val list = LocaleList.forLanguageTags(language?.tag.orEmpty())
         if (SYSTEM_KEEPS_IT) {
-            app.getSystemService(LocaleManager::class.java).applicationLocales = own
+            app.getSystemService(LocaleManager::class.java).applicationLocales = list
         } else {
-            app.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).edit(commit = true) { putString(KEY_TAGS, own.toLanguageTags()) }
+            app.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).edit(commit = true) { putString(KEY_TAGS, list.toLanguageTags()) }
         }
-        update(effective(own), recreate = !SYSTEM_KEEPS_IT)
+        own = list
+        update(recreate = !SYSTEM_KEEPS_IT)
     }
 
-    /** Reads the languages again, after a change of the configuration: the system's, or (Android 13 and later) the app's on the system's page. */
-    fun refresh() = update(effective(), recreate = false)
+    /**
+     * Reads the languages again, after a change of the configuration: the system's, or (Android 13
+     * and later) the app's on the system's page. Before Android 13 the framework sets the
+     * process's default languages anew from the application's configuration on every change
+     * (ConfigurationController.handleConfigurationChanged), so they are set again, changed or not.
+     */
+    fun refresh() {
+        own = stored()
+        update(recreate = false)
+        if (!SYSTEM_KEEPS_IT) LocaleList.setDefault(current)
+    }
 
-    private fun update(now: LocaleList, recreate: Boolean) {
+    private fun update(recreate: Boolean) {
+        val now = effective()
         if (now == current) return
         current = now
         localizedContext = null
@@ -75,13 +87,12 @@ class AppLanguage(private val app: Context) {
         onChanged?.invoke(recreate)
     }
 
-    /** A context of the app whose resources are in the app's languages, for texts rendered outside the activities. */
-    fun localized(): Context = localizedContext ?: app.createConfigurationContext(
-        Configuration(app.resources.configuration).apply {
-            setLocales(current)
-            setLayoutDirection(current[0])
-        },
-    ).also { localizedContext = it }
+    /**
+     * A context of the app whose resources are in the app's languages, for texts rendered outside
+     * the activities. It overrides the languages only (and with them the layout direction), so
+     * that the rest follows the configuration of the moment.
+     */
+    fun localized(): Context = localizedContext ?: app.createConfigurationContext(Configuration().apply { setLocales(current) }).also { localizedContext = it }
 
     companion object {
         /** Android 13 and later keep the language of an app themselves. */
@@ -105,10 +116,8 @@ class AppLanguage(private val app: Context) {
         fun wrap(base: Context): Context {
             if (SYSTEM_KEEPS_IT) return base
             val locales = storedLocales(base) ?: return base
-            val configuration = Configuration(base.resources.configuration)
-            configuration.setLocales(locales)
-            configuration.setLayoutDirection(locales[0])
-            return base.createConfigurationContext(configuration)
+            // The languages only: what is overridden here no longer follows changes of the configuration.
+            return base.createConfigurationContext(Configuration().apply { setLocales(locales) })
         }
     }
 }
