@@ -144,12 +144,14 @@ type ClientFilter struct {
 	Offset   int
 }
 
-func (f ClientFilter) where() (string, []any) {
+// where returns the parts of a query of clients "c" that the filter adds: with defines
+// offline_since when the filter needs it and goes in front of the SELECT; where is the
+// WHERE clause; args are the arguments of both, in this order.
+func (f ClientFilter) where() (with, where string, args []any) {
 	var conds []string
-	var args []any
 	if !f.All {
 		if len(f.Regions) == 0 {
-			return " WHERE 0", nil
+			return "", " WHERE 0", nil
 		}
 		conds = append(conds, "c.region_id IN ("+placeholders(len(f.Regions))+")")
 		args = append(args, int64Args(f.Regions)...)
@@ -172,8 +174,9 @@ func (f ClientFilter) where() (string, []any) {
 	switch f.Status {
 	case "":
 	case StatusOffline:
+		with = offlineSince
 		conds = append(conds, "c.status = ?", offlineSQL)
-		args = append(args, StatusActive, f.Now.UTC().Format(TimeFormat))
+		args = append([]any{f.Now.UTC().Format(TimeFormat)}, append(args, StatusActive)...)
 	default:
 		conds, args = append(conds, "c.status = ?"), append(args, f.Status)
 	}
@@ -182,24 +185,22 @@ func (f ClientFilter) where() (string, []any) {
 		args = append(args, int64Args(f.IDs)...)
 	}
 	if q := strings.TrimSpace(f.Query); q != "" {
+		// The SIP user names that match are found once (IN), not once per client (EXISTS).
 		like := "%" + strings.NewReplacer(`\`, `\\`, "%", `\%`, "_", `\_`).Replace(q) + "%"
-		conds = append(conds, `(c.name LIKE ? ESCAPE '\' OR EXISTS (SELECT 1 FROM client_credentials k WHERE k.client_id = c.id AND k.username LIKE ? ESCAPE '\'))`)
+		conds = append(conds, `(c.name LIKE ? ESCAPE '\' OR c.id IN (SELECT k.client_id FROM client_credentials k WHERE k.username LIKE ? ESCAPE '\'))`)
 		args = append(args, like, like)
 	}
 	if len(conds) == 0 {
-		return "", nil
+		return with, "", args
 	}
-	return " WHERE " + strings.Join(conds, " AND "), args
+	return with, " WHERE " + strings.Join(conds, " AND "), args
 }
 
-// ListClients returns one page of clients and the total count.
+// ListClients returns one page of clients and the total count. The count is asked only
+// when the page does not tell it: a page that is not full is the last one.
 func (s *Store) ListClients(ctx context.Context, f ClientFilter) ([]*Client, int, error) {
-	where, args := f.where()
-	var total int
-	if err := s.DB.QueryRowContext(ctx, `SELECT count(*) FROM clients c`+where, args...).Scan(&total); err != nil {
-		return nil, 0, err
-	}
-	q := `SELECT ` + clientCols + ` FROM clients c` + where + ` ORDER BY c.name COLLATE NOCASE, c.id`
+	with, where, args := f.where()
+	q := with + `SELECT ` + clientCols + ` FROM clients c` + where + ` ORDER BY c.name COLLATE NOCASE, c.id`
 	if f.Limit > 0 {
 		q += fmt.Sprintf(" LIMIT %d OFFSET %d", f.Limit, f.Offset)
 	}
@@ -207,16 +208,30 @@ func (s *Store) ListClients(ctx context.Context, f ClientFilter) ([]*Client, int
 	if err != nil {
 		return nil, 0, err
 	}
-	defer rows.Close()
 	var out []*Client
 	for rows.Next() {
 		c, err := scanClient(rows)
 		if err != nil {
+			rows.Close()
 			return nil, 0, err
 		}
 		out = append(out, c)
 	}
-	return out, total, rows.Err()
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	switch {
+	case f.Limit <= 0:
+		return out, len(out), nil
+	case len(out) > 0 && len(out) < f.Limit || len(out) == 0 && f.Offset == 0:
+		return out, f.Offset + len(out), nil
+	}
+	var total int
+	if err := s.DB.QueryRowContext(ctx, with+`SELECT count(*) FROM clients c`+where, args...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+	return out, total, nil
 }
 
 func (s *Store) clientWhere(ctx context.Context, cond string, args ...any) (*Client, error) {
@@ -399,8 +414,8 @@ func clientsOfConfigTemplate(ctx context.Context, q querier, id int64) (int, err
 
 // CountClients returns counts by status for a filter (dashboard).
 func (s *Store) CountClients(ctx context.Context, f ClientFilter) (map[string]int, error) {
-	where, args := f.where()
-	rows, err := s.DB.QueryContext(ctx, `SELECT c.status, count(*) FROM clients c`+where+` GROUP BY c.status`, args...)
+	with, where, args := f.where()
+	rows, err := s.DB.QueryContext(ctx, with+`SELECT c.status, count(*) FROM clients c`+where+` GROUP BY c.status`, args...)
 	if err != nil {
 		return nil, err
 	}

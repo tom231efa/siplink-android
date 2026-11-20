@@ -271,11 +271,18 @@ func Offline(lastSeen string, refreshMinutes int, now time.Time) bool {
 	return seen.IsZero() || now.Sub(seen) > OfflineFactor*time.Duration(refreshMinutes)*time.Minute
 }
 
-// offlineSQL is true for a client of the outer query "c" that has not been seen since
-// now (the parameter) minus OfflineFactor refresh intervals.
-var offlineSQL = `NOT EXISTS (SELECT 1 FROM client_reports r, client_templates t, config_templates f
-	WHERE r.client_id = c.id AND t.id = c.client_template_id AND f.id = t.config_template_id
-	AND r.last_seen_at >= strftime('%Y-%m-%dT%H:%M:%SZ', ?, '-' || (` + strconv.Itoa(OfflineFactor) + ` * f.refresh_minutes) || ' minutes'))`
+// offlineSince defines offline_since: per client template, the moment since which a
+// client of it must have been seen not to be offline, now (the parameter) minus
+// OfflineFactor refresh intervals of its configuration template. It goes in front of the
+// SELECT that uses offlineSQL; MATERIALIZED computes it once per query, not once per client.
+var offlineSince = `WITH offline_since(template_id, since) AS MATERIALIZED (SELECT t.id,
+	strftime('%Y-%m-%dT%H:%M:%SZ', ?, '-' || (` + strconv.Itoa(OfflineFactor) + ` * f.refresh_minutes) || ' minutes')
+	FROM client_templates t JOIN config_templates f ON f.id = t.config_template_id) `
+
+// offlineSQL is true for a client of the outer query "c" that has not been seen since the
+// moment offline_since gives for its client template.
+const offlineSQL = `NOT EXISTS (SELECT 1 FROM client_reports r, offline_since s
+	WHERE r.client_id = c.id AND s.template_id = c.client_template_id AND r.last_seen_at >= s.since)`
 
 // RefreshMinutes returns the refresh interval of each client's configuration template.
 func (s *Store) RefreshMinutes(ctx context.Context, ids []int64) (map[int64]int, error) {
@@ -315,7 +322,7 @@ type Attention struct {
 // ActiveClients returns the active clients of a filter with what their reports say.
 func (s *Store) ActiveClients(ctx context.Context, f ClientFilter) ([]Attention, error) {
 	f.Status = StatusActive
-	where, args := f.where()
+	_, where, args := f.where()
 	rows, err := s.DB.QueryContext(ctx, `SELECT c.id, c.name, COALESCE(r.last_seen_at, ''), f.refresh_minutes,
 		COALESCE(r.apply_error, ''), COALESCE(r.build_error, ''), COALESCE(r.registrations_json, '[]')
 		FROM clients c JOIN client_templates t ON t.id = c.client_template_id

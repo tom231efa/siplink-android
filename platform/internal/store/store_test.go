@@ -3,9 +3,12 @@ package store_test
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"siplink/internal/store"
 	"siplink/internal/testutil"
@@ -209,5 +212,83 @@ func TestClientReportsForLists(t *testing.T) {
 	lean.LastDocEnc = ""
 	if got := list[c.ID]; got == nil || *got != lean {
 		t.Errorf("report of a list: %+v", got)
+	}
+}
+
+// TestClientFilterOfflineAndPages: the offline filter follows the rule of Offline for the
+// refresh interval of each client's configuration template, and every page of a list
+// tells the same total, whether the count was asked or the page told it.
+func TestClientFilterOfflineAndPages(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.Store(t)
+	must := func(err error) {
+		t.Helper()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	reg := &store.Region{Name: "华东"}
+	must(st.CreateRegion(ctx, reg))
+	now := time.Date(2026, 11, 20, 12, 0, 0, 0, time.UTC)
+	var tpls []int64
+	for _, minutes := range []int{5, 60, 1440} {
+		cfg := &store.ConfigTemplate{Name: strconv.Itoa(minutes), SettingsJSON: "{}", RefreshMinutes: minutes}
+		must(st.CreateConfigTemplate(ctx, cfg))
+		tpl := &store.ClientTemplate{Name: cfg.Name, ConfigTemplateID: cfg.ID}
+		must(st.CreateClientTemplate(ctx, tpl))
+		tpls = append(tpls, tpl.ID)
+	}
+	refresh := map[int64]int{tpls[0]: 5, tpls[1]: 60, tpls[2]: 1440}
+	// Last seen at these distances before now: around 3 intervals of each template.
+	ago := []time.Duration{-1, 0, 14 * time.Minute, 15 * time.Minute, 15*time.Minute + time.Second, 3 * time.Hour,
+		3*time.Hour + time.Second, 72 * time.Hour, 72*time.Hour + time.Second}
+	want := map[string]bool{}
+	for i, tpl := range tpls {
+		for k, d := range ago {
+			c := &store.Client{Name: fmt.Sprintf("c%d-%d", i, k), RegionID: reg.ID, ClientTemplateID: tpl}
+			testutil.OldClient(t, st, testutil.Box(t), c, nil, nil)
+			_, err := st.DB.ExecContext(ctx, `UPDATE clients SET status = 'active' WHERE id = ?`, c.ID)
+			must(err)
+			seen := ""
+			if d >= 0 {
+				seen = now.Add(-d).Format(store.TimeFormat)
+			}
+			if k == 1 { // bound, no report yet
+				seen = ""
+			} else {
+				must(st.SaveReport(ctx, &store.Report{ClientID: c.ID, LastSeenAt: seen, RegistrationsJSON: "[]"}))
+			}
+			want[c.Name] = store.Offline(seen, refresh[tpl], now)
+		}
+	}
+	testutil.OldClient(t, st, testutil.Box(t), &store.Client{Name: "pending", RegionID: reg.ID, ClientTemplateID: tpls[0]}, nil, nil)
+	list, total, err := st.ListClients(ctx, store.ClientFilter{All: true, Status: store.StatusOffline, Now: now})
+	must(err)
+	got := map[string]bool{}
+	for _, c := range list {
+		got[c.Name] = true
+	}
+	for name, offline := range want {
+		if got[name] != offline {
+			t.Errorf("%s: offline %v, the rule says %v", name, got[name], offline)
+		}
+	}
+	if total != len(list) || len(list) < 6 {
+		t.Errorf("offline: %d of total %d", len(list), total)
+	}
+	all := len(want) + 1
+	for _, limit := range []int{1, 4, 7, all, all + 1} {
+		for page := 0; page*limit <= all+limit; page++ {
+			f := store.ClientFilter{All: true, Limit: limit, Offset: page * limit}
+			list, total, err := st.ListClients(ctx, f)
+			must(err)
+			if total != all || len(list) != max(0, min(limit, all-page*limit)) {
+				t.Errorf("limit %d page %d: %d rows, total %d of %d", limit, page, len(list), total, all)
+			}
+		}
+		f := store.ClientFilter{All: true, Status: store.StatusOffline, Now: now, Limit: limit}
+		if _, total, _ := st.ListClients(ctx, f); total != len(got) {
+			t.Errorf("offline, limit %d: total %d of %d", limit, total, len(got))
+		}
 	}
 }
