@@ -67,6 +67,7 @@ import com.sky.siplink.ui.components.Avatar
 import com.sky.siplink.ui.components.ChoiceRow
 import com.sky.siplink.ui.components.FadingText
 import com.sky.siplink.ui.components.FieldText
+import com.sky.siplink.ui.components.machineValueStyle
 import com.sky.siplink.ui.components.stringOf
 import kotlinx.coroutines.delay
 
@@ -164,6 +165,7 @@ internal fun RoomAddSheet(room: RoomInfo, calls: CallManager, onDismiss: () -> U
                 .padding(horizontal = 24.dp),
             label = { FieldText(stringResource(R.string.room_add_field)) },
             singleLine = true,
+            textStyle = machineValueStyle(),
             shape = MaterialTheme.shapes.medium,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { addTyped() }),

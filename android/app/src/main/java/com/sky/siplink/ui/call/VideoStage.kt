@@ -62,6 +62,7 @@ import com.sky.siplink.core.logic.PreviewDock
 import com.sky.siplink.core.logic.VideoRules
 import com.sky.siplink.core.model.CallVideo
 import com.sky.siplink.engine
+import com.sky.siplink.ui.components.LeftToRight
 import com.sky.siplink.ui.theme.Brand
 import org.linphone.mediastream.video.capture.CaptureTextureView
 
@@ -90,121 +91,124 @@ internal fun VideoStage(video: CallVideo, stage: VideoStageState, chrome: Boolea
     val insets = WindowInsets.safeDrawing
     val scope = rememberCoroutineScope()
     val small = remember { SmallPictureState() }
-    BoxWithConstraints(
-        Modifier
-            .fillMaxSize()
-            .background(Color.Black)
-            .clipToBounds(),
-    ) {
-        val picture = video.received
-        val cut = if (picture != null) VideoRules.cutWhenFilled(picture, constraints.maxWidth, constraints.maxHeight) else 0f
-        SideEffect { stage.cut = cut }
-        val canSwap = VideoRules.canSwap(video.sending, picture != null)
-        // Back to normal without one of the pictures, and so it stays when the picture returns.
-        LaunchedEffect(canSwap) { if (!canSwap) stage.swapChosen = false }
-        val swapped = stage.swapped(video)
+    // The pictures stand where the user put them, left or right, in every language: placed by the left edge.
+    LeftToRight {
+        BoxWithConstraints(
+            Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+                .clipToBounds(),
+        ) {
+            val picture = video.received
+            val cut = if (picture != null) VideoRules.cutWhenFilled(picture, constraints.maxWidth, constraints.maxHeight) else 0f
+            SideEffect { stage.cut = cut }
+            val canSwap = VideoRules.canSwap(video.sending, picture != null)
+            // Back to normal without one of the pictures, and so it stays when the picture returns.
+            LaunchedEffect(canSwap) { if (!canSwap) stage.swapChosen = false }
+            val swapped = stage.swapped(video)
 
-        // The small window: the shape of the picture in it, at its place in the band it may stand in now.
-        val (smallWidth, smallHeight) = VideoRules.previewSize(if (swapped) picture else video.sent, PreviewLongSide.value)
-        val widthPx = with(density) { smallWidth.dp.toPx() }
-        val heightPx = with(density) { smallHeight.dp.toPx() }
-        val safe = Rect(
-            insets.getLeft(density, direction).toFloat(),
-            insets.getTop(density).toFloat(),
-            insets.getRight(density, direction).toFloat(),
-            insets.getBottom(density).toFloat(),
-        )
-        val (shown, hidden) = dockAreas(
-            constraints.maxWidth.toFloat(),
-            constraints.maxHeight.toFloat(),
-            safe,
-            with(density) { DockMargin.toPx() },
-            stage,
-            wide = maxWidth > maxHeight,
-        )
-        val now = if (chrome) shown else hidden
-        val place = PreviewDock.Place(settings.previewSide, settings.previewPlace)
-        FollowSpot(small, PreviewDock.spot(place, widthPx, heightPx, shown, now), controlsShown = chrome)
-        val frame = SmallPictureState.Frame(widthPx, heightPx, shown, now, place, with(density) { FlingSpeed.toPx() })
-        SideEffect { small.frame = frame }
-        val labels = SmallPictureLabels.current()
-        val smallWindow = Modifier
-            .size(smallWidth.dp, smallHeight.dp)
-            .smallPicture(
-                small, scope, frame, labels,
-                own = !swapped,
-                canSwap = canSwap,
-                onSwap = { stage.swapChosen = !stage.swapChosen },
-                onPlace = { chosen -> engine.updateSettings { it.copy(previewSide = chosen.side, previewPlace = chosen.fraction) } },
+            // The small window: the shape of the picture in it, at its place in the band it may stand in now.
+            val (smallWidth, smallHeight) = VideoRules.previewSize(if (swapped) picture else video.sent, PreviewLongSide.value)
+            val widthPx = with(density) { smallWidth.dp.toPx() }
+            val heightPx = with(density) { smallHeight.dp.toPx() }
+            val safe = Rect(
+                insets.getLeft(density, direction).toFloat(),
+                insets.getTop(density).toFloat(),
+                insets.getRight(density, direction).toFloat(),
+                insets.getBottom(density).toFloat(),
             )
+            val (shown, hidden) = dockAreas(
+                constraints.maxWidth.toFloat(),
+                constraints.maxHeight.toFloat(),
+                safe,
+                with(density) { DockMargin.toPx() },
+                stage,
+                wide = maxWidth > maxHeight,
+            )
+            val now = if (chrome) shown else hidden
+            val place = PreviewDock.Place(settings.previewSide, settings.previewPlace)
+            FollowSpot(small, PreviewDock.spot(place, widthPx, heightPx, shown, now), controlsShown = chrome)
+            val frame = SmallPictureState.Frame(widthPx, heightPx, shown, now, place, with(density) { FlingSpeed.toPx() })
+            SideEffect { small.frame = frame }
+            val labels = SmallPictureLabels.current()
+            val smallWindow = Modifier
+                .size(smallWidth.dp, smallHeight.dp)
+                .smallPicture(
+                    small, scope, frame, labels,
+                    own = !swapped,
+                    canSwap = canSwap,
+                    onSwap = { stage.swapChosen = !stage.swapChosen },
+                    onPlace = { chosen -> engine.updateSettings { it.copy(previewSide = chosen.side, previewPlace = chosen.fraction) } },
+                )
 
-        if (video.receiving) {
-            // Only the user's change is animated: the first picture and one of a new size take their place at once.
-            val scale by animateFloatAsState(
-                targetValue = if (stage.filled && !swapped) VideoRules.fillScale(cut) else 1f,
-                animationSpec = if (stage.fillChosen != null) tween(220) else snap(),
-                label = "pictureScale",
-            )
-            Box(
-                if (swapped) {
-                    Modifier
-                        .zIndex(SMALL)
-                        .offset { small.offset }
-                        .then(smallWindow)
-                } else {
-                    Modifier.fillMaxSize()
-                },
-            ) {
-                RemoteVideo(
+            if (video.receiving) {
+                // Only the user's change is animated: the first picture and one of a new size take their place at once.
+                val scale by animateFloatAsState(
+                    targetValue = if (stage.filled && !swapped) VideoRules.fillScale(cut) else 1f,
+                    animationSpec = if (stage.fillChosen != null) tween(220) else snap(),
+                    label = "pictureScale",
+                )
+                Box(
                     if (swapped) {
+                        Modifier
+                            .zIndex(SMALL)
+                            .offset { small.offset }
+                            .then(smallWindow)
+                    } else {
                         Modifier.fillMaxSize()
+                    },
+                ) {
+                    RemoteVideo(
+                        if (swapped) {
+                            Modifier.fillMaxSize()
+                        } else {
+                            Modifier
+                                // The view has the shape of the picture, so that the SDK draws the whole of it
+                                // into the whole of the view; until a picture came, the view is the screen.
+                                .layout { measurable, constraints ->
+                                    val size = picture?.let { VideoRules.fitted(it, constraints.maxWidth, constraints.maxHeight) }
+                                    val width = size?.width ?: constraints.maxWidth
+                                    val height = size?.height ?: constraints.maxHeight
+                                    val placeable = measurable.measure(Constraints.fixed(width, height))
+                                    layout(constraints.maxWidth, constraints.maxHeight) {
+                                        placeable.place((constraints.maxWidth - width) / 2, (constraints.maxHeight - height) / 2)
+                                    }
+                                }
+                                .graphicsLayer {
+                                    scaleX = scale
+                                    scaleY = scale
+                                }
+                        },
+                    )
+                }
+            }
+            // Shade where the name and the controls sit, so that white stays readable on a bright picture:
+            // top and bottom, or, with the phone on its side, the top and the side the controls stand at.
+            val wide = maxWidth > maxHeight
+            AnimatedVisibility(chrome, Modifier.fillMaxSize().zIndex(SHADE), enter = fadeIn(tween(180)), exit = fadeOut(tween(140))) {
+                Box(
+                    if (wide) {
+                        Modifier
+                            .fillMaxSize()
+                            .background(Brush.horizontalGradient(0f to Shade, 0.5f to Color.Transparent))
+                            .background(Brush.verticalGradient(0f to Shade, 0.4f to Color.Transparent))
                     } else {
                         Modifier
-                            // The view has the shape of the picture, so that the SDK draws the whole of it
-                            // into the whole of the view; until a picture came, the view is the screen.
-                            .layout { measurable, constraints ->
-                                val size = picture?.let { VideoRules.fitted(it, constraints.maxWidth, constraints.maxHeight) }
-                                val width = size?.width ?: constraints.maxWidth
-                                val height = size?.height ?: constraints.maxHeight
-                                val placeable = measurable.measure(Constraints.fixed(width, height))
-                                layout(constraints.maxWidth, constraints.maxHeight) {
-                                    placeable.place((constraints.maxWidth - width) / 2, (constraints.maxHeight - height) / 2)
-                                }
-                            }
-                            .graphicsLayer {
-                                scaleX = scale
-                                scaleY = scale
-                            }
+                            .fillMaxSize()
+                            .background(Brush.verticalGradient(0f to Shade, 0.22f to Color.Transparent, 0.55f to Color.Transparent, 1f to Shade))
                     },
                 )
             }
-        }
-        // Shade where the name and the controls sit, so that white stays readable on a bright picture:
-        // top and bottom, or, with the phone on its side, the top and the side the controls stand at.
-        val wide = maxWidth > maxHeight
-        AnimatedVisibility(chrome, Modifier.fillMaxSize().zIndex(SHADE), enter = fadeIn(tween(180)), exit = fadeOut(tween(140))) {
-            Box(
-                if (wide) {
-                    Modifier
-                        .fillMaxSize()
-                        .background(Brush.horizontalGradient(0f to Shade, 0.5f to Color.Transparent))
-                        .background(Brush.verticalGradient(0f to Shade, 0.4f to Color.Transparent))
-                } else {
-                    Modifier
-                        .fillMaxSize()
-                        .background(Brush.verticalGradient(0f to Shade, 0.22f to Color.Transparent, 0.55f to Color.Transparent, 1f to Shade))
-                },
-            )
-        }
-        AnimatedVisibility(
-            video.sending,
-            if (swapped) Modifier.zIndex(LARGE) else Modifier.zIndex(SMALL).offset { small.offset },
-            enter = fadeIn(tween(180)) + scaleIn(tween(200), 0.85f),
-            exit = fadeOut(tween(140)) + scaleOut(tween(160), 0.85f),
-        ) {
-            // Large, the own picture fills the screen, and the SDK's view shows it whole (black bars).
-            Box(if (swapped) Modifier.fillMaxSize() else smallWindow) {
-                LocalPreview(Modifier.fillMaxSize())
+            AnimatedVisibility(
+                video.sending,
+                if (swapped) Modifier.zIndex(LARGE) else Modifier.zIndex(SMALL).offset { small.offset },
+                enter = fadeIn(tween(180)) + scaleIn(tween(200), 0.85f),
+                exit = fadeOut(tween(140)) + scaleOut(tween(160), 0.85f),
+            ) {
+                // Large, the own picture fills the screen, and the SDK's view shows it whole (black bars).
+                Box(if (swapped) Modifier.fillMaxSize() else smallWindow) {
+                    LocalPreview(Modifier.fillMaxSize())
+                }
             }
         }
     }

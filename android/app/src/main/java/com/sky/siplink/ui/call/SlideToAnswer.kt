@@ -48,6 +48,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.sky.siplink.R
+import com.sky.siplink.ui.components.LeftToRight
 import com.sky.siplink.ui.theme.Brand
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -70,7 +71,7 @@ private const val FLICK_VELOCITY = 1500f
 
 /**
  * Incoming call: a white dot on a glass track, with "hang up" at its left end and "answer" at
- * its right end. Sliding the dot to one of them does that; the dot and the track take on the
+ * its right end, in a right-to-left language too. Sliding the dot to one of them does that; the dot and the track take on the
  * colour of where it is heading on the way. Nothing moves before it is touched.
  */
 @Composable
@@ -108,79 +109,82 @@ internal fun SlideToAnswer(onAnswer: () -> Unit, onDecline: () -> Unit, modifier
     val description = stringResource(R.string.call_slide_description)
     val answerLabel = stringResource(R.string.call_slide_answer)
     val declineLabel = stringResource(R.string.call_slide_decline)
-    BoxWithConstraints(
-        modifier
-            .widthIn(max = MaxTrackWidth)
-            .fillMaxWidth()
-            .height(TrackHeight),
-    ) {
-        val reach = with(LocalDensity.current) { ((maxWidth - DotSize) / 2 - TrackPadding).toPx() }
-
-        /** -1 (hang up) .. 0 (at rest) .. 1 (answer). Read while drawing, so dragging does not recompose. */
-        val progress = { (position / reach).coerceIn(-1f, 1f) }
-
-        Box(
-            Modifier
-                .fillMaxSize()
-                .drawBehind {
-                    val p = progress()
-                    val towards = if (p >= 0f) Brand.CallGreen else Brand.HangUpRed
-                    drawRoundRect(
-                        lerp(Color.White.copy(alpha = 0.14f), towards.copy(alpha = 0.34f), abs(p)),
-                        cornerRadius = CornerRadius(size.height / 2),
-                    )
-                }
-                .semantics(mergeDescendants = true) {
-                    contentDescription = description
-                    customActions = listOf(
-                        CustomAccessibilityAction(answerLabel) {
-                            answer()
-                            true
-                        },
-                        CustomAccessibilityAction(declineLabel) {
-                            decline()
-                            true
-                        },
-                    )
-                }
-                .draggable(
-                    orientation = Orientation.Horizontal,
-                    enabled = !decided,
-                    // The finger belongs to the slide from the moment it is down. Waiting for it
-                    // to have moved sideways first leaves the start of the movement to whatever
-                    // scrolls around the slide (the controls of a phone on its side do), and a
-                    // finger that also goes up or down a little then never moves the dot.
-                    startDragImmediately = true,
-                    onDragStarted = { gliding?.cancel() },
-                    state = rememberDraggableState { delta -> position = (position + delta).coerceIn(-reach, reach) },
-                    onDragStopped = { velocity ->
-                        val p = progress()
-                        val flicked = abs(velocity) > FLICK_VELOCITY && abs(p) > FLICK_FROM && velocity * p > 0f
-                        if (abs(p) >= COMMIT_AT || flicked) {
-                            decided = true
-                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                            // At once: the call does not wait for the dot to arrive.
-                            if (p > 0f) answer() else decline()
-                            glide(if (p > 0f) reach else -reach, tween(110))
-                        } else {
-                            // Straight back, without a bounce.
-                            glide(0f, spring(dampingRatio = 1f, stiffness = 700f))
-                        }
-                    },
-                ),
+    // Right answers and left hangs up in every language, as the text of the slide says.
+    LeftToRight {
+        BoxWithConstraints(
+            modifier
+                .widthIn(max = MaxTrackWidth)
+                .fillMaxWidth()
+                .height(TrackHeight),
         ) {
-            End(Icons.Rounded.CallEnd, Modifier.align(Alignment.CenterStart)) { -progress() }
-            End(Icons.Rounded.Call, Modifier.align(Alignment.CenterEnd)) { progress() }
+            val reach = with(LocalDensity.current) { ((maxWidth - DotSize) / 2 - TrackPadding).toPx() }
+
+            /** -1 (hang up) .. 0 (at rest) .. 1 (answer). Read while drawing, so dragging does not recompose. */
+            val progress = { (position / reach).coerceIn(-1f, 1f) }
+
             Box(
                 Modifier
-                    .align(Alignment.Center)
-                    .offset { IntOffset(position.roundToInt(), 0) }
-                    .size(DotSize)
+                    .fillMaxSize()
                     .drawBehind {
                         val p = progress()
-                        drawCircle(lerp(Color.White, if (p >= 0f) Brand.CallGreen else Brand.HangUpRed, abs(p)))
-                    },
-            )
+                        val towards = if (p >= 0f) Brand.CallGreen else Brand.HangUpRed
+                        drawRoundRect(
+                            lerp(Color.White.copy(alpha = 0.14f), towards.copy(alpha = 0.34f), abs(p)),
+                            cornerRadius = CornerRadius(size.height / 2),
+                        )
+                    }
+                    .semantics(mergeDescendants = true) {
+                        contentDescription = description
+                        customActions = listOf(
+                            CustomAccessibilityAction(answerLabel) {
+                                answer()
+                                true
+                            },
+                            CustomAccessibilityAction(declineLabel) {
+                                decline()
+                                true
+                            },
+                        )
+                    }
+                    .draggable(
+                        orientation = Orientation.Horizontal,
+                        enabled = !decided,
+                        // The finger belongs to the slide from the moment it is down. Waiting for it
+                        // to have moved sideways first leaves the start of the movement to whatever
+                        // scrolls around the slide (the controls of a phone on its side do), and a
+                        // finger that also goes up or down a little then never moves the dot.
+                        startDragImmediately = true,
+                        onDragStarted = { gliding?.cancel() },
+                        state = rememberDraggableState { delta -> position = (position + delta).coerceIn(-reach, reach) },
+                        onDragStopped = { velocity ->
+                            val p = progress()
+                            val flicked = abs(velocity) > FLICK_VELOCITY && abs(p) > FLICK_FROM && velocity * p > 0f
+                            if (abs(p) >= COMMIT_AT || flicked) {
+                                decided = true
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                // At once: the call does not wait for the dot to arrive.
+                                if (p > 0f) answer() else decline()
+                                glide(if (p > 0f) reach else -reach, tween(110))
+                            } else {
+                                // Straight back, without a bounce.
+                                glide(0f, spring(dampingRatio = 1f, stiffness = 700f))
+                            }
+                        },
+                    ),
+            ) {
+                End(Icons.Rounded.CallEnd, Modifier.align(Alignment.CenterStart)) { -progress() }
+                End(Icons.Rounded.Call, Modifier.align(Alignment.CenterEnd)) { progress() }
+                Box(
+                    Modifier
+                        .align(Alignment.Center)
+                        .offset { IntOffset(position.roundToInt(), 0) }
+                        .size(DotSize)
+                        .drawBehind {
+                            val p = progress()
+                            drawCircle(lerp(Color.White, if (p >= 0f) Brand.CallGreen else Brand.HangUpRed, abs(p)))
+                        },
+                )
+            }
         }
     }
 }

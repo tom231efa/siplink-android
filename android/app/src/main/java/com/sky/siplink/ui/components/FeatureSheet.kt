@@ -118,6 +118,7 @@ fun FeatureSheet(
                         label = { FieldText(stringResource(R.string.feature_sheet_target)) },
                         placeholder = { FieldText(stringResource(R.string.feature_sheet_target_hint)) },
                         singleLine = true,
+                        textStyle = machineValueStyle(),
                         shape = MaterialTheme.shapes.medium,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                     )

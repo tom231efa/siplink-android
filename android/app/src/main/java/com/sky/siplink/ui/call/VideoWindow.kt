@@ -95,7 +95,8 @@ internal class VideoStageState {
  * the screen, [hidden] while they are not. Both keep [margin] from the edges, the system bars and
  * the cut-out.
  *
- * @param wide the phone lies on its side: the controls stand at the start, not at the bottom
+ * @param wide the phone lies on its side: the controls stand at the start, not at the bottom (the
+ *   left, or the right in a right-to-left language: the band keeps clear of the side they are on)
  */
 internal fun dockAreas(width: Float, height: Float, safe: Rect, margin: Float, stage: VideoStageState, wide: Boolean): Pair<Area, Area> {
     val hidden = Area(safe.left + margin, safe.top + margin, width - safe.right - margin, height - safe.bottom - margin)
@@ -103,6 +104,7 @@ internal fun dockAreas(width: Float, height: Float, safe: Rect, margin: Float, s
     val top = maxOf(hidden.top, stage.topRowBottom + margin)
     val shown = when {
         controls == null -> hidden.copy(top = top)
+        wide && controls.center.x > width / 2 -> hidden.copy(right = minOf(hidden.right, controls.left - margin), top = top)
         wide -> hidden.copy(left = maxOf(hidden.left, controls.right + margin), top = top)
         else -> hidden.copy(top = top, bottom = maxOf(top, minOf(hidden.bottom, controls.top - margin)))
     }

@@ -251,6 +251,7 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
                     value = authUser,
                     onValueChange = { authUser = it },
                     label = stringResource(R.string.account_field_auth_user),
+                    machineValue = true,
                 )
                 FormField(
                     value = server,

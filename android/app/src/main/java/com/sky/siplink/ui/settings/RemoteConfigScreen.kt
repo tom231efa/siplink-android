@@ -268,6 +268,7 @@ private fun AddressDialog(offer: (String) -> String?, onDismiss: () -> Unit, onT
                     error = null
                 },
                 label = stringResource(R.string.remote_address_label),
+                machineValue = true,
                 placeholder = "https://example.com/p/…",
                 error = error,
                 singleLine = false,

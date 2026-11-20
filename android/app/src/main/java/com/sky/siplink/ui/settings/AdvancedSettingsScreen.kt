@@ -164,6 +164,7 @@ fun AdvancedSettingsScreen(onBack: () -> Unit) {
                         if (parsed != null && parsed in roomRange) engine.updateSettings { it.copy(roomLimit = parsed) }
                     },
                     label = stringResource(R.string.advanced_room_limit),
+                    machineValue = true,
                     error = when {
                         roomLimit.isEmpty() -> stringResource(R.string.form_required)
                         roomLimit.toIntOrNull() !in roomRange -> stringOf(R.string.advanced_range, roomRange.first.toString(), roomRange.last.toString())
@@ -225,6 +226,7 @@ fun AdvancedSettingsScreen(onBack: () -> Unit) {
                         if (UserAgent.error(value) == null) engine.updateSettings { it.copy(userAgent = value) }
                     },
                     label = stringResource(R.string.advanced_user_agent),
+                    machineValue = true,
                     placeholder = engine.defaultUserAgent,
                     error = refused?.message?.text(),
                 )

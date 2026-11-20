@@ -90,6 +90,7 @@ import com.sky.siplink.ui.components.FieldText
 import com.sky.siplink.ui.components.LocalConfigLocked
 import com.sky.siplink.ui.components.LocalMessenger
 import com.sky.siplink.ui.components.StatusDot
+import com.sky.siplink.ui.components.machineValueStyle
 import com.sky.siplink.ui.components.pluralOf
 import com.sky.siplink.ui.components.rememberCallLauncher
 import com.sky.siplink.ui.components.stringOf
@@ -559,6 +560,7 @@ private fun AddressInput(value: String, onChange: (String) -> Unit, onCall: () -
         label = { FieldText(stringResource(R.string.dialer_address_label)) },
         placeholder = { FieldText(stringOf(R.string.dialer_address_example, "1001", "alice@example.com")) },
         singleLine = true,
+        textStyle = machineValueStyle(),
         shape = MaterialTheme.shapes.medium,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Go),
         keyboardActions = KeyboardActions(onGo = { onCall() }),

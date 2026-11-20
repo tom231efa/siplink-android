@@ -56,6 +56,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sky.siplink.R
+import com.sky.siplink.ui.components.LeftToRight
 import com.sky.siplink.ui.components.pressScale
 import com.sky.siplink.ui.theme.Brand
 
@@ -104,30 +105,33 @@ internal fun DialPad(onDigit: (Char) -> Unit, onLongZero: () -> Unit, modifier: 
             compact -> Modifier.height(key * 4 + gap * 3)
             else -> Modifier.fillMaxHeight()
         }
-        Column(
-            (if (compact) Modifier.width(key * 3 * cell) else Modifier.fillMaxWidth()).then(height),
-            verticalArrangement = Arrangement.spacedBy(gap),
-        ) {
-            dialKeys.chunked(3).forEach { row ->
-                Row(
-                    Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
-                ) {
-                    row.forEach { (digit, letters) ->
-                        Box(
-                            Modifier
-                                .weight(1f)
-                                .fillMaxHeight(),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            DialKey(
-                                digit = digit,
-                                letters = letters,
-                                size = key,
-                                onClick = { onDigit(digit) },
-                                onLongClick = if (digit == '0') onLongZero else null,
-                            )
+        // 1 2 3 from left to right in every language, as on every phone.
+        LeftToRight {
+            Column(
+                (if (compact) Modifier.width(key * 3 * cell) else Modifier.fillMaxWidth()).then(height),
+                verticalArrangement = Arrangement.spacedBy(gap),
+            ) {
+                dialKeys.chunked(3).forEach { row ->
+                    Row(
+                        Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                    ) {
+                        row.forEach { (digit, letters) ->
+                            Box(
+                                Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight(),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                DialKey(
+                                    digit = digit,
+                                    letters = letters,
+                                    size = key,
+                                    onClick = { onDigit(digit) },
+                                    onLongClick = if (digit == '0') onLongZero else null,
+                                )
+                            }
                         }
                     }
                 }
@@ -234,7 +238,8 @@ internal fun CallRow(
                 exit = fadeOut(tween(90)) + scaleOut(tween(120), targetScale = 0.7f),
             ) {
                 SideAction(onClick = onDelete, onLongClick = onClear) {
-                    Icon(Icons.AutoMirrored.Rounded.Backspace, contentDescription = stringResource(R.string.dialer_backspace))
+                    // It deletes from the end of a number, which is written left to right in every language.
+                    LeftToRight { Icon(Icons.AutoMirrored.Rounded.Backspace, contentDescription = stringResource(R.string.dialer_backspace)) }
                 }
             }
         }

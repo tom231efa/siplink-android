@@ -180,6 +180,7 @@ fun LdapEditScreen(directoryId: String?, onBack: () -> Unit, onOpenTls: () -> Un
                     value = baseDn,
                     onValueChange = { baseDn = it },
                     label = stringResource(R.string.directory_base_dn),
+                    machineValue = true,
                     placeholder = "dc=example,dc=com",
                     error = error(LdapRules.Error.BASE_DN_EMPTY),
                 )
@@ -216,6 +217,7 @@ fun LdapEditScreen(directoryId: String?, onBack: () -> Unit, onOpenTls: () -> Un
                                 userMissing = false
                             },
                             label = stringResource(R.string.directory_user_name),
+                            machineValue = true,
                             placeholder = "cn=reader,dc=example,dc=com",
                             error = if (userMissing) stringResource(R.string.form_required) else null,
                         )
@@ -272,12 +274,14 @@ fun LdapEditScreen(directoryId: String?, onBack: () -> Unit, onOpenTls: () -> Un
                     value = nameAttributes,
                     onValueChange = { nameAttributes = it },
                     label = stringResource(R.string.directory_name_attributes),
+                    machineValue = true,
                     error = error(LdapRules.Error.NAME_ATTRIBUTES_EMPTY),
                 )
                 FormField(
                     value = numberAttributes,
                     onValueChange = { numberAttributes = it },
                     label = stringResource(R.string.directory_number_attributes),
+                    machineValue = true,
                     error = error(LdapRules.Error.NUMBER_ATTRIBUTES_EMPTY),
                 )
                 FormField(
@@ -308,6 +312,7 @@ fun LdapEditScreen(directoryId: String?, onBack: () -> Unit, onOpenTls: () -> Un
                             value = nameFilter,
                             onValueChange = { nameFilter = it },
                             label = stringResource(R.string.directory_name_filter),
+                            machineValue = true,
                             singleLine = false,
                             error = error(LdapRules.Error.NAME_FILTER_NO_PLACEHOLDER),
                         )
@@ -315,6 +320,7 @@ fun LdapEditScreen(directoryId: String?, onBack: () -> Unit, onOpenTls: () -> Un
                             value = numberFilter,
                             onValueChange = { numberFilter = it },
                             label = stringResource(R.string.directory_number_filter),
+                            machineValue = true,
                             singleLine = false,
                             error = error(LdapRules.Error.NUMBER_FILTER_NO_PLACEHOLDER),
                         )

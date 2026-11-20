@@ -25,6 +25,7 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -186,6 +187,8 @@ private val TrailingMaxWidth = 140.dp
  * Where the configuration is locked ([LocalConfigLocked]) it shows its value and takes no input;
  * the eye of a password field goes on working.
  *
+ * @param machineValue the field takes a number, an address, a host name or a password, written left
+ *   to right in every language ([machineValueStyle]); by default every field but one of plain text
  * @param onUnlock for a password field whose password is kept from the screen (a managed
  *   configuration with a password of its own, see [ConfigPasswordDialog]): the field then shows
  *   dots that say nothing about it, not even how long it is, and its eye calls this to ask for
@@ -203,6 +206,7 @@ fun FormField(
     keyboardType: KeyboardType = KeyboardType.Text,
     singleLine: Boolean = true,
     password: Boolean = false,
+    machineValue: Boolean = password || keyboardType != KeyboardType.Text,
     onUnlock: (() -> Unit)? = null,
 ) {
     val locked = LocalConfigLocked.current
@@ -213,6 +217,7 @@ fun FormField(
         onValueChange = onValueChange,
         modifier = modifier.fillMaxWidth(),
         enabled = !locked,
+        textStyle = if (machineValue) machineValueStyle() else LocalTextStyle.current,
         label = { FieldText(label) },
         placeholder = placeholder?.let { { FieldText(it) } },
         supportingText = (error ?: supporting)?.let { { Text(it) } },

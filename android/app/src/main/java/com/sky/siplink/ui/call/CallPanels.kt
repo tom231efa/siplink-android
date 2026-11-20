@@ -62,7 +62,9 @@ import com.sky.siplink.R
 import com.sky.siplink.engine
 import com.sky.siplink.ui.components.AppBottomSheet
 import com.sky.siplink.ui.components.FieldText
+import com.sky.siplink.ui.components.LeftToRight
 import com.sky.siplink.ui.components.LocalMessenger
+import com.sky.siplink.ui.components.machineValueStyle
 import com.sky.siplink.ui.shortcuts.ShortcutBoard
 import com.sky.siplink.ui.shortcuts.rememberShortcutRunner
 
@@ -106,6 +108,7 @@ internal fun DtmfPanel(onDigit: (Char) -> Unit, onClose: () -> Unit, sideways: B
                     fontSize = 24.sp,
                     maxLines = 1,
                     letterSpacing = 2.sp,
+                    style = machineValueStyle(),
                 )
                 IconButton(onClick = onClose) {
                     // It goes back the way it came.
@@ -115,26 +118,29 @@ internal fun DtmfPanel(onDigit: (Char) -> Unit, onClose: () -> Unit, sideways: B
             }
             if (!sideways) Spacer(Modifier.height(8.dp))
             dtmfKeys.chunked(3).forEach { row ->
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = if (sideways) SideRowGap else 6.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                ) {
-                    row.forEach { digit ->
-                        Box(
-                            Modifier
-                                .size(keySize)
-                                .clip(CircleShape)
-                                .background(Color.White.copy(alpha = 0.12f))
-                                .clickable {
-                                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    typed += digit
-                                    onDigit(digit)
-                                },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(digit.toString(), color = Color.White, fontSize = if (keySize < FullKey) 22.sp else 26.sp, fontWeight = FontWeight.Medium)
+                // 1 2 3 from left to right in every language, as on every phone.
+                LeftToRight {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = if (sideways) SideRowGap else 6.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                    ) {
+                        row.forEach { digit ->
+                            Box(
+                                Modifier
+                                    .size(keySize)
+                                    .clip(CircleShape)
+                                    .background(Color.White.copy(alpha = 0.12f))
+                                    .clickable {
+                                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                        typed += digit
+                                        onDigit(digit)
+                                    },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(digit.toString(), color = Color.White, fontSize = if (keySize < FullKey) 22.sp else 26.sp, fontWeight = FontWeight.Medium)
+                            }
                         }
                     }
                 }
@@ -179,6 +185,7 @@ internal fun TransferSheet(
                 label = { FieldText(stringResource(R.string.call_transfer_to)) },
                 placeholder = { FieldText(stringResource(R.string.call_transfer_hint)) },
                 singleLine = true,
+                textStyle = machineValueStyle(),
                 shape = MaterialTheme.shapes.medium,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
             )
