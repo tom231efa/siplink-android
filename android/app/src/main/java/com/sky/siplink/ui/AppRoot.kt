@@ -63,6 +63,7 @@ import com.sky.siplink.core.logic.UpdateRules
 import com.sky.siplink.core.model.BannerPosition
 import com.sky.siplink.core.model.CallInfo
 import com.sky.siplink.core.model.CallPhase
+import com.sky.siplink.core.render
 import com.sky.siplink.engine
 import com.sky.siplink.openCallScreen
 import com.sky.siplink.ui.accounts.AccountEditScreen
@@ -84,6 +85,7 @@ import com.sky.siplink.ui.settings.AdvancedSettingsScreen
 import com.sky.siplink.ui.settings.AutoAnswerScreen
 import com.sky.siplink.ui.settings.CodecsScreen
 import com.sky.siplink.ui.settings.FeatureCodesScreen
+import com.sky.siplink.ui.settings.LanguageScreen
 import com.sky.siplink.ui.settings.RecordingSettingsScreen
 import com.sky.siplink.ui.settings.RemoteConfigScreen
 import com.sky.siplink.ui.settings.SettingsScreen
@@ -111,6 +113,7 @@ private object Routes {
     const val RECORDINGS = "recordings"
     const val AUTO_ANSWER = "auto-answer"
     const val ABOUT = "about"
+    const val LANGUAGE = "language"
 
     /** The account chosen on the dial pad travels along; without it the default account is meant. */
     const val SHORTCUTS = "shortcuts?account={account}"
@@ -243,7 +246,7 @@ fun AppRoot() {
                     composable(Tab.DIALER.route) {
                         DialerScreen(
                             // Without an account the dial pad leads to the form for one, which a managed configuration has no use for.
-                            onAddAccount = { if (managed) messenger(ManagedConfig.NOTICE) else navController.navigate(Routes.ACCOUNT_NEW) },
+                            onAddAccount = { if (managed) messenger(context.render(ManagedConfig.NOTICE)) else navController.navigate(Routes.ACCOUNT_NEW) },
                             onOpenShortcuts = { accountId -> navController.navigate(Routes.shortcuts(accountId)) },
                         )
                     }
@@ -270,6 +273,7 @@ fun AppRoot() {
                             onOpenRecordingSettings = { navController.navigate(Routes.RECORDING_SETTINGS) },
                             onOpenAutoAnswer = { navController.navigate(Routes.AUTO_ANSWER) },
                             onOpenAbout = { navController.navigate(Routes.ABOUT) },
+                            onOpenLanguage = { navController.navigate(Routes.LANGUAGE) },
                         )
                     }
                     composable(Routes.ACCOUNT_NEW) {
@@ -323,6 +327,7 @@ fun AppRoot() {
                             onOpenTls = { navController.navigate(Routes.TLS) },
                         )
                     }
+                    composable(Routes.LANGUAGE) { LanguageScreen(onBack = { navController.popBackStack() }) }
                     composable(Routes.TLS) { TlsScreen(onBack = { navController.popBackStack() }) }
                     composable(Routes.ADVANCED) { AdvancedSettingsScreen(onBack = { navController.popBackStack() }) }
                     composable(Routes.FEATURE_CODES) { FeatureCodesScreen(onBack = { navController.popBackStack() }) }

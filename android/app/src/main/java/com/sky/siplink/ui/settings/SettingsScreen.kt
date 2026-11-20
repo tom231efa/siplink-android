@@ -23,6 +23,7 @@ import androidx.compose.material.icons.rounded.Dns
 import androidx.compose.material.icons.rounded.DoNotDisturbOn
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.ManageAccounts
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.Palette
@@ -39,9 +40,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sky.siplink.BuildConfig
+import com.sky.siplink.R
 import com.sky.siplink.core.logic.UpdateRules
 import com.sky.siplink.core.model.BannerPosition
 import com.sky.siplink.core.model.RegState
@@ -70,6 +73,7 @@ fun SettingsScreen(
     onOpenRecordingSettings: () -> Unit,
     onOpenAutoAnswer: () -> Unit,
     onOpenAbout: () -> Unit,
+    onOpenLanguage: () -> Unit,
 ) {
     val context = LocalContext.current
     val engine = context.engine
@@ -179,6 +183,12 @@ fun SettingsScreen(
             // The look of the app stays the user's own under a managed configuration.
             Personal {
                 SectionCard(title = "外观") {
+                    NavRow(
+                        title = stringResource(R.string.settings_language),
+                        trailing = languageLabel(engine.language),
+                        icon = Icons.Rounded.Language,
+                        onClick = onOpenLanguage,
+                    )
                     Text(
                         "主题",
                         style = MaterialTheme.typography.bodyMedium,
