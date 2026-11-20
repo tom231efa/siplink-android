@@ -39,12 +39,12 @@ class LineCheck(private val context: Context, private val core: Core, private va
         val host = connectHostOf(server)
         val port = server.port.takeIf { it > 0 }
         val target = hostPortOf(server)
-        // A line on TLS sends nothing in clear: no OPTIONS request with the account's identity
-        // over UDP, the STUN server alone tells its NAT. (A request without the identity would be
-        // one from no known endpoint, which an Asterisk logs as "No matching endpoint found",
-        // where fail2ban counts it against the phone's public address.)
-        val quiet = transport == SipTransport.TLS || shown.transport == SipTransport.TLS
-        val asker = if (quiet) null else LineNetwork.Asker(fromOf(params.identityAddress), core.userAgent)
+        // An account set to TLS sends nothing in clear: no OPTIONS request with its identity over
+        // UDP, the STUN server alone tells its NAT. (A request without the identity would be one
+        // from no known endpoint, which an Asterisk logs as "No matching endpoint found", where
+        // fail2ban counts it against the phone's public address.) One set to UDP registers in
+        // clear anyway, also while the adaptation has it on TLS.
+        val asker = if (shown.transport == SipTransport.TLS) null else LineNetwork.Asker(fromOf(params.identityAddress), core.userAgent)
         val stun = accounts.stunServer
         val facts = NetworkWatch.facts
         val ipv6 = core.isIpv6Enabled

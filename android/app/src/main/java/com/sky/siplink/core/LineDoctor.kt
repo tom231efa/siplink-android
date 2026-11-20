@@ -38,9 +38,8 @@ import org.linphone.core.TransportType
  * by itself, and holds back while the network wants a login first.
  *
  * What it changes it changes in the core only: the account's own settings are kept aside
- * ([own]) and shown and edited as they are. A line on TLS (its own transport, or the one it
- * adapted to) sends nothing in clear: no OPTIONS request with the account's identity. Release
- * builds log no addresses. Main thread only.
+ * ([own]) and shown and edited as they are. An account set to TLS sends nothing in clear: no
+ * OPTIONS request with its identity. Release builds log no addresses. Main thread only.
  *
  * @param find the account with an id, [idOf] the id of an account
  * @param onChanged called after an account was changed, so that it is shown anew
@@ -441,11 +440,13 @@ internal class LineDoctor(
         prober.start(network, ask, answer)
     }
 
-    /** Who the OPTIONS requests of account [id] come from; null for a line on TLS, which sends nothing in clear. */
-    private fun askerOf(id: String, account: Account): LineNetwork.Asker? {
-        val tls = transportOf(account.params.serverAddress) == SipTransport.TLS || ownTransport(id, account) == SipTransport.TLS
-        return if (tls) null else LineNetwork.Asker(fromOf(account.params.identityAddress), core.userAgent)
-    }
+    /**
+     * Who the OPTIONS requests of account [id] come from; null for an account set to TLS, which
+     * sends nothing in clear. One set to UDP that went to TLS registers in clear once it is back
+     * on UDP: its probes may ask over UDP.
+     */
+    private fun askerOf(id: String, account: Account): LineNetwork.Asker? =
+        if (ownTransport(id, account) == SipTransport.TLS) null else LineNetwork.Asker(fromOf(account.params.identityAddress), core.userAgent)
 
     private fun ownTransport(id: String, account: Account): SipTransport = records.own(id)?.transport ?: transportOf(account.params.serverAddress)
 
@@ -572,7 +573,7 @@ internal class LineDoctor(
         val host = connectHostOf(server)
         val port = server.port.takeIf { it > 0 && transportOf(server) != SipTransport.TLS } ?: AccountRoute.defaultPort(SipTransport.UDP)
         val target = hostPortOf(server)
-        // A line on TLS sends nothing in clear: its NAT is told by the STUN server alone.
+        // An account set to TLS sends nothing in clear: its NAT is told by the STUN server alone.
         val asker = askerOf(id, account)
         val local = facts?.addresses.orEmpty()
         val subnets = facts?.subnets.orEmpty()

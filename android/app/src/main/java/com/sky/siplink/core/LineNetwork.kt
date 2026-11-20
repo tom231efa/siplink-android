@@ -121,8 +121,8 @@ internal object LineNetwork {
      * Sends an OPTIONS request to the SIP server at [host]:[port] and, with [stun], a STUN Binding
      * request from the same socket: where both see it says what kind of NAT is in the way.
      *
-     * @param asker who asks; null: no OPTIONS request, the STUN server alone is asked (a line on
-     *   TLS sends nothing in clear)
+     * @param asker who asks; null: no OPTIONS request, the STUN server alone is asked (an account
+     *   set to TLS sends nothing in clear)
      * @param size the request is padded to this many bytes, to see whether large packets get through
      */
     fun probeUdp(
@@ -220,7 +220,7 @@ internal object LineNetwork {
      *
      * @param host the server's name or address, [port] its port when the account names one
      * @param server the server as the account knows it, `host[:port]`
-     * @param asker who asks over UDP; null: UDP is not asked (a line on TLS sends nothing in clear)
+     * @param asker who asks over UDP; null: UDP is not asked (an account set to TLS sends nothing in clear)
      * @param ipv6 the SIP core's IPv6 is on; [sixFirst] it goes over IPv6 first ([NetAddress.sixFirst])
      */
     fun transports(host: String, port: Int?, server: String, asker: Asker?, ipv6: Boolean, sixFirst: Boolean): LineAdapt.Probe {
