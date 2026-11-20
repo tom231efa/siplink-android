@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="notification_running">SipLink se está ejecutando</string>
+    <string name="notification_no_accounts">No hay ninguna cuenta SIP activada</string>
+    <plurals name="notification_registered">
+        <item quantity="one">%1$s / %2$s cuenta registrada</item>
+        <item quantity="many">%1$s / %2$s cuentas registradas</item>
+        <item quantity="other">%1$s / %2$s cuentas registradas</item>
+    </plurals>
+    <string name="notification_calling">Llamando…</string>
+    <string name="notification_intercom">Llamada de intercomunicador</string>
+    <string name="notification_video_call">Videollamada entrante</string>
+    <string name="notification_incoming">Llamada entrante</string>
+    <string name="notification_incoming_text">%1$s · %2$s</string>
+    <string name="notification_missed">Llamada perdida</string>
+    <string name="notification_missed_text">%1$s (%2$s)</string>
+
+    <string name="notification_channel_service_name">Mantener activo en segundo plano</string>
+    <string name="notification_channel_service_desc">Mantiene registradas las cuentas SIP para recibir llamadas</string>
+    <string name="notification_channel_incoming_name">Llamadas entrantes</string>
+    <string name="notification_channel_incoming_desc">Avisos de llamadas entrantes y pantalla de llamada a pantalla completa</string>
+    <string name="notification_channel_call_name">Llamadas en curso</string>
+    <string name="notification_channel_call_desc">Llamadas que están en curso</string>
+    <string name="notification_channel_missed_name">Llamadas perdidas</string>
+    <string name="notification_channel_missed_desc">Avisos de llamadas perdidas</string>
+</resources>

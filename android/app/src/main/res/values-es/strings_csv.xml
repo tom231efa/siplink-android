@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="csv_unclosed_quote">Comillas sin cerrar</string>
+    <string name="csv_too_few_fields">Faltan campos; formato: %1$s</string>
+    <string name="csv_unknown_type">Tipo desconocido «%1$s»; disponibles: %2$s</string>
+    <string name="csv_unknown_icon">Icono desconocido «%1$s»; disponibles: %2$s</string>
+    <string name="csv_unknown_transport">Transporte desconocido «%1$s»; disponibles: %2$s</string>
+    <string name="csv_choose_file">Elegir archivo</string>
+    <string name="csv_import">Importar</string>
+    <string name="csv_file_unreadable">No se puede leer el archivo seleccionado</string>
+    <plurals name="csv_imported_accounts">
+        <item quantity="one">%1$s cuenta importada</item>
+        <item quantity="many">%1$s cuentas importadas</item>
+        <item quantity="other">%1$s cuentas importadas</item>
+    </plurals>
+    <plurals name="csv_imported_shortcuts">
+        <item quantity="one">%1$s tecla rápida importada</item>
+        <item quantity="many">%1$s teclas rápidas importadas</item>
+        <item quantity="other">%1$s teclas rápidas importadas</item>
+    </plurals>
+    <plurals name="csv_report_skipped">
+        <item quantity="one">; %1$s omitida por superar el límite de %2$s</item>
+        <item quantity="many">; %1$s omitidas por superar el límite de %2$s</item>
+        <item quantity="other">; %1$s omitidas por superar el límite de %2$s</item>
+    </plurals>
+    <plurals name="csv_report_errors">
+        <item quantity="one">; %1$s línea con errores:</item>
+        <item quantity="many">; %1$s líneas con errores:</item>
+        <item quantity="other">; %1$s líneas con errores:</item>
+    </plurals>
+    <string name="csv_report_line">\nLínea %1$s: %2$s</string>
+    <string name="csv_report_more">\n…</string>
+</resources>

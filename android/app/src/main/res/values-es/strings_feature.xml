@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="feature_sheet_title">Funciones de llamada</string>
+    <string name="feature_sheet_extension">Extensión %1$s</string>
+    <string name="feature_sheet_target">Extensión de destino</string>
+    <string name="feature_sheet_target_hint">p. ej., 1002</string>
+    <string name="feature_sheet_call">Llamar</string>
+    <string name="feature_sheet_add_shortcut">Agregar a teclas rápidas</string>
+    <string name="feature_sheet_force_confirm">Toque de nuevo para forzar el colgado de %1$s</string>
+
+    <string name="feature_intercom">Intercomunicador</string>
+    <string name="feature_listen">Escucha</string>
+    <string name="feature_whisper">Susurro</string>
+    <string name="feature_barge">Intrusión</string>
+    <string name="feature_force_hang_up">Colgado forzado</string>
+    <string name="feature_pickup">Captura dirigida</string>
+    <string name="feature_voicemail">Buzón de voz</string>
+    <string name="feature_group_pickup">Captura de grupo</string>
+    <string name="feature_park">Aparcamiento</string>
+    <string name="feature_dnd_on">Activar No molestar</string>
+    <string name="feature_dnd_off">Desactivar No molestar</string>
+    <string name="feature_to">%1$s %2$s</string>
+    <string name="feature_code_missing">No hay código de función configurado para «%1$s»</string>
+
+    <string name="feature_codes_pickup">Captura dirigida</string>
+    <string name="feature_codes_restored">Códigos de función restablecidos</string>
+    <string name="feature_codes_invalid" tools:ignore="TypographyDashes">Solo 0-9 * #</string>
+</resources>

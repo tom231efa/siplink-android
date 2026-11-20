@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="main_tab_dialer">Marcador</string>
+    <string name="main_tab_history">Historial</string>
+    <string name="main_tab_directory">Directorio</string>
+    <string name="main_tab_settings">Ajustes</string>
+    <string name="main_tab_update_news">%1$s, actualización disponible</string>
+
+    <string name="main_banner_incoming">Llamada entrante: %1$s</string>
+    <string name="main_banner_outgoing">Llamando a %1$s</string>
+    <string name="main_banner_in_call">En llamada: %1$s</string>
+    <string name="main_banner_return">Volver a la llamada</string>
+
+    <string name="main_lock_screen_title">Permitir llamadas en la pantalla de bloqueo</string>
+    <string name="main_lock_screen_text">SipLink no tiene el permiso de notificaciones a pantalla completa. Con la pantalla bloqueada, las llamadas entrantes solo muestran una notificación, no la pantalla de llamada.</string>
+    <string name="main_lock_screen_settings_failed">No se pueden abrir los ajustes de notificaciones a pantalla completa</string>
+    <string name="main_lock_screen_open_settings">Ir a Ajustes</string>
+    <string name="main_lock_screen_never">No volver a recordar</string>
+</resources>

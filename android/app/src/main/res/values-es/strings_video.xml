@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="video_request">La otra parte pide activar el video</string>
+    <string name="video_request_decline">Rechazar</string>
+    <string name="video_request_accept">Activar</string>
+    <string name="video_answer_with_video">Responder con video</string>
+    <string name="video_answer_with_audio">Responder con audio</string>
+    <string name="video_own_picture">Su imagen</string>
+    <string name="video_other_picture">Imagen de la otra parte</string>
+    <string name="video_swap">Intercambiar imágenes</string>
+    <string name="video_move_left">Mover a la izquierda</string>
+    <string name="video_move_right">Mover a la derecha</string>
+    <string name="video_move_up">Mover arriba</string>
+    <string name="video_move_down">Mover abajo</string>
+    <string name="video_show_whole">Mostrar imagen completa</string>
+    <string name="video_fill">Llenar la pantalla</string>
+    <string name="video_switch_camera">Cambiar de cámara</string>
+    <string name="video_camera_off">Desactivar cámara</string>
+    <string name="video_camera_on">Activar cámara</string>
+</resources>

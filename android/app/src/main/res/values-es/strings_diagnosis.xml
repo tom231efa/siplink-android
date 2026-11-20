@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="diagnosis_title">Diagnóstico de línea</string>
+    <string name="diagnosis_rerun">Volver a ejecutar</string>
+    <string name="diagnosis_reset_title">¿Restablecer valores predeterminados?</string>
+    <string name="diagnosis_reset_text">Se borrarán los ajustes automáticos de esta cuenta.</string>
+    <string name="diagnosis_reset_confirm">Restablecer</string>
+    <string name="diagnosis_reset_done">Valores predeterminados restablecidos</string>
+    <string name="diagnosis_not_tested">Sin probar</string>
+    <string name="diagnosis_unknown">Desconocido</string>
+    <string name="diagnosis_no_response">Sin respuesta</string>
+    <string name="diagnosis_cannot_connect">No se puede conectar</string>
+    <plurals name="diagnosis_seconds">
+        <item quantity="one">%1$s segundo</item>
+        <item quantity="many">%1$s segundos</item>
+        <item quantity="other">%1$s segundos</item>
+    </plurals>
+
+    <string name="diagnosis_network">Red</string>
+    <string name="diagnosis_type">Tipo</string>
+    <string name="diagnosis_type_cellular">Datos móviles</string>
+    <string name="diagnosis_type_ethernet">Ethernet</string>
+    <string name="diagnosis_type_other">Otra</string>
+    <string name="diagnosis_type_vpn">%1$s · VPN</string>
+    <string name="diagnosis_no_network">Sin red</string>
+    <string name="diagnosis_local_address">Dirección local</string>
+    <string name="diagnosis_public_address">Dirección pública</string>
+    <string name="diagnosis_nat_none">No</string>
+    <string name="diagnosis_nat_present">Sí</string>
+    <string name="diagnosis_nat_carrier">De operador</string>
+    <string name="diagnosis_nat_symmetric">Simétrica</string>
+    <string name="diagnosis_ipv6_yes">Sí</string>
+    <string name="diagnosis_ipv6_no">No</string>
+    <string name="diagnosis_validation">Validación de red</string>
+    <string name="diagnosis_validation_login">Requiere inicio de sesión</string>
+    <string name="diagnosis_validation_passed">Superada</string>
+    <string name="diagnosis_validation_failed">No superada</string>
+    <string name="diagnosis_battery">Optimización de batería</string>
+    <string name="diagnosis_battery_unrestricted">Sin restricciones</string>
+    <string name="diagnosis_battery_restricted">Restringida</string>
+    <string name="diagnosis_battery_settings">Ajustes</string>
+
+    <string name="diagnosis_server">Servidor</string>
+    <string name="diagnosis_address">Dirección</string>
+    <string name="diagnosis_resolved">Se resuelve como</string>
+    <string name="diagnosis_resolve_failed">Error de resolución</string>
+    <string name="diagnosis_udp_large">Paquetes UDP grandes</string>
+    <string name="diagnosis_large_passed">Correcto</string>
+    <string name="diagnosis_large_fragments_lost">Fragmentos perdidos</string>
+    <string name="diagnosis_large_lost">Perdidos</string>
+    <string name="diagnosis_alg_suspected">Posible</string>
+    <string name="diagnosis_alg_not_found">No detectado</string>
+    <string name="diagnosis_call_address">Dirección de llamada</string>
+    <string name="diagnosis_call_address_internal">Interna</string>
+
+    <string name="diagnosis_servers">Servidores principal y de respaldo</string>
+    <string name="diagnosis_current">Actual</string>
+    <string name="diagnosis_on_proxy">Servidor proxy</string>
+    <string name="diagnosis_on_backup">Servidor de respaldo</string>
+    <string name="diagnosis_proxy">Servidor proxy</string>
+    <string name="diagnosis_backup">Servidor de respaldo</string>
+    <string name="diagnosis_reachable">Accesible</string>
+    <string name="diagnosis_probed_at">Última comprobación</string>
+    <string name="diagnosis_fast_timeout">Tiempo de espera rápido</string>
+    <string name="diagnosis_off">Desactivado</string>
+
+    <string name="diagnosis_registration">Registro</string>
+    <string name="diagnosis_state">Estado</string>
+    <string name="diagnosis_transport">Transporte</string>
+    <string name="diagnosis_expires">Vigencia</string>
+
+    <string name="diagnosis_last_call">Última llamada</string>
+    <string name="diagnosis_sound">Audio</string>
+    <string name="diagnosis_sound_both">En ambos sentidos</string>
+    <string name="diagnosis_sound_send_only">Solo envío</string>
+    <string name="diagnosis_sound_receive_only">Solo recepción</string>
+    <string name="diagnosis_sound_none">Ninguno</string>
+    <string name="diagnosis_loss">Pérdida de paquetes</string>
+    <string name="diagnosis_loss_value">↓ %1$s · ↑ %2$s</string>
+    <string name="diagnosis_jitter">Jitter</string>
+    <string name="diagnosis_round_trip">Ida y vuelta</string>
+    <string name="diagnosis_ended">Finalizada</string>
+
+    <string name="diagnosis_adaptation">Ajustes automáticos</string>
+    <string name="diagnosis_adapted_transport">Transporte</string>
+    <string name="diagnosis_adapted_expires">Vigencia del registro</string>
+    <string name="diagnosis_on">Activado</string>
+</resources>

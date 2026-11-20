@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="form_required">Obligatorio</string>
+    <string name="form_taken">Ya existe</string>
+    <string name="form_invalid">Formato no válido</string>
+    <string name="form_host_port">Formato: host[:puerto]</string>
+    <string name="form_port_range">Debe estar entre 1 y 65535</string>
+    <plurals name="form_max_chars">
+        <item quantity="one">Máximo %1$s carácter</item>
+        <item quantity="many">Máximo %1$s caracteres</item>
+        <item quantity="other">Máximo %1$s caracteres</item>
+    </plurals>
+
+    <string name="form_expand">Expandir</string>
+    <string name="form_collapse">Contraer</string>
+    <string name="form_password_show">Mostrar contraseña</string>
+    <string name="form_password_hide">Ocultar contraseña</string>
+    <string name="form_placeholder_host_port">host[:puerto]</string>
+</resources>

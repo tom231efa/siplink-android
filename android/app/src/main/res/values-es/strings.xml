@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="list_separator">"; "</string>
+    <string name="common_cancel">Cancelar</string>
+    <string name="common_back">Atrás</string>
+    <string name="common_delete">Eliminar</string>
+    <string name="common_confirm_delete">Confirmar eliminación</string>
+    <string name="common_save">Guardar</string>
+    <string name="common_ok">Aceptar</string>
+    <string name="common_edit">Editar</string>
+    <string name="common_done">Listo</string>
+    <string name="common_close">Cerrar</string>
+    <string name="common_more">Más</string>
+    <string name="common_clear">Borrar</string>
+    <string name="common_restore_defaults">Restablecer valores predeterminados</string>
+</resources>

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="recording_title">Grabaciones</string>
+    <plurals name="recording_selected">
+        <item quantity="one">%1$s seleccionada</item>
+        <item quantity="many">%1$s seleccionadas</item>
+        <item quantity="other">%1$s seleccionadas</item>
+    </plurals>
+    <string name="recording_clear_selection">Anular selección</string>
+    <string name="recording_export">Exportar</string>
+    <plurals name="recording_exported">
+        <item quantity="one">%1$s grabación exportada</item>
+        <item quantity="many">%1$s grabaciones exportadas</item>
+        <item quantity="other">%1$s grabaciones exportadas</item>
+    </plurals>
+    <string name="recording_export_failed">Error al exportar</string>
+    <plurals name="recording_summary">
+        <item quantity="one">%1$s grabación · %2$s</item>
+        <item quantity="many">%1$s grabaciones · %2$s</item>
+        <item quantity="other">%1$s grabaciones · %2$s</item>
+    </plurals>
+    <string name="recording_empty">No hay grabaciones</string>
+    <string name="recording_cannot_play">No se puede reproducir</string>
+    <plurals name="recording_delete_title">
+        <item quantity="one">¿Eliminar %1$s grabación?</item>
+        <item quantity="many">¿Eliminar %1$s grabaciones?</item>
+        <item quantity="other">¿Eliminar %1$s grabaciones?</item>
+    </plurals>
+
+    <string name="recording_period_all">Todas</string>
+    <string name="recording_period_today">Hoy</string>
+    <plurals name="recording_period_days">
+        <item quantity="one">%1$s día</item>
+        <item quantity="many">%1$s días</item>
+        <item quantity="other">%1$s días</item>
+    </plurals>
+    <string name="recording_period_custom">Personalizado</string>
+    <string name="recording_period_range">%1$s–%2$s</string>
+
+    <string name="recording_unknown_number">Número desconocido</string>
+    <string name="recording_detail_incoming">Entrante · %1$s · %2$s · %3$s</string>
+    <string name="recording_detail_outgoing">Saliente · %1$s · %2$s · %3$s</string>
+    <string name="recording_play">Reproducir</string>
+    <string name="recording_stop">Detener</string>
+</resources>

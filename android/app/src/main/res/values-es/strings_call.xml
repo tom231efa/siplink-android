@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="call_busy_already">Ya hay una llamada en curso</string>
+    <string name="call_none">No hay ninguna llamada activa</string>
+    <string name="call_two_already">Ya hay dos llamadas en curso</string>
+    <string name="call_consult_after_connect">La consulta es posible cuando la llamada esté conectada</string>
+    <string name="call_enter_number">Escriba un número</string>
+    <string name="call_add_account_first">Primero agregue una cuenta SIP</string>
+    <string name="call_line_off">Línea desactivada</string>
+    <string name="call_invalid_address">Número o dirección no válidos</string>
+    <string name="call_failed">Error en la llamada</string>
+    <string name="call_dtmf_in_call_only">Las teclas solo se pueden enviar durante una llamada</string>
+    <string name="call_room_no_video">La sala de conferencias no admite video</string>
+    <string name="call_no_pending_transfer">No hay ninguna transferencia pendiente</string>
+    <string name="call_room_after_connect">La sala de conferencias se puede abrir cuando la llamada esté conectada</string>
+    <string name="call_room_transferring">Transferencia en curso</string>
+    <string name="call_room_supervised">Las llamadas de supervisión no pueden unirse a la sala de conferencias</string>
+    <string name="call_withheld">Anónimo</string>
+
+    <string name="call_ended">Llamada finalizada</string>
+    <string name="call_hung_up">Colgada</string>
+    <string name="call_cancelled">Cancelada</string>
+    <string name="call_end_busy">Ocupado</string>
+    <string name="call_end_declined">Rechazada</string>
+    <string name="call_end_not_found">El número no existe</string>
+    <string name="call_end_not_answered">No contesta</string>
+    <string name="call_end_no_response">Sin respuesta</string>
+    <string name="call_end_dnd">El destinatario tiene activado No molestar</string>
+    <string name="call_end_unavailable">No disponible temporalmente</string>
+    <string name="call_end_forbidden">Llamada no permitida</string>
+    <string name="call_end_network">Error de conexión de red</string>
+    <string name="call_end_media">Error en la negociación de medios</string>
+    <string name="call_no_sound">No se recibe audio del otro extremo</string>
+    <string name="call_server_silent">El servidor no responde</string>
+
+    <string name="call_transfer_after_connect">La llamada se puede transferir cuando esté conectada</string>
+    <string name="call_enter_transfer_number">Escriba el número de destino</string>
+    <string name="call_transfer_after_answer">La llamada se puede transferir cuando el otro extremo conteste</string>
+    <string name="call_parked">Llamada aparcada</string>
+    <string name="call_transferred">Transferida</string>
+    <string name="call_transfer_send_failed">No se pudo enviar la solicitud de transferencia</string>
+
+    <string name="call_video_after_connect">El video se puede activar cuando la llamada esté conectada</string>
+    <string name="call_video_not_supported">Esta llamada no admite video</string>
+    <string name="call_cannot_change">No se puede cambiar la llamada</string>
+    <string name="call_camera_after_connect">La cámara se puede usar cuando la llamada esté conectada</string>
+    <string name="call_no_video">Esta llamada no tiene video</string>
+    <string name="call_camera_permission">Se necesita permiso para usar la cámara</string>
+
+    <string name="call_status_incoming">Llamada entrante</string>
+    <string name="call_status_intercom">Llamada de intercomunicador</string>
+    <string name="call_status_video">Videollamada entrante</string>
+    <string name="call_status_calling">Llamando…</string>
+    <string name="call_status_connected">Conectada</string>
+    <string name="call_status_held">Llamada retenida</string>
+    <string name="call_intercom_chip">Intercomunicador</string>
+    <string name="call_room_button">Conferencia</string>
+    <string name="call_room_open_title">¿Abrir la sala de conferencias?</string>
+    <string name="call_room_open_text">La sala de conferencias es solo de voz; el video se detendrá.</string>
+    <string name="call_room_open">Abrir</string>
+    <string name="call_transferring">Transfiriendo…</string>
+    <string name="call_transfer_succeeded">Transferencia completada</string>
+    <string name="call_parked_listen">Aparcada; escuche la posición de aparcamiento que anuncia la PBX</string>
+    <string name="call_transfer_failed">Error en la transferencia; la llamada sigue retenida</string>
+
+    <string name="call_complete_transfer">Completar transferencia: %1$s a la otra parte</string>
+    <string name="call_mute">Silenciar</string>
+    <string name="call_muted">Silenciado</string>
+    <string name="call_keypad">Teclado</string>
+    <string name="call_hold">Retener</string>
+    <string name="call_resume">Reanudar</string>
+    <string name="call_transfer">Transferir</string>
+    <string name="call_park">Aparcar</string>
+    <string name="call_swap">Alternar</string>
+    <string name="call_merge">Combinar</string>
+    <string name="call_shortcuts">Teclas rápidas</string>
+    <string name="call_hang_up">Colgar</string>
+    <string name="call_video">Video</string>
+    <string name="call_supervision_listen">Escucha</string>
+    <string name="call_supervision_whisper">Susurro</string>
+    <string name="call_supervision_barge">Intrusión</string>
+    <string name="call_route_earpiece">Auricular</string>
+    <string name="call_route_speaker">Altavoz</string>
+    <string name="call_route_bluetooth">Bluetooth</string>
+    <string name="call_route_headset">Auriculares</string>
+    <string name="call_route_wired_headset">Auriculares con cable</string>
+    <string name="call_record_start">Iniciar grabación</string>
+    <string name="call_record_stop">Detener grabación</string>
+
+    <string name="call_keypad_close">Cerrar teclado</string>
+    <string name="call_transfer_title">Transferir llamada</string>
+    <string name="call_transfer_to">Transferir a</string>
+    <string name="call_transfer_hint">Extensión o dirección SIP</string>
+    <string name="call_transfer_attended">Transferencia con consulta</string>
+    <string name="call_transfer_blind">Transferencia ciega</string>
+    <string name="call_shortcuts_empty">No hay teclas rápidas</string>
+
+    <string name="call_waiting_new">Nueva llamada</string>
+    <string name="call_waiting_decline">Rechazar nueva llamada</string>
+    <string name="call_waiting_answer">Retener y responder</string>
+    <string name="call_held_consulting">Esperando transferencia (retenida)</string>
+    <string name="call_held_label">Retenida</string>
+    <string name="call_swap_calls">Alternar llamadas</string>
+    <string name="call_slide_description">Llamada entrante: deslice a la derecha para responder o a la izquierda para rechazar</string>
+    <string name="call_slide_answer">Responder</string>
+    <string name="call_slide_decline">Rechazar</string>
+
+    <string name="call_microphone_permission">Se necesita permiso para usar el micrófono</string>
+</resources>

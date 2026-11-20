@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="shortcut_type_speed">Marcación rápida</string>
+    <string name="shortcut_type_bxfer">Transferencia ciega</string>
+    <string name="shortcut_type_axfer">Transferencia con consulta</string>
+    <string name="shortcut_type_dtmf">Enviar DTMF</string>
+    <string name="shortcut_type_forward">Desvío de llamadas</string>
+    <string name="shortcut_type_dnd">No molestar</string>
+
+    <string name="shortcut_category_all">Todas</string>
+    <string name="shortcut_category_none">Sin categoría</string>
+    <string name="shortcut_category_new">Nueva categoría</string>
+
+    <plurals name="shortcut_limit">
+        <item quantity="one">Máximo %1$s tecla rápida</item>
+        <item quantity="many">Máximo %1$s teclas rápidas</item>
+        <item quantity="other">Máximo %1$s teclas rápidas</item>
+    </plurals>
+    <plurals name="shortcut_own_limit">
+        <item quantity="one">Máximo %1$s tecla rápida propia</item>
+        <item quantity="many">Máximo %1$s teclas rápidas propias</item>
+        <item quantity="other">Máximo %1$s teclas rápidas propias</item>
+    </plurals>
+    <string name="shortcut_error_number_empty">El número es obligatorio</string>
+    <string name="shortcut_error_spaces">No puede contener espacios</string>
+    <string name="shortcut_error_number_spaces">El número no puede contener espacios</string>
+    <string name="shortcut_error_dtmf" tools:ignore="TypographyDashes">Solo 0-9 * #</string>
+    <string name="shortcut_error_dtmf_full" tools:ignore="TypographyDashes">Teclas: solo 0-9 * #</string>
+    <plurals name="shortcut_error_number_too_long">
+        <item quantity="one">Número: máximo %1$s carácter</item>
+        <item quantity="many">Número: máximo %1$s caracteres</item>
+        <item quantity="other">Número: máximo %1$s caracteres</item>
+    </plurals>
+    <plurals name="shortcut_error_name_too_long">
+        <item quantity="one">Nombre: máximo %1$s carácter</item>
+        <item quantity="many">Nombre: máximo %1$s caracteres</item>
+        <item quantity="other">Nombre: máximo %1$s caracteres</item>
+    </plurals>
+    <plurals name="shortcut_error_category_too_long">
+        <item quantity="one">Categoría: máximo %1$s carácter</item>
+        <item quantity="many">Categoría: máximo %1$s caracteres</item>
+        <item quantity="other">Categoría: máximo %1$s caracteres</item>
+    </plurals>
+    <string name="shortcut_error_category_empty">La categoría es obligatoria</string>
+    <string name="shortcut_error_reserved">Nombre no disponible</string>
+    <string name="shortcut_error_category_reserved">Este nombre de categoría no se puede usar</string>
+    <string name="shortcut_error_category_taken">La categoría ya existe</string>
+    <string name="shortcut_csv_format">nombre,número[,tipo[,categoría[,línea[,icono]]]]</string>
+
+    <string name="shortcut_icon_phone">Teléfono</string>
+    <string name="shortcut_icon_person">Persona</string>
+    <string name="shortcut_icon_group">Equipo</string>
+    <string name="shortcut_icon_star">Favorito</string>
+    <string name="shortcut_icon_home">Casa</string>
+    <string name="shortcut_icon_office">Oficina</string>
+    <string name="shortcut_icon_store">Tienda</string>
+    <string name="shortcut_icon_reception">Recepción</string>
+    <string name="shortcut_icon_support">Atención al cliente</string>
+    <string name="shortcut_icon_speaker">Megafonía</string>
+    <string name="shortcut_icon_meeting">Reunión</string>
+    <string name="shortcut_icon_door">Puerta</string>
+    <string name="shortcut_icon_lock">Cerradura</string>
+    <string name="shortcut_icon_key">Llave</string>
+    <string name="shortcut_icon_garage">Garaje</string>
+    <string name="shortcut_icon_car">Vehículo</string>
+    <string name="shortcut_icon_elevator">Ascensor</string>
+    <string name="shortcut_icon_security">Seguridad</string>
+    <string name="shortcut_icon_camera">Videovigilancia</string>
+    <string name="shortcut_icon_bell">Timbre</string>
+    <string name="shortcut_icon_alarm">Alarma</string>
+    <string name="shortcut_icon_medical">Servicio médico</string>
+    <string name="shortcut_icon_fire">Bomberos</string>
+    <string name="shortcut_icon_food">Restaurante</string>
+    <string name="shortcut_icon_hotel">Habitación</string>
+    <string name="shortcut_icon_warehouse">Almacén</string>
+    <string name="shortcut_icon_factory">Taller</string>
+    <string name="shortcut_icon_school">Aula</string>
+    <string name="shortcut_icon_repair">Mantenimiento</string>
+    <string name="shortcut_icon_computer">Sala de servidores</string>
+    <string name="shortcut_icon_delivery">Logística</string>
+    <string name="shortcut_icon_light">Iluminación</string>
+
+    <string name="shortcut_title">Teclas rápidas</string>
+    <string name="shortcut_count_of">%1$s / %2$s</string>
+    <string name="shortcut_new">Nueva tecla rápida</string>
+    <string name="shortcut_bulk_import">Importar en bloque</string>
+    <string name="shortcut_export_csv">Exportar como CSV</string>
+    <string name="shortcut_export_failed">Error al exportar</string>
+    <plurals name="shortcut_exported">
+        <item quantity="one">%1$s tecla rápida exportada</item>
+        <item quantity="many">%1$s teclas rápidas exportadas</item>
+        <item quantity="other">%1$s teclas rápidas exportadas</item>
+    </plurals>
+    <string name="shortcut_edit_category">Editar la categoría «%1$s»</string>
+    <string name="shortcut_empty">No hay teclas rápidas</string>
+    <string name="shortcut_search">Buscar nombre, número, categoría o tipo</string>
+    <string name="shortcut_chip_all">Todas %1$s</string>
+    <string name="shortcut_chip_category">%1$s %2$s</string>
+    <string name="shortcut_no_match">No hay teclas rápidas que coincidan</string>
+    <string name="shortcut_category_title">Categoría</string>
+    <string name="shortcut_delete_category">Eliminar categoría</string>
+
+    <string name="shortcut_import_title">Importar teclas rápidas en bloque</string>
+    <string name="shortcut_import_hint">%1$s\nTipo: %2$s\nLínea: nombre de la cuenta o user@domain; si está vacía, se elige al llamar\nIcono: %3$s; si está vacío, según el tipo</string>
+    <string name="shortcut_import_example">Recepción,1001,speed,Favoritos,,reception\nIntercomunicador almacén,*801005,speed,Intercomunicador,,warehouse\nAbrir puerta,#9,dtmf,Control de acceso,,door\nA la operadora,1000,bxfer,Transferencia</string>
+
+    <string name="shortcut_new_title">Nueva tecla rápida</string>
+    <string name="shortcut_edit_title">Editar tecla rápida</string>
+    <string name="shortcut_added">Tecla rápida agregada</string>
+    <string name="shortcut_saved">Tecla rápida guardada</string>
+    <string name="shortcut_deleted">Tecla rápida eliminada</string>
+    <string name="shortcut_field_name">Nombre</string>
+    <string name="shortcut_field_keys">Teclas</string>
+    <string name="shortcut_field_forward_to">Desviar a</string>
+    <string name="shortcut_field_number">Número o código de función</string>
+    <string name="shortcut_field_type">Tipo</string>
+    <string name="shortcut_field_line_mode">Línea de salida</string>
+    <string name="shortcut_field_line">Línea</string>
+    <string name="shortcut_field_icon">Icono</string>
+    <string name="shortcut_icon_default">Predeterminado (según el tipo)</string>
+    <string name="shortcut_field_category">Categoría</string>
+    <string name="shortcut_new_category_title">Nueva categoría</string>
+    <string name="shortcut_create">Crear</string>
+    <string name="shortcut_line_fixed">Línea específica</string>
+    <string name="shortcut_line_ask">Elegir al llamar</string>
+    <string name="shortcut_line_named">%1$s · %2$s</string>
+    <string name="shortcut_line_disabled">%1$s · Desactivada</string>
+    <string name="shortcut_line_gone">La línea «%1$s» ya no existe</string>
+
+    <string name="shortcut_choose_line_title">%1$s · Elegir línea de salida</string>
+    <string name="shortcut_line_unavailable">La línea específica «%1$s» no está disponible</string>
+    <string name="shortcut_dtmf_sent">Enviado: %1$s</string>
+    <string name="shortcut_forward_on">Todas las llamadas se desviarán a %1$s</string>
+    <string name="shortcut_forward_off">Desvío de llamadas desactivado</string>
+    <string name="shortcut_dnd_on">No molestar activado</string>
+    <string name="shortcut_dnd_off">No molestar desactivado</string>
+</resources>

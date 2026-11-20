@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="managed_password_title">Ver contraseña</string>
+    <string name="managed_password_text">La contraseña está protegida. Escriba la contraseña de configuración para verla.</string>
+    <string name="managed_password_field">Contraseña de configuración</string>
+    <string name="managed_password_wrong">Contraseña incorrecta</string>
+    <string name="managed_password_view">Ver</string>
+
+    <string name="managed_notice">Configuración gestionada de forma remota; no se puede cambiar en este dispositivo</string>
+    <string name="managed_locked">Gestionado de forma remota</string>
+</resources>

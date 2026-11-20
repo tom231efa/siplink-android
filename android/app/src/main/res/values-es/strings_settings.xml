@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_language">Idioma</string>
+    <string name="settings_language_system">Predeterminado del sistema</string>
+
+    <string name="settings_title">Ajustes</string>
+    <string name="settings_section_accounts">Cuentas</string>
+    <string name="settings_sip_accounts">Cuentas SIP</string>
+    <string name="settings_section_call_features">Funciones de llamada</string>
+    <string name="settings_dnd">No molestar</string>
+    <string name="settings_video_calls">Videollamadas</string>
+    <string name="settings_recording">Grabación</string>
+    <string name="settings_auto_answer">Intercomunicador y respuesta automática</string>
+    <string name="settings_ldap">Directorios LDAP</string>
+    <string name="settings_feature_codes">Códigos de función</string>
+    <string name="settings_codecs">Códecs</string>
+    <string name="settings_audio_codecs">Códecs de audio</string>
+    <string name="settings_advanced">Ajustes avanzados</string>
+    <string name="settings_section_security">Seguridad</string>
+    <string name="settings_tls">TLS y certificados de CA</string>
+    <string name="settings_section_battery">Batería</string>
+    <string name="settings_keep_alive">Mantener activo en segundo plano</string>
+    <string name="settings_battery_optimization">Optimización de batería</string>
+    <string name="settings_battery_open_failed">No se pueden abrir los ajustes de optimización de batería</string>
+    <string name="settings_lock_screen_calls">Mostrar llamadas en la pantalla de bloqueo</string>
+    <string name="settings_lock_screen_allowed">Permitido</string>
+    <string name="settings_lock_screen_not_allowed">No permitido</string>
+    <string name="settings_lock_screen_open_failed">No se pueden abrir los ajustes de notificaciones a pantalla completa</string>
+    <string name="settings_section_appearance">Apariencia</string>
+    <string name="settings_theme">Tema</string>
+    <string name="settings_theme_system">Predeterminado del sistema</string>
+    <string name="settings_theme_light">Claro</string>
+    <string name="settings_theme_dark">Oscuro</string>
+    <string name="settings_banner_position">Posición del banner de llamada</string>
+    <string name="settings_banner_top">Arriba</string>
+    <string name="settings_banner_bottom">Abajo</string>
+    <string name="settings_dynamic_color">Color dinámico</string>
+    <string name="settings_remote_config">Configuración remota</string>
+    <string name="settings_about">Acerca de</string>
+    <string name="settings_update_available">Actualización disponible</string>
+
+    <string name="settings_recording_calls">Grabación de llamadas</string>
+    <string name="settings_recording_by_default">Grabar por defecto</string>
+    <string name="settings_recording_kept">Grabaciones conservadas</string>
+    <string name="settings_recording_files">Grabaciones</string>
+</resources>

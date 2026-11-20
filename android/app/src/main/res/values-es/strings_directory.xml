@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="directory_limit">
+        <item quantity="one">Máximo %1$s directorio</item>
+        <item quantity="many">Máximo %1$s directorios</item>
+        <item quantity="other">Máximo %1$s directorios</item>
+    </plurals>
+    <string name="directory_error_name_taken">El nombre ya existe</string>
+    <plurals name="directory_error_name_too_long">
+        <item quantity="one">Nombre: máximo %1$s carácter</item>
+        <item quantity="many">Nombre: máximo %1$s caracteres</item>
+        <item quantity="other">Nombre: máximo %1$s caracteres</item>
+    </plurals>
+    <string name="directory_error_host_empty">La dirección del servidor es obligatoria</string>
+    <string name="directory_error_host_invalid">La dirección del servidor debe tener el formato host[:puerto]</string>
+    <string name="directory_error_ldaps">No se admite ldaps://; use StartTLS</string>
+    <string name="directory_error_host_ldaps">Dirección del servidor: no se admite ldaps://; use StartTLS</string>
+    <string name="directory_error_starttls_name">StartTLS necesita un nombre de host</string>
+    <string name="directory_error_host_starttls_name">Dirección del servidor: StartTLS necesita un nombre de host</string>
+    <string name="directory_error_port_range">El puerto debe estar entre 1 y 65535</string>
+    <string name="directory_error_host_port_range">Dirección del servidor: el puerto debe estar entre 1 y 65535</string>
+    <string name="directory_error_user_for_password">Obligatorio (hay una contraseña)</string>
+    <string name="directory_error_user_for_password_full">El nombre de usuario es obligatorio (hay una contraseña)</string>
+    <string name="directory_error_base_dn_empty">El Base DN es obligatorio</string>
+    <string name="directory_error_max_results_range">Debe estar entre 1 y %1$s</string>
+    <string name="directory_error_max_results_invalid">El máximo de resultados debe estar entre 1 y %1$s</string>
+    <string name="directory_error_name_attributes_empty">Los atributos de nombre son obligatorios</string>
+    <string name="directory_error_number_attributes_empty">Los atributos de número son obligatorios</string>
+    <string name="directory_error_placeholder">Debe contener %</string>
+    <string name="directory_error_name_filter_placeholder">El filtro de nombre debe contener %</string>
+    <string name="directory_error_number_filter_placeholder">El filtro de número debe contener %</string>
+
+    <string name="directory_title">Directorio</string>
+    <string name="directory_ldap_settings">Ajustes de LDAP</string>
+    <string name="directory_no_ldap">Este SDK no admite LDAP</string>
+    <string name="directory_add_account_first">Primero agregue una cuenta SIP</string>
+    <string name="directory_none_configured">No hay directorios LDAP configurados</string>
+    <string name="directory_all_disabled">Los directorios LDAP están desactivados</string>
+    <string name="directory_search">Buscar nombres o números</string>
+    <string name="directory_no_match">No hay contactos que coincidan</string>
+    <string name="directory_cache_searching">Caché local; consultando el servidor…</string>
+    <string name="directory_from_cache">De la caché local</string>
+    <plurals name="directory_first_only">
+        <item quantity="one">Solo se muestra el primero</item>
+        <item quantity="many">Solo se muestran los primeros %1$s</item>
+        <item quantity="other">Solo se muestran los primeros %1$s</item>
+    </plurals>
+    <string name="directory_number_organization">%1$s · %2$s</string>
+    <string name="directory_call_contact">Llamar a %1$s</string>
+    <string name="directory_more_for">Más opciones para %1$s</string>
+
+    <string name="directory_ldap_title">Directorios LDAP</string>
+    <string name="directory_add">Agregar directorio</string>
+    <plurals name="directory_count">
+        <item quantity="one">%1$s / %2$s directorio</item>
+        <item quantity="many">%1$s / %2$s directorios</item>
+        <item quantity="other">%1$s / %2$s directorios</item>
+    </plurals>
+    <string name="directory_disabled_summary">Desactivado · %1$s</string>
+    <string name="directory_cache_title">Caché local</string>
+    <plurals name="directory_cache_usage">
+        <item quantity="one">%1$s contacto en caché; ocupa %2$s / %3$s MB</item>
+        <item quantity="many">%1$s contactos en caché; ocupan %2$s / %3$s MB</item>
+        <item quantity="other">%1$s contactos en caché; ocupan %2$s / %3$s MB</item>
+    </plurals>
+    <string name="directory_cache_cleared">Caché del directorio borrada</string>
+    <string name="directory_cache_clear">Borrar caché</string>
+
+    <string name="directory_add_title">Agregar directorio</string>
+    <string name="directory_details_title">Detalles del directorio</string>
+    <string name="directory_edit_title">Editar directorio</string>
+    <string name="directory_user_required">El nombre de usuario es obligatorio</string>
+    <string name="directory_saved">Directorio guardado</string>
+    <string name="directory_section_server">Servidor</string>
+    <string name="directory_name_optional">Nombre (opcional)</string>
+    <string name="directory_server_address">Dirección del servidor</string>
+    <string name="directory_server_placeholder">host[:puerto]</string>
+    <string name="directory_base_dn">Base DN</string>
+    <string name="directory_encryption">Cifrado</string>
+    <string name="directory_encryption_none">Sin cifrado</string>
+    <string name="directory_ca_certificates">Certificados de CA</string>
+    <string name="directory_section_sign_in">Inicio de sesión</string>
+    <string name="directory_sign_in_account">Cuenta</string>
+    <string name="directory_sign_in_anonymous">Anónimo</string>
+    <string name="directory_user_name">Nombre de usuario</string>
+    <string name="directory_password">Contraseña</string>
+    <string name="directory_password_keep">Dejar vacío para mantener la contraseña guardada</string>
+    <string name="directory_section_calls">Llamadas</string>
+    <string name="directory_line">Línea</string>
+    <string name="directory_all_lines">Todas las líneas</string>
+    <string name="directory_line_named">%1$s · %2$s</string>
+    <string name="directory_lookup_incoming">Nombre en llamadas entrantes</string>
+    <string name="directory_lookup_outgoing">Nombre en llamadas salientes</string>
+    <string name="directory_advanced">Ajustes avanzados</string>
+    <string name="directory_name_attributes">Atributos de nombre</string>
+    <string name="directory_number_attributes">Atributos de número</string>
+    <string name="directory_max_results">Máximo de resultados</string>
+    <string name="directory_filter">Filtro</string>
+    <string name="directory_filter_auto">Automático</string>
+    <string name="directory_filter_custom">Personalizado</string>
+    <string name="directory_name_filter">Filtro de nombre</string>
+    <string name="directory_number_filter">Filtro de número</string>
+    <string name="directory_enable">Activar este directorio</string>
+    <string name="directory_delete">Eliminar directorio</string>
+    <string name="directory_delete_title">¿Eliminar «%1$s»?</string>
+    <string name="directory_delete_text">Se quitarán sus ajustes y los contactos guardados en caché en este teléfono.</string>
+</resources>

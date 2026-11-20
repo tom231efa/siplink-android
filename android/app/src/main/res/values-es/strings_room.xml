@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="room_name">Sala de conferencias</string>
+    <plurals name="room_full">
+        <item quantity="one">Sala de conferencias llena (máximo %1$s participante)</item>
+        <item quantity="many">Sala de conferencias llena (máximo %1$s participantes)</item>
+        <item quantity="other">Sala de conferencias llena (máximo %1$s participantes)</item>
+    </plurals>
+    <plurals name="room_free">
+        <item quantity="one">Máximo %1$s participante más</item>
+        <item quantity="many">Máximo %1$s participantes más</item>
+        <item quantity="other">Máximo %1$s participantes más</item>
+    </plurals>
+    <string name="room_not_now">Vuelva a intentarlo en un momento</string>
+    <string name="room_retry_later">Vuelva a intentarlo más tarde</string>
+    <string name="room_create_failed">No se pudo crear la sala de conferencias</string>
+    <string name="room_rejoin_failed">No se puede volver a la sala de conferencias</string>
+    <string name="room_join_failed">No es posible unirse a la sala de conferencias</string>
+    <string name="room_already_in">Ya está en la sala de conferencias</string>
+
+    <string name="room_member_queued">Pendiente</string>
+    <string name="room_member_calling">Llamando</string>
+    <string name="room_member_ringing">Sonando</string>
+    <string name="room_member_connected">Conectado</string>
+    <string name="room_member_held">Retenido</string>
+    <string name="room_member_left">Ha salido</string>
+    <string name="room_member_held_back">No llamado</string>
+
+    <string name="room_line_full">Línea saturada</string>
+    <string name="room_refused">Rechazado por la PBX</string>
+    <string name="room_busy">Ocupado</string>
+    <string name="room_unavailable">No disponible</string>
+
+    <string name="room_end_title">¿Finalizar la conferencia?</string>
+    <plurals name="room_end_text">
+        <item quantity="one">Se colgará %1$s llamada.</item>
+        <item quantity="many">Se colgarán las %1$s llamadas.</item>
+        <item quantity="other">Se colgarán las %1$s llamadas.</item>
+    </plurals>
+    <string name="room_end_confirm">Finalizar</string>
+    <string name="room_end">Finalizar conferencia</string>
+    <string name="room_add_members">Agregar participantes</string>
+    <string name="room_show_readings">Ver valores medidos</string>
+    <string name="room_warning_heat">Dispositivo demasiado caliente</string>
+    <string name="room_warning_load">Dispositivo sobrecargado</string>
+    <string name="room_warning_memory">Memoria insuficiente</string>
+    <string name="room_warning_network">Red deficiente</string>
+    <string name="room_reading_cpu">CPU</string>
+    <string name="room_reading_thread">Hilo más ocupado</string>
+    <string name="room_reading_temperature">Temperatura del dispositivo</string>
+    <string name="room_reading_memory">Memoria</string>
+    <string name="room_memory_low">Insuficiente</string>
+    <string name="room_memory_normal">Normal</string>
+    <string name="room_thermal_unknown">Desconocido</string>
+    <string name="room_thermal_none">Normal</string>
+    <string name="room_thermal_light">Leve</string>
+    <string name="room_thermal_moderate">Moderado</string>
+    <string name="room_thermal_severe">Grave</string>
+    <string name="room_thermal_critical">Crítico</string>
+    <string name="room_thermal_emergency">Emergencia</string>
+    <string name="room_thermal_shutdown">Apagando</string>
+    <string name="room_link_readings">"Pérdida ↑%1$s%% ↓%2$s%%  jitter %3$s ms  ida y vuelta %4$s ms"</string>
+    <string name="room_member_retry">Volver a llamar a %1$s</string>
+    <string name="room_member_remove">Quitar a %1$s</string>
+    <string name="room_member_hang_up">Colgar a %1$s</string>
+    <string name="room_signal_poor">Mala calidad de llamada</string>
+    <string name="room_signal">Calidad de llamada %1$s/%2$s</string>
+    <string name="room_away">Ausente</string>
+    <string name="room_return">Volver a la sala</string>
+    <string name="room_waiting_new">Nueva llamada</string>
+    <string name="room_waiting_decline">Rechazar</string>
+    <string name="room_join">Unirse a la sala</string>
+
+    <string name="room_add_title">Agregar participantes</string>
+    <string name="room_source_recent">Llamadas recientes</string>
+    <string name="room_source_directory">Directorio</string>
+    <string name="room_source_shortcuts">Teclas rápidas</string>
+    <string name="room_add_field">Número o nombre</string>
+    <string name="room_add_number">Agregar número</string>
+    <string name="room_pick_remove">Quitar %1$s</string>
+    <string name="room_call">Llamar</string>
+    <string name="room_call_count">Llamar (%1$s)</string>
+    <string name="room_candidate_in_room">%1$s · Ya está en la sala</string>
+</resources>

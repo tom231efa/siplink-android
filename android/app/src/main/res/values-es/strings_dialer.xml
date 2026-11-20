@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="dialer_call_features">Funciones de llamada</string>
+    <string name="dialer_switch_to_pad">Cambiar al teclado de marcación</string>
+    <string name="dialer_switch_to_keyboard">Cambiar al teclado de texto</string>
+    <string name="dialer_add_account">Agregar cuenta SIP</string>
+    <string name="dialer_no_accounts">No hay cuentas SIP</string>
+    <string name="dialer_choose_account">Elegir cuenta de salida</string>
+    <string name="dialer_dnd_on">No molestar está activado</string>
+    <plurals name="dialer_new_voicemail">
+        <item quantity="one">%1$s mensaje de voz nuevo</item>
+        <item quantity="many">%1$s mensajes de voz nuevos</item>
+        <item quantity="other">%1$s mensajes de voz nuevos</item>
+    </plurals>
+    <string name="dialer_number_hint">Escriba un número o una dirección SIP</string>
+    <string name="dialer_address_label">Número o dirección SIP</string>
+    <string name="dialer_address_example">p. ej., %1$s o %2$s</string>
+
+    <string name="dialer_video_call">Videollamada</string>
+    <string name="dialer_shortcuts">Teclas rápidas</string>
+    <string name="dialer_backspace">Borrar</string>
+    <string name="dialer_call">Llamar</string>
+</resources>

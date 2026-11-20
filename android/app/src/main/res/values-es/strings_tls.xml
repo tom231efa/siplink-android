@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tls_invalid_file">No es un archivo de certificado X.509 válido (PEM / CRT / CER / DER)</string>
+    <string name="tls_save_failed">No se pudo guardar el certificado: %1$s</string>
+    <string name="tls_read_failed">No se puede leer el archivo seleccionado</string>
+    <string name="tls_file_too_large">Archivo demasiado grande</string>
+    <string name="tls_already_trusted">El certificado ya existe</string>
+    <string name="tls_section_imported">Certificados de CA importados</string>
+    <string name="tls_none">No hay certificados importados</string>
+    <string name="tls_import">Importar certificado de CA</string>
+    <string name="tls_section_verification">Verificación del certificado del servidor</string>
+    <string name="tls_verify_certificate">Verificar certificado del servidor</string>
+    <string name="tls_verify_hostname">Verificar nombre de host</string>
+    <string name="tls_verification_off_warning">Sin verificación, las llamadas pueden ser interceptadas</string>
+    <string name="tls_section_srtp">Cifrado de medios (SRTP)</string>
+    <string name="tls_srtp_off">Desactivado</string>
+    <string name="tls_srtp_preferred">Preferido</string>
+    <string name="tls_srtp_mandatory">Obligatorio</string>
+    <string name="tls_remove_title">¿Quitar el certificado?</string>
+    <string name="tls_remove_text">Los certificados de servidor emitidos por «%1$s» dejarán de ser de confianza y las cuentas TLS que dependan de este certificado no podrán registrarse.</string>
+    <string name="tls_remove_confirm">Quitar</string>
+    <string name="tls_issuer">Emisor: %1$s</string>
+    <string name="tls_expired">Venció el %1$s</string>
+    <string name="tls_valid_until_not_ca">Válido hasta el %1$s · No es un certificado de CA</string>
+    <string name="tls_valid_until">Válido hasta el %1$s</string>
+    <string name="tls_remove">Quitar certificado</string>
+    <plurals name="tls_imported">
+        <item quantity="one">%1$s certificado importado; volviendo a registrar las cuentas</item>
+        <item quantity="many">%1$s certificados importados; volviendo a registrar las cuentas</item>
+        <item quantity="other">%1$s certificados importados; volviendo a registrar las cuentas</item>
+    </plurals>
+
+    <string name="tls_restart_ldap_title">Reiniciar para aplicar a LDAP</string>
+    <string name="tls_restart_ldap_text">Las cuentas SIP ya usan los nuevos ajustes de certificados. Los directorios LDAP establecieron su conexión cifrada antes en esta sesión; reinicie la app para usar los nuevos certificados de CA.</string>
+    <string name="tls_restart_after_call">Reinicie la app cuando termine la llamada</string>
+    <string name="tls_restart_now">Reiniciar ahora</string>
+    <string name="tls_restart_later">Más tarde</string>
+</resources>
