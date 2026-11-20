@@ -144,7 +144,9 @@ internal class LineDoctor(
      * Before the user's change of account [id] goes into [params]: puts its own settings back in
      * there, and with [forget] (its servers or transport changed) drops what was learned for it.
      * With [credentials] (its user, server or password changed) the transports that did not
-     * register may register now. [reapply] follows once the change is in the core.
+     * register may register now, and its login has to register again before a challenge counts
+     * as a refusal of a transport ([LineSteps.failure]). [reapply] follows once the change is in
+     * the core.
      */
     fun release(id: String, params: AccountParams, forget: Boolean, credentials: Boolean) {
         records.own(id)?.let { own ->
@@ -157,6 +159,7 @@ internal class LineDoctor(
         } else if (credentials) {
             records.changeAll(id, LineSteps::credentialsChanged)
         }
+        if (credentials) records.storeProven(id, false)
         states.remove(id)?.let(::cancel)
     }
 
@@ -168,6 +171,7 @@ internal class LineDoctor(
         records.forget(id)
         records.storePbxHop(id, null)
         records.storeOwn(id, null)
+        records.storeProven(id, false)
         states.remove(id)?.let(::cancel)
         publish()
     }
@@ -230,8 +234,10 @@ internal class LineDoctor(
     // ---------------------------------------------------------------- following the registrations
 
     fun onRegistration(account: Account) {
-        if (!enabled) return
         val id = idOf(account)
+        // Whether the account's login works shows wherever it registers, adapting or not.
+        if (account.state == RegistrationState.Ok && !records.proven(id)) records.storeProven(id, true)
+        if (!enabled) return
         val state = states.getOrPut(id, ::State)
         when (account.state) {
             RegistrationState.Ok -> registered(account, id, state)
@@ -314,7 +320,7 @@ internal class LineDoctor(
     private fun failed(account: Account, id: String, state: State) {
         val current = transportOf(account.params.serverAddress)
         val onTrial = LineSteps.onTrial(state.trial, state.revertTo, current, ownTransport(id, account), records.record(id, network))
-        when (LineSteps.failure(account.errorInfo.protocolCode, holds(), onTrial)) {
+        when (LineSteps.failure(account.errorInfo.protocolCode, holds(), onTrial, records.proven(id))) {
             LineSteps.Failure.NOTHING -> cancelConfirm(state)
             LineSteps.Failure.END_TRIAL -> {
                 cancelConfirm(state)

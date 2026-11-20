@@ -12,8 +12,9 @@ import org.junit.runner.RunWith
 /**
  * A network that does not let UDP to the SIP port through, or drops the IP fragments of a large
  * one: the line moves to TCP by itself, and only while it adapts at all. A transport the server
- * refuses ends its test: the line goes back to its own one. A line that registered on TCP is
- * settled there: a refusal of the account changes nothing.
+ * refuses ends its test: the line goes back to its own one, unless the refusal is a challenge
+ * to a login that never registered (a wrong password). A line that registered on TCP is settled
+ * there: a refusal of the account changes nothing.
  */
 @RunWith(AndroidJUnit4::class)
 class NatTransportTest : NatLabTestBase() {
@@ -84,6 +85,7 @@ class NatTransportTest : NatLabTestBase() {
 
     @Test
     fun aTransportTheServerRefusesEndsItsTestAndTheLineGoesBack() {
+        // Its login registers over UDP first: the 401 over TCP that follows is the transport's refusal.
         addAccount(NO_TCP_ACCOUNT)
         awaitRegistered(NO_TCP_ACCOUNT)
         // The PBX takes this account over UDP only, whatever it sends over TCP.
@@ -102,6 +104,20 @@ class NatTransportTest : NatLabTestBase() {
         onMain { engine.accounts.registerAnew() }
         await("the registration over UDP", CALL_FAIL_MS) { account(NO_TCP_ACCOUNT)?.state == RegState.OK }
         assertEquals(null, adapted(NO_TCP_ACCOUNT))
+    }
+
+    @Test
+    fun aWrongPasswordOnTestShowsAsSuchAndTheLineStays() {
+        box("udp-sip off")
+        // A new account whose login never registered: the 401 over TCP is the login's, not TCP's.
+        val wrong = onMain { engine.accounts.add(draft(NAT_ACCOUNT).copy(password = "${lab.sipPassword}-wrong")) }
+        assertTrue("Account rejected: $wrong", wrong.isEmpty())
+        await("the line on TCP for a test", ADAPT_TIMEOUT_MS) { adapted(NAT_ACCOUNT) == SipTransport.TCP }
+        await("the refusal of the login", CALL_FAIL_MS) { account(NAT_ACCOUNT)?.error?.startsWith("401") == true }
+        println("natlab evidence: wrong password on test: ${account(NAT_ACCOUNT)?.error}, line on ${adapted(NAT_ACCOUNT)}")
+        never("the line back on blocked UDP", SETTLED_WINDOW_MS) { adapted(NAT_ACCOUNT) != SipTransport.TCP }
+        // Still the login's error, not a timeout over UDP.
+        await("the refusal of the login, still", CALL_FAIL_MS) { account(NAT_ACCOUNT)?.error?.startsWith("401") == true }
     }
 
     @Test

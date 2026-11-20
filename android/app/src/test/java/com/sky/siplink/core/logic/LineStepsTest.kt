@@ -32,15 +32,28 @@ class LineStepsTest {
 
     @Test
     fun `no answer is confirmed first, a refusal ends a test at once`() {
-        assertEquals(Failure.CONFIRM, LineSteps.failure(408, holds = false, onTrial = false))
-        assertEquals(Failure.CONFIRM, LineSteps.failure(503, holds = false, onTrial = true))
-        assertEquals(Failure.END_TRIAL, LineSteps.failure(403, holds = false, onTrial = true))
-        assertEquals(Failure.END_TRIAL, LineSteps.failure(488, holds = false, onTrial = true))
+        assertEquals(Failure.CONFIRM, LineSteps.failure(408, holds = false, onTrial = false, proven = true))
+        assertEquals(Failure.CONFIRM, LineSteps.failure(503, holds = false, onTrial = true, proven = true))
+        assertEquals(Failure.END_TRIAL, LineSteps.failure(403, holds = false, onTrial = true, proven = true))
+        assertEquals(Failure.END_TRIAL, LineSteps.failure(488, holds = false, onTrial = true, proven = true))
         // On its own transport a refusal is the account's own business: wrong password, unknown user.
-        assertEquals(Failure.NOTHING, LineSteps.failure(401, holds = false, onTrial = false))
+        assertEquals(Failure.NOTHING, LineSteps.failure(401, holds = false, onTrial = false, proven = true))
         // Behind a login page nothing counts.
-        assertEquals(Failure.NOTHING, LineSteps.failure(408, holds = true, onTrial = true))
-        assertEquals(Failure.NOTHING, LineSteps.failure(403, holds = true, onTrial = true))
+        assertEquals(Failure.NOTHING, LineSteps.failure(408, holds = true, onTrial = true, proven = true))
+        assertEquals(Failure.NOTHING, LineSteps.failure(403, holds = true, onTrial = true, proven = true))
+    }
+
+    @Test
+    fun `a challenge on test refuses the transport only for a login that registered before`() {
+        // The login registered somewhere since it last changed: the transport is refused (an Asterisk ACL answers 401).
+        assertEquals(Failure.END_TRIAL, LineSteps.failure(401, holds = false, onTrial = true, proven = true))
+        assertEquals(Failure.END_TRIAL, LineSteps.failure(407, holds = false, onTrial = true, proven = true))
+        // A new account, or a changed password: the login is wrong, the line stays and shows it.
+        assertEquals(Failure.NOTHING, LineSteps.failure(401, holds = false, onTrial = true, proven = false))
+        assertEquals(Failure.NOTHING, LineSteps.failure(407, holds = false, onTrial = true, proven = false))
+        // Other refusals end the test whatever the login.
+        assertEquals(Failure.END_TRIAL, LineSteps.failure(403, holds = false, onTrial = true, proven = false))
+        assertEquals(Failure.CONFIRM, LineSteps.failure(408, holds = false, onTrial = true, proven = false))
     }
 
     @Test
@@ -121,7 +134,7 @@ class LineStepsTest {
         val settled = LineSteps.registeredOn(Record(transport = TCP), TCP)
         assertTrue(settled.registered)
         assertFalse(LineSteps.onTrial(null, null, TCP, UDP, settled))
-        assertEquals(Failure.NOTHING, LineSteps.failure(401, holds = false, onTrial = false))
+        assertEquals(Failure.NOTHING, LineSteps.failure(401, holds = false, onTrial = false, proven = true))
         // On its own transport nothing is marked.
         assertFalse(LineSteps.registeredOn(Record(), UDP).registered)
         assertFalse(LineSteps.onTrial(null, null, UDP, UDP, null))
@@ -259,11 +272,11 @@ class LineStepsTest {
     @Test
     fun `a line blocked on udp walks to tcp, is refused there, and goes back to its own transport`() {
         // UDP gets no answer: confirmed, then on to TCP.
-        assertEquals(Failure.CONFIRM, LineSteps.failure(408, holds = false, onTrial = false))
+        assertEquals(Failure.CONFIRM, LineSteps.failure(408, holds = false, onTrial = false, proven = true))
         val toTcp = LineSteps.afterFailure(Record(), UDP, UDP, null, blocked.copy(tls = false), refused = false, now = now)!!
         assertEquals(TCP, toTcp.trial)
         // TCP refuses the registration (403): the test ends at once, and nothing else is open.
-        assertEquals(Failure.END_TRIAL, LineSteps.failure(403, holds = false, onTrial = true))
+        assertEquals(Failure.END_TRIAL, LineSteps.failure(403, holds = false, onTrial = true, proven = true))
         val back = LineSteps.afterFailure(toTcp.record, UDP, TCP, toTcp.trial, blocked.copy(tls = false), refused = true, now = now + 1)!!
         assertNull(back.trial)
         assertNull(back.record.transport)

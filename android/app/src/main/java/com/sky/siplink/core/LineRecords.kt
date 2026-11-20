@@ -8,7 +8,8 @@ import org.linphone.core.Config
 /**
  * What the adaptation of the lines keeps in the configuration of the SIP core: what was learned
  * for each account on each network ([LineAdapt.Record]), the account settings it replaced in the
- * core ([LineSteps.Own]), and the next hop of a PBX that nothing reaches. Main thread only.
+ * core ([LineSteps.Own]), the next hop of a PBX that nothing reaches, and whether an account's
+ * login registered anywhere. Main thread only.
  */
 internal class LineRecords(private val config: Config) {
     fun record(id: String, network: String?): LineAdapt.Record? {
@@ -63,6 +64,16 @@ internal class LineRecords(private val config: Config) {
         if (canonical == null) config.cleanEntry(PBX, id) else config.setString(PBX, id, canonical)
     }
 
+    /**
+     * Whether the login of account [id] (user, server, password) registered somewhere, on any
+     * network and transport, since it last changed.
+     */
+    fun proven(id: String): Boolean = config.getString(PROVEN, id, null) == "1"
+
+    fun storeProven(id: String, proven: Boolean) {
+        if (proven) config.setString(PROVEN, id, "1") else config.cleanEntry(PROVEN, id)
+    }
+
     private companion object {
         /** Section of the core configuration holding the [LineAdapt.Record]s, keyed by `account|network`. */
         const val SECTION = "siplink_line_adapt"
@@ -72,5 +83,8 @@ internal class LineRecords(private val config: Config) {
 
         /** Section holding, by account id, the next hop of its PBX's last call where nothing reaches that. */
         const val PBX = "siplink_line_pbx"
+
+        /** Section holding, by account id, "1" where the account's login registered ([proven]). */
+        const val PROVEN = "siplink_line_proven"
     }
 }

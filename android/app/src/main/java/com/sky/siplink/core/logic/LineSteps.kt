@@ -52,13 +52,21 @@ object LineSteps {
      * @param holds the network wants a login first
      * @param onTrial the line is on test ([onTrial]); a refusal on a settled line is the account's
      *   business (a changed password, a PBX that reloads), not its transport's
+     * @param proven the account's login registered before, anywhere, since it last changed. Only
+     *   then is a challenge (401, 407) on test the transport's refusal (Asterisk answers its
+     *   endpoint ACL with 401 too); else the login is wrong, and the line stays where it is, with
+     *   that error for the user to see.
      */
-    fun failure(code: Int, holds: Boolean, onTrial: Boolean): Failure = when {
+    fun failure(code: Int, holds: Boolean, onTrial: Boolean, proven: Boolean): Failure = when {
         holds -> Failure.NOTHING
         LineAdapt.isTransportFailure(code) -> Failure.CONFIRM
-        onTrial -> Failure.END_TRIAL
-        else -> Failure.NOTHING
+        !onTrial -> Failure.NOTHING
+        (code == UNAUTHORIZED || code == PROXY_AUTHENTICATION) && !proven -> Failure.NOTHING
+        else -> Failure.END_TRIAL
     }
+
+    private const val UNAUTHORIZED = 401
+    private const val PROXY_AUTHENTICATION = 407
 
     /** What changes for a line: the record to store, and the transport it now runs on for a test (null: none). */
     data class Change(val record: Record, val trial: SipTransport?)
