@@ -87,7 +87,7 @@ internal class AccountRouter(
         /** Checks in a row that found the server the account is on silent while it stayed ([ServerChoice.leavesNow]). */
         var strikes = 0
 
-        /** The network of the account's last successful registration. */
+        /** The network of the account's last successful registration on the server it is on; null after a failure or a move. */
         var registeredOn: String? = null
 
         /** The network on which a probe last found the first server silent; null: it answered there. */
@@ -438,7 +438,8 @@ internal class AccountRouter(
         var moves = move != Move.STAY && toBackup != onBackup
         val here = if (onBackup) check.backup else check.primary
         if (moves && !check.silentLeaves) {
-            val registeredHere = account.state == RegistrationState.Ok && state.registeredOn == network
+            // Registered there on this network, and not failed since: a refresh under way counts as registered.
+            val registeredHere = state.registeredOn != null && state.registeredOn == network
             if (!ServerChoice.leavesNow(here, registeredHere, state.strikes)) {
                 // Once silent on a server it registered on here: asked again at once before it leaves.
                 state.strikes++
@@ -487,6 +488,7 @@ internal class AccountRouter(
         dropCheck(state)
         state.failures = 0
         state.strikes = 0
+        state.registeredOn = null
         state.movedAt = SystemClock.elapsedRealtime()
         route(id, toBackup)
         afterMove(id)
@@ -564,6 +566,7 @@ internal class AccountRouter(
                 if (record.timeoutMs > 0 && record.backup.isNotEmpty() && due && state.check == null) handler.post { check(id) }
             }
             RegistrationState.Failed -> {
+                state.registeredOn = null
                 if (!AccountRoute.isServerDown(account.errorInfo.protocolCode) || holds()) return
                 state.failures++
                 val sinceMove = SystemClock.elapsedRealtime() - state.movedAt
