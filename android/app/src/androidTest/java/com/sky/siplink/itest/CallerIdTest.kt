@@ -140,11 +140,15 @@ class CallerIdTest : PbxTestBase() {
         // What the call log holds is what gets dialled again from there.
         dial(logged.address)
         awaitCall("the PBX to answer the redial") { it.phase == CallPhase.CONNECTED }
-        assertEquals("Wait", pbxChannel(pbxLeg(APP))?.get("Application"))
+        // The call is connected while the PBX still runs Answer(); Wait() of the same code follows.
+        await("the PBX to run $HASH_CODE", APPLICATION_TIMEOUT_MS) { pbxChannel(pbxLeg(APP))?.get("Application") == "Wait" }
     }
 
     private companion object {
         /** An extension of the test PBX with a character a SIP URI has to escape. */
         const val HASH_CODE = "#9"
+
+        /** From Answer() to Wait() of [HASH_CODE] (testenv/asterisk/config/extensions.conf). */
+        const val APPLICATION_TIMEOUT_MS = 10_000L
     }
 }
