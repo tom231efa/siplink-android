@@ -16,6 +16,7 @@
   "dashboard.attention.reg_failed": "註冊失敗：{summary}",
   "dashboard.attention.offline_since": "離線 · 最後同步",
   "dashboard.attention.book_full": "聯絡人數接近上限：{n} / {max}",
+  "dashboard.attention.more": "另有 {n} 個",
   "dashboard.attention.empty": "目前沒有待處理事項",
   "dashboard.activity.title": "最近操作",
   "dashboard.activity.system": "系統",

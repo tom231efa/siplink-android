@@ -16,6 +16,7 @@
   "dashboard.attention.reg_failed": "Ошибка регистрации: {summary}",
   "dashboard.attention.offline_since": "Не в сети · последняя синхронизация",
   "dashboard.attention.book_full": "Число контактов близко к пределу: {n} / {max}",
+  "dashboard.attention.more": "Ещё {n}",
   "dashboard.attention.empty": "Ничего не требует внимания",
   "dashboard.activity.title": "Последние действия",
   "dashboard.activity.system": "Система",

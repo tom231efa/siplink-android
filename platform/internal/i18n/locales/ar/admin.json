@@ -16,6 +16,7 @@
   "dashboard.attention.reg_failed": "فشل التسجيل: {summary}",
   "dashboard.attention.offline_since": "غير متصل · آخر مزامنة",
   "dashboard.attention.book_full": "عدد جهات الاتصال يقترب من الحد الأقصى: {n} / {max}",
+  "dashboard.attention.more": "وغيرها: {n}",
   "dashboard.attention.empty": "لا شيء يتطلب انتباهًا",
   "dashboard.activity.title": "النشاط الأخير",
   "dashboard.activity.system": "النظام",

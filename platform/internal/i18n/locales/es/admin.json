@@ -16,6 +16,7 @@
   "dashboard.attention.reg_failed": "Error de registro: {summary}",
   "dashboard.attention.offline_since": "Sin conexión · última sincronización",
   "dashboard.attention.book_full": "Contactos cerca del límite: {n} / {max}",
+  "dashboard.attention.more": "{n} más",
   "dashboard.attention.empty": "Nada requiere atención",
   "dashboard.activity.title": "Actividad reciente",
   "dashboard.activity.system": "Sistema",

@@ -16,6 +16,7 @@
   "dashboard.attention.reg_failed": "登録に失敗しました：{summary}",
   "dashboard.attention.offline_since": "オフライン · 最終同期",
   "dashboard.attention.book_full": "連絡先数が上限に近づいています：{n} / {max}",
+  "dashboard.attention.more": "ほか {n} 件",
   "dashboard.attention.empty": "要対応事項はありません",
   "dashboard.activity.title": "最近の操作",
   "dashboard.activity.system": "システム",

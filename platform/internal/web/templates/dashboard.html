@@ -16,9 +16,9 @@
     <ul class="legend">{{range $d.Bar}}<li><span class="dot {{.Class}}"></span>{{.Label}}<strong>{{.N}}</strong></li>{{end}}</ul>
   </a>
   <div class="tile-grid">
-    <a class="card tile card-link{{if $d.Offline}} is-warn{{end}}" href="/clients?status=offline">
+    <a class="card tile card-link{{if $d.OfflineTotal}} is-warn{{end}}" href="/clients?status=offline">
       <div class="tile-head"><span class="tile-icon">{{icon "clock"}}</span><span class="card-label">{{t "dashboard.offline"}}</span></div>
-      <div class="card-value">{{len $d.Offline}}</div>
+      <div class="card-value">{{$d.OfflineTotal}}</div>
     </a>
     <a class="card tile card-link" href="/books">
       <div class="tile-head"><span class="tile-icon">{{icon "book-user"}}</span><span class="card-label">{{t "nav.books"}}</span></div>
@@ -37,12 +37,14 @@
 
   <section class="card attention" id="attention" aria-labelledby="attention-title">
     <div class="card-head"><h2 id="attention-title">{{icon "circle-alert"}}{{t "dashboard.attention.title"}}</h2>
-      {{$n := add (len $d.Cert) (add (len $d.Trouble) (add (len $d.Offline) (len $d.Full)))}}{{if $n}}<span class="badge warn">{{$n}}</span>{{end}}</div>
+      {{$n := add (len $d.Cert) (add $d.TroubleTotal (add $d.OfflineTotal (len $d.Full)))}}{{if $n}}<span class="badge warn">{{$n}}</span>{{end}}</div>
     {{if $n}}
     <ul class="attention-list">
       {{range $d.Cert}}<li><span class="dot {{if eq .Level "error"}}bad{{else}}warn{{end}}"></span><div><a href="/system">{{t "dashboard.attention.cert"}}</a><span class="sub">{{msg .Text}}</span></div></li>{{end}}
       {{range $d.Trouble}}<li><span class="dot bad"></span><div><a dir="auto" class="fade" href="/clients/{{.ID}}">{{.Name}}</a><span class="sub">{{.Reason}}</span></div></li>{{end}}
+      {{with $d.TroubleMore}}<li><span class="dot bad"></span><div><span class="sub">{{t "dashboard.attention.more" "n" .}}</span></div></li>{{end}}
       {{range $d.Offline}}<li><span class="dot warn"></span><div><a dir="auto" class="fade" href="/clients/{{.ID}}">{{.Name}}</a><span class="sub">{{t "dashboard.attention.offline_since"}} {{since .LastSeen}}</span></div></li>{{end}}
+      {{with $d.OfflineMore}}<li><span class="dot warn"></span><div><a href="/clients?status=offline">{{t "dashboard.attention.more" "n" .}}</a></div></li>{{end}}
       {{range $d.Full}}<li><span class="dot warn"></span><div><a dir="auto" class="fade" href="/books/{{.ID}}">{{.Name}}</a><span class="sub">{{t "dashboard.attention.book_full" "n" .EntryCount "max" $d.Max}}</span></div></li>{{end}}
     </ul>
     {{else}}

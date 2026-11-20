@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -284,6 +285,11 @@ var offlineSince = `WITH offline_since(template_id, since) AS MATERIALIZED (SELE
 const offlineSQL = `NOT EXISTS (SELECT 1 FROM client_reports r, offline_since s
 	WHERE r.client_id = c.id AND s.template_id = c.client_template_id AND r.last_seen_at >= s.since)`
 
+// offlineJoinSQL is the rule of offlineSQL in a query that joins the client's row "s" of
+// offline_since and its report "r" (LEFT JOIN): the same answer without a subquery per
+// client, for the dashboard's pass over every bound client.
+const offlineJoinSQL = `COALESCE(r.last_seen_at, '') < s.since`
+
 // RefreshMinutes returns the refresh interval of each client's configuration template.
 func (s *Store) RefreshMinutes(ctx context.Context, ids []int64) (map[int64]int, error) {
 	out := map[int64]int{}
@@ -308,37 +314,109 @@ func (s *Store) RefreshMinutes(ctx context.Context, ids []int64) (map[int64]int,
 	return out, rows.Err()
 }
 
-// Attention is an active client with something to look at (dashboard).
+// Attention is a bound client with something to look at (dashboard).
 type Attention struct {
-	ID             int64
-	Name           string
-	LastSeenAt     string
-	RefreshMinutes int
-	ApplyError     string
-	BuildError     string
-	Registrations  string
+	ID            int64
+	Name          string
+	LastSeenAt    string
+	ApplyError    string
+	BuildError    string
+	Registrations string
 }
 
-// ActiveClients returns the active clients of a filter with what their reports say.
-func (s *Store) ActiveClients(ctx context.Context, f ClientFilter) ([]Attention, error) {
+// Attentions sums up the bound clients of a filter for the dashboard: how many are offline
+// (offlineSQL), how many are in trouble (troubleSQL) and how many are neither, with the
+// first clients of the two kinds in the order of the client list.
+type Attentions struct {
+	Offline, Trouble, Healthy int
+	OfflineRows, TroubleRows  []Attention
+}
+
+// troubleSQL is true for a client whose report "r" says that its configuration does not
+// validate, that the phone could not apply it or that an account failed to register.
+const troubleSQL = `(COALESCE(r.build_error, '') <> '' OR COALESCE(r.apply_error, '') <> ''
+	OR instr(COALESCE(r.registrations_json, ''), '"FAILED"') > 0)`
+
+// ClientAttention counts the bound clients of a filter that are offline at f.Now, in
+// trouble or neither, and returns up to limit clients of each of the first two kinds. One
+// pass in the order of the client list counts and picks them; their names and reports
+// are read for the picked clients only.
+func (s *Store) ClientAttention(ctx context.Context, f ClientFilter, limit int) (*Attentions, error) {
 	f.Status = StatusActive
 	_, where, args := f.where()
-	rows, err := s.DB.QueryContext(ctx, `SELECT c.id, c.name, COALESCE(r.last_seen_at, ''), f.refresh_minutes,
-		COALESCE(r.apply_error, ''), COALESCE(r.build_error, ''), COALESCE(r.registrations_json, '[]')
-		FROM clients c JOIN client_templates t ON t.id = c.client_template_id
-		JOIN config_templates f ON f.id = t.config_template_id
-		LEFT JOIN client_reports r ON r.client_id = c.id`+where+` ORDER BY c.name COLLATE NOCASE, c.id`, args...)
+	rows, err := s.DB.QueryContext(ctx, offlineSince+`SELECT c.id, `+offlineJoinSQL+`, `+troubleSQL+`
+		FROM clients c JOIN offline_since s ON s.template_id = c.client_template_id
+		LEFT JOIN client_reports r ON r.client_id = c.id`+where+` ORDER BY c.name COLLATE NOCASE, c.id`,
+		append([]any{f.nowText()}, args...)...)
+	if err != nil {
+		return nil, err
+	}
+	out := &Attentions{}
+	var offline, trouble []int64
+	for rows.Next() {
+		var id int64
+		var off, bad bool
+		if err := rows.Scan(&id, &off, &bad); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		if off {
+			out.Offline++
+			if len(offline) < limit {
+				offline = append(offline, id)
+			}
+		}
+		if bad {
+			out.Trouble++
+			if len(trouble) < limit {
+				trouble = append(trouble, id)
+			}
+		}
+		if !off && !bad {
+			out.Healthy++
+		}
+	}
+	err = rows.Err()
+	rows.Close()
+	if err != nil {
+		return nil, err
+	}
+	picked, err := s.attentionRows(ctx, append(slices.Clip(offline), trouble...))
+	if err != nil {
+		return nil, err
+	}
+	for _, id := range offline {
+		if a, ok := picked[id]; ok {
+			out.OfflineRows = append(out.OfflineRows, a)
+		}
+	}
+	for _, id := range trouble {
+		if a, ok := picked[id]; ok {
+			out.TroubleRows = append(out.TroubleRows, a)
+		}
+	}
+	return out, nil
+}
+
+// attentionRows reads the clients with these ids as Attention values, by id.
+func (s *Store) attentionRows(ctx context.Context, ids []int64) (map[int64]Attention, error) {
+	out := map[int64]Attention{}
+	if len(ids) == 0 {
+		return out, nil
+	}
+	rows, err := s.DB.QueryContext(ctx, `SELECT c.id, c.name, COALESCE(r.last_seen_at, ''), COALESCE(r.apply_error, ''),
+		COALESCE(r.build_error, ''), COALESCE(r.registrations_json, '[]') FROM clients c
+		LEFT JOIN client_reports r ON r.client_id = c.id WHERE c.id IN (`+placeholders(len(ids))+`)`, int64Args(ids)...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var out []Attention
 	for rows.Next() {
 		var a Attention
-		if err := rows.Scan(&a.ID, &a.Name, &a.LastSeenAt, &a.RefreshMinutes, &a.ApplyError, &a.BuildError, &a.Registrations); err != nil {
+		if err := rows.Scan(&a.ID, &a.Name, &a.LastSeenAt, &a.ApplyError, &a.BuildError, &a.Registrations); err != nil {
 			return nil, err
 		}
-		out = append(out, a)
+		out[a.ID] = a
 	}
 	return out, rows.Err()
 }

@@ -2,7 +2,6 @@ package web
 
 import (
 	"net/http"
-	"strings"
 
 	"siplink/internal/pki"
 	"siplink/internal/store"
@@ -19,12 +18,22 @@ type dashboardData struct {
 	Names   map[int64]string // region names for the audit table
 	Active  int
 	Pending int
-	Offline []attentionRow // store.Offline
-	Trouble []attentionRow // apply errors, invalid configuration, failed registrations
-	Cert    []pki.Notice   // super only: the operator's certificate expires soon or has expired
-	Healthy int            // bound clients that are neither offline nor in trouble
-	Bar     []barSegment   // the client tile's stacked bar
+	Offline []attentionRow // the first attentionRows offline clients (store.ClientAttention)
+	Trouble []attentionRow // the first attentionRows with an apply error, invalid configuration or failed registration
+	// OfflineTotal and TroubleTotal count all of them.
+	OfflineTotal, TroubleTotal int
+	Cert                       []pki.Notice // super only: the operator's certificate expires soon or has expired
+	Healthy                    int          // bound clients that are neither offline nor in trouble
+	Bar                        []barSegment // the client tile's stacked bar
 }
+
+// attentionRows is how many clients of each kind the attention list shows; the offline
+// ones that do not fit are a link to the client list's offline filter.
+const attentionRows = 10
+
+// OfflineMore and TroubleMore are the clients the attention list leaves out.
+func (d dashboardData) OfflineMore() int { return d.OfflineTotal - len(d.Offline) }
+func (d dashboardData) TroubleMore() int { return d.TroubleTotal - len(d.Trouble) }
 
 // barSegment is one part of a stacked bar drawn as SVG (widths in % of the bar; inline
 // styles are not allowed by the CSP, SVG attributes are).
@@ -98,29 +107,28 @@ func (s *Server) dashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	d.Active, d.Pending = counts[store.StatusActive], counts[store.StatusPending]
-	active, err := s.St.ActiveClients(ctx, scope)
+	scope.Now = s.Now()
+	att, err := s.St.ClientAttention(ctx, scope, attentionRows)
 	if err != nil {
 		s.internal(w, r, err)
 		return
 	}
-	now, t := s.Now(), tr(r)
-	for _, c := range active {
-		offline := store.Offline(c.LastSeenAt, c.RefreshMinutes, now)
-		if offline {
-			d.Offline = append(d.Offline, attentionRow{ID: c.ID, Name: c.Name, LastSeen: c.LastSeenAt})
-		}
-		trouble := len(d.Trouble)
+	t := tr(r)
+	d.OfflineTotal, d.TroubleTotal, d.Healthy = att.Offline, att.Trouble, att.Healthy
+	for _, c := range att.OfflineRows {
+		d.Offline = append(d.Offline, attentionRow{ID: c.ID, Name: c.Name, LastSeen: c.LastSeenAt})
+	}
+	for _, c := range att.TroubleRows {
+		row := attentionRow{ID: c.ID, Name: c.Name}
 		switch {
 		case c.BuildError != "":
-			d.Trouble = append(d.Trouble, attentionRow{ID: c.ID, Name: c.Name, Reason: t.T("dashboard.attention.invalid_config")})
+			row.Reason = t.T("dashboard.attention.invalid_config")
 		case c.ApplyError != "":
-			d.Trouble = append(d.Trouble, attentionRow{ID: c.ID, Name: c.Name, Reason: t.T("dashboard.attention.apply_failed", "err", truncate(c.ApplyError, 80))})
-		case strings.Contains(c.Registrations, `"FAILED"`):
-			d.Trouble = append(d.Trouble, attentionRow{ID: c.ID, Name: c.Name, Reason: t.T("dashboard.attention.reg_failed", "summary", regSummary(t, c.Registrations))})
+			row.Reason = t.T("dashboard.attention.apply_failed", "err", truncate(c.ApplyError, 80))
+		default:
+			row.Reason = t.T("dashboard.attention.reg_failed", "summary", regSummary(t, c.Registrations))
 		}
-		if !offline && len(d.Trouble) == trouble {
-			d.Healthy++
-		}
+		d.Trouble = append(d.Trouble, row)
 	}
 	d.Bar = stackedBar(barSegment{Class: "ok", Label: t.T("dashboard.bar.healthy"), N: d.Healthy},
 		barSegment{Class: "warn", Label: t.T("dashboard.bar.attention"), N: d.Active - d.Healthy},

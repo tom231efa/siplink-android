@@ -144,6 +144,9 @@ type ClientFilter struct {
 	Offset   int
 }
 
+// nowText is the moment StatusOffline is judged at, in the stored form.
+func (f ClientFilter) nowText() string { return f.Now.UTC().Format(TimeFormat) }
+
 // where returns the parts of a query of clients "c" that the filter adds: with defines
 // offline_since when the filter needs it and goes in front of the SELECT; where is the
 // WHERE clause; args are the arguments of both, in this order.
@@ -176,7 +179,7 @@ func (f ClientFilter) where() (with, where string, args []any) {
 	case StatusOffline:
 		with = offlineSince
 		conds = append(conds, "c.status = ?", offlineSQL)
-		args = append([]any{f.Now.UTC().Format(TimeFormat)}, append(args, StatusActive)...)
+		args = append([]any{f.nowText()}, append(args, StatusActive)...)
 	default:
 		conds, args = append(conds, "c.status = ?"), append(args, f.Status)
 	}

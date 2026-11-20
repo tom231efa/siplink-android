@@ -276,6 +276,13 @@ func TestClientFilterOfflineAndPages(t *testing.T) {
 	if total != len(list) || len(list) < 6 {
 		t.Errorf("offline: %d of total %d", len(list), total)
 	}
+	// The dashboard counts by the same rule and lists the first ones in the list's order.
+	att, err := st.ClientAttention(ctx, store.ClientFilter{All: true, Now: now}, 3)
+	must(err)
+	if att.Offline != len(list) || len(att.OfflineRows) != 3 || att.OfflineRows[0].Name != list[0].Name ||
+		att.OfflineRows[2].Name != list[2].Name || att.Trouble != 0 || att.Healthy != len(want)-len(list) {
+		t.Errorf("dashboard: %+v", att)
+	}
 	all := len(want) + 1
 	for _, limit := range []int{1, 4, 7, all, all + 1} {
 		for page := 0; page*limit <= all+limit; page++ {
