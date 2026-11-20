@@ -62,6 +62,7 @@ internal class CallRetry(
         if (!placed) return
         Log.i(TAG, "A call out got no answer from a server out of reach: placed again over the other server")
         superseded += call.nativePointer
+        accounts.supersede(call)
         call.terminate()
     }
 

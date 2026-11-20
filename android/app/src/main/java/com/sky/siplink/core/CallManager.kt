@@ -176,7 +176,12 @@ class CallManager(
         val account = old.params.account
         if (!same(old, current) || room.isOpen || account == null) return false
         val kind = Pending(metaOf(old).supervision, consultation = false)
-        return place(old.remoteAddress.clone(), account, kind, old.params.isVideoEnabled) != null
+        val placed = place(old.remoteAddress.clone(), account, kind, old.params.isVideoEnabled) ?: return false
+        // What the user set for the call before it rang, the microphone and where the sound goes, stays.
+        placed.microphoneMuted = old.microphoneMuted
+        old.outputAudioDevice?.let { placed.outputAudioDevice = it }
+        old.inputAudioDevice?.let { placed.inputAudioDevice = it }
+        return true
     }
 
     // ---------------------------------------------------------------- answering / ending
