@@ -76,10 +76,59 @@ class LineStepsTest {
         assertNull(back.record.transport)
         assertNull(back.record.left)
         assertEquals(setOf(TCP), back.record.failed)
+        assertEquals(now + day, back.record.failedUntil)
         // Refused, the transport counts as open even where the probe found nothing: the server answered on it.
-        val refusedEverywhere = LineSteps.afterFailure(Record(transport = TLS, failed = setOf(TCP)), UDP, TLS, TLS, down, refused = true, now = now)!!
+        val refusedEverywhere = LineSteps.afterFailure(Record(transport = TLS, failed = setOf(TCP), failedUntil = now + day), UDP, TLS, TLS, down, refused = true, now = now)!!
         assertNull(refusedEverywhere.record.transport)
         assertEquals(setOf(TCP, TLS), refusedEverywhere.record.failed)
+    }
+
+    @Test
+    fun `a transport on test that is closed, with udp not known, sends the line back to its own one`() {
+        val unknown = Probe(udp = null, udpLarge = null, tcp = true, tls = false)
+        val back = LineSteps.afterFailure(Record(transport = TLS, registered = true), UDP, TLS, TLS, unknown, refused = false, now = now)!!
+        assertNull(back.trial)
+        assertNull(back.record.transport)
+        assertFalse(back.record.registered)
+        assertEquals(emptySet<Any>(), back.record.failed)
+    }
+
+    @Test
+    fun `a transport that did not register is tried again once its time is over`() {
+        val refused = LineSteps.afterFailure(Record(transport = TCP), UDP, TCP, TCP, blocked.copy(tls = false), refused = true, now = now)!!
+        assertEquals(setOf(TCP), LineAdapt.failedAt(refused.record, now + day - 1))
+        assertEquals(emptySet<Any>(), LineAdapt.failedAt(refused.record, now + day))
+        // Before then UDP that gets no answer finds nothing to try; after it, TCP again.
+        assertNull(LineSteps.afterFailure(refused.record, UDP, UDP, null, blocked.copy(tls = false), refused = false, now = now + 1))
+        val later = LineSteps.afterFailure(refused.record, UDP, UDP, null, blocked.copy(tls = false), refused = false, now = now + day)!!
+        assertEquals(TCP, later.trial)
+        assertEquals(emptySet<Any>(), later.record.failed)
+        // A new password: what was refused may register now.
+        val changed = LineSteps.credentialsChanged(refused.record)
+        assertEquals(emptySet<Any>(), changed.failed)
+        assertEquals(0L, changed.failedUntil)
+    }
+
+    @Test
+    fun `a line is on test until it registered on its transport, then a refusal is the account's business`() {
+        // Just moved, or back on its own transport for a test.
+        assertTrue(LineSteps.onTrial(TCP, null, TCP, UDP, Record(transport = TCP)))
+        assertTrue(LineSteps.onTrial(null, TCP, UDP, UDP, Record()))
+        // Found on TCP at a start, never registered there.
+        assertTrue(LineSteps.onTrial(null, null, TCP, UDP, Record(transport = TCP)))
+        assertTrue(LineSteps.onTrial(null, null, TCP, UDP, null))
+        // Registered there once: settled, a 401 after a password change on the PBX changes nothing.
+        val settled = LineSteps.registeredOn(Record(transport = TCP), TCP)
+        assertTrue(settled.registered)
+        assertFalse(LineSteps.onTrial(null, null, TCP, UDP, settled))
+        assertEquals(Failure.NOTHING, LineSteps.failure(401, holds = false, onTrial = false))
+        // On its own transport nothing is marked.
+        assertFalse(LineSteps.registeredOn(Record(), UDP).registered)
+        assertFalse(LineSteps.onTrial(null, null, UDP, UDP, null))
+        // The mark goes with the transport: moved on, the line is on test again.
+        val moved = LineSteps.afterFailure(settled, UDP, TCP, TCP, blocked, refused = false, now = now)!!
+        assertEquals(TLS, moved.record.transport)
+        assertFalse(moved.record.registered)
     }
 
     @Test
@@ -96,20 +145,27 @@ class LineStepsTest {
     fun `a test of the own transport that fails goes back to what worked, with a longer wait`() {
         val back = LineSteps.revertFailed(Record(transport = null, reverts = 1, backAt = now - 10), TCP, now)
         assertEquals(TCP, back.transport)
+        assertTrue(back.registered)
         assertEquals(2, back.reverts)
         assertEquals(now + 4 * day, back.retestAt)
         assertEquals(0L, back.backAt)
+        // To TLS, where it went because nothing else got through, a week.
+        assertEquals(now + 7 * day, LineSteps.revertFailed(Record(), TLS, now).retestAt)
     }
 
     @Test
-    fun `the own transport is tested again when it is time, between calls, and never from tls`() {
+    fun `the own transport is tested again when it is time, between calls, from tls after a week`() {
         val onTcp = Record(transport = TCP, retestAt = now)
         assertTrue(LineSteps.retestDue(onTcp, now, calls = 0))
         assertFalse(LineSteps.retestDue(onTcp, now - 1, calls = 0))
         assertFalse(LineSteps.retestDue(onTcp, now, calls = 1))
         assertFalse(LineSteps.retestDue(Record(), now, calls = 0))
-        // From TLS the probe would send a request in clear: the line stays on TLS there.
-        assertFalse(LineSteps.retestDue(Record(transport = TLS, retestAt = now), now, calls = 0))
+        // An account set to UDP registers in clear anyway: its line on TLS asks over UDP as well.
+        assertTrue(LineSteps.retestDue(Record(transport = TLS, retestAt = now), now, calls = 0))
+        val toTls = LineSteps.afterFailure(Record(), UDP, UDP, null, blocked.copy(tcp = false), refused = false, now = now)!!
+        assertEquals(TLS, toTls.record.transport)
+        assertEquals(now + 7 * day, toTls.record.retestAt)
+        assertEquals(now + 7 * day, LineSteps.afterRetest(toTls.record, blocked, calls = 0, now = now).first.retestAt)
     }
 
     @Test
@@ -142,6 +198,8 @@ class LineStepsTest {
         val (back, goes) = LineSteps.afterRetest(left.record, open, calls = 0, now = due)
         assertTrue(goes)
         assertEquals(due, back.backAt)
+        // At the short interval at once: the NAT that forgot it within the long one is not given the chance.
+        assertEquals(LineAdapt.SHORT_EXPIRES, back.expires)
         val registered = LineSteps.returned(back)
         assertEquals(Leave.NAT_FORGETS, registered.left)
         assertEquals(due, registered.backAt)

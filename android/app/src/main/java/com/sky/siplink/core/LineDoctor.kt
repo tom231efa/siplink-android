@@ -143,9 +143,10 @@ internal class LineDoctor(
     /**
      * Before the user's change of account [id] goes into [params]: puts its own settings back in
      * there, and with [forget] (its servers or transport changed) drops what was learned for it.
-     * [reapply] follows once the change is in the core.
+     * With [credentials] (its user, server or password changed) the transports that did not
+     * register may register now. [reapply] follows once the change is in the core.
      */
-    fun release(id: String, params: AccountParams, forget: Boolean) {
+    fun release(id: String, params: AccountParams, forget: Boolean, credentials: Boolean) {
         records.own(id)?.let { own ->
             putOwn(params, own)
             records.storeOwn(id, null)
@@ -153,6 +154,8 @@ internal class LineDoctor(
         if (forget) {
             records.forget(id)
             records.storePbxHop(id, null)
+        } else if (credentials) {
+            records.changeAll(id, LineSteps::credentialsChanged)
         }
         states.remove(id)?.let(::cancel)
     }
@@ -248,6 +251,7 @@ internal class LineDoctor(
             state.revertTo = null
             record = LineSteps.returned(record)
         }
+        record = LineSteps.registeredOn(record, transportOf(account.params.serverAddress))
         record = LineAdapt.bindingSteady(watchBinding(account, id, state, record, now), now)
         record = LineSteps.held(record, now)
         if (!record.isPlain && now - record.usedAt > USED_AT_STEP_MS) record = record.copy(usedAt = now)
@@ -308,7 +312,8 @@ internal class LineDoctor(
      * again, when it is time.
      */
     private fun failed(account: Account, id: String, state: State) {
-        val onTrial = state.revertTo != null || state.trial != null || transportOf(account.params.serverAddress) != ownTransport(id, account)
+        val current = transportOf(account.params.serverAddress)
+        val onTrial = LineSteps.onTrial(state.trial, state.revertTo, current, ownTransport(id, account), records.record(id, network))
         when (LineSteps.failure(account.errorInfo.protocolCode, holds(), onTrial)) {
             LineSteps.Failure.NOTHING -> cancelConfirm(state)
             LineSteps.Failure.END_TRIAL -> {

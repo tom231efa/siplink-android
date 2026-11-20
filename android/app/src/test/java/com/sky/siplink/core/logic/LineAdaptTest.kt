@@ -17,8 +17,9 @@ class LineAdaptTest {
 
     @Test
     fun `records survive being stored`() {
-        val record = Record(TCP, 300, setOf(TLS), 123, 2, listOf(5, 6), 99, MediaAdapt.Ice.ON, 456, LineAdapt.Leave.NAT_FORGETS, 789, 3, 1)
+        val record = Record(TCP, 300, setOf(TLS), 123, 2, listOf(5, 6), 99, MediaAdapt.Ice.ON, 456, LineAdapt.Leave.NAT_FORGETS, 789, 3, 1, true, 321)
         assertEquals(record, LineAdapt.decode(LineAdapt.encode(record)))
+        assertEquals(record.copy(registered = false), LineAdapt.decode(LineAdapt.encode(record.copy(registered = false))))
         assertEquals(Record(), LineAdapt.decode(LineAdapt.encode(Record())))
         assertNull(LineAdapt.decode("TCP|300"))
         assertNull(LineAdapt.decode(null))
@@ -32,7 +33,13 @@ class LineAdaptTest {
     @Test
     fun `a record written before the last fields came is read with them empty`() {
         val before = "TCP|300|TLS|123|2|5,6|99|ON|456"
-        assertEquals(Record(TCP, 300, setOf(TLS), 123, 2, listOf(5, 6), 99, MediaAdapt.Ice.ON, 456), LineAdapt.decode(before))
+        // What failed holds until the retest of then.
+        assertEquals(Record(TCP, 300, setOf(TLS), 123, 2, listOf(5, 6), 99, MediaAdapt.Ice.ON, 456, failedUntil = 123), LineAdapt.decode(before))
+        val withIce = "TCP|300|TLS|123|2|5,6|99|ON|456|NAT_FORGETS|789|3|1"
+        assertEquals(
+            Record(TCP, 300, setOf(TLS), 123, 2, listOf(5, 6), 99, MediaAdapt.Ice.ON, 456, LineAdapt.Leave.NAT_FORGETS, 789, 3, 1, failedUntil = 123),
+            LineAdapt.decode(withIce),
+        )
     }
 
     @Test
@@ -118,6 +125,11 @@ class LineAdaptTest {
         // An account that registers this often by itself: two losses are enough.
         val often = LineAdapt.bindingLost(LineAdapt.bindingLost(Record(), 120, 1_000), 120, 2_000)
         assertTrue(LineAdapt.bindingHopeless(often, 120))
+        // Back on UDP after the NAT forgot it, at the short interval from the start: two losses are enough.
+        val back = Record(expires = LineAdapt.SHORT_EXPIRES, backAt = 500)
+        val once = LineAdapt.bindingLost(back, 3600, 1_000)
+        assertFalse(LineAdapt.bindingHopeless(once, 3600))
+        assertTrue(LineAdapt.bindingHopeless(LineAdapt.bindingLost(once, 3600, 2_000), 3600))
     }
 
     @Test
@@ -127,6 +139,10 @@ class LineAdaptTest {
         val back = LineAdapt.bindingSteady(short, 2_000 + day)
         assertNull(back.expires)
         assertTrue(back.lost.isEmpty())
+        // Back on UDP at the short interval, without a loss yet: a day after the return.
+        val returned = Record(expires = LineAdapt.SHORT_EXPIRES, backAt = 5_000)
+        assertEquals(LineAdapt.SHORT_EXPIRES, LineAdapt.bindingSteady(returned, 5_000 + day - 1).expires)
+        assertNull(LineAdapt.bindingSteady(returned, 5_000 + day).expires)
     }
 
     @Test

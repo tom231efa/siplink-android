@@ -283,7 +283,7 @@ class AccountManager(private val core: Core, private val lock: ConfigLock) {
 
         val params = account.params.clone()
         // What the line adapted to goes, and is learned anew where the way to the server changed.
-        doctor.release(id, params, forget = rerouted)
+        doctor.release(id, params, forget = rerouted, credentials = credentialsChanged || password != savedPassword)
         applyParams(id, params, draft, identity, server)
         account.params = params
         if (rerouted) router.begin(id)

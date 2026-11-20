@@ -29,6 +29,15 @@ internal class LineRecords(private val config: Config) {
         keys().filter { LineAdapt.accountOf(it) == id }.forEach { config.cleanEntry(SECTION, it) }
     }
 
+    /** Changes what was learned for account [id] on every network by [change]. */
+    fun changeAll(id: String, change: (LineAdapt.Record) -> LineAdapt.Record) {
+        for (key in keys().filter { LineAdapt.accountOf(it) == id }) {
+            val record = LineAdapt.decode(config.getString(SECTION, key, null)) ?: continue
+            val next = change(record)
+            if (next.isPlain) config.cleanEntry(SECTION, key) else if (next != record) config.setString(SECTION, key, LineAdapt.encode(next))
+        }
+    }
+
     /** Forgets everything that was learned. */
     fun forgetAll() = config.cleanSection(SECTION)
 

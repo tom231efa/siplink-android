@@ -32,6 +32,10 @@ object LineAdapt {
      * @param iceRetests how often ICE in use was given up and the line needed it again: the next
      *   time it is given up later ([retestDelay])
      * @param iceCalls calls with ICE on trial that told nothing ([MediaAdapt.TRIAL_CALLS])
+     * @param registered the line registered on [transport] at least once: it is settled there, and a
+     *   refusal of the server is the account's business from then on, not the transport's
+     * @param failedUntil until when [failed] holds (ms since the epoch); after that every transport
+     *   is tried again ([failedAt])
      */
     data class Record(
         val transport: SipTransport? = null,
@@ -47,6 +51,8 @@ object LineAdapt {
         val backAt: Long = 0,
         val iceRetests: Int = 0,
         val iceCalls: Int = 0,
+        val registered: Boolean = false,
+        val failedUntil: Long = 0,
     ) {
         /** Nothing in effect and nothing to remember. */
         val isPlain: Boolean
@@ -82,12 +88,14 @@ object LineAdapt {
         record.backAt.toString(),
         record.iceRetests.toString(),
         record.iceCalls.toString(),
+        if (record.registered) "1" else "",
+        record.failedUntil.toString(),
     ).joinToString(SEPARATOR.toString())
 
-    /** The record of [text]; null for none. One written before the last four fields came lacks them. */
+    /** The record of [text]; null for none. One written before the last fields came lacks them, and has them empty. */
     fun decode(text: String?): Record? {
         val fields = text?.split(SEPARATOR) ?: return null
-        if (fields.size != FIELDS && fields.size != FIELDS_BEFORE) return null
+        if (fields.size !in FIELDS_FIRST..FIELDS) return null
         return Record(
             transport = SipTransport.entries.firstOrNull { it.name == fields[0] },
             expires = fields[1].toIntOrNull(),
@@ -102,11 +110,17 @@ object LineAdapt {
             backAt = fields.getOrNull(10)?.toLongOrNull() ?: 0,
             iceRetests = fields.getOrNull(11)?.toIntOrNull() ?: 0,
             iceCalls = fields.getOrNull(12)?.toIntOrNull() ?: 0,
+            registered = fields.getOrNull(13) == "1",
+            // A record from before the expiry keeps what failed until its retest.
+            failedUntil = fields.getOrNull(14)?.toLongOrNull() ?: fields[3].toLongOrNull() ?: 0,
         )
     }
 
-    private const val FIELDS = 13
-    private const val FIELDS_BEFORE = 9
+    private const val FIELDS = 15
+    private const val FIELDS_FIRST = 9
+
+    /** The transports that did not register here and are not tried again at [now] ([Record.failedUntil]). */
+    fun failedAt(record: Record, now: Long): Set<SipTransport> = if (now < record.failedUntil) record.failed else emptySet()
 
     /**
      * Whether a registration that failed with SIP status [code] may be the network's doing: no
@@ -178,6 +192,12 @@ object LineAdapt {
     /** When to test again after the line needed another transport [reverts] times after going back: a day, doubling up to a week. */
     fun retestDelay(reverts: Int): Long = (DAY_MS shl reverts.coerceIn(0, 3)).coerceAtMost(MAX_RETEST_MS)
 
+    /**
+     * When a line on [transport] tests its own one again: as [retestDelay], and after a week from
+     * TLS, where it went only because neither UDP nor TCP got through.
+     */
+    fun retestAfter(transport: SipTransport?, reverts: Int): Long = if (transport == SipTransport.TLS) MAX_RETEST_MS else retestDelay(reverts)
+
     /** The registration interval used while the NAT forgets the line ([bindingLost]). */
     const val SHORT_EXPIRES = 300
 
@@ -204,12 +224,16 @@ object LineAdapt {
      */
     fun bindingHopeless(record: Record, ownExpires: Int): Boolean {
         if ((record.expires ?: ownExpires) > SHORT_EXPIRES) return false
-        return record.lost.size >= if (ownExpires > SHORT_EXPIRES) LOSSES_TO_ACT * 2 else LOSSES_TO_ACT
+        // Back on UDP after the NAT forgot it, the line starts at the short interval: its losses there count at once.
+        val shortenedHere = ownExpires > SHORT_EXPIRES && record.backAt == 0L
+        return record.lost.size >= if (shortenedHere) LOSSES_TO_ACT * 2 else LOSSES_TO_ACT
     }
 
-    /** The record after a day without a loss: the account's own interval again. */
-    fun bindingSteady(record: Record, now: Long): Record =
-        if (record.expires != null && record.lost.all { now - it >= DAY_MS }) record.copy(expires = null, lost = emptyList()) else record
+    /** The record after a day without a loss, a day after the line came back to UDP as well: the account's own interval again. */
+    fun bindingSteady(record: Record, now: Long): Record {
+        val steady = record.lost.all { now - it >= DAY_MS } && (record.backAt == 0L || now - record.backAt >= DAY_MS)
+        return if (record.expires != null && steady) record.copy(expires = null, lost = emptyList()) else record
+    }
 
     /** Records that are not used for this long are forgotten. */
     const val KEEP_MS = 30 * DAY_MS
