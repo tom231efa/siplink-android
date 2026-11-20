@@ -93,12 +93,16 @@ class CallTally(private val startedAt: Long, val judged: Boolean) {
         return now - heardAt >= if (heardSince) GAP_AFTER_MS else LineVerdict.SILENT_AFTER_MS
     }
 
-    /** What the other side's reports said of this phone's sound by [now]: silence counts once they came for [LineVerdict.SILENT_AFTER_MS]. */
+    /**
+     * What the other side's reports said of this phone's sound by [now]. Their silence counts once
+     * they came for [FAR_SILENT_MS]: the first report may be sent before any of this phone's
+     * packets arrived, the second one no longer.
+     */
     fun farReports(now: Long): FarReports {
         val since = farSince
         return when {
             aboutUs -> FarReports.ABOUT_US
-            since != null && now - since >= LineVerdict.SILENT_AFTER_MS -> FarReports.SILENT
+            since != null && now - since >= FAR_SILENT_MS -> FarReports.SILENT
             else -> FarReports.NONE
         }
     }
@@ -112,5 +116,8 @@ class CallTally(private val startedAt: Long, val judged: Boolean) {
     companion object {
         /** How long sound may pause after some came in before the call says none comes. The SIP core itself gives up after 30 seconds. */
         const val GAP_AFTER_MS = 15_000L
+
+        /** Two RTCP intervals of the least 5 seconds RFC 3550 §6.2 recommends between reports. */
+        const val FAR_SILENT_MS = 10_000L
     }
 }

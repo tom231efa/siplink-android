@@ -62,13 +62,15 @@ class CallTallyTest {
         tally.take(sample(100, 90), start + 1_000)
         assertEquals(FarReports.NONE, tally.farReports(start + 1_000))
         assertEquals(MediaFlow.BOTH, tally.flow(start + 1_000))
-        // Its reports come, none about this phone's stream.
+        // Its reports come, none about this phone's stream. The first one may have been sent
+        // before this phone's packets arrived: only two report intervals without one count.
         tally.take(sample(300, 280, farRtcp = true), start + 3_000)
-        assertEquals(FarReports.NONE, tally.farReports(start + 3_000 + LineVerdict.SILENT_AFTER_MS - 1))
-        assertEquals(FarReports.SILENT, tally.farReports(start + 3_000 + LineVerdict.SILENT_AFTER_MS))
-        assertEquals(MediaFlow.RECEIVE_ONLY, tally.flow(start + 10_000))
+        assertEquals(FarReports.NONE, tally.farReports(start + 3_000 + CallTally.FAR_SILENT_MS - 1))
+        assertEquals(MediaFlow.BOTH, tally.flow(start + 3_000 + CallTally.FAR_SILENT_MS - 1))
+        assertEquals(FarReports.SILENT, tally.farReports(start + 3_000 + CallTally.FAR_SILENT_MS))
+        assertEquals(MediaFlow.RECEIVE_ONLY, tally.flow(start + 3_000 + CallTally.FAR_SILENT_MS))
         // One report about it is enough.
-        tally.take(sample(500, 480, farRtcp = true, aboutUs = true), start + 11_000)
+        tally.take(sample(500, 480, farRtcp = true, aboutUs = true), start + 14_000)
         assertEquals(FarReports.ABOUT_US, tally.farReports(start + 20_000))
         assertEquals(MediaFlow.BOTH, tally.flow(start + 20_000))
     }
