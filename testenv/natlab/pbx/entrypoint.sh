@@ -10,6 +10,9 @@
 #   6001-6010  as 1001-1010, on port 5064, which announces the box's address for SIP
 #              (LAB_SIGNALLING_PORT) and the PBX's own address for the sound: a PBX that knows its
 #              external signalling address but not its media address
+#   7001-7010  as 1001-1010, with one registration that stands until it expires: a second one
+#              (another contact, as over another transport) is refused with 403 (max_contacts = 1,
+#              remove_existing = no)
 #   600        answers and echoes        601  answers and sends a tone        602  answers, silent
 #
 # The PBX sits behind the NAT box and announces the box's client-side address (LAB_ADDRESS, SIP
@@ -112,13 +115,17 @@ endpoint/ice_support = yes
 [signalling](!,handling)
 endpoint/transport = transport-signalling
 
+[single](!,nat)
+aor/remove_existing = no
+
 EOF
-  for first in 1000 3000 4000 5000 6000; do
+  for first in 1000 3000 4000 5000 6000 7000; do
     template=nat
     [ "$first" = 3000 ] && template=plain
     [ "$first" = 4000 ] && template=behind
     [ "$first" = 5000 ] && template=ice
     [ "$first" = 6000 ] && template=signalling
+    [ "$first" = 7000 ] && template=single
     i=1
     while [ "$i" -le 10 ]; do
       n=$((first + i))
@@ -134,7 +141,7 @@ static = yes
 writeprotect = yes
 
 [internal]
-exten => _[13456]0XX,1,Dial(PJSIP/${EXTEN},25)
+exten => _[134567]0XX,1,Dial(PJSIP/${EXTEN},25)
  same => n,Hangup()
 
 exten => 600,1,Answer()

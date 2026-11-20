@@ -8,12 +8,14 @@ package main
 //	mode cone|symmetric   cone keeps a client's port for every destination; symmetric takes a
 //	                      new random one for each (masquerade fully-random)
 //	udp-sip on|off        off: UDP to port 5060 is dropped (TCP still gets through)
-//	max-udp N             UDP packets longer than N bytes (IP header included) are dropped; 0: none
+//	fragments on|off      off: IP fragments from the clients are dropped, as some NATs and
+//	                      firewalls do: a datagram larger than the path's MTU (1500), such as an
+//	                      INVITE with a video offer or ICE candidates, never arrives
 //	timeout N             UDP mappings are forgotten after N seconds without traffic; 0: the default
 //	alg on|off            on: SIP over UDP passes the ALG of alg.go
 //	rtp on|off|half       off: RTP between the clients and the PBX is dropped, both ways; half:
 //	                      only on its way to the clients (they send and hear nothing)
-//	reset                 all of the above back to the start: cone, on, 0, 0, off, on
+//	reset                 all of the above back to the start: cone, on, on, 0, off, on
 //	state                 tells the settings
 //
 // Like a home router, the box drops what comes to its own address from the PBX's side unasked: a
@@ -39,7 +41,7 @@ import (
 type labState struct {
 	symmetric bool
 	udpSip    bool
-	maxUDP    int
+	fragments bool
 	timeout   int
 	alg       bool
 	rtp       string // on, off or half
@@ -50,7 +52,7 @@ func (s labState) String() string {
 	if s.symmetric {
 		mode = "symmetric"
 	}
-	return fmt.Sprintf("mode=%s udp-sip=%s max-udp=%d timeout=%d alg=%s rtp=%s", mode, onOff(s.udpSip), s.maxUDP, s.timeout, onOff(s.alg), s.rtp)
+	return fmt.Sprintf("mode=%s udp-sip=%s fragments=%s timeout=%d alg=%s rtp=%s", mode, onOff(s.udpSip), onOff(s.fragments), s.timeout, onOff(s.alg), s.rtp)
 }
 
 func onOff(b bool) string {
@@ -60,7 +62,7 @@ func onOff(b bool) string {
 	return "off"
 }
 
-var startState = labState{udpSip: true, rtp: "on"}
+var startState = labState{udpSip: true, fragments: true, rtp: "on"}
 
 // The ALG listens here, on the client side of the box; SIP over UDP is sent to it while it is on.
 const algPort = 5070
@@ -151,22 +153,21 @@ func (b *box) command(words []string) string {
 		next.symmetric = words[1] == "symmetric"
 	case words[0] == "rtp" && len(words) == 2 && (words[1] == "on" || words[1] == "off" || words[1] == "half"):
 		next.rtp = words[1]
-	case (words[0] == "udp-sip" || words[0] == "alg") && len(words) == 2 && (words[1] == "on" || words[1] == "off"):
-		if words[0] == "alg" {
+	case (words[0] == "udp-sip" || words[0] == "alg" || words[0] == "fragments") && len(words) == 2 && (words[1] == "on" || words[1] == "off"):
+		switch words[0] {
+		case "alg":
 			next.alg = words[1] == "on"
-		} else {
+		case "fragments":
+			next.fragments = words[1] == "on"
+		default:
 			next.udpSip = words[1] == "on"
 		}
-	case (words[0] == "max-udp" || words[0] == "timeout") && len(words) == 2:
+	case words[0] == "timeout" && len(words) == 2:
 		n, err := strconv.Atoi(words[1])
 		if err != nil || n < 0 {
 			return "error not a number: " + words[1]
 		}
-		if words[0] == "max-udp" {
-			next.maxUDP = n
-		} else {
-			next.timeout = n
-		}
+		next.timeout = n
 	default:
 		return "error unknown command: " + strings.Join(words, " ")
 	}
@@ -188,6 +189,10 @@ func (b *box) apply() error {
 		fmt.Fprintf(&r, "  ct timeout udp_short {\n    protocol udp\n    l3proto ip\n    policy = { unreplied : %d, replied : %d }\n  }\n", s.timeout, s.timeout)
 		r.WriteString("  chain timeouts {\n    type filter hook prerouting priority filter; policy accept;\n    meta l4proto udp ct timeout set \"udp_short\"\n  }\n")
 	}
+	if !s.fragments {
+		// Before the kernel puts the fragments together for its connection tracking (priority -400).
+		fmt.Fprintf(&r, "  chain fragments {\n    type filter hook prerouting priority -450; policy accept;\n    iifname %q ip frag-off & 0x3fff != 0 drop\n  }\n", b.client)
+	}
 	r.WriteString("  chain pre {\n    type nat hook prerouting priority dstnat; policy accept;\n")
 	if s.alg {
 		fmt.Fprintf(&r, "    iifname %q udp dport 5060 dnat to %s:%d\n", b.client, b.clientAddress, algPort)
@@ -201,9 +206,6 @@ func (b *box) apply() error {
 		fmt.Fprintf(&r, "  chain drop_%s {\n    type filter hook %s priority filter; policy accept;\n", hook, hook)
 		if !s.udpSip {
 			fmt.Fprintf(&r, "    iifname %q udp dport { 5060, %d } drop\n", b.client, algPort)
-		}
-		if s.maxUDP > 0 {
-			fmt.Fprintf(&r, "    iifname %q meta l4proto udp meta length > %d drop\n", b.client, s.maxUDP)
 		}
 		if s.rtp == "off" && hook == "forward" {
 			r.WriteString("    udp dport 22000-22099 drop\n    udp sport 22000-22099 drop\n")

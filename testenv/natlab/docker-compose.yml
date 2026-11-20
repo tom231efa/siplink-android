@@ -1,5 +1,5 @@
 # The NAT lab of SipLink: a PBX behind a NAT box whose behaviour the tests switch at run time
-# (cone or symmetric mapping, UDP to port 5060 blocked, large UDP packets dropped, short UDP
+# (cone or symmetric mapping, UDP to port 5060 blocked, IP fragments dropped, short UDP
 # timeouts, a SIP ALG), and a STUN server next to the PBX.
 #
 #   client 172.31.251.0/24   reachable from this host, and so from an emulator running on it
