@@ -57,25 +57,10 @@ class LineCheck(private val context: Context, private val core: Core, private va
         val expires = params.expires
         val lastCall = accounts.lastCall(id)
         worker.execute {
-            val addresses = LineNetwork.lookup(host)
-            // The address the SIP core goes to.
-            val address = NetAddress.coreOrder(addresses, ipv6, sixFirst).firstOrNull()
-            // The port of the account counts for the transport it names; the others are tried on theirs.
-            val sipPort = port?.takeIf { transport != SipTransport.TLS } ?: AccountRoute.defaultPort(SipTransport.UDP)
-            val tlsPort = port?.takeIf { transport == SipTransport.TLS } ?: AccountRoute.defaultPort(SipTransport.TLS)
-            val stunAddress = MediaAdapt.stunServer(stun)?.let { (stunHost, stunPort) -> LineNetwork.socketAddress(stunHost, stunPort) }
-            val udp = address?.let { LineNetwork.probeUdp(it, sipPort, target, asker, stun = stunAddress) }
+            // A probe that goes wrong leaves its findings unknown; the report comes all the same.
+            val probed = runCatching { probe(host, port, transport, target, asker, ipv6, sixFirst, stun) }.getOrDefault(Probed())
+            val udp = probed.udp
             val answer = udp?.answer
-            fun answers(size: Int): Boolean = address != null && LineNetwork.probeUdp(address, sipPort, target, asker, size = size).answer != null
-            val invite = if (answer != null) answers(LineAdapt.INVITE_PACKET) else null
-            // One packet gets through where the fragments of a larger one do: only asked where those were lost.
-            val large = when (invite) {
-                null -> null
-                true -> true
-                false -> answers(LineAdapt.LARGE_PACKET)
-            }
-            val tcpMs = address?.let { LineNetwork.connectMs(it, sipPort) }
-            val tlsMs = address?.let { LineNetwork.connectMs(it, tlsPort) }
             val seen = udp?.from?.let { LineVerdict.seen(answer, it) }
             val nat = if (facts == null) NatKind.UNKNOWN else LineVerdict.nat(facts.addresses, seen, udp?.stun)
             val report = LineReport(
@@ -85,13 +70,13 @@ class LineCheck(private val context: Context, private val core: Core, private va
                 nat = nat,
                 batteryUnrestricted = battery,
                 server = target,
-                serverAddresses = addresses,
+                serverAddresses = probed.addresses,
                 udp = answer,
-                udpAsked = asker != null && address != null,
-                udpInvite = invite,
-                udpLarge = large,
-                tcpMs = tcpMs,
-                tlsMs = tlsMs,
+                udpAsked = asker != null && probed.address != null,
+                udpInvite = probed.invite,
+                udpLarge = probed.large,
+                tcpMs = probed.tcpMs,
+                tlsMs = probed.tlsMs,
                 algSuspected = LineVerdict.algSuspected(answer),
                 registration = shown.state,
                 error = shown.error,
@@ -112,4 +97,47 @@ class LineCheck(private val context: Context, private val core: Core, private va
 
     /** Stops the probe thread once nothing more is to be checked. */
     fun close() = worker.shutdown()
+
+    /** What the probes found; null where a probe was not made or got no answer. */
+    private data class Probed(
+        val addresses: List<String> = emptyList(),
+        val address: String? = null,
+        val udp: LineNetwork.UdpProbe? = null,
+        val invite: Boolean? = null,
+        val large: Boolean? = null,
+        val tcpMs: Long? = null,
+        val tlsMs: Long? = null,
+    )
+
+    /** Asks the server at [host] over each transport, on the probe thread. */
+    private fun probe(
+        host: String,
+        port: Int?,
+        transport: SipTransport,
+        target: String,
+        asker: LineNetwork.Asker?,
+        ipv6: Boolean,
+        sixFirst: Boolean,
+        stun: String,
+    ): Probed {
+        val addresses = LineNetwork.lookup(host)
+        // The address the SIP core goes to.
+        val address = NetAddress.coreOrder(addresses, ipv6, sixFirst).firstOrNull()
+        // The port of the account counts for the transport it names; the others are tried on theirs.
+        val sipPort = port?.takeIf { transport != SipTransport.TLS } ?: AccountRoute.defaultPort(SipTransport.UDP)
+        val tlsPort = port?.takeIf { transport == SipTransport.TLS } ?: AccountRoute.defaultPort(SipTransport.TLS)
+        val stunAddress = MediaAdapt.stunServer(stun)?.let { (stunHost, stunPort) -> LineNetwork.socketAddress(stunHost, stunPort) }
+        val udp = address?.let { LineNetwork.probeUdp(it, sipPort, target, asker, stun = stunAddress) }
+        fun answers(size: Int): Boolean = address != null && LineNetwork.probeUdp(address, sipPort, target, asker, size = size).answer != null
+        val invite = if (udp?.answer != null) answers(LineAdapt.INVITE_PACKET) else null
+        // One packet gets through where the fragments of a larger one do: only asked where those were lost.
+        val large = when (invite) {
+            null -> null
+            true -> true
+            false -> answers(LineAdapt.LARGE_PACKET)
+        }
+        val tcpMs = address?.let { LineNetwork.connectMs(it, sipPort) }
+        val tlsMs = address?.let { LineNetwork.connectMs(it, tlsPort) }
+        return Probed(addresses, address, udp, invite, large, tcpMs, tlsMs)
+    }
 }
