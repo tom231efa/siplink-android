@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="shortcut_type_speed">Быстрый набор</string>
     <string name="shortcut_type_bxfer">Слепой перевод</string>
     <string name="shortcut_type_axfer">Перевод с консультацией</string>
@@ -24,8 +24,8 @@
     <string name="shortcut_error_number_empty">Укажите номер</string>
     <string name="shortcut_error_spaces">Без пробелов</string>
     <string name="shortcut_error_number_spaces">Номер не должен содержать пробелов</string>
-    <string name="shortcut_error_dtmf">Только 0-9 * #</string>
-    <string name="shortcut_error_dtmf_full">Символы DTMF: только 0-9 * #</string>
+    <string name="shortcut_error_dtmf" tools:ignore="TypographyDashes">Только 0-9 * #</string>
+    <string name="shortcut_error_dtmf_full" tools:ignore="TypographyDashes">Символы DTMF: только 0-9 * #</string>
     <plurals name="shortcut_error_number_too_long">
         <item quantity="one">Номер: не более %1$s символа</item>
         <item quantity="few">Номер: не более %1$s символов</item>

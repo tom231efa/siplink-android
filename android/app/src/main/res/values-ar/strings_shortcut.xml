@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="shortcut_type_speed">اتصال سريع</string>
     <string name="shortcut_type_bxfer">تحويل مباشر</string>
     <string name="shortcut_type_axfer">تحويل بعد الاستشارة</string>
@@ -30,8 +30,8 @@
     <string name="shortcut_error_number_empty">الرقم مطلوب</string>
     <string name="shortcut_error_spaces">يجب ألا يحتوي على مسافات</string>
     <string name="shortcut_error_number_spaces">يجب ألا يحتوي الرقم على مسافات</string>
-    <string name="shortcut_error_dtmf">0-9 * # فقط</string>
-    <string name="shortcut_error_dtmf_full">الأزرار: 0-9 * # فقط</string>
+    <string name="shortcut_error_dtmf" tools:ignore="TypographyDashes">0-9 * # فقط</string>
+    <string name="shortcut_error_dtmf_full" tools:ignore="TypographyDashes">الأزرار: 0-9 * # فقط</string>
     <plurals name="shortcut_error_number_too_long">
         <item quantity="zero">الرقم: %1$s حرف كحد أقصى</item>
         <item quantity="one">الرقم: حرف واحد كحد أقصى</item>

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="feature_sheet_title">ميزات الاتصال</string>
     <string name="feature_sheet_extension">الرقم الداخلي %1$s</string>
     <string name="feature_sheet_target">الرقم الداخلي المستهدف</string>
@@ -24,5 +24,5 @@
 
     <string name="feature_codes_pickup">التقاط مكالمة محددة</string>
     <string name="feature_codes_restored">تمت استعادة رموز الميزات الافتراضية</string>
-    <string name="feature_codes_invalid">0-9 * # فقط</string>
+    <string name="feature_codes_invalid" tools:ignore="TypographyDashes">0-9 * # فقط</string>
 </resources>

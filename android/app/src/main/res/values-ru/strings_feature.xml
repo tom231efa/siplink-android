@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="feature_sheet_title">Функции вызовов</string>
     <string name="feature_sheet_extension">Добавочный %1$s</string>
     <string name="feature_sheet_target">Целевой добавочный номер</string>
@@ -22,5 +22,5 @@
     <string name="feature_code_missing">Не задан код функции: %1$s</string>
     <string name="feature_codes_pickup">Перехват вызова</string>
     <string name="feature_codes_restored">Коды функций сброшены</string>
-    <string name="feature_codes_invalid">Только 0-9 * #</string>
+    <string name="feature_codes_invalid" tools:ignore="TypographyDashes">Только 0-9 * #</string>
 </resources>
