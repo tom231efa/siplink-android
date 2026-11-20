@@ -14,12 +14,13 @@ import org.linphone.core.Call
  *
  * Main thread only.
  *
- * @param redial places [Call] again on its account, now on its other server; false when it could not
+ * @param redial places [Call] again on its account, now on its other server, having ended it with
+ *   the function it is given once it took what it needs of it; false when it could not
  */
 internal class CallRetry(
     private val handler: Handler,
     private val accounts: AccountManager,
-    private val redial: (Call) -> Boolean,
+    private val redial: (Call, () -> Unit) -> Boolean,
 ) {
     private val watched = HashMap<Long, Runnable>()
 
@@ -52,18 +53,29 @@ internal class CallRetry(
         handler.postDelayed(task, after)
     }
 
+    /**
+     * Ends [call] without a word and places it again. The old call goes first: the SIP core places
+     * no call while another one being set up holds the sound ("sound are locked by another call").
+     * Where the new one cannot be placed, the old one's end is shown after all, once it is released.
+     */
     private fun placeAgain(call: Call) {
+        val pointer = call.nativePointer
         replacing = call
         val placed = try {
-            redial(call)
+            redial(call) {
+                superseded += pointer
+                accounts.supersede(call)
+                call.terminate()
+            }
         } finally {
             replacing = null
         }
-        if (!placed) return
-        Log.i(TAG, "A call out got no answer from a server out of reach: placed again over the other server")
-        superseded += call.nativePointer
-        accounts.supersede(call)
-        call.terminate()
+        if (placed) {
+            Log.i(TAG, "A call out got no answer from a server out of reach: placed again over the other server")
+        } else {
+            Log.w(TAG, "A call out could not be placed again over the other server")
+            superseded -= pointer
+        }
     }
 
     /** The successor of [replacing] is set up: it is not placed again in its turn. */

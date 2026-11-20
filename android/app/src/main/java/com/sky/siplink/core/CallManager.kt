@@ -171,16 +171,22 @@ class CallManager(
         return created
     }
 
-    /** Places the current call [old] again, as it was placed, on its account now on its other server ([CallRetry]). */
-    private fun redial(old: Call): Boolean {
+    /** Places the current call [old] again, as it was placed, on its account now on its other server, once [end] ended it ([CallRetry]). */
+    private fun redial(old: Call, end: () -> Unit): Boolean {
         val account = old.params.account
         if (!same(old, current) || room.isOpen || account == null) return false
-        val kind = Pending(metaOf(old).supervision, consultation = false)
-        val placed = place(old.remoteAddress.clone(), account, kind, old.params.isVideoEnabled) ?: return false
-        // What the user set for the call before it rang, the microphone and where the sound goes, stays.
-        placed.microphoneMuted = old.microphoneMuted
-        old.outputAudioDevice?.let { placed.outputAudioDevice = it }
-        old.inputAudioDevice?.let { placed.inputAudioDevice = it }
+        // Its facts go with it: the old call's are gone once it is released, which may be at once.
+        val meta = metaOf(old)
+        val kind = Pending(meta.supervision, consultation = false)
+        val address = old.remoteAddress.clone()
+        val video = old.params.isVideoEnabled
+        // What the user set for the call before it rang stays: the microphone, and where the sound goes.
+        val muted = old.microphoneMuted
+        end()
+        val placed = place(address, account, kind, video) ?: return false
+        placed.microphoneMuted = muted
+        // The route chosen goes with the call's facts (CallMeta.chosenRoute), applied as its sound starts.
+        metas[placed.nativePointer] = meta
         return true
     }
 
@@ -287,7 +293,7 @@ class CallManager(
         val call = current
         val applied = when {
             room.isOpen -> room.setRoute(route)
-            call != null -> CallSupport.applyRoute(core, call, route)
+            call != null -> CallSupport.applyRoute(core, call, route).also { if (it) metaOf(call).chosenRoute = route }
             else -> false
         }
         if (applied) publish()
@@ -564,7 +570,6 @@ class CallManager(
             // The same call, placed again over the other server: it takes the place of the one before.
             replaced != null && same(replaced, current) -> {
                 current = call
-                metas[call.nativePointer] = metaOf(replaced)
                 retry.onReplacement(call)
             }
 
@@ -609,6 +614,11 @@ class CallManager(
         referredFrom?.let { old ->
             referredFrom = null
             if (!isEnded(old)) old.terminate()
+        }
+        // A route chosen before the sound ran is the SDK's to forget as the sound starts: chosen again.
+        meta.chosenRoute?.takeIf { !meta.speakerApplied }?.let { route ->
+            meta.speakerApplied = true
+            CallSupport.applyRoute(core, call, route)
         }
         if (meta.intercom && settings.current.intercomSpeaker && !meta.speakerApplied) {
             meta.speakerApplied = true

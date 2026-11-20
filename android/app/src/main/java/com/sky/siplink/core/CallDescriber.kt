@@ -15,12 +15,15 @@ internal class CallMeta(
     var intercom: Boolean = false,
     var supervision: SupervisionMode? = null,
     var connectedAt: Long? = null,
+    /** The sound went to the speaker for an intercom call, or to [chosenRoute] once the sound ran: done once. */
     var speakerApplied: Boolean = false,
     var endReason: String? = null,
     /** The call had video the last time it was looked at (sound moves to the speaker as video starts). */
     var hadVideo: Boolean = false,
     /** It came in next to another call or the room and waited there: it is never answered by itself (CallRules, rule 2). */
     var waited: Boolean = false,
+    /** Where the user last sent the sound of the call; null: nowhere by hand. */
+    var chosenRoute: AudioRoute? = null,
 )
 
 /** What the call screen shows of one call ([CallInfo]), for [CallManager]. Main thread only. */
