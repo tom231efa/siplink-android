@@ -6,6 +6,7 @@ import android.graphics.Rect
 import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
+import android.view.Choreographer
 import android.view.InputDevice
 import android.view.MotionEvent
 import android.view.ViewConfiguration
@@ -14,6 +15,8 @@ import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import java.io.File
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 /**
  * Base of the tests that go through the app's screens by their accessibility tree, the way a
@@ -250,14 +253,40 @@ abstract class ScreenTestBase(private val pictures: String) : PbxTestBase() {
     /** Types [text] into the field with the label [label]. */
     protected fun typeInto(label: String, text: String) = setText(text) { chain(see(label)).firstOrNull { it.isEditable && it.isEnabled } }
 
-    /** Saves what the display shows as [name].png; [name] may hold folders ("ar/dialer"). */
+    /**
+     * Saves what the display shows as [name].png; [name] may hold folders ("ar/dialer"). The
+     * screen is let come to rest and be drawn first ([drawn]): the accessibility tree has a
+     * change before the display shows it, and a screen that just opened is still fading in.
+     */
     protected fun picture(name: String) {
+        settle()
+        drawn()
         val bitmap = automation.takeScreenshot() ?: return
         val file = File(File(instrumentation.targetContext.cacheDir, pictures), "$name.png").apply { parentFile?.mkdirs() }
         file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
     }
 
+    /**
+     * Waits until the display shows what the app holds now: the main thread at rest, two frames
+     * drawn after it, and then longer than the app's longest transition (a screen that opens, the
+     * call screen fading in), which the accessibility tree does not see. A screen that moves for
+     * ever (the rings of an incoming call) is drawn in its state of the moment.
+     */
+    private fun drawn() {
+        instrumentation.waitForIdleSync()
+        repeat(2) {
+            val frame = CountDownLatch(1)
+            instrumentation.runOnMainSync { Choreographer.getInstance().postFrameCallback { frame.countDown() } }
+            frame.await(FRAME_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+        }
+        Thread.sleep(TRANSITION_MS)
+    }
+
     protected companion object {
+        /** Longer than the longest transition of the app's screens (300 ms). */
+        const val TRANSITION_MS = 500L
+        const val FRAME_TIMEOUT_MS = 1_000L
+
         /** How far apart the looks are that have to find the screen unchanged, and how long it gets to come to rest. */
         const val LOOK_INTERVAL_MS = 120L
         const val SETTLE_TIMEOUT_MS = 4_000L
