@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="codec_restored">تمت استعادة إعدادات برامج الترميز الافتراضية</string>
+    <string name="codec_keep_audio">أبقِ على برنامج ترميز صوتي واحد على الأقل</string>
+    <string name="codec_keep_video">أبقِ على برنامج ترميز فيديو واحد على الأقل</string>
+    <string name="codec_audio">الصوت</string>
+    <string name="codec_video">الفيديو</string>
+    <string name="codec_resolution">الدقة</string>
+    <string name="codec_frame_rate">معدل الإطارات (fps)</string>
+    <string name="codec_frame_rate_auto">تلقائي</string>
+    <string name="codec_rate">%1$s Hz</string>
+    <string name="codec_move_up">رفع أولوية %1$s</string>
+    <string name="codec_move_down">خفض أولوية %1$s</string>
+    <plurals name="codec_rate_channels">
+        <item quantity="zero">%1$s Hz · %2$s قناة</item>
+        <item quantity="one">%1$s Hz · قناة واحدة</item>
+        <item quantity="two">%1$s Hz · قناتان</item>
+        <item quantity="few">%1$s Hz · %2$s قنوات</item>
+        <item quantity="many">%1$s Hz · %2$s قناة</item>
+        <item quantity="other">%1$s Hz · %2$s قناة</item>
+    </plurals>
+</resources>

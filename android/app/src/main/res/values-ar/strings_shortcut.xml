@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="shortcut_type_speed">اتصال سريع</string>
+    <string name="shortcut_type_bxfer">تحويل مباشر</string>
+    <string name="shortcut_type_axfer">تحويل بعد الاستشارة</string>
+    <string name="shortcut_type_dtmf">إرسال DTMF</string>
+    <string name="shortcut_type_forward">تحويل المكالمات</string>
+    <string name="shortcut_type_dnd">عدم الإزعاج</string>
+
+    <string name="shortcut_category_all">الكل</string>
+    <string name="shortcut_category_none">بلا فئة</string>
+    <string name="shortcut_category_new">فئة جديدة</string>
+
+    <plurals name="shortcut_limit">
+        <item quantity="zero">%1$s مفتاح كحد أقصى</item>
+        <item quantity="one">مفتاح واحد كحد أقصى</item>
+        <item quantity="two">مفتاحان كحد أقصى</item>
+        <item quantity="few">%1$s مفاتيح كحد أقصى</item>
+        <item quantity="many">%1$s مفتاحًا كحد أقصى</item>
+        <item quantity="other">%1$s مفتاح كحد أقصى</item>
+    </plurals>
+    <plurals name="shortcut_own_limit">
+        <item quantity="zero">%1$s مفتاح من إنشائك كحد أقصى</item>
+        <item quantity="one">مفتاح واحد من إنشائك كحد أقصى</item>
+        <item quantity="two">مفتاحان من إنشائك كحد أقصى</item>
+        <item quantity="few">%1$s مفاتيح من إنشائك كحد أقصى</item>
+        <item quantity="many">%1$s مفتاحًا من إنشائك كحد أقصى</item>
+        <item quantity="other">%1$s مفتاح من إنشائك كحد أقصى</item>
+    </plurals>
+    <string name="shortcut_error_number_empty">الرقم مطلوب</string>
+    <string name="shortcut_error_spaces">يجب ألا يحتوي على مسافات</string>
+    <string name="shortcut_error_number_spaces">يجب ألا يحتوي الرقم على مسافات</string>
+    <string name="shortcut_error_dtmf">0-9 * # فقط</string>
+    <string name="shortcut_error_dtmf_full">الأزرار: 0-9 * # فقط</string>
+    <plurals name="shortcut_error_number_too_long">
+        <item quantity="zero">الرقم: %1$s حرف كحد أقصى</item>
+        <item quantity="one">الرقم: حرف واحد كحد أقصى</item>
+        <item quantity="two">الرقم: حرفان كحد أقصى</item>
+        <item quantity="few">الرقم: %1$s أحرف كحد أقصى</item>
+        <item quantity="many">الرقم: %1$s حرفًا كحد أقصى</item>
+        <item quantity="other">الرقم: %1$s حرف كحد أقصى</item>
+    </plurals>
+    <plurals name="shortcut_error_name_too_long">
+        <item quantity="zero">الاسم: %1$s حرف كحد أقصى</item>
+        <item quantity="one">الاسم: حرف واحد كحد أقصى</item>
+        <item quantity="two">الاسم: حرفان كحد أقصى</item>
+        <item quantity="few">الاسم: %1$s أحرف كحد أقصى</item>
+        <item quantity="many">الاسم: %1$s حرفًا كحد أقصى</item>
+        <item quantity="other">الاسم: %1$s حرف كحد أقصى</item>
+    </plurals>
+    <plurals name="shortcut_error_category_too_long">
+        <item quantity="zero">الفئة: %1$s حرف كحد أقصى</item>
+        <item quantity="one">الفئة: حرف واحد كحد أقصى</item>
+        <item quantity="two">الفئة: حرفان كحد أقصى</item>
+        <item quantity="few">الفئة: %1$s أحرف كحد أقصى</item>
+        <item quantity="many">الفئة: %1$s حرفًا كحد أقصى</item>
+        <item quantity="other">الفئة: %1$s حرف كحد أقصى</item>
+    </plurals>
+    <string name="shortcut_error_category_empty">الفئة مطلوبة</string>
+    <string name="shortcut_error_reserved">الاسم غير متاح</string>
+    <string name="shortcut_error_category_reserved">لا يمكن استخدام اسم الفئة هذا</string>
+    <string name="shortcut_error_category_taken">الفئة موجودة بالفعل</string>
+    <string name="shortcut_csv_format">الاسم,الرقم[,النوع[,الفئة[,الخط[,الأيقونة]]]]</string>
+
+    <string name="shortcut_icon_phone">هاتف</string>
+    <string name="shortcut_icon_person">شخص</string>
+    <string name="shortcut_icon_group">فريق</string>
+    <string name="shortcut_icon_star">المفضلة</string>
+    <string name="shortcut_icon_home">المنزل</string>
+    <string name="shortcut_icon_office">مكتب</string>
+    <string name="shortcut_icon_store">متجر</string>
+    <string name="shortcut_icon_reception">الاستقبال</string>
+    <string name="shortcut_icon_support">الدعم</string>
+    <string name="shortcut_icon_speaker">بث</string>
+    <string name="shortcut_icon_meeting">اجتماع</string>
+    <string name="shortcut_icon_door">باب</string>
+    <string name="shortcut_icon_lock">قفل</string>
+    <string name="shortcut_icon_key">مفتاح</string>
+    <string name="shortcut_icon_garage">مرآب</string>
+    <string name="shortcut_icon_car">مركبة</string>
+    <string name="shortcut_icon_elevator">مصعد</string>
+    <string name="shortcut_icon_security">الأمن</string>
+    <string name="shortcut_icon_camera">كاميرا</string>
+    <string name="shortcut_icon_bell">جرس الباب</string>
+    <string name="shortcut_icon_alarm">إنذار</string>
+    <string name="shortcut_icon_medical">طبي</string>
+    <string name="shortcut_icon_fire">إطفاء</string>
+    <string name="shortcut_icon_food">مطعم</string>
+    <string name="shortcut_icon_hotel">غرفة النزلاء</string>
+    <string name="shortcut_icon_warehouse">مستودع</string>
+    <string name="shortcut_icon_factory">ورشة</string>
+    <string name="shortcut_icon_school">فصل دراسي</string>
+    <string name="shortcut_icon_repair">صيانة</string>
+    <string name="shortcut_icon_computer">غرفة الخوادم</string>
+    <string name="shortcut_icon_delivery">توصيل</string>
+    <string name="shortcut_icon_light">إضاءة</string>
+
+    <string name="shortcut_title">مفاتيح الاختصار</string>
+    <string name="shortcut_count_of">%1$s / %2$s</string>
+    <string name="shortcut_new">مفتاح اختصار جديد</string>
+    <string name="shortcut_bulk_import">استيراد بالجملة</string>
+    <string name="shortcut_export_csv">تصدير بصيغة CSV</string>
+    <string name="shortcut_export_failed">فشل التصدير</string>
+    <plurals name="shortcut_exported">
+        <item quantity="zero">تم تصدير %1$s مفتاح اختصار</item>
+        <item quantity="one">تم تصدير مفتاح اختصار واحد</item>
+        <item quantity="two">تم تصدير مفتاحي اختصار</item>
+        <item quantity="few">تم تصدير %1$s مفاتيح اختصار</item>
+        <item quantity="many">تم تصدير %1$s مفتاح اختصار</item>
+        <item quantity="other">تم تصدير %1$s مفتاح اختصار</item>
+    </plurals>
+    <string name="shortcut_edit_category">تعديل الفئة «%1$s»</string>
+    <string name="shortcut_empty">لا توجد مفاتيح اختصار</string>
+    <string name="shortcut_search">البحث بالاسم أو الرقم أو الفئة أو النوع</string>
+    <string name="shortcut_chip_all">الكل %1$s</string>
+    <string name="shortcut_chip_category">%1$s %2$s</string>
+    <string name="shortcut_no_match">لا توجد مفاتيح اختصار مطابقة</string>
+    <string name="shortcut_category_title">الفئة</string>
+    <string name="shortcut_delete_category">حذف الفئة</string>
+
+    <string name="shortcut_import_title">استيراد مفاتيح اختصار بالجملة</string>
+    <string name="shortcut_import_hint">%1$s\nالنوع: %2$s\nالخط: اسم الحساب أو user@domain؛ اتركه فارغًا للاختيار عند الاتصال\nالأيقونة: %3$s؛ اتركها فارغة لاتباع النوع</string>
+    <string name="shortcut_import_example">الاستقبال,1001,speed,المفضلة,,reception\nاتصال داخلي بالمستودع,*801005,speed,الاتصال الداخلي,,warehouse\nفتح الباب,#9,dtmf,التحكم في الدخول,,door\nإلى المقسم,1000,bxfer,التحويل</string>
+
+    <string name="shortcut_new_title">مفتاح اختصار جديد</string>
+    <string name="shortcut_edit_title">تعديل مفتاح الاختصار</string>
+    <string name="shortcut_added">تمت إضافة مفتاح الاختصار</string>
+    <string name="shortcut_saved">تم حفظ مفتاح الاختصار</string>
+    <string name="shortcut_deleted">تم حذف مفتاح الاختصار</string>
+    <string name="shortcut_field_name">الاسم</string>
+    <string name="shortcut_field_keys">الأزرار</string>
+    <string name="shortcut_field_forward_to">التحويل إلى</string>
+    <string name="shortcut_field_number">الرقم أو رمز الميزة</string>
+    <string name="shortcut_field_type">النوع</string>
+    <string name="shortcut_field_line_mode">الخط الصادر</string>
+    <string name="shortcut_field_line">الخط</string>
+    <string name="shortcut_field_icon">الأيقونة</string>
+    <string name="shortcut_icon_default">افتراضي (حسب النوع)</string>
+    <string name="shortcut_field_category">الفئة</string>
+    <string name="shortcut_new_category_title">فئة جديدة</string>
+    <string name="shortcut_create">إنشاء</string>
+    <string name="shortcut_line_fixed">خط محدد</string>
+    <string name="shortcut_line_ask">الاختيار عند الاتصال</string>
+    <string name="shortcut_line_named">%1$s · %2$s</string>
+    <string name="shortcut_line_disabled">%1$s · مُعطَّل</string>
+    <string name="shortcut_line_gone">الخط «%1$s» لم يعد موجودًا</string>
+
+    <string name="shortcut_choose_line_title">%1$s · اختيار الخط الصادر</string>
+    <string name="shortcut_line_unavailable">الخط المحدد «%1$s» غير متاح</string>
+    <string name="shortcut_dtmf_sent">تم إرسال %1$s</string>
+    <string name="shortcut_forward_on">سيتم تحويل كل المكالمات إلى %1$s</string>
+    <string name="shortcut_forward_off">تم إيقاف تحويل المكالمات</string>
+    <string name="shortcut_dnd_on">تم تشغيل عدم الإزعاج</string>
+    <string name="shortcut_dnd_off">تم إيقاف عدم الإزعاج</string>
+</resources>

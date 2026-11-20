@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="main_tab_dialer">الاتصال</string>
+    <string name="main_tab_history">السجل</string>
+    <string name="main_tab_directory">الدليل</string>
+    <string name="main_tab_settings">الإعدادات</string>
+    <string name="main_tab_update_news">%1$s، يتوفر تحديث</string>
+
+    <string name="main_banner_incoming">مكالمة واردة: %1$s</string>
+    <string name="main_banner_outgoing">جارٍ الاتصال بـ %1$s</string>
+    <string name="main_banner_in_call">في مكالمة: %1$s</string>
+    <string name="main_banner_return">العودة إلى المكالمة</string>
+
+    <string name="main_lock_screen_title">السماح بالمكالمات على شاشة القفل</string>
+    <string name="main_lock_screen_text">لا يملك SipLink إذن الإشعارات بملء الشاشة. لن تعرض المكالمات الواردة على شاشة القفل سوى إشعار، لا شاشة المكالمة.</string>
+    <string name="main_lock_screen_settings_failed">تعذّر فتح إعدادات الإشعارات بملء الشاشة</string>
+    <string name="main_lock_screen_open_settings">الانتقال إلى الإعدادات</string>
+    <string name="main_lock_screen_never">عدم التذكير مرة أخرى</string>
+</resources>

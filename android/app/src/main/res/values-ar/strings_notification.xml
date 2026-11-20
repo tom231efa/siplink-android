@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="notification_running">SipLink قيد التشغيل</string>
+    <string name="notification_no_accounts">لا يوجد حساب SIP مُفعَّل</string>
+    <plurals name="notification_registered">
+        <item quantity="zero">%1$s / %2$s حساب مسجّل</item>
+        <item quantity="one">%1$s / %2$s حساب مسجّل</item>
+        <item quantity="two">%1$s / %2$s حساب مسجّل</item>
+        <item quantity="few">%1$s / %2$s حسابات مسجّلة</item>
+        <item quantity="many">%1$s / %2$s حسابًا مسجّلًا</item>
+        <item quantity="other">%1$s / %2$s حساب مسجّل</item>
+    </plurals>
+    <string name="notification_calling">جارٍ الاتصال…</string>
+    <string name="notification_intercom">مكالمة اتصال داخلي</string>
+    <string name="notification_video_call">مكالمة فيديو واردة</string>
+    <string name="notification_incoming">مكالمة واردة</string>
+    <string name="notification_incoming_text">%1$s · %2$s</string>
+    <string name="notification_missed">مكالمة فائتة</string>
+    <string name="notification_missed_text">%1$s (%2$s)</string>
+
+    <string name="notification_channel_service_name">البقاء متصلًا في الخلفية</string>
+    <string name="notification_channel_service_desc">يُبقي حسابات SIP مسجّلة لتلقي المكالمات</string>
+    <string name="notification_channel_incoming_name">المكالمات الواردة</string>
+    <string name="notification_channel_incoming_desc">تنبيهات المكالمات الواردة وشاشة المكالمة بملء الشاشة</string>
+    <string name="notification_channel_call_name">المكالمات الجارية</string>
+    <string name="notification_channel_call_desc">المكالمات الجارية حاليًا</string>
+    <string name="notification_channel_missed_name">المكالمات الفائتة</string>
+    <string name="notification_channel_missed_desc">تنبيهات المكالمات الفائتة</string>
+</resources>

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="video_request">يطلب الطرف الآخر تشغيل الفيديو</string>
+    <string name="video_request_decline">رفض</string>
+    <string name="video_request_accept">تشغيل</string>
+    <string name="video_answer_with_video">الرد بالفيديو</string>
+    <string name="video_answer_with_audio">الرد بالصوت</string>
+    <string name="video_own_picture">صورتك</string>
+    <string name="video_other_picture">صورة الطرف الآخر</string>
+    <string name="video_swap">تبديل الصورتين</string>
+    <string name="video_move_left">نقل إلى اليسار</string>
+    <string name="video_move_right">نقل إلى اليمين</string>
+    <string name="video_move_up">نقل إلى الأعلى</string>
+    <string name="video_move_down">نقل إلى الأسفل</string>
+    <string name="video_show_whole">عرض الصورة كاملة</string>
+    <string name="video_fill">ملء الشاشة</string>
+    <string name="video_switch_camera">تبديل الكاميرا</string>
+    <string name="video_camera_off">إيقاف الكاميرا</string>
+    <string name="video_camera_on">تشغيل الكاميرا</string>
+</resources>

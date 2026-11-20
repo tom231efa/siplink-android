@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="directory_limit">
+        <item quantity="zero">%1$s دليل كحد أقصى</item>
+        <item quantity="one">دليل واحد كحد أقصى</item>
+        <item quantity="two">دليلان كحد أقصى</item>
+        <item quantity="few">%1$s أدلة كحد أقصى</item>
+        <item quantity="many">%1$s دليلًا كحد أقصى</item>
+        <item quantity="other">%1$s دليل كحد أقصى</item>
+    </plurals>
+    <string name="directory_error_name_taken">الاسم موجود بالفعل</string>
+    <plurals name="directory_error_name_too_long">
+        <item quantity="zero">الاسم: %1$s حرف كحد أقصى</item>
+        <item quantity="one">الاسم: حرف واحد كحد أقصى</item>
+        <item quantity="two">الاسم: حرفان كحد أقصى</item>
+        <item quantity="few">الاسم: %1$s أحرف كحد أقصى</item>
+        <item quantity="many">الاسم: %1$s حرفًا كحد أقصى</item>
+        <item quantity="other">الاسم: %1$s حرف كحد أقصى</item>
+    </plurals>
+    <string name="directory_error_host_empty">عنوان الخادم مطلوب</string>
+    <string name="directory_error_host_invalid">يجب أن يكون عنوان الخادم بالصيغة مضيف[:منفذ]</string>
+    <string name="directory_error_ldaps">ldaps:// غير مدعوم؛ استخدم StartTLS</string>
+    <string name="directory_error_host_ldaps">عنوان الخادم: ldaps:// غير مدعوم؛ استخدم StartTLS</string>
+    <string name="directory_error_starttls_name">يتطلب StartTLS اسم مضيف</string>
+    <string name="directory_error_host_starttls_name">عنوان الخادم: يتطلب StartTLS اسم مضيف</string>
+    <string name="directory_error_port_range">يجب أن يكون المنفذ 1–65535</string>
+    <string name="directory_error_host_port_range">عنوان الخادم: يجب أن يكون المنفذ 1–65535</string>
+    <string name="directory_error_user_for_password">مطلوب (تم تعيين كلمة مرور)</string>
+    <string name="directory_error_user_for_password_full">اسم المستخدم مطلوب (تم تعيين كلمة مرور)</string>
+    <string name="directory_error_base_dn_empty">Base DN مطلوب</string>
+    <string name="directory_error_max_results_range">يجب أن تكون القيمة 1–%1$s</string>
+    <string name="directory_error_max_results_invalid">يجب أن يكون الحد الأقصى للنتائج 1–%1$s</string>
+    <string name="directory_error_name_attributes_empty">سمات الاسم مطلوبة</string>
+    <string name="directory_error_number_attributes_empty">سمات الرقم مطلوبة</string>
+    <string name="directory_error_placeholder">يجب أن يحتوي على %</string>
+    <string name="directory_error_name_filter_placeholder">يجب أن يحتوي عامل تصفية الاسم على %</string>
+    <string name="directory_error_number_filter_placeholder">يجب أن يحتوي عامل تصفية الرقم على %</string>
+
+    <string name="directory_title">الدليل</string>
+    <string name="directory_ldap_settings">إعدادات LDAP</string>
+    <string name="directory_no_ldap">لا تدعم حزمة SDK هذه LDAP</string>
+    <string name="directory_add_account_first">أضف حساب SIP أولًا</string>
+    <string name="directory_none_configured">لم يتم إعداد أدلة LDAP</string>
+    <string name="directory_all_disabled">أدلة LDAP مُعطَّلة</string>
+    <string name="directory_search">البحث بالاسم أو الرقم</string>
+    <string name="directory_no_match">لا توجد جهات اتصال مطابقة</string>
+    <string name="directory_cache_searching">من ذاكرة التخزين المؤقت المحلية؛ جارٍ الاستعلام من الخادم…</string>
+    <string name="directory_from_cache">من ذاكرة التخزين المؤقت المحلية</string>
+    <plurals name="directory_first_only">
+        <item quantity="zero">يتم عرض أول %1$s نتيجة فقط</item>
+        <item quantity="one">يتم عرض النتيجة الأولى فقط</item>
+        <item quantity="two">يتم عرض أول نتيجتين فقط</item>
+        <item quantity="few">يتم عرض أول %1$s نتائج فقط</item>
+        <item quantity="many">يتم عرض أول %1$s نتيجة فقط</item>
+        <item quantity="other">يتم عرض أول %1$s نتيجة فقط</item>
+    </plurals>
+    <string name="directory_number_organization">%1$s · %2$s</string>
+    <string name="directory_call_contact">الاتصال بـ %1$s</string>
+    <string name="directory_more_for">المزيد لـ %1$s</string>
+
+    <string name="directory_ldap_title">أدلة LDAP</string>
+    <string name="directory_add">إضافة دليل</string>
+    <plurals name="directory_count">
+        <item quantity="zero">%1$s / %2$s دليل</item>
+        <item quantity="one">%1$s / %2$s دليل</item>
+        <item quantity="two">%1$s / %2$s دليل</item>
+        <item quantity="few">%1$s / %2$s أدلة</item>
+        <item quantity="many">%1$s / %2$s دليلًا</item>
+        <item quantity="other">%1$s / %2$s دليل</item>
+    </plurals>
+    <string name="directory_disabled_summary">مُعطَّل · %1$s</string>
+    <string name="directory_cache_title">ذاكرة التخزين المؤقت المحلية</string>
+    <plurals name="directory_cache_usage">
+        <item quantity="zero">%1$s إدخال مخزَّن مؤقتًا، المساحة المستخدمة %2$s / %3$s MB</item>
+        <item quantity="one">إدخال واحد مخزَّن مؤقتًا، المساحة المستخدمة %2$s / %3$s MB</item>
+        <item quantity="two">إدخالان مخزَّنان مؤقتًا، المساحة المستخدمة %2$s / %3$s MB</item>
+        <item quantity="few">%1$s إدخالات مخزَّنة مؤقتًا، المساحة المستخدمة %2$s / %3$s MB</item>
+        <item quantity="many">%1$s إدخالًا مخزَّنًا مؤقتًا، المساحة المستخدمة %2$s / %3$s MB</item>
+        <item quantity="other">%1$s إدخال مخزَّن مؤقتًا، المساحة المستخدمة %2$s / %3$s MB</item>
+    </plurals>
+    <string name="directory_cache_cleared">تم مسح ذاكرة التخزين المؤقت للدليل</string>
+    <string name="directory_cache_clear">مسح ذاكرة التخزين المؤقت</string>
+
+    <string name="directory_add_title">إضافة دليل</string>
+    <string name="directory_details_title">تفاصيل الدليل</string>
+    <string name="directory_edit_title">تعديل الدليل</string>
+    <string name="directory_user_required">اسم المستخدم مطلوب</string>
+    <string name="directory_saved">تم حفظ الدليل</string>
+    <string name="directory_section_server">الخادم</string>
+    <string name="directory_name_optional">الاسم (اختياري)</string>
+    <string name="directory_server_address">عنوان الخادم</string>
+    <string name="directory_server_placeholder">مضيف[:منفذ]</string>
+    <string name="directory_base_dn">Base DN</string>
+    <string name="directory_encryption">التشفير</string>
+    <string name="directory_encryption_none">بدون</string>
+    <string name="directory_ca_certificates">شهادات CA</string>
+    <string name="directory_section_sign_in">تسجيل الدخول</string>
+    <string name="directory_sign_in_account">حساب</string>
+    <string name="directory_sign_in_anonymous">مجهول</string>
+    <string name="directory_user_name">اسم المستخدم</string>
+    <string name="directory_password">كلمة المرور</string>
+    <string name="directory_password_keep">اتركها فارغة للإبقاء على كلمة المرور المحفوظة</string>
+    <string name="directory_section_calls">المكالمات</string>
+    <string name="directory_line">الخط</string>
+    <string name="directory_all_lines">كل الخطوط</string>
+    <string name="directory_line_named">%1$s · %2$s</string>
+    <string name="directory_lookup_incoming">الاسم في المكالمات الواردة</string>
+    <string name="directory_lookup_outgoing">الاسم في المكالمات الصادرة</string>
+    <string name="directory_advanced">الإعدادات المتقدمة</string>
+    <string name="directory_name_attributes">سمات الاسم</string>
+    <string name="directory_number_attributes">سمات الرقم</string>
+    <string name="directory_max_results">الحد الأقصى للنتائج</string>
+    <string name="directory_filter">عامل التصفية</string>
+    <string name="directory_filter_auto">تلقائي</string>
+    <string name="directory_filter_custom">مخصص</string>
+    <string name="directory_name_filter">عامل تصفية الاسم</string>
+    <string name="directory_number_filter">عامل تصفية الرقم</string>
+    <string name="directory_enable">تفعيل هذا الدليل</string>
+    <string name="directory_delete">حذف الدليل</string>
+    <string name="directory_delete_title">هل تريد حذف «%1$s»؟</string>
+    <string name="directory_delete_text">ستتم إزالة إعداداته وجهات الاتصال المخزَّنة مؤقتًا على هذا الهاتف.</string>
+</resources>

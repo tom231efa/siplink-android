@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="feature_sheet_title">ميزات الاتصال</string>
+    <string name="feature_sheet_extension">الرقم الداخلي %1$s</string>
+    <string name="feature_sheet_target">الرقم الداخلي المستهدف</string>
+    <string name="feature_sheet_target_hint">مثل: 1002</string>
+    <string name="feature_sheet_call">اتصال</string>
+    <string name="feature_sheet_add_shortcut">إضافة إلى مفاتيح الاختصار</string>
+    <string name="feature_sheet_force_confirm">انقر مرة أخرى لتأكيد الإنهاء القسري لـ %1$s</string>
+
+    <string name="feature_intercom">الاتصال الداخلي</string>
+    <string name="feature_listen">الاستماع</string>
+    <string name="feature_whisper">الهمس</string>
+    <string name="feature_barge">التدخل في المكالمة</string>
+    <string name="feature_force_hang_up">الإنهاء القسري</string>
+    <string name="feature_pickup">التقاط المكالمة</string>
+    <string name="feature_voicemail">البريد الصوتي</string>
+    <string name="feature_group_pickup">التقاط مكالمات المجموعة</string>
+    <string name="feature_park">ركن المكالمة</string>
+    <string name="feature_dnd_on">تشغيل عدم الإزعاج</string>
+    <string name="feature_dnd_off">إيقاف عدم الإزعاج</string>
+    <string name="feature_to">%1$s %2$s</string>
+    <string name="feature_code_missing">لم يتم تعيين رمز ميزة لـ «%1$s»</string>
+
+    <string name="feature_codes_pickup">التقاط مكالمة محددة</string>
+    <string name="feature_codes_restored">تمت استعادة رموز الميزات الافتراضية</string>
+    <string name="feature_codes_invalid">0-9 * # فقط</string>
+</resources>

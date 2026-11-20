@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="list_separator">"؛ "</string>
+    <string name="common_cancel">إلغاء</string>
+    <string name="common_back">رجوع</string>
+    <string name="common_delete">حذف</string>
+    <string name="common_confirm_delete">تأكيد الحذف</string>
+    <string name="common_save">حفظ</string>
+    <string name="common_ok">موافق</string>
+    <string name="common_edit">تعديل</string>
+    <string name="common_done">تم</string>
+    <string name="common_close">إغلاق</string>
+    <string name="common_more">المزيد</string>
+    <string name="common_clear">مسح</string>
+    <string name="common_restore_defaults">استعادة الإعدادات الافتراضية</string>
+</resources>

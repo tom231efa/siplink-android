@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="diagnosis_title">تشخيص الخط</string>
+    <string name="diagnosis_rerun">إعادة التشخيص</string>
+    <string name="diagnosis_reset_title">هل تريد استعادة الإعدادات الافتراضية؟</string>
+    <string name="diagnosis_reset_text">سيتم مسح التعديلات التلقائية لهذا الحساب.</string>
+    <string name="diagnosis_reset_confirm">استعادة</string>
+    <string name="diagnosis_reset_done">تمت استعادة الإعدادات الافتراضية</string>
+    <string name="diagnosis_not_tested">لم يُختبر</string>
+    <string name="diagnosis_unknown">غير معروف</string>
+    <string name="diagnosis_no_response">لا توجد استجابة</string>
+    <string name="diagnosis_cannot_connect">تعذّر الاتصال</string>
+    <plurals name="diagnosis_seconds">
+        <item quantity="zero">%1$s ثانية</item>
+        <item quantity="one">ثانية واحدة</item>
+        <item quantity="two">ثانيتان</item>
+        <item quantity="few">%1$s ثوانٍ</item>
+        <item quantity="many">%1$s ثانية</item>
+        <item quantity="other">%1$s ثانية</item>
+    </plurals>
+
+    <string name="diagnosis_network">الشبكة</string>
+    <string name="diagnosis_type">النوع</string>
+    <string name="diagnosis_type_cellular">بيانات الجوّال</string>
+    <string name="diagnosis_type_ethernet">إيثرنت</string>
+    <string name="diagnosis_type_other">غير ذلك</string>
+    <string name="diagnosis_type_vpn">%1$s · VPN</string>
+    <string name="diagnosis_no_network">لا توجد شبكة</string>
+    <string name="diagnosis_local_address">العنوان المحلي</string>
+    <string name="diagnosis_public_address">العنوان العام</string>
+    <string name="diagnosis_nat_none">لا يوجد</string>
+    <string name="diagnosis_nat_present">موجود</string>
+    <string name="diagnosis_nat_carrier">على مستوى المشغّل</string>
+    <string name="diagnosis_nat_symmetric">متماثل</string>
+    <string name="diagnosis_ipv6_yes">نعم</string>
+    <string name="diagnosis_ipv6_no">لا</string>
+    <string name="diagnosis_validation">التحقق من الشبكة</string>
+    <string name="diagnosis_validation_login">يلزم تسجيل الدخول</string>
+    <string name="diagnosis_validation_passed">ناجح</string>
+    <string name="diagnosis_validation_failed">غير ناجح</string>
+    <string name="diagnosis_battery">تحسين البطارية</string>
+    <string name="diagnosis_battery_unrestricted">غير مقيّد</string>
+    <string name="diagnosis_battery_restricted">مقيّد</string>
+    <string name="diagnosis_battery_settings">الإعدادات</string>
+
+    <string name="diagnosis_server">الخادم</string>
+    <string name="diagnosis_address">العنوان</string>
+    <string name="diagnosis_resolved">يُحلَّل إلى</string>
+    <string name="diagnosis_resolve_failed">فشل الاستعلام</string>
+    <string name="diagnosis_udp_large">حزم UDP الكبيرة</string>
+    <string name="diagnosis_large_passed">ناجح</string>
+    <string name="diagnosis_large_fragments_lost">فُقدت الأجزاء</string>
+    <string name="diagnosis_large_lost">فُقدت</string>
+    <string name="diagnosis_alg_suspected">مشتبه به</string>
+    <string name="diagnosis_alg_not_found">لم يُعثر عليه</string>
+    <string name="diagnosis_call_address">عنوان المكالمة</string>
+    <string name="diagnosis_call_address_internal">داخلي</string>
+
+    <string name="diagnosis_servers">الخادم الأساسي والاحتياطي</string>
+    <string name="diagnosis_current">الحالي</string>
+    <string name="diagnosis_on_proxy">الخادم الوكيل</string>
+    <string name="diagnosis_on_backup">الخادم الاحتياطي</string>
+    <string name="diagnosis_proxy">الخادم الوكيل</string>
+    <string name="diagnosis_backup">الخادم الاحتياطي</string>
+    <string name="diagnosis_reachable">يمكن الوصول إليه</string>
+    <string name="diagnosis_probed_at">آخر فحص</string>
+    <string name="diagnosis_fast_timeout">المهلة السريعة</string>
+    <string name="diagnosis_off">إيقاف</string>
+
+    <string name="diagnosis_registration">التسجيل</string>
+    <string name="diagnosis_state">الحالة</string>
+    <string name="diagnosis_transport">النقل</string>
+    <string name="diagnosis_expires">مدة الصلاحية</string>
+
+    <string name="diagnosis_last_call">آخر مكالمة</string>
+    <string name="diagnosis_sound">الصوت</string>
+    <string name="diagnosis_sound_both">في الاتجاهين</string>
+    <string name="diagnosis_sound_send_only">إرسال فقط</string>
+    <string name="diagnosis_sound_receive_only">استقبال فقط</string>
+    <string name="diagnosis_sound_none">لا يوجد</string>
+    <string name="diagnosis_loss">فقدان الحزم</string>
+    <string name="diagnosis_loss_value">↓ %1$s · ↑ %2$s</string>
+    <string name="diagnosis_jitter">التذبذب</string>
+    <string name="diagnosis_round_trip">زمن الذهاب والإياب</string>
+    <string name="diagnosis_ended">انتهت</string>
+
+    <string name="diagnosis_adaptation">التعديلات التلقائية</string>
+    <string name="diagnosis_adapted_transport">النقل</string>
+    <string name="diagnosis_adapted_expires">مدة صلاحية التسجيل</string>
+    <string name="diagnosis_on">تشغيل</string>
+</resources>

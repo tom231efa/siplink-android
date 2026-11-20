@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="account_limit">
+        <item quantity="zero">%1$s حساب كحد أقصى</item>
+        <item quantity="one">حساب واحد كحد أقصى</item>
+        <item quantity="two">حسابان كحد أقصى</item>
+        <item quantity="few">%1$s حسابات كحد أقصى</item>
+        <item quantity="many">%1$s حسابًا كحد أقصى</item>
+        <item quantity="other">%1$s حساب كحد أقصى</item>
+    </plurals>
+    <plurals name="account_error_name_too_long">
+        <item quantity="zero">اسم الحساب: %1$s حرف كحد أقصى</item>
+        <item quantity="one">اسم الحساب: حرف واحد كحد أقصى</item>
+        <item quantity="two">اسم الحساب: حرفان كحد أقصى</item>
+        <item quantity="few">اسم الحساب: %1$s أحرف كحد أقصى</item>
+        <item quantity="many">اسم الحساب: %1$s حرفًا كحد أقصى</item>
+        <item quantity="other">اسم الحساب: %1$s حرف كحد أقصى</item>
+    </plurals>
+    <string name="account_error_name_taken">اسم الحساب موجود بالفعل</string>
+    <string name="account_error_username_empty">اسم المستخدم مطلوب</string>
+    <string name="account_error_invalid_chars">يحتوي على أحرف غير صالحة</string>
+    <string name="account_error_username_invalid">يحتوي اسم المستخدم على أحرف غير صالحة</string>
+    <string name="account_error_domain_empty">النطاق مطلوب</string>
+    <string name="account_error_domain_invalid">النطاق غير صالح</string>
+    <string name="account_error_port_invalid">يجب أن يكون المنفذ 1–65535</string>
+    <string name="account_error_server_invalid">يجب أن يكون الخادم الوكيل بالصيغة مضيف[:منفذ]</string>
+    <string name="account_error_backup_invalid">يجب أن يكون الخادم الاحتياطي بالصيغة مضيف[:منفذ]</string>
+    <string name="account_error_same_as_proxy">مطابق للخادم الوكيل</string>
+    <string name="account_error_backup_same">الخادم الاحتياطي مطابق للخادم الوكيل</string>
+    <string name="account_error_dns_format">يجب أن يكون بالصيغة IP[:منفذ]</string>
+    <string name="account_error_dns_invalid">يجب أن يكون خادم DNS بالصيغة IP[:منفذ]</string>
+    <string name="account_error_timeout_range">يجب أن تكون القيمة %1$s–%2$s ms</string>
+    <string name="account_error_timeout_invalid">يجب أن تكون المهلة السريعة %1$s–%2$s ms</string>
+    <string name="account_error_expires_range">يجب أن تكون القيمة %1$s–%2$s ثانية</string>
+    <string name="account_error_expires_invalid">يجب أن تكون مدة صلاحية التسجيل %1$s–%2$s ثانية</string>
+    <string name="account_error_duplicate">الحساب موجود بالفعل</string>
+    <string name="account_error_password_required">مطلوبة (تغيّر اسم المستخدم أو النطاق أو المنفذ)</string>
+    <string name="account_error_password_required_full">كلمة المرور مطلوبة (تغيّر اسم المستخدم أو النطاق أو المنفذ)</string>
+    <string name="account_error_address_rejected">تعذّر تحليل العنوان</string>
+    <string name="account_error_not_found">الحساب غير موجود</string>
+    <string name="account_csv_format">اسم المستخدم,كلمة المرور,النطاق[,النقل[,الاسم المعروض[,الخادم الوكيل[,اسم الحساب]]]]</string>
+
+    <string name="account_dns_failed">فشل استعلام DNS</string>
+    <string name="account_register_failed">فشل التسجيل</string>
+    <string name="account_line_transport_auto">%1$s (تلقائي)</string>
+
+    <string name="account_state_registered">مسجّل</string>
+    <string name="account_state_registering">جارٍ التسجيل</string>
+    <string name="account_state_failed">فشل التسجيل</string>
+    <string name="account_state_none">غير مسجّل</string>
+    <string name="account_state_disabled">مُعطَّل</string>
+
+    <string name="account_list_title">حسابات SIP</string>
+    <string name="account_import_action">استيراد حسابات بالجملة</string>
+    <string name="account_search_action">البحث في الحسابات</string>
+    <string name="account_search_placeholder">البحث في الحسابات</string>
+    <string name="account_search_close">إغلاق البحث</string>
+    <string name="account_empty">لا توجد حسابات SIP</string>
+    <string name="account_add">إضافة حساب</string>
+    <string name="account_no_match">لا توجد حسابات مطابقة</string>
+    <plurals name="account_summary_total">
+        <item quantity="zero">%1$s / %2$s حساب</item>
+        <item quantity="one">%1$s / %2$s حساب</item>
+        <item quantity="two">%1$s / %2$s حساب</item>
+        <item quantity="few">%1$s / %2$s حسابات</item>
+        <item quantity="many">%1$s / %2$s حسابًا</item>
+        <item quantity="other">%1$s / %2$s حساب</item>
+    </plurals>
+    <string name="account_summary_registered">مسجّلة %1$s</string>
+    <string name="account_summary_failed">فاشلة %1$s</string>
+    <string name="account_summary_disabled">مُعطَّلة %1$s</string>
+    <string name="account_default_marker">الحساب الافتراضي</string>
+    <string name="account_row_status">%1$s · %2$s</string>
+    <string name="account_row_status_backup">%1$s · %2$s · الخادم الاحتياطي</string>
+
+    <string name="account_added">تمت إضافة الحساب</string>
+    <string name="account_saved">تم حفظ الحساب</string>
+    <string name="account_edit_title_new">إضافة حساب</string>
+    <string name="account_edit_title_view">تفاصيل الحساب</string>
+    <string name="account_edit_title_edit">تعديل الحساب</string>
+    <string name="account_section_info">معلومات الحساب</string>
+    <string name="account_field_name">اسم الحساب (اختياري)</string>
+    <string name="account_field_name_hint">مثل: الاستقبال، خط المبيعات 1</string>
+    <string name="account_field_username">اسم المستخدم</string>
+    <string name="account_field_username_hint">مثل: 1001</string>
+    <string name="account_field_port">المنفذ</string>
+    <string name="account_field_domain">النطاق / الخادم</string>
+    <string name="account_field_domain_hint">pbx.example.com أو 192.168.1.10</string>
+    <string name="account_field_password">كلمة المرور</string>
+    <string name="account_field_password_keep">اتركها فارغة للإبقاء على كلمة المرور الحالية</string>
+    <string name="account_field_display_name">الاسم المعروض (اختياري)</string>
+    <string name="account_section_transport">النقل</string>
+    <string name="account_tls">TLS وشهادات CA</string>
+    <string name="account_section_advanced">الإعدادات المتقدمة</string>
+    <string name="account_field_auth_user">اسم مستخدم المصادقة (اختياري)</string>
+    <string name="account_field_proxy">الخادم الوكيل (اختياري)</string>
+    <string name="account_field_backup_proxy">الخادم الاحتياطي (اختياري)</string>
+    <string name="account_field_fast_timeout">المهلة السريعة (ms، اختياري)</string>
+    <string name="account_field_dns">خادم DNS (اختياري)</string>
+    <string name="account_field_dns_hint">IP[:منفذ]</string>
+    <string name="account_field_expires">مدة صلاحية التسجيل (بالثواني)</string>
+    <string name="account_subscribe_mwi">الاشتراك في إشعارات البريد الصوتي</string>
+    <string name="account_line_diagnosis">تشخيص الخط</string>
+    <string name="account_enable">تفعيل هذا الحساب</string>
+    <string name="account_default_set">تم تعيين الحساب الافتراضي</string>
+    <string name="account_is_default">الحساب الافتراضي</string>
+    <string name="account_set_default">تعيين كافتراضي</string>
+    <string name="account_delete">حذف الحساب</string>
+    <string name="account_delete_title">هل تريد حذف الحساب؟</string>
+    <string name="account_delete_text">ستتم إزالة %1$s من هذا الهاتف وإلغاء تسجيله.</string>
+    <plurals name="account_delete_keys">
+        <item quantity="zero">\n%1$s مفتاح اختصار يستخدم هذا الخط فقط؛ وسيطلب اختيار خط عند الاتصال.</item>
+        <item quantity="one">\nمفتاح اختصار واحد يستخدم هذا الخط فقط؛ وسيطلب اختيار خط عند الاتصال.</item>
+        <item quantity="two">\nمفتاحا اختصار يستخدمان هذا الخط فقط؛ وسيطلبان اختيار خط عند الاتصال.</item>
+        <item quantity="few">\n%1$s مفاتيح اختصار تستخدم هذا الخط فقط؛ وستطلب اختيار خط عند الاتصال.</item>
+        <item quantity="many">\n%1$s مفتاح اختصار تستخدم هذا الخط فقط؛ وستطلب اختيار خط عند الاتصال.</item>
+        <item quantity="other">\n%1$s مفتاح اختصار تستخدم هذا الخط فقط؛ وستطلب اختيار خط عند الاتصال.</item>
+    </plurals>
+
+    <string name="account_picker_title">اختيار حساب الاتصال الصادر</string>
+    <string name="account_picker_default">استخدام الحساب الافتراضي</string>
+    <string name="account_picker_search">البحث بالاسم أو الرقم أو النطاق</string>
+    <string name="account_picker_not_set">غير مُعيَّن</string>
+    <string name="account_picker_row">%1$s · %2$s</string>
+    <string name="account_picker_row_status">%1$s · %2$s</string>
+    <string name="account_picker_row_pinned">المحدد في لوحة الاتصال · %1$s · %2$s</string>
+
+    <string name="account_import_title">استيراد حسابات بالجملة</string>
+    <string name="account_import_example">1001,password,pbx.example.com,tls,أحمد علي,,الاستقبال</string>
+</resources>

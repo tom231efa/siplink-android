@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="managed_password_title">عرض كلمة المرور</string>
+    <string name="managed_password_text">كلمة المرور محمية. أدخل كلمة مرور الإعدادات لعرضها.</string>
+    <string name="managed_password_field">كلمة مرور الإعدادات</string>
+    <string name="managed_password_wrong">كلمة المرور غير صحيحة</string>
+    <string name="managed_password_view">عرض</string>
+
+    <string name="managed_notice">تتم الإدارة عن بُعد؛ لا يمكن التغيير على هذا الجهاز</string>
+    <string name="managed_locked">تتم الإدارة عن بُعد</string>
+</resources>

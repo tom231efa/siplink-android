@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tls_invalid_file">ليس ملف شهادة X.509 صالحًا (PEM / CRT / CER / DER)</string>
+    <string name="tls_save_failed">تعذّر حفظ الشهادة: %1$s</string>
+    <string name="tls_read_failed">تعذّرت قراءة الملف المحدد</string>
+    <string name="tls_file_too_large">الملف كبير جدًا</string>
+    <string name="tls_already_trusted">الشهادة موجودة بالفعل</string>
+    <string name="tls_section_imported">شهادات CA المستوردة</string>
+    <string name="tls_none">لم يتم استيراد شهادات</string>
+    <string name="tls_import">استيراد شهادة CA</string>
+    <string name="tls_section_verification">التحقق من شهادة الخادم</string>
+    <string name="tls_verify_certificate">التحقق من شهادة الخادم</string>
+    <string name="tls_verify_hostname">التحقق من اسم المضيف</string>
+    <string name="tls_verification_off_warning">إيقاف التحقق يعرّض المكالمات للتنصت</string>
+    <string name="tls_section_srtp">تشفير الوسائط (SRTP)</string>
+    <string name="tls_srtp_off">إيقاف</string>
+    <string name="tls_srtp_preferred">مفضّل</string>
+    <string name="tls_srtp_mandatory">إلزامي</string>
+    <string name="tls_remove_title">هل تريد إزالة الشهادة؟</string>
+    <string name="tls_remove_text">لن تعود شهادات الخوادم الصادرة عن «%1$s» موثوقة، وسيفشل تسجيل حسابات TLS التي تعتمد على هذه الشهادة.</string>
+    <string name="tls_remove_confirm">إزالة</string>
+    <string name="tls_issuer">جهة الإصدار: %1$s</string>
+    <string name="tls_expired">انتهت صلاحيتها في %1$s</string>
+    <string name="tls_valid_until_not_ca">صالحة حتى %1$s · ليست شهادة CA</string>
+    <string name="tls_valid_until">صالحة حتى %1$s</string>
+    <string name="tls_remove">إزالة الشهادة</string>
+    <plurals name="tls_imported">
+        <item quantity="zero">تم استيراد %1$s شهادة؛ جارٍ إعادة تسجيل الحسابات</item>
+        <item quantity="one">تم استيراد شهادة واحدة؛ جارٍ إعادة تسجيل الحسابات</item>
+        <item quantity="two">تم استيراد شهادتين؛ جارٍ إعادة تسجيل الحسابات</item>
+        <item quantity="few">تم استيراد %1$s شهادات؛ جارٍ إعادة تسجيل الحسابات</item>
+        <item quantity="many">تم استيراد %1$s شهادة؛ جارٍ إعادة تسجيل الحسابات</item>
+        <item quantity="other">تم استيراد %1$s شهادة؛ جارٍ إعادة تسجيل الحسابات</item>
+    </plurals>
+
+    <string name="tls_restart_ldap_title">إعادة التشغيل لتطبيق التغيير على LDAP</string>
+    <string name="tls_restart_ldap_text">تستخدم حسابات SIP الآن إعدادات الشهادات الجديدة. أنشأت أدلة LDAP اتصالها المشفّر في وقت سابق من هذا التشغيل؛ أعد تشغيل التطبيق لاستخدام شهادات CA الجديدة.</string>
+    <string name="tls_restart_after_call">أعد تشغيل التطبيق بعد انتهاء المكالمة</string>
+    <string name="tls_restart_now">إعادة التشغيل الآن</string>
+    <string name="tls_restart_later">لاحقًا</string>
+</resources>

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="dialer_call_features">ميزات الاتصال</string>
+    <string name="dialer_switch_to_pad">التبديل إلى لوحة الاتصال</string>
+    <string name="dialer_switch_to_keyboard">التبديل إلى لوحة المفاتيح</string>
+    <string name="dialer_add_account">إضافة حساب SIP</string>
+    <string name="dialer_no_accounts">لا توجد حسابات SIP</string>
+    <string name="dialer_choose_account">اختيار حساب الاتصال الصادر</string>
+    <string name="dialer_dnd_on">وضع عدم الإزعاج مُفعَّل</string>
+    <plurals name="dialer_new_voicemail">
+        <item quantity="zero">%1$s رسالة صوتية جديدة</item>
+        <item quantity="one">رسالة صوتية جديدة</item>
+        <item quantity="two">رسالتان صوتيتان جديدتان</item>
+        <item quantity="few">%1$s رسائل صوتية جديدة</item>
+        <item quantity="many">%1$s رسالة صوتية جديدة</item>
+        <item quantity="other">%1$s رسالة صوتية جديدة</item>
+    </plurals>
+    <string name="dialer_number_hint">أدخل رقمًا أو عنوان SIP</string>
+    <string name="dialer_address_label">الرقم أو عنوان SIP</string>
+    <string name="dialer_address_example">مثل: %1$s أو %2$s</string>
+
+    <string name="dialer_video_call">مكالمة فيديو</string>
+    <string name="dialer_shortcuts">مفاتيح الاختصار</string>
+    <string name="dialer_backspace">حذف</string>
+    <string name="dialer_call">اتصال</string>
+</resources>

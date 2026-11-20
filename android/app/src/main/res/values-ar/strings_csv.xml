@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="csv_unclosed_quote">علامة اقتباس غير مغلقة</string>
+    <string name="csv_too_few_fields">عدد الحقول غير كافٍ؛ الصيغة: %1$s</string>
+    <string name="csv_unknown_type">نوع غير معروف «%1$s»؛ المتاح: %2$s</string>
+    <string name="csv_unknown_icon">أيقونة غير معروفة «%1$s»؛ المتاح: %2$s</string>
+    <string name="csv_unknown_transport">نقل غير معروف «%1$s»؛ المتاح: %2$s</string>
+    <string name="csv_choose_file">اختيار ملف</string>
+    <string name="csv_import">استيراد</string>
+    <string name="csv_file_unreadable">تعذّرت قراءة الملف المحدد</string>
+    <plurals name="csv_imported_accounts">
+        <item quantity="zero">تم استيراد %1$s حساب</item>
+        <item quantity="one">تم استيراد حساب واحد</item>
+        <item quantity="two">تم استيراد حسابين</item>
+        <item quantity="few">تم استيراد %1$s حسابات</item>
+        <item quantity="many">تم استيراد %1$s حسابًا</item>
+        <item quantity="other">تم استيراد %1$s حساب</item>
+    </plurals>
+    <plurals name="csv_imported_shortcuts">
+        <item quantity="zero">تم استيراد %1$s مفتاح اختصار</item>
+        <item quantity="one">تم استيراد مفتاح اختصار واحد</item>
+        <item quantity="two">تم استيراد مفتاحي اختصار</item>
+        <item quantity="few">تم استيراد %1$s مفاتيح اختصار</item>
+        <item quantity="many">تم استيراد %1$s مفتاح اختصار</item>
+        <item quantity="other">تم استيراد %1$s مفتاح اختصار</item>
+    </plurals>
+    <plurals name="csv_report_skipped">
+        <item quantity="zero">؛ تم تخطي %1$s لتجاوز الحد الأقصى البالغ %2$s</item>
+        <item quantity="one">؛ تم تخطي %1$s لتجاوز الحد الأقصى البالغ %2$s</item>
+        <item quantity="two">؛ تم تخطي %1$s لتجاوز الحد الأقصى البالغ %2$s</item>
+        <item quantity="few">؛ تم تخطي %1$s لتجاوز الحد الأقصى البالغ %2$s</item>
+        <item quantity="many">؛ تم تخطي %1$s لتجاوز الحد الأقصى البالغ %2$s</item>
+        <item quantity="other">؛ تم تخطي %1$s لتجاوز الحد الأقصى البالغ %2$s</item>
+    </plurals>
+    <plurals name="csv_report_errors">
+        <item quantity="zero">؛ %1$s سطر به أخطاء:</item>
+        <item quantity="one">؛ سطر واحد به أخطاء:</item>
+        <item quantity="two">؛ سطران بهما أخطاء:</item>
+        <item quantity="few">؛ %1$s أسطر بها أخطاء:</item>
+        <item quantity="many">؛ %1$s سطرًا بها أخطاء:</item>
+        <item quantity="other">؛ %1$s سطر بها أخطاء:</item>
+    </plurals>
+    <string name="csv_report_line">\nالسطر %1$s: %2$s</string>
+    <string name="csv_report_more">\n…</string>
+</resources>

@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="call_busy_already">توجد مكالمة جارية بالفعل</string>
+    <string name="call_none">لا توجد مكالمة نشطة</string>
+    <string name="call_two_already">توجد مكالمتان بالفعل</string>
+    <string name="call_consult_after_connect">يمكن إجراء مكالمة استشارة بعد اتصال المكالمة</string>
+    <string name="call_enter_number">أدخل رقمًا</string>
+    <string name="call_add_account_first">أضف حساب SIP أولًا</string>
+    <string name="call_line_off">الخط مُعطَّل</string>
+    <string name="call_invalid_address">الرقم أو العنوان غير صالح</string>
+    <string name="call_failed">فشلت المكالمة</string>
+    <string name="call_dtmf_in_call_only">لا يمكن إرسال الأزرار إلا أثناء مكالمة</string>
+    <string name="call_room_no_video">لا تدعم غرفة المؤتمر الفيديو</string>
+    <string name="call_no_pending_transfer">لا يوجد تحويل لإكماله</string>
+    <string name="call_room_after_connect">يمكن فتح غرفة مؤتمر بعد اتصال المكالمة</string>
+    <string name="call_room_transferring">التحويل قيد التنفيذ</string>
+    <string name="call_room_supervised">لا يمكن لمكالمات المراقبة الانضمام إلى غرفة المؤتمر</string>
+    <string name="call_withheld">مجهول</string>
+
+    <string name="call_ended">انتهت المكالمة</string>
+    <string name="call_hung_up">تم إنهاء المكالمة</string>
+    <string name="call_cancelled">أُلغيت</string>
+    <string name="call_end_busy">الطرف الآخر مشغول</string>
+    <string name="call_end_declined">رفض الطرف الآخر المكالمة</string>
+    <string name="call_end_not_found">الرقم غير موجود</string>
+    <string name="call_end_not_answered">لم يتم الرد</string>
+    <string name="call_end_no_response">لا استجابة من الطرف الآخر</string>
+    <string name="call_end_dnd">الطرف الآخر في وضع عدم الإزعاج</string>
+    <string name="call_end_unavailable">الطرف الآخر غير متاح مؤقتًا</string>
+    <string name="call_end_forbidden">غير مسموح بالاتصال</string>
+    <string name="call_end_network">فشل الاتصال بالشبكة</string>
+    <string name="call_end_media">فشل التفاوض على الوسائط</string>
+    <string name="call_no_sound">لا يصل صوت من الطرف الآخر</string>
+    <string name="call_server_silent">الخادم لا يستجيب</string>
+
+    <string name="call_transfer_after_connect">يمكن تحويل المكالمة بعد اتصالها</string>
+    <string name="call_enter_transfer_number">أدخل رقم التحويل</string>
+    <string name="call_transfer_after_answer">يمكن تحويل المكالمة بعد رد الطرف الآخر</string>
+    <string name="call_parked">رُكنت المكالمة</string>
+    <string name="call_transferred">تم التحويل</string>
+    <string name="call_transfer_send_failed">تعذّر إرسال طلب التحويل</string>
+
+    <string name="call_video_after_connect">يمكن تشغيل الفيديو بعد اتصال المكالمة</string>
+    <string name="call_video_not_supported">لا تدعم هذه المكالمة الفيديو</string>
+    <string name="call_cannot_change">لا يمكن تغيير المكالمة</string>
+    <string name="call_camera_after_connect">يمكن استخدام الكاميرا بعد اتصال المكالمة</string>
+    <string name="call_no_video">لا يوجد فيديو في هذه المكالمة</string>
+    <string name="call_camera_permission">يلزم إذن الكاميرا</string>
+
+    <string name="call_status_incoming">مكالمة واردة</string>
+    <string name="call_status_intercom">مكالمة اتصال داخلي</string>
+    <string name="call_status_video">مكالمة فيديو واردة</string>
+    <string name="call_status_calling">جارٍ الاتصال…</string>
+    <string name="call_status_connected">متصل</string>
+    <string name="call_status_held">المكالمة معلّقة</string>
+    <string name="call_intercom_chip">اتصال داخلي</string>
+    <string name="call_room_button">غرفة المؤتمر</string>
+    <string name="call_room_open_title">هل تريد فتح غرفة المؤتمر؟</string>
+    <string name="call_room_open_text">غرفة المؤتمر صوتية فقط؛ سيتوقف الفيديو.</string>
+    <string name="call_room_open">فتح</string>
+    <string name="call_transferring">جارٍ التحويل…</string>
+    <string name="call_transfer_succeeded">اكتمل التحويل</string>
+    <string name="call_parked_listen">رُكنت المكالمة؛ استمع إلى رقم موضع الركن الذي يعلنه PBX</string>
+    <string name="call_transfer_failed">فشل التحويل؛ لا تزال المكالمة معلّقة</string>
+
+    <string name="call_complete_transfer">إكمال التحويل: تحويل %1$s إلى الطرف الآخر</string>
+    <string name="call_mute">كتم</string>
+    <string name="call_muted">مكتوم</string>
+    <string name="call_keypad">لوحة المفاتيح</string>
+    <string name="call_hold">تعليق</string>
+    <string name="call_resume">استئناف</string>
+    <string name="call_transfer">تحويل</string>
+    <string name="call_park">ركن</string>
+    <string name="call_swap">تبديل</string>
+    <string name="call_merge">دمج</string>
+    <string name="call_shortcuts">مفاتيح الاختصار</string>
+    <string name="call_hang_up">إنهاء</string>
+    <string name="call_video">فيديو</string>
+    <string name="call_supervision_listen">استماع</string>
+    <string name="call_supervision_whisper">همس</string>
+    <string name="call_supervision_barge">تدخل</string>
+    <string name="call_route_earpiece">سماعة الهاتف</string>
+    <string name="call_route_speaker">مكبر الصوت</string>
+    <string name="call_route_bluetooth">بلوتوث</string>
+    <string name="call_route_headset">سماعة الرأس</string>
+    <string name="call_route_wired_headset">سماعة رأس سلكية</string>
+    <string name="call_record_start">بدء التسجيل</string>
+    <string name="call_record_stop">إيقاف التسجيل</string>
+
+    <string name="call_keypad_close">إغلاق لوحة المفاتيح</string>
+    <string name="call_transfer_title">تحويل المكالمة</string>
+    <string name="call_transfer_to">التحويل إلى</string>
+    <string name="call_transfer_hint">رقم داخلي أو عنوان SIP</string>
+    <string name="call_transfer_attended">تحويل بعد الاستشارة</string>
+    <string name="call_transfer_blind">تحويل مباشر</string>
+    <string name="call_shortcuts_empty">لا توجد مفاتيح اختصار</string>
+
+    <string name="call_waiting_new">مكالمة جديدة</string>
+    <string name="call_waiting_decline">رفض المكالمة الجديدة</string>
+    <string name="call_waiting_answer">تعليق والرد</string>
+    <string name="call_held_consulting">في انتظار التحويل (معلّقة)</string>
+    <string name="call_held_label">معلّقة</string>
+    <string name="call_swap_calls">تبديل المكالمات</string>
+    <string name="call_slide_description">مكالمة واردة: اسحب يمينًا للرد، واسحب يسارًا للرفض</string>
+    <string name="call_slide_answer">رد</string>
+    <string name="call_slide_decline">رفض</string>
+
+    <string name="call_microphone_permission">يلزم إذن الميكروفون</string>
+</resources>

@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="recording_title">التسجيلات</string>
+    <plurals name="recording_selected">
+        <item quantity="zero">المحدد: %1$s</item>
+        <item quantity="one">المحدد: %1$s</item>
+        <item quantity="two">المحدد: %1$s</item>
+        <item quantity="few">المحدد: %1$s</item>
+        <item quantity="many">المحدد: %1$s</item>
+        <item quantity="other">المحدد: %1$s</item>
+    </plurals>
+    <string name="recording_clear_selection">إلغاء التحديد</string>
+    <string name="recording_export">تصدير</string>
+    <plurals name="recording_exported">
+        <item quantity="zero">تم تصدير %1$s تسجيل</item>
+        <item quantity="one">تم تصدير تسجيل واحد</item>
+        <item quantity="two">تم تصدير تسجيلين</item>
+        <item quantity="few">تم تصدير %1$s تسجيلات</item>
+        <item quantity="many">تم تصدير %1$s تسجيلًا</item>
+        <item quantity="other">تم تصدير %1$s تسجيل</item>
+    </plurals>
+    <string name="recording_export_failed">فشل التصدير</string>
+    <plurals name="recording_summary">
+        <item quantity="zero">%1$s تسجيل · %2$s</item>
+        <item quantity="one">تسجيل واحد · %2$s</item>
+        <item quantity="two">تسجيلان · %2$s</item>
+        <item quantity="few">%1$s تسجيلات · %2$s</item>
+        <item quantity="many">%1$s تسجيلًا · %2$s</item>
+        <item quantity="other">%1$s تسجيل · %2$s</item>
+    </plurals>
+    <string name="recording_empty">لا توجد تسجيلات</string>
+    <string name="recording_cannot_play">تعذّر التشغيل</string>
+    <plurals name="recording_delete_title">
+        <item quantity="zero">هل تريد حذف %1$s تسجيل؟</item>
+        <item quantity="one">هل تريد حذف التسجيل؟</item>
+        <item quantity="two">هل تريد حذف التسجيلين؟</item>
+        <item quantity="few">هل تريد حذف %1$s تسجيلات؟</item>
+        <item quantity="many">هل تريد حذف %1$s تسجيلًا؟</item>
+        <item quantity="other">هل تريد حذف %1$s تسجيل؟</item>
+    </plurals>
+
+    <string name="recording_period_all">الكل</string>
+    <string name="recording_period_today">اليوم</string>
+    <plurals name="recording_period_days">
+        <item quantity="zero">%1$s يوم</item>
+        <item quantity="one">يوم واحد</item>
+        <item quantity="two">يومان</item>
+        <item quantity="few">%1$s أيام</item>
+        <item quantity="many">%1$s يومًا</item>
+        <item quantity="other">%1$s يوم</item>
+    </plurals>
+    <string name="recording_period_custom">مخصص</string>
+    <string name="recording_period_range">%1$s–%2$s</string>
+
+    <string name="recording_unknown_number">رقم غير معروف</string>
+    <string name="recording_detail_incoming">واردة · %1$s · %2$s · %3$s</string>
+    <string name="recording_detail_outgoing">صادرة · %1$s · %2$s · %3$s</string>
+    <string name="recording_play">تشغيل</string>
+    <string name="recording_stop">إيقاف</string>
+</resources>

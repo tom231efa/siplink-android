@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_language">اللغة</string>
+    <string name="settings_language_system">لغة النظام</string>
+
+    <string name="settings_title">الإعدادات</string>
+    <string name="settings_section_accounts">الحسابات</string>
+    <string name="settings_sip_accounts">حسابات SIP</string>
+    <string name="settings_section_call_features">ميزات الاتصال</string>
+    <string name="settings_dnd">عدم الإزعاج</string>
+    <string name="settings_video_calls">مكالمات الفيديو</string>
+    <string name="settings_recording">التسجيل</string>
+    <string name="settings_auto_answer">الاتصال الداخلي والرد التلقائي</string>
+    <string name="settings_ldap">أدلة LDAP</string>
+    <string name="settings_feature_codes">رموز الميزات</string>
+    <string name="settings_codecs">برامج الترميز</string>
+    <string name="settings_audio_codecs">برامج ترميز الصوت</string>
+    <string name="settings_advanced">الإعدادات المتقدمة</string>
+    <string name="settings_section_security">الأمان</string>
+    <string name="settings_tls">TLS وشهادات CA</string>
+    <string name="settings_section_battery">البطارية</string>
+    <string name="settings_keep_alive">البقاء متصلًا في الخلفية</string>
+    <string name="settings_battery_optimization">تحسين البطارية</string>
+    <string name="settings_battery_open_failed">تعذّر فتح إعدادات تحسين البطارية</string>
+    <string name="settings_lock_screen_calls">عرض المكالمات على شاشة القفل</string>
+    <string name="settings_lock_screen_allowed">مسموح</string>
+    <string name="settings_lock_screen_not_allowed">غير مسموح</string>
+    <string name="settings_lock_screen_open_failed">تعذّر فتح إعدادات الإشعارات بملء الشاشة</string>
+    <string name="settings_section_appearance">المظهر</string>
+    <string name="settings_theme">السمة</string>
+    <string name="settings_theme_system">إعداد النظام</string>
+    <string name="settings_theme_light">فاتحة</string>
+    <string name="settings_theme_dark">داكنة</string>
+    <string name="settings_banner_position">موضع شريط المكالمة</string>
+    <string name="settings_banner_top">أعلى</string>
+    <string name="settings_banner_bottom">أسفل</string>
+    <string name="settings_dynamic_color">الألوان الديناميكية</string>
+    <string name="settings_remote_config">الإعداد عن بُعد</string>
+    <string name="settings_about">حول</string>
+    <string name="settings_update_available">يتوفر تحديث</string>
+
+    <string name="settings_recording_calls">تسجيل المكالمات</string>
+    <string name="settings_recording_by_default">التسجيل افتراضيًا</string>
+    <string name="settings_recording_kept">عدد التسجيلات المحفوظة</string>
+    <string name="settings_recording_files">التسجيلات</string>
+</resources>

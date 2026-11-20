@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="form_required">مطلوب</string>
+    <string name="form_taken">موجود بالفعل</string>
+    <string name="form_invalid">صيغة غير صالحة</string>
+    <string name="form_host_port">يجب أن يكون بالصيغة مضيف[:منفذ]</string>
+    <string name="form_port_range">يجب أن تكون القيمة 1–65535</string>
+    <plurals name="form_max_chars">
+        <item quantity="zero">%1$s حرف كحد أقصى</item>
+        <item quantity="one">حرف واحد كحد أقصى</item>
+        <item quantity="two">حرفان كحد أقصى</item>
+        <item quantity="few">%1$s أحرف كحد أقصى</item>
+        <item quantity="many">%1$s حرفًا كحد أقصى</item>
+        <item quantity="other">%1$s حرف كحد أقصى</item>
+    </plurals>
+
+    <string name="form_expand">توسيع</string>
+    <string name="form_collapse">تصغير</string>
+    <string name="form_password_show">إظهار كلمة المرور</string>
+    <string name="form_password_hide">إخفاء كلمة المرور</string>
+    <string name="form_placeholder_host_port">مضيف[:منفذ]</string>
+</resources>

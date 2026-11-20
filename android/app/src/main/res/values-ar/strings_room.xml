@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="room_name">غرفة المؤتمر</string>
+    <plurals name="room_full">
+        <item quantity="zero">غرفة المؤتمر ممتلئة (%1$s مشارك كحد أقصى)</item>
+        <item quantity="one">غرفة المؤتمر ممتلئة (مشارك واحد كحد أقصى)</item>
+        <item quantity="two">غرفة المؤتمر ممتلئة (مشاركان كحد أقصى)</item>
+        <item quantity="few">غرفة المؤتمر ممتلئة (%1$s مشاركين كحد أقصى)</item>
+        <item quantity="many">غرفة المؤتمر ممتلئة (%1$s مشاركًا كحد أقصى)</item>
+        <item quantity="other">غرفة المؤتمر ممتلئة (%1$s مشارك كحد أقصى)</item>
+    </plurals>
+    <plurals name="room_free">
+        <item quantity="zero">يمكن إضافة %1$s مشارك آخر كحد أقصى</item>
+        <item quantity="one">يمكن إضافة مشارك واحد آخر كحد أقصى</item>
+        <item quantity="two">يمكن إضافة مشاركَين آخرَين كحد أقصى</item>
+        <item quantity="few">يمكن إضافة %1$s مشاركين آخرين كحد أقصى</item>
+        <item quantity="many">يمكن إضافة %1$s مشاركًا آخر كحد أقصى</item>
+        <item quantity="other">يمكن إضافة %1$s مشارك آخر كحد أقصى</item>
+    </plurals>
+    <string name="room_not_now">حاول مرة أخرى بعد قليل</string>
+    <string name="room_retry_later">حاول مرة أخرى لاحقًا</string>
+    <string name="room_create_failed">تعذّر إنشاء غرفة المؤتمر</string>
+    <string name="room_rejoin_failed">تعذّرت العودة إلى غرفة المؤتمر</string>
+    <string name="room_join_failed">تعذّر الانضمام إلى غرفة المؤتمر</string>
+    <string name="room_already_in">موجود بالفعل في غرفة المؤتمر</string>
+
+    <string name="room_member_queued">في الانتظار</string>
+    <string name="room_member_calling">جارٍ الاتصال</string>
+    <string name="room_member_ringing">يرنّ</string>
+    <string name="room_member_connected">متصل</string>
+    <string name="room_member_held">معلّق</string>
+    <string name="room_member_left">غادر</string>
+    <string name="room_member_held_back">لم يتم الاتصال به</string>
+
+    <string name="room_line_full">الخط ممتلئ</string>
+    <string name="room_refused">رفضه PBX</string>
+    <string name="room_busy">مشغول</string>
+    <string name="room_unavailable">غير متاح</string>
+
+    <string name="room_end_title">هل تريد إنهاء المؤتمر؟</string>
+    <plurals name="room_end_text">
+        <item quantity="zero">سيتم إنهاء كل المكالمات البالغ عددها %1$s.</item>
+        <item quantity="one">سيتم إنهاء مكالمة واحدة.</item>
+        <item quantity="two">سيتم إنهاء المكالمتين.</item>
+        <item quantity="few">سيتم إنهاء كل المكالمات البالغ عددها %1$s.</item>
+        <item quantity="many">سيتم إنهاء كل المكالمات البالغ عددها %1$s.</item>
+        <item quantity="other">سيتم إنهاء كل المكالمات البالغ عددها %1$s.</item>
+    </plurals>
+    <string name="room_end_confirm">إنهاء</string>
+    <string name="room_end">إنهاء المؤتمر</string>
+    <string name="room_add_members">إضافة مشاركين</string>
+    <string name="room_show_readings">عرض القيم المقيسة</string>
+    <string name="room_warning_heat">الجهاز ساخن جدًا</string>
+    <string name="room_warning_load">الجهاز مثقل بالحمل</string>
+    <string name="room_warning_memory">الذاكرة منخفضة</string>
+    <string name="room_warning_network">الشبكة ضعيفة</string>
+    <string name="room_reading_cpu">CPU</string>
+    <string name="room_reading_thread">أكثر سلاسل التنفيذ انشغالًا</string>
+    <string name="room_reading_temperature">حرارة الجهاز</string>
+    <string name="room_reading_memory">الذاكرة</string>
+    <string name="room_memory_low">منخفضة</string>
+    <string name="room_memory_normal">طبيعية</string>
+    <string name="room_thermal_unknown">غير معروفة</string>
+    <string name="room_thermal_none">طبيعية</string>
+    <string name="room_thermal_light">خفيفة</string>
+    <string name="room_thermal_moderate">متوسطة</string>
+    <string name="room_thermal_severe">شديدة</string>
+    <string name="room_thermal_critical">حرجة</string>
+    <string name="room_thermal_emergency">طارئة</string>
+    <string name="room_thermal_shutdown">جارٍ إيقاف التشغيل</string>
+    <string name="room_link_readings">"الفقد ↑%1$s%% ↓%2$s%%  التذبذب %3$s ms  الذهاب والإياب %4$s ms"</string>
+    <string name="room_member_retry">الاتصال بـ %1$s مرة أخرى</string>
+    <string name="room_member_remove">إزالة %1$s</string>
+    <string name="room_member_hang_up">إنهاء مكالمة %1$s</string>
+    <string name="room_signal_poor">جودة المكالمة ضعيفة</string>
+    <string name="room_signal">جودة المكالمة %1$s/%2$s</string>
+    <string name="room_away">غائب</string>
+    <string name="room_return">العودة إلى الغرفة</string>
+    <string name="room_waiting_new">مكالمة جديدة</string>
+    <string name="room_waiting_decline">رفض</string>
+    <string name="room_join">الانضمام إلى الغرفة</string>
+
+    <string name="room_add_title">إضافة مشاركين</string>
+    <string name="room_source_recent">المكالمات الأخيرة</string>
+    <string name="room_source_directory">الدليل</string>
+    <string name="room_source_shortcuts">مفاتيح الاختصار</string>
+    <string name="room_add_field">الرقم أو الاسم</string>
+    <string name="room_add_number">إضافة رقم</string>
+    <string name="room_pick_remove">إزالة %1$s</string>
+    <string name="room_call">اتصال</string>
+    <string name="room_call_count">اتصال (%1$s)</string>
+    <string name="room_candidate_in_room">%1$s · موجود بالفعل في الغرفة</string>
+</resources>

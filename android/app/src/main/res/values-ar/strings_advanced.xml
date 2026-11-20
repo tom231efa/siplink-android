@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="advanced_title">الإعدادات المتقدمة</string>
+    <string name="advanced_section_incoming">المكالمات الواردة</string>
+    <string name="advanced_dnd_mode">طريقة عدم الإزعاج</string>
+    <string name="advanced_dnd_software">الهاتف</string>
+    <string name="advanced_dnd_server">الخادم</string>
+    <string name="advanced_dnd_codes">%1$s / %2$s</string>
+    <string name="advanced_call_waiting">انتظار المكالمات</string>
+    <string name="advanced_reject_anonymous">رفض المكالمات المجهولة</string>
+    <string name="advanced_dtmf_mode">وضع DTMF</string>
+    <string name="advanced_section_forwarding">تحويل المكالمات</string>
+    <string name="advanced_forward_always">التحويل الدائم</string>
+    <string name="advanced_forward_busy">التحويل عند الانشغال</string>
+    <string name="advanced_forward_no_answer">التحويل عند عدم الرد</string>
+    <string name="advanced_no_answer_seconds">مهلة عدم الرد (بالثواني)</string>
+    <string name="advanced_range">يجب أن تكون القيمة %1$s–%2$s</string>
+    <string name="advanced_section_room">غرفة المؤتمر</string>
+    <string name="advanced_room_limit">الحد الأقصى للمشاركين</string>
+    <string name="advanced_section_media">الوسائط والشبكة</string>
+    <string name="advanced_rate_control">التحكم التكيفي في المعدل</string>
+    <string name="advanced_echo_cancellation">إلغاء الصدى</string>
+    <string name="advanced_ipv6">السماح بـIPv6</string>
+    <string name="advanced_auto_network">التكيف مع الشبكة تلقائيًا</string>
+    <string name="advanced_stun_server">خادم STUN</string>
+    <string name="advanced_host_port_hint">مضيف[:منفذ]</string>
+    <string name="advanced_section_identity">هوية العميل</string>
+    <string name="advanced_user_agent">اسم العميل (User-Agent)</string>
+
+    <plurals name="advanced_user_agent_error_too_long">
+        <item quantity="zero">اسم العميل (User-Agent): %1$s حرف كحد أقصى</item>
+        <item quantity="one">اسم العميل (User-Agent): حرف واحد كحد أقصى</item>
+        <item quantity="two">اسم العميل (User-Agent): حرفان كحد أقصى</item>
+        <item quantity="few">اسم العميل (User-Agent): %1$s أحرف كحد أقصى</item>
+        <item quantity="many">اسم العميل (User-Agent): %1$s حرفًا كحد أقصى</item>
+        <item quantity="other">اسم العميل (User-Agent): %1$s حرف كحد أقصى</item>
+    </plurals>
+    <string name="advanced_user_agent_error_ascii">أحرف ASCII قابلة للطباعة فقط</string>
+    <string name="advanced_user_agent_error_ascii_full">اسم العميل (User-Agent): أحرف ASCII قابلة للطباعة فقط</string>
+    <string name="advanced_user_agent_error_spaces">بدون مسافات في البداية أو النهاية</string>
+    <string name="advanced_user_agent_error_spaces_full">يجب ألا يبدأ اسم العميل (User-Agent) أو ينتهي بمسافة</string>
+</resources>

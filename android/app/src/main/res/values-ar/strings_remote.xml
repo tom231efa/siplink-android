@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="remote_no_connection">تعذّر الوصول إلى المنصة</string>
+    <string name="remote_pin_mismatch">شهادة المنصة لا تطابق رمز QR</string>
+    <string name="remote_untrusted">شهادة المنصة غير موثوقة</string>
+    <string name="remote_unauthorized">فشلت مصادقة الإعداد عن بُعد</string>
+    <string name="remote_qr_invalid">رمز QR غير صالح أو مستخدم أو منتهي الصلاحية</string>
+    <string name="remote_rate_limited">طلبات كثيرة جدًا، يُرجى المحاولة لاحقًا</string>
+    <string name="remote_platform_unavailable">المنصة غير متاحة مؤقتًا (HTTP %1$s)</string>
+    <string name="remote_platform_error">أعادت المنصة خطأ (HTTP %1$s)</string>
+    <string name="remote_answer_too_long">استجابة المنصة طويلة جدًا</string>
+    <string name="remote_no_device_key">لم تُعِد المنصة مفتاح الجهاز</string>
+    <string name="remote_loaded">تم تحميل الإعداد عن بُعد</string>
+    <string name="remote_removed">تمت إزالة الإعداد عن بُعد</string>
+    <string name="remote_removed_untold">تمت إزالة الإعداد عن بُعد (تعذّر إبلاغ المنصة)</string>
+    <string name="remote_revoked">ألغت المنصة الإعداد عن بُعد</string>
+    <string name="remote_invalid">إعداد عن بُعد غير صالح: %1$s</string>
+    <string name="remote_partly_applied">تعذّر تطبيق بعض الإعدادات: %1$s</string>
+    <string name="remote_needs_update">يُرجى تحديث SipLink</string>
+    <string name="remote_no_audio_codec">لا يتوفر برنامج ترميز صوتي؛ تمت استعادة برامج الترميز الافتراضية</string>
+    <string name="remote_keys_not_loaded">لم يتم تحميل مفاتيح الاختصار بعد؛ لم يتم التحديث</string>
+
+    <string name="remote_error_json">الإعدادات ليست JSON صالحًا</string>
+    <string name="remote_error_json_object">الإعدادات ليست كائن JSON</string>
+    <string name="remote_error_field">%1$s: صيغة غير صالحة</string>
+    <string name="remote_error_ca">شهادة CA %1$s: تعذّرت قراءتها</string>
+    <string name="remote_error_schema">صيغة إعدادات غير مدعومة</string>
+    <string name="remote_error_no_version">لا تحتوي الإعدادات على إصدار</string>
+    <string name="remote_error_password_hash">صيغة كلمة مرور الإعدادات غير صالحة</string>
+    <string name="remote_error_no_answer_range">يجب أن تكون مهلة التحويل عند عدم الرد %1$s–%2$s ثانية</string>
+    <string name="remote_error_frame_rate">يجب أن يكون معدل إطارات الفيديو %1$s</string>
+    <string name="remote_error_codec_name">يوجد برنامج ترميز بلا اسم</string>
+    <string name="remote_error_account">الحساب «%1$s»: %2$s</string>
+    <string name="remote_error_directory">الدليل «%1$s»: %2$s</string>
+    <string name="remote_error_key">المفتاح «%1$s»: %2$s</string>
+    <string name="remote_error_key_missing">الحقل «key» مفقود</string>
+    <string name="remote_error_key_twice">الحقل «key» مستخدم مرتين</string>
+
+    <string name="remote_address_invalid">عنوان غير صالح</string>
+    <string name="remote_address_scheme">يجب أن يبدأ العنوان بـ https://</string>
+    <string name="remote_address_not_enrollment">ليس عنوان إعداد عن بُعد</string>
+    <string name="remote_address_pin">بصمة الشهادة في العنوان غير صالحة</string>
+
+    <string name="remote_scan_not_ours">ليس رمز QR للإعداد عن بُعد</string>
+    <string name="remote_scan_no_camera">تعذّر فتح الكاميرا</string>
+    <string name="remote_camera_denied">لم يُمنح إذن الكاميرا؛ أدخل العنوان بدلًا من ذلك</string>
+    <string name="remote_load_title">هل تريد تحميل الإعداد عن بُعد؟</string>
+    <string name="remote_load_text">المصدر: %1$s. بعد التحميل، يحل الإعداد عن بُعد محل الحسابات والأدلة والشهادات وبرامج الترميز ومفاتيح الاختصار والإعدادات الأخرى على هذا الجهاز، ولا يمكن تغييرها على هذا الجهاز. لا يتأثر سجل المكالمات ولا إعدادات عدم الإزعاج والمظهر.</string>
+    <string name="remote_load">تحميل</string>
+    <string name="remote_delete_title">هل تريد إزالة الإعداد عن بُعد؟</string>
+    <string name="remote_delete_text">سيتم إبلاغ المنصة بإلغاء ربط هذا الجهاز، وستُحذف الحسابات والأدلة والشهادات ومفاتيح الاختصار التي وزعتها المنصة، وكذلك مفاتيح الاختصار التي أنشأتها بنفسك. يتم الاحتفاظ بسجل المكالمات وإعدادات المظهر.</string>
+    <string name="remote_scan">مسح رمز QR</string>
+    <string name="remote_enter_address">إدخال العنوان</string>
+    <string name="remote_enter_address_title">إدخال العنوان</string>
+    <string name="remote_loading">جارٍ التحميل…</string>
+    <string name="remote_section_platform">المنصة</string>
+    <string name="remote_platform">المنصة</string>
+    <string name="remote_client">العميل</string>
+    <string name="remote_region">المنطقة</string>
+    <string name="remote_section_sync">المزامنة</string>
+    <string name="remote_last_sync">آخر مزامنة</string>
+    <string name="remote_never_synced">لم تنجح بعد</string>
+    <string name="remote_generated_at">تاريخ تحديث الإعدادات</string>
+    <string name="remote_sync_result">نتيجة المزامنة</string>
+    <string name="remote_syncing">جارٍ المزامنة…</string>
+    <string name="remote_sync_now">المزامنة الآن</string>
+    <string name="remote_details">التفاصيل</string>
+    <string name="remote_address">العنوان</string>
+    <string name="remote_version">إصدار الإعدادات</string>
+    <string name="remote_certificate">شهادة المنصة</string>
+    <string name="remote_certificate_pinned">تم الوثوق بـCA المنصة عند المسح</string>
+    <string name="remote_certificate_system">تم التحقق بواسطة CA النظام</string>
+    <string name="remote_delete">إزالة الإعداد عن بُعد</string>
+    <string name="remote_address_label">عنوان الإعدادات</string>
+    <string name="remote_next">التالي</string>
+    <plurals name="remote_sync_interval">
+        <item quantity="zero">المزامنة كل %1$s دقيقة</item>
+        <item quantity="one">المزامنة كل دقيقة</item>
+        <item quantity="two">المزامنة كل دقيقتين</item>
+        <item quantity="few">المزامنة كل %1$s دقائق</item>
+        <item quantity="many">المزامنة كل %1$s دقيقة</item>
+        <item quantity="other">المزامنة كل %1$s دقيقة</item>
+    </plurals>
+</resources>
