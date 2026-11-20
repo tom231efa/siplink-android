@@ -102,6 +102,25 @@ class NetworkKeyTest {
     }
 
     @Test
+    fun `a vpn is known by its name servers, and single addresses count nowhere`() {
+        val vpn = home.copy(
+            vpn = true,
+            addresses = listOf("10.8.0.6"),
+            subnets = listOf("10.8.0.6/32"),
+            gateways = listOf("10.8.0.5"),
+            dns = listOf("10.8.0.1"),
+        )
+        // Another address at every connection, alone in a /32 or a /31.
+        val again = vpn.copy(addresses = listOf("10.8.0.10"), subnets = listOf("10.8.0.10/31"), gateways = listOf("10.8.0.9"))
+        assertEquals(NetworkKey.of(vpn), NetworkKey.of(again))
+        assertNotEquals(NetworkKey.of(vpn), NetworkKey.of(vpn.copy(dns = listOf("10.9.0.1"))))
+        // A point-to-point address beside the network's own counts nowhere either.
+        assertEquals(NetworkKey.of(homeIpv4), NetworkKey.of(homeIpv4.copy(subnets = listOf("192.168.10.0/24", "10.64.0.2/32"))))
+        assertEquals(NetworkKey.of(homeIpv4), NetworkKey.of(homeIpv4.copy(subnets = listOf("192.168.10.0/24", "10.64.0.2/31"))))
+        assertNotEquals(NetworkKey.of(homeIpv4), NetworkKey.of(homeIpv4.copy(subnets = listOf("192.168.10.0/24", "10.64.0.0/30"))))
+    }
+
+    @Test
     fun `the core misses a change of network of the same kind`() {
         val other = home.copy(addresses = listOf("192.168.20.40"), gateways = listOf("192.168.20.1"))
         assertTrue(NetworkKey.unnoticedChange(home, other))

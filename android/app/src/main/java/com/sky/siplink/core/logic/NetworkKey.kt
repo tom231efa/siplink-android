@@ -12,24 +12,32 @@ import java.security.MessageDigest
  * it does not hold.
  *
  * IPv6 counts only where the network has no IPv4: its global prefixes change by themselves
- * (a provider hands out another one now and then), and it often comes a moment after IPv4.
+ * (a provider hands out another one now and then), and it often comes a moment after IPv4. A
+ * mobile network and a VPN hand out another address at every connection, often alone in a /31 or
+ * /32: they are known by their name servers only, and such single addresses count nowhere.
  */
 object NetworkKey {
     /** Stays the same for one network across connections. */
     fun of(facts: NetworkFacts): String {
-        val subnets = facts.subnets.filter { isIpv4(it.substringBefore('/')) }.distinct().sorted()
+        val subnets = facts.subnets.filter { isIpv4(it.substringBefore('/')) && !isSingle(it) }.distinct().sorted()
         val gateways = facts.gateways.filter(::isIpv4)
             .ifEmpty { facts.gateways.filter { NetAddress.kind(it) == NetAddress.Kind.LINK_LOCAL } }
-        val dns = facts.dns.filter(::isIpv4).ifEmpty { facts.dns.filter { facts.type == NetType.CELLULAR || NetAddress.kind(it) != NetAddress.Kind.PUBLIC } }
-        // A mobile network hands out another address now and then: its name servers say more.
+        val dnsOnly = facts.type == NetType.CELLULAR || facts.vpn
+        // The name servers of a provider or a VPN stay; a home router's own global IPv6 address goes with its prefix.
+        val dns = facts.dns.filter(::isIpv4).ifEmpty { facts.dns.filter { dnsOnly || NetAddress.kind(it) != NetAddress.Kind.PUBLIC } }
         val parts = listOf(facts.type.name, if (facts.vpn) "vpn" else "") +
-            (if (facts.type == NetType.CELLULAR) emptyList() else subnets + gateways.distinct().sorted()) +
+            (if (dnsOnly) emptyList() else subnets + gateways.distinct().sorted()) +
             dns.distinct().sorted()
         val digest = MessageDigest.getInstance("SHA-256").digest(parts.joinToString("|").toByteArray())
         return digest.take(8).joinToString("") { "%02x".format(it) }
     }
 
     private fun isIpv4(address: String): Boolean = NetAddress.parse(address)?.size == 4
+
+    /** A subnet of one or two IPv4 addresses (/31, /32): a point-to-point link, no network. */
+    private fun isSingle(subnet: String): Boolean = (subnet.substringAfterLast('/', "").toIntOrNull() ?: 0) >= POINT_TO_POINT
+
+    private const val POINT_TO_POINT = 31
 
     /**
      * Changes whenever the phone's addresses on the network change. IPv6 counts by its prefix:
