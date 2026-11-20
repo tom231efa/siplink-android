@@ -64,6 +64,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -228,17 +230,20 @@ fun AccountsScreen(onBack: () -> Unit, onAdd: () -> Unit, onEdit: (String) -> Un
         }
 
         if (accounts.isNotEmpty() && !locked) {
+            val addLabel = stringResource(R.string.account_add)
             ExtendedFloatingActionButton(
                 onClick = ::add,
                 expanded = fabExpanded,
                 icon = { Icon(Icons.Rounded.Add, contentDescription = null) },
-                text = { Text(stringResource(R.string.account_add)) },
+                text = { Text(addLabel) },
                 // Neutral like the rest of the list; the accent is kept for what is switched on.
                 containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                 contentColor = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(20.dp),
+                    .padding(20.dp)
+                    // The button hides its text from accessibility (Material 3 clears it, collapsed or not): it says it itself.
+                    .semantics { contentDescription = addLabel },
             )
         }
     }
