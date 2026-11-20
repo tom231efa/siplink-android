@@ -77,10 +77,8 @@ data class RemoteDocument(
         /**
          * Reads and checks a document ([RemoteChecks]). Nothing of a document that has a fault
          * may be applied, so every fault is reported at once.
-         *
-         * @param reserved the names a category of keys may not have ([ShortcutRules.RESERVED_CATEGORIES])
          */
-        fun parse(text: String, reserved: Set<String>): Parsed {
+        fun parse(text: String): Parsed {
             val root = try {
                 Json.parse(text)
             } catch (e: Json.SyntaxException) {
@@ -90,7 +88,7 @@ data class RemoteDocument(
             val errors = ArrayList<Phrase>()
             val document = read(Fields(root, "", errors), errors)
             if (errors.isNotEmpty()) return Parsed.Invalid(errors)
-            return RemoteChecks.check(document, reserved)
+            return RemoteChecks.check(document)
         }
 
         /**

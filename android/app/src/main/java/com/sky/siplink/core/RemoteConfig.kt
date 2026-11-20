@@ -111,7 +111,6 @@ class RemoteConfig internal constructor(context: Context, private val engine: Si
      * @param onDone what to tell the user about it
      */
     fun enroll(enrollment: RemoteAddress.Enrollment, onDone: (String) -> Unit) {
-        val reserved = engine.shortcuts.reservedCategories()
         if (state.value.busy || store.enrolled) return
         markBusy()
         // Coming to the front right after the binding need not sync again.
@@ -120,7 +119,7 @@ class RemoteConfig internal constructor(context: Context, private val engine: Si
         val trust = enrollment.pin?.let { RemoteConfigClient.Trust.Pinned(it) } ?: RemoteConfigClient.Trust.System
         worker.execute {
             val result = request(enrollment.enrollUrl, body, null, trust)
-            val document = result.getOrNull()?.takeIf { it.status == 200 }?.let { RemoteDocument.parse(it.body, reserved) }
+            val document = result.getOrNull()?.takeIf { it.status == 200 }?.let { RemoteDocument.parse(it.body) }
             handler.post {
                 val answer = result.getOrElse { return@post finishEnrollment(reasonOf(it), onDone) }
                 when (RemoteSync.outcome(answer.status, enrolling = true)) {
@@ -178,11 +177,10 @@ class RemoteConfig internal constructor(context: Context, private val engine: Si
         store.attempted(now)
         val body = RemoteSync.syncBody(store.version, device())
         val (url, key, trust) = Triple(store.syncUrl, store.deviceKey, trust())
-        val reserved = engine.shortcuts.reservedCategories()
         worker.execute {
             val result = request(url, body, key, trust)
             // The document is read here, off the main thread; it may be large.
-            val document = result.getOrNull()?.takeIf { it.status == 200 }?.let { RemoteDocument.parse(it.body, reserved) }
+            val document = result.getOrNull()?.takeIf { it.status == 200 }?.let { RemoteDocument.parse(it.body) }
             // Busy until it is all done: applying or taking back may wait for accounts to unregister.
             handler.post {
                 val answer = result.getOrElse { return@post finished(reasonOf(it), retryAfter = null) }

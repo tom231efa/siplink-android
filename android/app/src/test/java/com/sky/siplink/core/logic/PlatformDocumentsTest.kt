@@ -5,7 +5,6 @@ import com.sky.siplink.core.model.Settings
 import com.sky.siplink.core.model.ShortcutAction
 import com.sky.siplink.core.model.ShortcutIcon
 import com.sky.siplink.core.model.SipTransport
-import com.sky.siplink.zhReserved
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -19,7 +18,7 @@ import org.junit.Test
 class PlatformDocumentsTest {
     private fun read(name: String): RemoteDocument {
         val text = javaClass.classLoader!!.getResource(name)!!.readText()
-        val result = RemoteDocument.parse(text, zhReserved)
+        val result = RemoteDocument.parse(text)
         assertTrue("$name refused: $result", result is RemoteDocument.Parsed.Ok)
         return (result as RemoteDocument.Parsed.Ok).document
     }

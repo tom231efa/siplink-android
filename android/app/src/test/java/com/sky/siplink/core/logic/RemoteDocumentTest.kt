@@ -1,5 +1,6 @@
 package com.sky.siplink.core.logic
 
+import com.sky.siplink.Texts
 import com.sky.siplink.core.model.AccountDraft
 import com.sky.siplink.core.model.DndMode
 import com.sky.siplink.core.model.DtmfMode
@@ -7,6 +8,7 @@ import com.sky.siplink.core.model.FeatureCodes
 import com.sky.siplink.core.model.LdapDirectory
 import com.sky.siplink.core.model.LdapSecurity
 import com.sky.siplink.core.model.MediaSecurity
+import com.sky.siplink.core.model.Phrase
 import com.sky.siplink.core.model.Settings
 import com.sky.siplink.core.model.Shortcut
 import com.sky.siplink.core.model.ShortcutAction
@@ -14,7 +16,6 @@ import com.sky.siplink.core.model.ShortcutIcon
 import com.sky.siplink.core.model.SipTransport
 import com.sky.siplink.core.model.VideoSize
 import com.sky.siplink.zh
-import com.sky.siplink.zhReserved
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -32,14 +33,14 @@ class RemoteDocumentTest {
         .replace("\"@CA@\"", Json.write(CertificateTools.toPem(ca.certificate)))
 
     private fun parsed(text: String): RemoteDocument {
-        val result = RemoteDocument.parse(text, zhReserved)
+        val result = RemoteDocument.parse(text)
         assertTrue("Refused: $result", result is RemoteDocument.Parsed.Ok)
         return (result as RemoteDocument.Parsed.Ok).document
     }
 
     /** What is wrong with [text], in the user's Chinese texts. */
     private fun errors(text: String): List<String?> {
-        val result = RemoteDocument.parse(text, zhReserved)
+        val result = RemoteDocument.parse(text)
         assertTrue("Taken: $result", result is RemoteDocument.Parsed.Invalid)
         return (result as RemoteDocument.Parsed.Invalid).errors.map(::zh)
     }
@@ -365,6 +366,21 @@ class RemoteDocumentTest {
         )
         val many = (0..ShortcutRules.MAX_SHORTCUTS).joinToString(",", "[", "]") { """{"label":"k$it","number":"$it"}""" }
         assertEquals(listOf(zh(ShortcutRules.Error.LIMIT_REACHED.full)), errors(with(many, "shortcuts")))
+    }
+
+    @Test
+    fun aCategoryIsRefusedByThePlatformsNamesWhateverTheLanguageOfThePhone() {
+        // What the lists are called in English is a name like any other in a document.
+        for (id in ShortcutRules.RESERVED_CATEGORIES) {
+            val english = Texts.DEFAULT.render(Phrase.of(id))
+            parsed(withElement("shortcuts", 0) { it["category"] = english })
+        }
+        for (name in listOf("全部", "未分类", "新建分类")) {
+            assertEquals(
+                listOf("快捷键“前台”：" + zh(ShortcutRules.Error.CATEGORY_RESERVED.full)),
+                errors(withElement("shortcuts", 0) { it["category"] = name }),
+            )
+        }
     }
 
     @Test

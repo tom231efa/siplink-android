@@ -15,11 +15,11 @@ object RemoteChecks {
     private val hexHash = Regex("^[0-9A-Fa-f]{64}$")
 
     /**
-     * [document] as the app keeps it (its accounts, directories and keys normalized), or what is wrong with it.
-     *
-     * @param reserved the names a category of keys may not have ([ShortcutRules.RESERVED_CATEGORIES])
+     * [document] as the app keeps it (its accounts, directories and keys normalized), or what is
+     * wrong with it. The names its categories may not have are the platform's
+     * ([ShortcutRules.PLATFORM_RESERVED_CATEGORIES]), not those of the phone's language.
      */
-    fun check(document: RemoteDocument, reserved: Set<String>): RemoteDocument.Parsed {
+    fun check(document: RemoteDocument): RemoteDocument.Parsed {
         when {
             document.schema > RemoteDocument.SCHEMA -> return RemoteDocument.Parsed.Invalid(listOf(NEEDS_UPDATE))
             document.schema < RemoteDocument.SCHEMA -> return RemoteDocument.Parsed.Invalid(listOf(Phrase.of(R.string.remote_error_schema)))
@@ -39,7 +39,7 @@ object RemoteChecks {
 
         val accounts = accounts(document.accounts, errors)
         val directories = directories(document.directories, errors)
-        val shortcuts = shortcuts(document, errors, reserved)
+        val shortcuts = shortcuts(document, errors)
         val codecs = document.codecs
         if (codecs != null && (codecs.audio + codecs.video).any { it.key.isBlank() }) errors += Phrase.of(R.string.remote_error_codec_name)
 
@@ -77,11 +77,11 @@ object RemoteChecks {
         }
     }
 
-    private fun shortcuts(document: RemoteDocument, errors: MutableList<Phrase>, reserved: Set<String>) = document.shortcuts.let { keys ->
+    private fun shortcuts(document: RemoteDocument, errors: MutableList<Phrase>) = document.shortcuts.let { keys ->
         if (keys.size > ShortcutRules.MAX_SHORTCUTS) errors += ShortcutRules.Error.LIMIT_REACHED.full
         keys.map { key ->
             val shortcut = ShortcutRules.normalize(key)
-            ShortcutRules.validate(shortcut, reserved).forEach {
+            ShortcutRules.validate(shortcut, ShortcutRules.PLATFORM_RESERVED_CATEGORIES).forEach {
                 errors += Phrase.of(R.string.remote_error_key, ShortcutRules.title(shortcut), it.full)
             }
             shortcut

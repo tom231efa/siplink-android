@@ -160,7 +160,8 @@ object ShortcutRules {
 
     /**
      * @param shortcut already normalized
-     * @param reserved the names of the category lists of the moment ([RESERVED_CATEGORIES])
+     * @param reserved the names a category may not have: those of the lists in the language of the moment
+     *   ([RESERVED_CATEGORIES]), or the platform's for a remote configuration ([PLATFORM_RESERVED_CATEGORIES])
      */
     fun validate(shortcut: Shortcut, reserved: Set<String>): List<Error> = buildList {
         val number = shortcut.number
@@ -181,6 +182,13 @@ object ShortcutRules {
      * the language of the moment.
      */
     val RESERVED_CATEGORIES = listOf(R.string.shortcut_category_all, R.string.shortcut_category_none, R.string.shortcut_category_new)
+
+    /**
+     * The names a category of a remote configuration may not have, whatever the language of the
+     * phone: those the management platform refuses (platform/internal/rules/shortcuts.go,
+     * reservedCategories). Data, so that a document is valid on every phone or on none.
+     */
+    val PLATFORM_RESERVED_CATEGORIES = setOf("全部", "未分类", "新建分类")
 
     /**
      * What keeps [name] from being the name of a category, null when nothing does. Upper and
