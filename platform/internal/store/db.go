@@ -251,3 +251,11 @@ func int64Args(ids []int64) []any {
 	}
 	return out
 }
+
+func stringArgs(values []string) []any {
+	out := make([]any, len(values))
+	for i, v := range values {
+		out[i] = v
+	}
+	return out
+}

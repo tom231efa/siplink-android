@@ -586,11 +586,39 @@ func (s *Store) DeleteDirectory(ctx context.Context, templateID, id int64) error
 	})
 }
 
-// ReportCodecs remembers codec keys a phone reported.
+// ReportCodecs remembers codec keys a phone reported. A phone reports them on every sync:
+// the keys stored for its app version are read first and only the others are written, so
+// that the usual sync does not take the write lock once per key.
 func (s *Store) ReportCodecs(ctx context.Context, appVersion string, audio, video []string) error {
+	if len(audio)+len(video) == 0 {
+		return nil
+	}
+	keys := append(append([]string(nil), audio...), video...)
+	rows, err := s.DB.QueryContext(ctx, `SELECT kind, key FROM reported_codecs WHERE kind IN ('audio', 'video')
+		AND key IN (`+placeholders(len(keys))+`) AND app_version = ?`, append(stringArgs(keys), appVersion)...)
+	if err != nil {
+		return err
+	}
+	stored := map[[2]string]bool{}
+	for rows.Next() {
+		var kind, key string
+		if err := rows.Scan(&kind, &key); err != nil {
+			rows.Close()
+			return err
+		}
+		stored[[2]string{kind, key}] = true
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
 	now := s.NowText()
 	for kind, keys := range map[string][]string{"audio": audio, "video": video} {
 		for _, k := range keys {
+			if stored[[2]string{kind, k}] {
+				continue
+			}
+			stored[[2]string{kind, k}] = true // a key reported twice is written once
 			if _, err := s.DB.ExecContext(ctx, `INSERT OR IGNORE INTO reported_codecs(kind, key, app_version, first_seen) VALUES(?,?,?,?)`,
 				kind, k, appVersion, now); err != nil {
 				return err

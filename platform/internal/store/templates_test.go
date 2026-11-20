@@ -1,10 +1,12 @@
 package store_test
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strconv"
 	"testing"
+	"time"
 
 	"siplink/internal/store"
 	"siplink/internal/testutil"
@@ -179,3 +181,39 @@ func TestGroupedCounts(t *testing.T) {
 }
 
 func itoa(n int) string { return strconv.Itoa(n) }
+
+// TestReportCodecsWritesChanges: a phone reports its codecs on every sync; only keys not
+// stored yet for its app version are written, so a sync with the known set only reads and
+// does not wait for the database's write lock.
+func TestReportCodecsWritesChanges(t *testing.T) {
+	st := testutil.Store(t)
+	ctx := t.Context()
+	audio, video := []string{"opus/48000/2", "PCMA/8000/1", "opus/48000/2"}, []string{"H264/90000/1"}
+	if err := st.ReportCodecs(ctx, "0.2.2", audio, video); err != nil {
+		t.Fatal(err)
+	}
+	// Another writer holds the write lock (transactions begin IMMEDIATE).
+	tx, err := st.DB.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	short, cancel := context.WithTimeout(ctx, 300*time.Millisecond)
+	start := time.Now()
+	err = st.ReportCodecs(short, "0.2.2", audio, video)
+	cancel()
+	if err != nil || time.Since(start) > 250*time.Millisecond {
+		t.Errorf("the known set waited for the write lock: %v after %v", err, time.Since(start))
+	}
+	tx.Rollback()
+	if err := st.ReportCodecs(ctx, "0.2.2", append(audio, "G722/8000/1"), nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.ReportCodecs(ctx, "0.2.3", []string{"opus/48000/2"}, nil); err != nil {
+		t.Fatal(err)
+	}
+	var rows int
+	st.DB.QueryRowContext(ctx, `SELECT count(*) FROM reported_codecs`).Scan(&rows)
+	if got, _ := st.ReportedCodecs(ctx); rows != 5 || len(got["audio"]) != 3 || len(got["video"]) != 1 {
+		t.Errorf("reported codecs: %d rows, %v", rows, got)
+	}
+}
