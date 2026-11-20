@@ -1,68 +1,82 @@
 package com.sky.siplink.itest
 
 import android.content.pm.ActivityInfo
-import android.graphics.Rect
-import android.view.accessibility.AccessibilityNodeInfo
-import androidx.annotation.StringRes
-import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
-import androidx.test.runner.lifecycle.Stage
-import com.sky.siplink.CallActivity
 import com.sky.siplink.R
 import com.sky.siplink.core.model.CallPhase
 import com.sky.siplink.core.model.Language
-import org.junit.After
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Every language of the app on the main screens: the four tabs, the settings, the advanced
- * settings, an account form, the call screen with its keypad (upright and on its side), the
- * conference room and an incoming call. A crash fails the test; the pictures of every screen are
- * saved under `shots/{language}/` in the cache directory of the app, to look at.
+ * Every language of the app on the main screens, with data on them: the four tabs (a history of
+ * two calls, a directory with its staff), the settings, the account list with its account, an
+ * account form, the line diagnosis, the advanced settings, the language, the remote configuration
+ * (not set up: its first page) and the about page; in a call the call screen, its keypad (upright
+ * and on its side), the transfer panel, the conference room with its sheet to add members, and
+ * an incoming call. A crash fails the walk, and so does a text of the app that a screen cuts off
+ * ([CutTexts]); a picture of every stop is saved under `shots/{language}/`.
  *
  * In Arabic the screens run right to left, but the keys of the dial pad and of the keypad of a
- * call keep 1 2 3 from left to right, and the slide of an incoming call answers to the right.
+ * call keep 1 2 3 from left to right, the keypad on its side stands on the screen, and the slide
+ * of an incoming call answers to the right.
  */
-class LanguageScreensTest : RoomTestBase("shots") {
-    @After
-    fun backToChinese() {
-        // Upright, not left to the system: that may leave the screen on its side for the next test.
-        onMain {
-            ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED).filterIsInstance<CallActivity>()
-                .forEach { it.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT }
-        }
-        pinLanguage(Language.CHINESE_SIMPLIFIED)
-    }
-
-    private fun say(language: Language, @StringRes id: Int): String = textsIn(language.tag).getString(id)
+class LanguageScreensTest : LanguageWalkBase() {
 
     @Test
     fun theMainScreensInEveryLanguage() {
+        register()
+        saveStaffDirectory()
+        // Two calls in the history, as the caller ID tests present them: one with a name, one bare number.
+        for (caller in listOf("\"O'Brien, Bob\" <1002>", "<02155512345>")) {
+            ringing(caller)
+            onMain { engine.calls.decline() }
+            awaitNoCall()
+        }
+        await("the calls to be in the history") { engine.history.entries.value.size >= 2 }
+        val line = account(APP)!!.label
         showApp()
         for (language in Language.entries) {
             pinLanguage(language)
-            val shot = { name: String -> picture("${language.tag}/$name") }
             tab(say(language, R.string.main_tab_dialer))
-            shot("dialer")
+            see(say(language, R.string.main_tab_dialer))
+            stop(language, "dialer")
             if (language == Language.ARABIC) {
                 assertTrue("The tabs run right to left", center(say(language, R.string.main_tab_dialer)) > center(say(language, R.string.main_tab_settings)))
                 assertTrue("The dial pad keeps 1 left of 3", center("1") < center("3"))
             }
             tab(say(language, R.string.main_tab_history))
-            shot("history")
+            pages(language, "history")
             tab(say(language, R.string.main_tab_directory))
-            shot("directory")
+            pages(language, "directory")
             tab(say(language, R.string.main_tab_settings))
-            pages(shot, "settings")
-            tap(say(language, R.string.settings_advanced))
-            pages(shot, "advanced")
-            back()
+            pages(language, "settings")
+
             tap(say(language, R.string.settings_sip_accounts))
+            stop(language, "accounts")
             tap(say(language, R.string.account_add))
-            pages(shot, "account")
+            pages(language, "account-new")
+            back()
+            tap(line)
+            pages(language, "account")
+            tap(say(language, R.string.account_line_diagnosis))
+            see(say(language, R.string.diagnosis_title))
+            pages(language, "diagnosis")
             back()
             back()
+            back()
+
+            for ((page, name) in listOf(
+                R.string.settings_advanced to "advanced",
+                R.string.settings_language to "language",
+                R.string.settings_remote_config to "remote",
+                R.string.settings_about to "about",
+            )) {
+                tap(say(language, page))
+                pages(language, name)
+                back()
+            }
         }
+        noneCut()
     }
 
     @Test
@@ -71,20 +85,35 @@ class LanguageScreensTest : RoomTestBase("shots") {
         val screen = callScreen()
         for (language in Language.entries) {
             pinLanguage(language)
-            settle()
-            val shot = { name: String -> picture("${language.tag}/$name") }
-            shot("call")
+            see(say(language, R.string.call_keypad))
+            stop(language, "call")
             tap(say(language, R.string.call_keypad))
-            shot("keypad")
+            see(say(language, R.string.call_keypad_close))
+            stop(language, "keypad")
             if (language == Language.ARABIC) assertTrue("The keypad of a call keeps 1 left of 3", center("1") < center("3"))
             tap(say(language, R.string.call_keypad_close))
+            tap(say(language, R.string.call_transfer))
+            see(say(language, R.string.call_transfer_title))
+            stop(language, "transfer")
+            back()
+
             onMain { screen.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
             await("the call screen to be on its side") { screen.resources.displayMetrics.let { it.widthPixels > it.heightPixels } }
-            settle()
-            shot("call-landscape")
+            see(say(language, R.string.call_keypad))
+            stop(language, "call-landscape")
+            // The keypad on its side comes in from the edge it stands at: the right in Arabic.
+            tap(say(language, R.string.call_keypad))
+            see(say(language, R.string.call_keypad_close))
+            stop(language, "keypad-landscape")
+            val width = screen.resources.displayMetrics.widthPixels
+            for (key in listOf("1", "3", "#")) {
+                val at = bounds(key)
+                assertTrue("${language.tag}: the key $key of the keypad on its side is off the screen: $at", at.left >= 0 && at.right <= width)
+            }
+            if (language == Language.ARABIC) assertTrue("The keypad on its side stands at the right in Arabic", center("1") > width / 2)
+            tap(say(language, R.string.call_keypad_close))
             onMain { screen.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT }
             await("the call screen to be upright") { screen.resources.displayMetrics.let { it.widthPixels < it.heightPixels } }
-            settle()
         }
 
         ok(onMain { engine.calls.openRoom() })
@@ -92,7 +121,11 @@ class LanguageScreensTest : RoomTestBase("shots") {
         for (language in Language.entries) {
             pinLanguage(language)
             see(say(language, R.string.room_add_members))
-            picture("${language.tag}/room")
+            stop(language, "room")
+            tap(say(language, R.string.room_add_members))
+            see(say(language, R.string.room_add_title))
+            stop(language, "room-add")
+            back()
         }
         onMain { engine.calls.hangUp() }
         awaitNoCall()
@@ -104,11 +137,11 @@ class LanguageScreensTest : RoomTestBase("shots") {
             for (language in Language.entries) {
                 pinLanguage(language)
                 see(say(language, R.string.call_slide_description))
-                picture("${language.tag}/incoming")
+                stop(language, "incoming")
             }
             // In Arabic too, the slide answers to the right, as its text says.
             pinLanguage(Language.ARABIC)
-            val track = Rect().also { see(say(Language.ARABIC, R.string.call_slide_description)).getBoundsInScreen(it) }
+            val track = bounds(say(Language.ARABIC, R.string.call_slide_description))
             val reach = track.width() / 2f - END_MARGIN_PX
             swipe(track.exactCenterX(), track.exactCenterY(), track.exactCenterX() + reach, track.exactCenterY())
             assertTrue("The slide did not answer to the right in Arabic", settles(ANSWER_TIMEOUT_MS) { call()?.phase == CallPhase.CONNECTED })
@@ -118,36 +151,10 @@ class LanguageScreensTest : RoomTestBase("shots") {
             awaitNoCall()
             await("the caller to be released") { !phoneHasCall(AGENT) }
         }
-    }
-
-    /** Opens the tab [label]; the tab shown already takes no tap. */
-    private fun tab(label: String) {
-        if (chain(see(label)).none { it.isSelected }) tap(label)
-        settle()
-    }
-
-    /** Pictures of the page from its top to its end ([name]-1, [name]-2, …), then back up. */
-    private fun pages(shot: (String) -> Unit, name: String) {
-        settle()
-        var steps = 0
-        do {
-            shot("$name-${steps + 1}")
-        } while (steps++ < MAX_PAGES && scroll(forward = true))
-        while (steps-- > 0) {
-            if (!scroll(forward = false)) break
-        }
-    }
-
-    /** The middle of what says [text] across the screen, in pixels from the left. */
-    private fun center(text: String): Int {
-        val node: AccessibilityNodeInfo = see(text)
-        return Rect().also { node.getBoundsInScreen(it) }.centerX()
+        noneCut()
     }
 
     private companion object {
-        /** Pictures of one page at most: the settings and the advanced settings are the longest. */
-        const val MAX_PAGES = 8
-
         /** The finger stops this far before the end of the track of the slide. */
         const val END_MARGIN_PX = 20f
         const val ANSWER_TIMEOUT_MS = 5_000L
