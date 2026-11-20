@@ -10,6 +10,7 @@ import com.sky.siplink.core.model.CallPhase
 import com.sky.siplink.core.model.Language
 import com.sky.siplink.core.model.Phrase
 import com.sky.siplink.core.render
+import com.sky.siplink.ui.history.historyDate
 import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
 import androidx.test.runner.lifecycle.Stage
 import org.junit.After
@@ -21,6 +22,8 @@ import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
+import java.time.LocalDate
+import java.util.Locale
 
 /**
  * The language of the app: chosen in the settings it shows at once and stays; following the
@@ -64,7 +67,7 @@ class AppLanguageTest : RoomTestBase("languages") {
         assertNull(onMain { engine.language.chosen })
         assertEquals(english.getString(R.string.call_ended), spoken())
         showApp()
-        tap("设置")
+        tap(english.getString(R.string.main_tab_settings))
         tap(english.getString(R.string.settings_language))
         see(english.getString(R.string.settings_language_system))
     }
@@ -154,6 +157,21 @@ class AppLanguageTest : RoomTestBase("languages") {
         assertEquals(english.render(withheld), engine.history.entries.value.first().name)
         pinLanguage(Language.CHINESE_SIMPLIFIED)
         await("the call log to be in Chinese") { engine.history.entries.value.first().name == chinese.render(withheld) }
+    }
+
+    @Test
+    fun theDaysOfTheHistoryAreWrittenInTheLanguage() {
+        val today = LocalDate.of(2026, 11, 30)
+        val thisYear = LocalDate.of(2026, 11, 21)
+        val lastYear = LocalDate.of(2025, 11, 21)
+        // The Chinese is what the screen showed before it had other languages ("M月d日", "yyyy年M月d日").
+        for (tag in listOf("zh-Hans", "zh-CN", "zh-Hans-CN")) {
+            val chinese = Locale.forLanguageTag(tag)
+            assertEquals(tag, "11月21日", historyDate(thisYear, today, chinese))
+            assertEquals(tag, "2025年11月21日", historyDate(lastYear, today, chinese))
+        }
+        assertEquals("Nov 21", historyDate(thisYear, today, Locale.forLanguageTag("en")))
+        assertEquals("Nov 21, 2025", historyDate(lastYear, today, Locale.forLanguageTag("en")))
     }
 
     private companion object {

@@ -8,7 +8,7 @@ import java.io.File
 /**
  * The texts of the interface live in the string resources of res/values and its languages, not
  * in the code: no string literal of the Kotlin sources holds Chinese, Japanese or Korean
- * characters, but in the files below. Comments may.
+ * characters, but in the data files below. Comments may.
  */
 class SourceTextTest {
     private val sources = File("src/main/java")
@@ -19,68 +19,14 @@ class SourceTextTest {
         "com/sky/siplink/core/logic/ShortcutRules.kt" to "the Chinese words of the types and icons that the CSV format takes",
     )
 
-    /** Screens whose texts are not moved to the resources yet. The list only shrinks: a file without such a literal leaves it. */
-    private val notYet = listOf(
-        "com/sky/siplink/ui/AppRoot.kt",
-        "com/sky/siplink/ui/MainNavigation.kt",
-        "com/sky/siplink/ui/StartupPermissions.kt",
-        "com/sky/siplink/ui/accounts/AccountEditScreen.kt",
-        "com/sky/siplink/ui/accounts/AccountImportSheet.kt",
-        "com/sky/siplink/ui/accounts/AccountsScreen.kt",
-        "com/sky/siplink/ui/accounts/LineDiagnosisScreen.kt",
-        "com/sky/siplink/ui/call/CallBanners.kt",
-        "com/sky/siplink/ui/call/CallControls.kt",
-        "com/sky/siplink/ui/call/CallPanels.kt",
-        "com/sky/siplink/ui/call/CallScreen.kt",
-        "com/sky/siplink/ui/call/RecordControl.kt",
-        "com/sky/siplink/ui/call/RoomAddSheet.kt",
-        "com/sky/siplink/ui/call/RoomScreen.kt",
-        "com/sky/siplink/ui/call/SlideToAnswer.kt",
-        "com/sky/siplink/ui/call/VideoStage.kt",
-        "com/sky/siplink/ui/call/VideoWindow.kt",
-        "com/sky/siplink/ui/components/AccountPicker.kt",
-        "com/sky/siplink/ui/components/CallLauncher.kt",
-        "com/sky/siplink/ui/components/Components.kt",
-        "com/sky/siplink/ui/components/ConfigLocked.kt",
-        "com/sky/siplink/ui/components/CsvImportSheet.kt",
-        "com/sky/siplink/ui/components/FeatureSheet.kt",
-        "com/sky/siplink/ui/components/FormRows.kt",
-        "com/sky/siplink/ui/components/LdapRestartDialog.kt",
-        "com/sky/siplink/ui/components/SubScreen.kt",
-        "com/sky/siplink/ui/dialer/DialPad.kt",
-        "com/sky/siplink/ui/dialer/DialerScreen.kt",
-        "com/sky/siplink/ui/directory/DirectoryScreen.kt",
-        "com/sky/siplink/ui/directory/LdapEditScreen.kt",
-        "com/sky/siplink/ui/directory/LdapListScreen.kt",
-        "com/sky/siplink/ui/history/HistoryScreen.kt",
-        "com/sky/siplink/ui/recordings/RecordingParts.kt",
-        "com/sky/siplink/ui/recordings/RecordingsScreen.kt",
-        "com/sky/siplink/ui/settings/AboutScreen.kt",
-        "com/sky/siplink/ui/settings/AdvancedSettingsScreen.kt",
-        "com/sky/siplink/ui/settings/AutoAnswerScreen.kt",
-        "com/sky/siplink/ui/settings/CodecsScreen.kt",
-        "com/sky/siplink/ui/settings/FeatureCodesScreen.kt",
-        "com/sky/siplink/ui/settings/QrScanner.kt",
-        "com/sky/siplink/ui/settings/RecordingSettingsScreen.kt",
-        "com/sky/siplink/ui/settings/RemoteConfigScreen.kt",
-        "com/sky/siplink/ui/settings/SettingsScreen.kt",
-        "com/sky/siplink/ui/settings/TlsScreen.kt",
-        "com/sky/siplink/ui/settings/UpdateRows.kt",
-        "com/sky/siplink/ui/shortcuts/CategoryNameDialog.kt",
-        "com/sky/siplink/ui/shortcuts/ShortcutBoard.kt",
-        "com/sky/siplink/ui/shortcuts/ShortcutEditSheet.kt",
-        "com/sky/siplink/ui/shortcuts/ShortcutRunner.kt",
-        "com/sky/siplink/ui/shortcuts/ShortcutsScreen.kt",
-    )
-
     @Test
     fun `no text of the interface is written in the code`() {
         val found = sources.walk().filter { it.isFile && it.extension == "kt" }
             .associate { it.relativeTo(sources).invariantSeparatorsPath to cjkLiterals(it.readText()) }
             .filterValues { it.isNotEmpty() }
-        val unexpected = found.filterKeys { it !in data && it !in notYet }
+        val unexpected = found.filterKeys { it !in data }
         assertTrue("Texts in the code instead of the resources: $unexpected", unexpected.isEmpty())
-        val done = (data.keys + notYet).filter { it !in found }
+        val done = data.keys.filter { it !in found }
         assertEquals("Listed, but without such a literal (take them off the list)", emptyList<String>(), done)
     }
 
