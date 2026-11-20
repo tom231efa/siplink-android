@@ -29,7 +29,8 @@ import java.util.Locale
  * The language of the app: chosen in the settings it shows at once and stays; following the
  * system, a language the app does not have falls through the list to English; a call that is up
  * stays up while its screen changes language; a change made outside the app is followed without
- * a screen; and texts the core puts together follow too.
+ * a screen; texts the core puts together follow too; and each of the eight languages can be
+ * chosen and is then spoken.
  *
  * Expects a phone whose system languages hold none of the app's but English (the test phone).
  * Every test starts in Simplified Chinese ([PbxTestBase.pinLanguage]) and ends in it.
@@ -58,6 +59,25 @@ class AppLanguageTest : RoomTestBase("languages") {
         val again = AppLanguage(context.applicationContext)
         assertEquals(Language.ENGLISH, again.chosen)
         assertFalse(again.followsSystem)
+    }
+
+    @Test
+    fun eachLanguageCanBeChosenInTheSettingsAndIsSpoken() {
+        showApp()
+        tap("设置")
+        tap(chinese.getString(R.string.settings_language))
+        var shown = chinese.getString(R.string.settings_language)
+        for (language in Language.entries) {
+            val texts = textsIn(language.tag)
+            tap(language.ownName)
+            // A text of a screen (the title of the page of the languages) and one of the core.
+            val title = texts.getString(R.string.settings_language)
+            see(title)
+            if (title != shown) absent(shown)
+            shown = title
+            await("the core to speak ${language.tag}") { spoken() == texts.getString(R.string.call_ended) }
+            assertEquals(language, onMain { engine.language.chosen })
+        }
     }
 
     @Test
@@ -118,9 +138,10 @@ class AppLanguageTest : RoomTestBase("languages") {
         for (tags in listOf("zh", "zh-CN", "zh-SG", "zh-Hans-HK", "de,zh-CN")) {
             assertEquals(tags, simplified, textsIn(tags).getString(R.string.call_ended))
         }
-        // Traditional Chinese: its own texts, until the app has them those of the default.
+        // Traditional Chinese: its own texts.
         val traditional = textsIn("zh-Hant").getString(R.string.call_ended)
         assertNotEquals(simplified, traditional)
+        assertNotEquals(english.getString(R.string.call_ended), traditional)
         for (tags in listOf("zh-TW", "zh-HK", "zh-MO")) {
             assertEquals(tags, traditional, textsIn(tags).getString(R.string.call_ended))
         }

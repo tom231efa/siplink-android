@@ -25,9 +25,9 @@ class LanguageCatalogTest {
     private val languages: List<Texts> = Texts.qualifiers().filter { it.isNotEmpty() }.map(::Texts)
 
     @Test
-    fun `the default texts and Simplified Chinese are there`() {
+    fun `the default texts and the seven other languages are there`() {
         assertTrue(default.strings.isNotEmpty())
-        assertTrue(languages.any { it.qualifier == "b+zh+Hans" })
+        assertEquals(listOf("ar", "b+zh+Hans", "b+zh+Hant", "es", "fr", "ja", "ru"), languages.map { it.qualifier })
     }
 
     @Test
@@ -101,6 +101,8 @@ class LanguageCatalogTest {
         for (texts in languages) {
             assertTrue("${texts.qualifier} is no language of the app", tagOf(texts.qualifier) in tags)
         }
+        // Every language of the app has its own texts; English is the default folder.
+        assertEquals(tags - "en", languages.map { tagOf(it.qualifier) }.toSet())
     }
 
     @Test

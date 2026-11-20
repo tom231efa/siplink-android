@@ -250,11 +250,11 @@ abstract class ScreenTestBase(private val pictures: String) : PbxTestBase() {
     /** Types [text] into the field with the label [label]. */
     protected fun typeInto(label: String, text: String) = setText(text) { chain(see(label)).firstOrNull { it.isEditable && it.isEnabled } }
 
-    /** Saves what the display shows as [name].png. */
+    /** Saves what the display shows as [name].png; [name] may hold folders ("ar/dialer"). */
     protected fun picture(name: String) {
         val bitmap = automation.takeScreenshot() ?: return
-        val directory = File(instrumentation.targetContext.cacheDir, pictures).apply { mkdirs() }
-        File(directory, "$name.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        val file = File(File(instrumentation.targetContext.cacheDir, pictures), "$name.png").apply { parentFile?.mkdirs() }
+        file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
     }
 
     protected companion object {
