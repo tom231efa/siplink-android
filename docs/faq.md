@@ -72,6 +72,14 @@ Its feature code is empty, which means the feature is not used. Fill it in under
 
 When the primary server does not respond, or returns 408 or 5xx, the account switches to the backup proxy; on rejections such as 401, 403 or 404 it does not switch (the backup server would reject too). It switches back when the primary server recovers and there is no call.
 
+Both servers are also probed (OPTIONS over UDP, a connection over TCP and TLS) when the account starts and whenever the network changes, so an account whose primary is an office PBX goes to its backup within a few seconds of leaving the office, and returns when the phone is back on the office network instead of waiting for the next check a minute later. On a network the phone has seen before (up to 20, for 30 days), the account goes to the server it registered on there last at once, while the probe confirms it.
+
+With **Fast timeout** set, the primary server gets only that long to answer, and the probes also run whenever the registration starts or is refreshed. Within the time the probe is sent three times over UDP (a second connection is opened halfway over TCP and TLS), so that one lost packet does not count as a server out of reach. While a call is up the account stays on its server unless that server stops answering.
+
+## A call drops when I leave the office during it
+
+The call runs through the server it was set up on. When the phone leaves the network that reaches that server (an office PBX reachable only inside the office), the call usually cannot follow: the SIP library tries to repair the call once the line is registered again, but its requests still go to the server of the call. The account itself moves to the backup within seconds, so the next call in or out works.
+
 ## The record button is missing
 
 **Settings → Call features → Recording → Call recording** is off, or remote configuration turned it off. A call that was set up while "Call recording" was off cannot be recorded, even if it is turned on later (the recording file has to be set when the call is set up). Conference rooms and calls transferred in by the PBX (REFER, Replaces) cannot be recorded.
