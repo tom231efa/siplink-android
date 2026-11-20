@@ -43,6 +43,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sky.siplink.R
@@ -144,7 +145,7 @@ fun TlsScreen(onBack: () -> Unit) {
                 ) {
                     Icon(Icons.Rounded.FileOpen, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.tls_import))
+                    Text(stringResource(R.string.tls_import), textAlign = TextAlign.Center)
                 }
             }
         }

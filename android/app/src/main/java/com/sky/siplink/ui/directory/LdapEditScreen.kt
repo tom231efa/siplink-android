@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sky.siplink.R
@@ -340,7 +341,7 @@ fun LdapEditScreen(directoryId: String?, onBack: () -> Unit, onOpenTls: () -> Un
 
         if (stored != null && !locked) {
             OutlinedButton(onClick = { confirmDelete = true }, modifier = Modifier.fillMaxWidth()) {
-                Text(stringResource(R.string.directory_delete), color = MaterialTheme.colorScheme.error)
+                Text(stringResource(R.string.directory_delete), color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
             }
         }
         Spacer(Modifier.height(8.dp))

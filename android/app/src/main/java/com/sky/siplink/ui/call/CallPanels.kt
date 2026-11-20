@@ -54,6 +54,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -194,12 +195,12 @@ internal fun TransferSheet(
                     onClick = { onConsult(target) },
                     enabled = target.isNotBlank() && canConsult,
                     modifier = Modifier.weight(1f),
-                ) { Text(stringResource(R.string.call_transfer_attended)) }
+                ) { Text(stringResource(R.string.call_transfer_attended), textAlign = TextAlign.Center) }
                 Button(
                     onClick = { onBlind(target) },
                     enabled = target.isNotBlank(),
                     modifier = Modifier.weight(1f),
-                ) { Text(stringResource(R.string.call_transfer_blind)) }
+                ) { Text(stringResource(R.string.call_transfer_blind), textAlign = TextAlign.Center) }
             }
             Spacer(Modifier.height(12.dp))
         }

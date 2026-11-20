@@ -46,6 +46,7 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -295,10 +296,11 @@ internal fun ShortcutEditSheet(shortcut: Shortcut, onDismiss: () -> Unit) {
                                 Text(
                                     stringResource(if (confirmDelete) R.string.common_confirm_delete else R.string.common_delete),
                                     color = MaterialTheme.colorScheme.error,
+                                    textAlign = TextAlign.Center,
                                 )
                             }
                         }
-                        Button(onClick = ::save, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.common_save)) }
+                        Button(onClick = ::save, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.common_save), textAlign = TextAlign.Center) }
                     }
                 }
                 Spacer(Modifier.height(12.dp))

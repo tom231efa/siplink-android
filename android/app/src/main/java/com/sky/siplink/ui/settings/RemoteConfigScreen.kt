@@ -35,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -164,12 +165,12 @@ private fun NotEnrolled(status: RemoteConfig.Status, onScan: () -> Unit, onType:
                 FilledTonalButton(onClick = onScan, enabled = !status.busy, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Rounded.QrCodeScanner, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.remote_scan), maxLines = 1)
+                    Text(stringResource(R.string.remote_scan), maxLines = 1, textAlign = TextAlign.Center)
                 }
                 OutlinedButton(onClick = onType, enabled = !status.busy, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Rounded.Link, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.remote_enter_address), maxLines = 1)
+                    Text(stringResource(R.string.remote_enter_address), maxLines = 1, textAlign = TextAlign.Center)
                 }
             }
             if (status.busy) {
@@ -209,7 +210,7 @@ private fun Enrolled(status: RemoteConfig.Status, onSync: () -> Unit, onDelete: 
         InfoRow(stringResource(R.string.remote_certificate), stringResource(if (status.pinned) R.string.remote_certificate_pinned else R.string.remote_certificate_system))
     }
     OutlinedButton(onClick = onDelete, enabled = !status.busy, modifier = Modifier.fillMaxWidth()) {
-        Text(stringResource(R.string.remote_delete), color = MaterialTheme.colorScheme.error)
+        Text(stringResource(R.string.remote_delete), color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
     }
     Spacer(Modifier.height(8.dp))
 }

@@ -33,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.sky.siplink.R
 import com.sky.siplink.core.logic.Csv
@@ -161,10 +162,10 @@ fun CsvImportSheet(
                 OutlinedButton(onClick = { filePicker.launch(arrayOf("text/*", "application/csv")) }, modifier = Modifier.weight(1f)) {
                     Icon(Icons.Rounded.FolderOpen, contentDescription = null)
                     Spacer(Modifier.padding(start = 8.dp))
-                    Text(stringResource(R.string.csv_choose_file))
+                    Text(stringResource(R.string.csv_choose_file), textAlign = TextAlign.Center)
                 }
                 Button(onClick = ::import, enabled = text.isNotBlank(), modifier = Modifier.weight(1f)) {
-                    Text(stringResource(R.string.csv_import))
+                    Text(stringResource(R.string.csv_import), textAlign = TextAlign.Center)
                 }
             }
             Spacer(Modifier.height(12.dp))

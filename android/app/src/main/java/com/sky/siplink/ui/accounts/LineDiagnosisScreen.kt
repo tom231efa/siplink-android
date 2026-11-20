@@ -27,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.sky.siplink.R
 import com.sky.siplink.core.CallSupport
@@ -271,7 +272,7 @@ private fun AdaptationCard(report: LineReport, onReset: () -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
-        ) { Text(stringResource(R.string.common_restore_defaults)) }
+        ) { Text(stringResource(R.string.common_restore_defaults), textAlign = TextAlign.Center) }
     }
 }
 

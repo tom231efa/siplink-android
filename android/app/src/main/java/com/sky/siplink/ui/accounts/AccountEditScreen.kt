@@ -34,6 +34,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sky.siplink.R
@@ -331,9 +332,9 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
                     },
                     enabled = !existing.isDefault,
                     modifier = Modifier.weight(1f),
-                ) { Text(stringResource(if (existing.isDefault) R.string.account_is_default else R.string.account_set_default)) }
+                ) { Text(stringResource(if (existing.isDefault) R.string.account_is_default else R.string.account_set_default), textAlign = TextAlign.Center) }
                 OutlinedButton(onClick = { confirmDelete = true }, modifier = Modifier.weight(1f)) {
-                    Text(stringResource(R.string.account_delete), color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.account_delete), color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
                 }
             }
         }
