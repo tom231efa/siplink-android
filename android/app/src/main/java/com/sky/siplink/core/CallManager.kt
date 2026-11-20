@@ -2,18 +2,15 @@ package com.sky.siplink.core
 
 import android.os.Handler
 import android.os.Looper
-import android.os.SystemClock
+import com.sky.siplink.core.CallLegs.Companion.live
+import com.sky.siplink.core.CallLegs.Companion.same
 import com.sky.siplink.core.CallSupport.isEnded
 import com.sky.siplink.core.CallSupport.isRinging
 import com.sky.siplink.core.CallSupport.phaseOf
-import com.sky.siplink.core.logic.AutoAnswerRules
 import com.sky.siplink.core.logic.CallRules
 import com.sky.siplink.core.logic.DialTarget
 import com.sky.siplink.core.logic.Formatters
-import com.sky.siplink.core.logic.IncomingPolicy
-import com.sky.siplink.core.logic.NameLookup
 import com.sky.siplink.core.logic.OngoingNotice
-import com.sky.siplink.core.logic.VideoRules
 import com.sky.siplink.core.model.AudioRoute
 import com.sky.siplink.core.model.CallInfo
 import com.sky.siplink.core.model.CallPhase
@@ -27,7 +24,6 @@ import org.linphone.core.Account
 import org.linphone.core.Address
 import org.linphone.core.Call
 import org.linphone.core.Core
-import org.linphone.core.Factory
 import org.linphone.core.Reason
 
 /**
@@ -39,7 +35,7 @@ import org.linphone.core.Reason
  * needed when the PBX rearranges our calls (REFER, replaced or force-released calls).
  *
  * The calls can become a conference room ([openRoom], see [ConferenceRoom]). While it is open the
- * room takes the place of the current call: its calls are neither [current] nor [other], and only
+ * room takes the place of the current call: its calls are neither the current one nor the other, and only
  * a call that comes in waits next to it. Must be used from the thread that owns the core (the
  * main thread).
  */
@@ -84,27 +80,15 @@ class CallManager(
             it == CallPhase.OUTGOING || it == CallPhase.CONNECTED || it == CallPhase.HELD
         }
 
-    /** What the next outgoing call started by [invite] is meant to be. */
-    private class Pending(val supervision: SupervisionMode?, val consultation: Boolean)
-
     private val handler = Handler(Looper.getMainLooper())
     private val describer = CallDescriber(core, settings, accounts, names)
-    private val metas = HashMap<Long, CallMeta>()
-
-    private var current: Call? = null
-    private var other: Call? = null
-
-    /** The call in which the PBX asked us (REFER) to call someone else; [current] is that new call. */
-    private var referredFrom: Call? = null
-    private var pending: Pending? = null
-    private var consulting = false
-    private var generation = 0
+    private val legs = CallLegs()
 
     private val autoAnswer = AutoAnswerer(
         handler,
         canUseMicrophone = { host?.isAppVisible == true },
         // Never next to another call or into the room (CallRules).
-        answerable = { call, _ -> same(call, current) && isRinging(call) && CallRules.mayAnswerByItself(live(other) != null, room.isOpen) },
+        answerable = { call, _ -> same(call, legs.current) && isRinging(call) && CallRules.mayAnswerByItself(live(legs.other) != null, room.isOpen) },
     ) { call -> accept(call, video = false) }
 
     private val video = VideoController(core, settings, { host?.canUseCamera == true }) { publish() }
@@ -121,8 +105,22 @@ class CallManager(
     private val transfer = CallTransfer(core, settings) { publish() }
     private val retry = CallRetry(handler, accounts, ::redial, ::retryGaveUp)
 
+    private val feed = object : CallFeed {
+        override val host: Host? get() = this@CallManager.host
+        override var shown: CallInfo?
+            get() = state.value
+            set(value) {
+                state.value = value
+            }
+
+        override fun publish(): CallInfo? = this@CallManager.publish()
+
+        override fun describe(call: Call): CallInfo = this@CallManager.describe(call)
+    }
+    private val follower = CallFollower(core, settings, legs, feed, handler, CallParts(describer, room, video, recorder, transfer, retry, autoAnswer))
+
     /** A call out was placed again over the other server ([CallRetry]): its entry in the history goes, by its Call-ID. */
-    var onSuperseded: ((String) -> Unit)? = null
+    var onSuperseded: ((String) -> Unit)? by follower::onSuperseded
 
     // ---------------------------------------------------------------- placing calls
 
@@ -131,15 +129,15 @@ class CallManager(
      * @return a user readable error, or null when the call was started
      */
     fun dial(target: String, accountId: String?, supervision: SupervisionMode? = null, video: Boolean = false): String? {
-        if (live(current) != null || core.calls.any { !isEnded(it) }) return "已有通话正在进行"
+        if (live(legs.current) != null || core.calls.any { !isEnded(it) }) return "已有通话正在进行"
         val account = accountId?.let(accounts::find) ?: core.defaultAccount
         return invite(target, account, Pending(supervision, consultation = false), video && videoAllowed)
     }
 
     /** Puts the current call on hold and calls [target]: first step of an attended transfer. */
     fun startConsultation(target: String): String? {
-        val active = live(current) ?: return "当前无通话"
-        if (other != null) return "已有两路通话"
+        val active = live(legs.current) ?: return "当前无通话"
+        if (legs.other != null) return "已有两路通话"
         val phase = phaseOf(active)
         if (phase != CallPhase.CONNECTED && phase != CallPhase.HELD) return "通话接通后方可发起咨询"
         return invite(target, active.params.account ?: core.defaultAccount, Pending(null, consultation = true))
@@ -163,9 +161,9 @@ class CallManager(
         this.video.prepare(params, video)
         val recordFile = recorder.prepare(params)
         // The core reports OutgoingInit from inside the invite call; `pending` tells it apart there.
-        pending = kind
+        legs.pending = kind
         val created = core.inviteAddressWithParams(address, params)
-        pending = null
+        legs.pending = null
         created?.let { recorder.attach(it, recordFile) }
         return created
     }
@@ -173,7 +171,7 @@ class CallManager(
     /** Places the current call [old] again, as it was placed, on its account now on its other server, once [end] ended it ([CallRetry]). */
     private fun redial(old: Call, end: () -> Unit): Boolean {
         val account = old.params.account
-        if (!same(old, current) || room.isOpen || account == null) return false
+        if (!same(old, legs.current) || room.isOpen || account == null) return false
         // Its facts go with it: the old call's are gone once it is released, which may be at once.
         val meta = metaOf(old)
         val kind = Pending(meta.supervision, consultation = false)
@@ -185,15 +183,15 @@ class CallManager(
         val placed = place(address, account, kind, video) ?: return false
         placed.microphoneMuted = muted
         // The route chosen goes with the call's facts (CallMeta.chosenRoute), applied as its sound starts.
-        metas[placed.nativePointer] = meta
+        legs.carry(placed, meta)
         return true
     }
 
     /** The current call [old] could not be placed again ([CallRetry]): it ended without an answer from its server, and shows so at once. */
     private fun retryGaveUp(old: Call) {
-        if (!same(old, current)) return
+        if (!same(old, legs.current)) return
         metaOf(old).endReason = CallSupport.SERVER_SILENT
-        finish(metas.remove(old.nativePointer))
+        follower.finish(legs.forget(old))
     }
 
     // ---------------------------------------------------------------- answering / ending
@@ -209,16 +207,16 @@ class CallManager(
     fun answer(video: Boolean = false): String? {
         autoAnswer.cancel()
         if (room.isOpen) return joinRoom()
-        val waiting = other?.takeIf(::isRinging)
+        val waiting = legs.other?.takeIf(::isRinging)
         if (waiting != null) {
             // The core puts the running call on hold by itself when another one is accepted.
-            other = current
-            current = waiting
+            legs.other = legs.current
+            legs.current = waiting
             accept(waiting, video)
             publish()
             return null
         }
-        current?.takeIf(::isRinging)?.let { accept(it, video) }
+        legs.current?.takeIf(::isRinging)?.let { accept(it, video) }
         return null
     }
 
@@ -236,12 +234,12 @@ class CallManager(
     /** Declines the ringing call: the waiting one if there is one, else the current one. */
     fun decline() {
         autoAnswer.cancel()
-        val waiting = other?.takeIf(::isRinging)
+        val waiting = legs.other?.takeIf(::isRinging)
         if (waiting != null) {
             waiting.decline(Reason.Busy)
             return
         }
-        current?.takeIf(::isRinging)?.decline(Reason.Declined)
+        legs.current?.takeIf(::isRinging)?.decline(Reason.Declined)
     }
 
     fun hangUp() {
@@ -249,7 +247,7 @@ class CallManager(
             room.end()
             return
         }
-        val call = current ?: return
+        val call = legs.current ?: return
         if (isRinging(call)) call.decline(Reason.Declined) else call.terminate()
     }
 
@@ -260,14 +258,14 @@ class CallManager(
         if (room.isOpen) {
             room.muted = !room.muted
         } else {
-            val call = current ?: return
+            val call = legs.current ?: return
             call.microphoneMuted = !call.microphoneMuted
         }
         publish()
     }
 
     fun toggleHold() {
-        val call = current ?: return
+        val call = legs.current ?: return
         when (call.state) {
             Call.State.Paused, Call.State.Pausing -> call.resume()
             Call.State.StreamsRunning -> call.pause()
@@ -276,7 +274,7 @@ class CallManager(
     }
 
     fun sendDtmf(digit: Char) {
-        val call = current ?: return
+        val call = legs.current ?: return
         if (!Formatters.isDtmf(digit)) return
         call.sendDtmf(digit)
         // On a supervised call the PBX takes the mode keys from the keypad too.
@@ -290,13 +288,13 @@ class CallManager(
 
     /** Sends a string of digits one after the other (a DTMF shortcut key). */
     fun sendDtmfs(digits: String): String? {
-        val call = live(current)?.takeIf { it.state == Call.State.StreamsRunning } ?: return "仅可在通话中发送按键"
+        val call = live(legs.current)?.takeIf { it.state == Call.State.StreamsRunning } ?: return "仅可在通话中发送按键"
         call.sendDtmfs(digits.filter(Formatters::isDtmf))
         return null
     }
 
     fun setRoute(route: AudioRoute) {
-        val call = current
+        val call = legs.current
         val applied = when {
             room.isOpen -> room.setRoute(route)
             call != null -> CallSupport.applyRoute(core, call, route).also { if (it) metaOf(call).chosenRoute = route }
@@ -307,7 +305,7 @@ class CallManager(
 
     /** Switches a supervisor call between listen / whisper / barge (DTMF understood by the PBX). */
     fun setSupervisionMode(mode: SupervisionMode) {
-        val call = live(current) ?: return
+        val call = live(legs.current) ?: return
         val meta = metaOf(call)
         if (!CallRules.supervisionKeysGo(meta.supervision != null, call.state == Call.State.StreamsRunning, room.isOpen)) return
         call.sendDtmf(mode.dtmf)
@@ -317,17 +315,17 @@ class CallManager(
 
     /** Swaps the held call and the current one. */
     fun swap() {
-        val held = live(other)?.takeIf { !isRinging(it) } ?: return
-        other = current
-        current = held
-        consulting = false
+        val held = live(legs.other)?.takeIf { !isRinging(it) } ?: return
+        legs.other = legs.current
+        legs.current = held
+        legs.consulting = false
         // Resuming preempts the audio: the core holds the other call by itself.
         held.resume()
         publish()
     }
 
     /** Starts or stops recording the current call. */
-    fun toggleRecording() = recorder.toggle(live(current))
+    fun toggleRecording() = recorder.toggle(live(legs.current))
 
     /** Recording was allowed or forbidden in the settings; forbidden, running recordings end. */
     fun onRecordingAllowedChanged() = recorder.onAllowedChanged(core.calls.toList())
@@ -335,13 +333,13 @@ class CallManager(
     // ---------------------------------------------------------------- video
 
     /** Adds video to the current call, or ends it (re-INVITE). The room has none. */
-    fun toggleVideo(): String? = if (room.isOpen) "会议室不支持视频" else video.toggleVideo(live(current))
+    fun toggleVideo(): String? = if (room.isOpen) "会议室不支持视频" else video.toggleVideo(live(legs.current))
 
     /** Stops or starts sending the own camera; the picture of the other side keeps coming. */
-    fun toggleCamera(): String? = video.toggleCamera(live(current))
+    fun toggleCamera(): String? = video.toggleCamera(live(legs.current))
 
     /** Front and back camera, in turn. */
-    fun switchCamera() = video.switchCamera(live(current))
+    fun switchCamera() = video.switchCamera(live(legs.current))
 
     /** The user's answer to the other side's request to add video (see [CallInfo.videoOffer]). */
     fun answerVideoRequest(accept: Boolean) = video.answerRequest(accept)
@@ -355,7 +353,7 @@ class CallManager(
      * and sound can have stopped or come back.
      */
     fun onCallStatsUpdated(call: Call) {
-        if (!same(call, current)) return
+        if (!same(call, legs.current)) return
         val shown = state.value ?: return
         val video = shown.video
         if ((video != null && CallVideoSupport.stateOf(call) != video) || (shown.room == null && shown.noSound != accounts.media.hearsNothing(call))) publish()
@@ -367,16 +365,16 @@ class CallManager(
     // ---------------------------------------------------------------- transfer / park
 
     /** Blind transfer: the PBX connects the other party to [target] and releases us. */
-    fun blindTransfer(target: String): String? = transfer.blind(live(current), target)
+    fun blindTransfer(target: String): String? = transfer.blind(live(legs.current), target)
 
     /** Parks the current call: a blind transfer to the PBX parking extension. */
-    fun park(): String? = transfer.park(live(current))
+    fun park(): String? = transfer.park(live(legs.current))
 
     /** Second step of an attended transfer: connects the held party with the consulted one. */
     fun completeTransfer(): String? {
-        val consulted = live(current)
-        val held = live(other)
-        if (!consulting || consulted == null || held == null) return "无待完成的转接"
+        val consulted = live(legs.current)
+        val held = live(legs.other)
+        if (!legs.consulting || consulted == null || held == null) return "无待完成的转接"
         return transfer.complete(consulted, held)
     }
 
@@ -390,18 +388,18 @@ class CallManager(
      */
     fun openRoom(): String? {
         if (room.isOpen) return null
-        val first = live(current) ?: return "当前无通话"
+        val first = live(legs.current) ?: return "当前无通话"
         val phase = phaseOf(first)
         if (phase != CallPhase.CONNECTED && phase != CallPhase.HELD) return "通话接通后方可开启会议室"
-        val second = live(other)?.takeIf { !isRinging(it) }
+        val second = live(legs.other)?.takeIf { !isRinging(it) }
         val calls = listOfNotNull(first, second)
         CallRules.roomRefusal(supervised = calls.any { metaOf(it).supervision != null }, transferring = transfer.moving)?.let { return it }
         // Muting the call the user is talking in carries over to the room.
         room.open(calls, muted = first.microphoneMuted)?.let { return it }
         recorder.onMerging(calls)
-        current = null
-        if (second != null) other = null
-        resetScenario()
+        legs.current = null
+        if (second != null) legs.other = null
+        follower.resetScenario()
         publish()
         return null
     }
@@ -419,10 +417,10 @@ class CallManager(
 
     /** Answers the waiting call into the room. @return a user readable error, or null */
     fun joinRoom(): String? {
-        val waiting = other?.takeIf(::isRinging) ?: return null
+        val waiting = legs.other?.takeIf(::isRinging) ?: return null
         autoAnswer.cancel()
         room.join(waiting)?.let { return it }
-        other = null
+        legs.other = null
         host?.dismissIncomingCall()
         publish()
         return null
@@ -444,288 +442,13 @@ class CallManager(
     }
 
     fun onTransferStateChanged(call: Call, transferState: Call.State?) =
-        transfer.onStateChanged(call, transferState, both = listOfNotNull(live(current), live(other)))
+        transfer.onStateChanged(call, transferState, both = listOfNotNull(live(legs.current), live(legs.other)))
 
-    fun onCallStateChanged(call: Call, callState: Call.State?, message: String) {
-        describer.onStateChanged(call, callState)
-        if (retry.isSuperseded(call)) {
-            // Placed again: its successor is on the screen, and it leaves nothing behind.
-            if (callState == Call.State.Released) {
-                metas.remove(call.nativePointer)
-                video.onReleased(call)
-                recorder.onReleased(call)
-                retry.onReleased(call)
-                call.callLog.callId?.let { onSuperseded?.invoke(it) }
-            }
-            return
-        }
-        room.onStateChanged(call, callState)
-        when (callState) {
-            Call.State.IncomingReceived -> onIncomingReceived(call)
-            Call.State.OutgoingInit -> {
-                onOutgoingInit(call)
-                video.applyCamera(call)
-            }
-
-            Call.State.Connected, Call.State.StreamsRunning -> {
-                val meta = metaOf(call)
-                if (meta.connectedAt == null) meta.connectedAt = SystemClock.elapsedRealtime()
-                if (same(call, current) || same(call, other)) host?.dismissIncomingCall()
-                if (callState == Call.State.StreamsRunning) {
-                    video.onStreaming(call)
-                    recorder.onStreaming(call, inRoom = room.isMember(call))
-                    room.onStreaming(call)
-                    if (same(call, current)) onCurrentStreaming(call, meta)
-                }
-                publish()
-            }
-
-            Call.State.Error, Call.State.End -> {
-                val meta = metaOf(call)
-                meta.endReason = CallSupport.endReason(call, callState, meta.connectedAt != null, message)
-                room.onEnded(call, meta.endReason)
-                if (same(call, current) || same(call, other)) host?.dismissIncomingCall()
-                publish()
-            }
-
-            // The calls of the room are never the current one: video they are offered is declined.
-            Call.State.UpdatedByRemote -> video.onUpdatedByRemote(call, onScreen = same(call, current))
-            Call.State.Released -> onReleased(call)
-            else -> publish()
-        }
-    }
-
-    private fun onIncomingReceived(call: Call) {
-        // A call that replaces one of ours (attended transfer done by the remote side) is answered
-        // by the core itself, which ends the old one; we only have to follow it. In the room it
-        // takes the member's place, if there is room for it.
-        val replaced = call.replacedCall
-        if (replaced != null && (same(replaced, current) || same(replaced, other))) {
-            if (same(replaced, current)) current = call else other = call
-            publish()
-            return
-        }
-        if (replaced != null && room.isMember(replaced)) {
-            if (room.replace(call, replaced)) publish() else call.decline(Reason.Busy)
-            return
-        }
-
-        val decision = IncomingPolicy.decide(
-            settings.current,
-            hasActiveCall = live(current) != null || room.isOpen,
-            hasSecondCall = other != null,
-            anonymous = NameLookup.isWithheld(CallSupport.plain(call.remoteAddress)),
-        )
-        when (decision) {
-            IncomingPolicy.Decision.RejectDoNotDisturb -> call.decline(Reason.DoNotDisturb)
-            IncomingPolicy.Decision.RejectAnonymous -> {
-                // 433 is what SIP has for exactly this (RFC 5079).
-                val refusal = Factory.instance().createErrorInfo()
-                refusal.set("SIP", Reason.Declined, ANONYMITY_DISALLOWED, "Anonymity Disallowed", null)
-                call.declineWithErrorInfo(refusal)
-            }
-            IncomingPolicy.Decision.RejectBusy -> call.decline(Reason.Busy)
-            is IncomingPolicy.Decision.Forward -> forward(call, decision.target)
-
-            IncomingPolicy.Decision.Waiting -> {
-                other = call
-                metaOf(call).intercom = CallSupport.isIntercom(call)
-                metaOf(call).waited = true
-                publish()
-                // Without a visible call screen the user would not notice the second call.
-                if (host?.isAppVisible != true) host?.showIncomingCall(describe(call))
-            }
-
-            is IncomingPolicy.Decision.Ring -> {
-                // A call that already ended but is still lingering on screen gives way.
-                generation++
-                current = call
-                resetScenario()
-                val meta = metaOf(call)
-                meta.intercom = CallSupport.isIntercom(call)
-                val info = publish() ?: return
-                ring(call, info)
-                val target = decision.forwardTo
-                if (target != null) {
-                    handler.postDelayed({
-                        if (same(call, current) && isRinging(call)) forward(call, target)
-                    }, decision.forwardAfterSeconds * 1000L)
-                }
-            }
-        }
-    }
-
-    private fun ring(call: Call, info: CallInfo) {
-        val meta = metaOf(call)
-        autoAnswer.start(call, meta.intercom, AutoAnswerRules.delayMs(settings.current, meta.intercom, cameDuringCall = meta.waited))
-        host?.showIncomingCall(info)
-    }
-
-    private fun forward(call: Call, target: String) {
-        // A bare number is completed with the domain of the account that was called.
-        val address = (call.params.account ?: core.defaultAccount)?.normalizeSipUri(DialTarget.of(target))
-            ?: core.interpretUrl(target, false)
-        if (address == null || call.redirectTo(address) != 0) call.decline(Reason.Busy)
-    }
-
-    private fun onOutgoingInit(call: Call) {
-        val kind = pending
-        val active = live(current)
-        val referrer = call.transfererCall
-        val replaced = retry.replacing
-        when {
-            // The same call, placed again over the other server: it takes the place of the one before.
-            replaced != null && same(replaced, current) -> {
-                current = call
-                retry.onReplacement(call)
-            }
-
-            // Placed by the room, or by the PBX in place of a call of the room (if there is room for it).
-            room.inviting -> room.onInvited(call)
-            referrer != null && room.isMember(referrer) -> if (!room.replace(call, referrer)) refuse(call)
-
-            // Not started by us: the core follows a REFER received on one of our calls, one at a
-            // time (a second one would leave the first new call without a place on screen).
-            referrer != null && referredFrom != null -> refuse(call)
-            referrer != null -> {
-                if (same(referrer, other)) other = null
-                referredFrom = referrer
-                current = call
-                metaOf(call).intercom = metaOf(referrer).intercom
-            }
-
-            active == null -> {
-                generation++
-                current = call
-                resetScenario()
-                metaOf(call).supervision = kind?.supervision
-            }
-
-            // A second call next to the active one: the consultation leg of an attended transfer.
-            else -> {
-                if (other == null) other = active
-                current = call
-                consulting = true
-            }
-        }
-        publish()
-    }
-
-    /** Ends a call the core placed on a REFER that has no place; not from inside the core's report of it. */
-    private fun refuse(call: Call) {
-        handler.post { if (!isEnded(call)) call.terminate() }
-    }
-
-    private fun onCurrentStreaming(call: Call, meta: CallMeta) {
-        // The call we were referred to is up: the original one is not needed any more.
-        referredFrom?.let { old ->
-            referredFrom = null
-            if (!isEnded(old)) old.terminate()
-        }
-        // A route chosen before the sound ran is the SDK's to forget as the sound starts: chosen again.
-        meta.chosenRoute?.takeIf { !meta.speakerApplied }?.let { route ->
-            meta.speakerApplied = true
-            CallSupport.applyRoute(core, call, route)
-        }
-        if (meta.intercom && settings.current.intercomSpeaker && !meta.speakerApplied) {
-            meta.speakerApplied = true
-            CallSupport.applyRoute(core, call, AudioRoute.SPEAKER)
-        }
-        val video = CallVideoSupport.hasVideo(call)
-        if (video && !meta.hadVideo) {
-            val route = CallSupport.routeOf(call.outputAudioDevice?.type) ?: AudioRoute.EARPIECE
-            if (VideoRules.speakerForVideo(route, CallSupport.availableRoutes(core))) {
-                CallSupport.applyRoute(core, call, AudioRoute.SPEAKER)
-            }
-        }
-        meta.hadVideo = video
-    }
-
-    private fun onReleased(call: Call) {
-        retry.onReleased(call)
-        val meta = metas.remove(call.nativePointer)
-        video.onReleased(call)
-        recorder.onReleased(call)
-        when {
-            same(call, current) -> {
-                host?.dismissIncomingCall()
-                autoAnswer.cancel()
-                val next = live(other) ?: live(referredFrom)
-                if (next != null) {
-                    // The remaining call takes over the screen.
-                    current = next
-                    if (same(next, other)) other = null else referredFrom = null
-                    consulting = false
-                    when {
-                        isRinging(next) -> publish()?.let { ring(next, it) }
-                        // Our own hold is lifted, unless that call is just being transferred away.
-                        next.state == Call.State.Paused && !transfer.moving -> next.resume()
-                    }
-                    publish()
-                } else {
-                    finish(meta)
-                }
-            }
-
-            same(call, other) -> {
-                other = null
-                consulting = false
-                publish()
-            }
-
-            same(call, referredFrom) -> referredFrom = null
-
-            room.isMember(call) -> if (room.onReleased(call)) onRoomClosed() else publish()
-        }
-    }
-
-    /** The last member left the room, or the user ended it: a call that waits takes over, else the screen ends. */
-    private fun onRoomClosed() {
-        val next = live(other)
-        if (next == null) {
-            finish(null)
-            return
-        }
-        current = next
-        other = null
-        val info = publish() ?: return
-        if (isRinging(next)) ring(next, info)
-    }
-
-    /** Last call gone: keep the "call ended" state on screen for a moment, then clear it. */
-    private fun finish(meta: CallMeta?) {
-        val last = state.value
-        current = null
-        other = null
-        referredFrom = null
-        val reason = transfer.endReason() ?: meta?.endReason ?: last?.endReason ?: "通话结束"
-        resetScenario()
-        state.value = last?.copy(
-            phase = CallPhase.ENDED,
-            endReason = reason,
-            heldCall = null,
-            waitingCall = null,
-            consulting = false,
-            room = null,
-        )
-        host?.onCallActivityChanged()
-        val token = ++generation
-        handler.postDelayed({ if (token == generation && current == null) state.value = null }, END_LINGER_MS)
-    }
+    fun onCallStateChanged(call: Call, callState: Call.State?, message: String) = follower.onCallStateChanged(call, callState, message)
 
     // ---------------------------------------------------------------- helpers
 
-    private fun resetScenario() {
-        consulting = false
-        transfer.reset()
-        autoAnswer.cancel()
-    }
-
-    private fun same(a: Call?, b: Call?): Boolean = a != null && b != null && a.nativePointer == b.nativePointer
-
-    private fun live(call: Call?): Call? = call?.takeIf { !isEnded(it) }
-
-    private fun metaOf(call: Call): CallMeta = metas.getOrPut(call.nativePointer) { CallMeta() }
+    private fun metaOf(call: Call): CallMeta = legs.metaOf(call)
 
     private fun partyOf(call: Call): SideCall = describer.partyOf(call)
 
@@ -733,7 +456,7 @@ class CallManager(
     private fun onNamesFound() {
         room.onSidesChanged()
         val info = publish() ?: return
-        val call = current ?: return
+        val call = legs.current ?: return
         if (isRinging(call) && call.dir == Call.Dir.Incoming) host?.updateIncomingCall(info)
     }
 
@@ -751,8 +474,8 @@ class CallManager(
 
     private fun publish(): CallInfo? {
         val previous = state.value
-        val info = room.snapshot()?.let { describer.roomInfo(it, room, previous, live(other)?.takeIf(::isRinging)?.let(::partyOf)) }
-            ?: current?.let(::callInfo) ?: return null
+        val info = room.snapshot()?.let { describer.roomInfo(it, room, previous, live(legs.other)?.takeIf(::isRinging)?.let(::partyOf)) }
+            ?: legs.current?.let(::callInfo) ?: return null
         state.value = info
         // The notification shows the call or the room: posted again when what it shows changes.
         if (OngoingNotice.of(previous) != OngoingNotice.of(info)) host?.onCallActivityChanged()
@@ -761,22 +484,15 @@ class CallManager(
 
     /** The current call with what stands beside it. */
     private fun callInfo(call: Call): CallInfo {
-        val second = live(other)
+        val second = live(legs.other)
         val described = describe(call)
         return described.copy(
             endReason = transfer.endReason() ?: described.endReason,
             heldCall = second?.takeIf { !isRinging(it) }?.let(::partyOf),
             waitingCall = second?.takeIf(::isRinging)?.let(::partyOf),
-            consulting = consulting && second != null,
+            consulting = legs.consulting && second != null,
             transfer = transfer.status,
             parked = transfer.parked,
         )
-    }
-
-    private companion object {
-        const val END_LINGER_MS = 1400L
-
-        /** SIP status for a caller who withholds the number where that is not accepted. */
-        const val ANONYMITY_DISALLOWED = 433
     }
 }
