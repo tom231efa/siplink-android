@@ -48,6 +48,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -228,6 +229,7 @@ fun AppRoot() {
                     }
                 },
             ) { padding ->
+                val direction = LocalLayoutDirection.current
                 NavHost(
                     navController = navController,
                     startDestination = Tab.DIALER.route,
@@ -238,13 +240,13 @@ fun AppRoot() {
                         .consumeWindowInsets(padding)
                         .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal)),
                     enterTransition = {
-                        if (isTab(initialState.destination.route) && isTab(targetState.destination.route)) Motion.tabEnter else Motion.pushEnter
+                        if (isTab(initialState.destination.route) && isTab(targetState.destination.route)) Motion.tabEnter else Motion.pushEnter(direction)
                     },
                     exitTransition = {
-                        if (isTab(initialState.destination.route) && isTab(targetState.destination.route)) Motion.tabExit else Motion.pushExit
+                        if (isTab(initialState.destination.route) && isTab(targetState.destination.route)) Motion.tabExit else Motion.pushExit(direction)
                     },
-                    popEnterTransition = { Motion.popEnter },
-                    popExitTransition = { Motion.popExit },
+                    popEnterTransition = { Motion.popEnter(direction) },
+                    popExitTransition = { Motion.popExit(direction) },
                 ) {
                     composable(Tab.DIALER.route) {
                         DialerScreen(

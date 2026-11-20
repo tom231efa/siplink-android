@@ -13,6 +13,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.ui.unit.LayoutDirection
 
 /**
  * How the app moves between screens: with some depth, but quick. Nothing here takes longer
@@ -30,16 +31,24 @@ internal object Motion {
 
     fun fade(millis: Int): FiniteAnimationSpec<Float> = tween(millis, easing = LinearEasing)
 
-    /** A new screen slides in from the right over the old one, which backs away a little. */
-    val pushEnter: EnterTransition = slideInHorizontally(tween(280, easing = arrive)) { it / 4 } + fadeIn(tween(160))
-    val pushExit: ExitTransition = slideOutHorizontally(tween(280, easing = arrive)) { -it / 10 } +
+    /**
+     * A new screen slides in from the end of the screen (the right, the left in a right-to-left
+     * language) over the old one, which backs away a little. The slides take pixels as they are,
+     * so the side is chosen here.
+     */
+    fun pushEnter(direction: LayoutDirection): EnterTransition =
+        slideInHorizontally(tween(280, easing = arrive)) { forward(direction) * it / 4 } + fadeIn(tween(160))
+    fun pushExit(direction: LayoutDirection): ExitTransition = slideOutHorizontally(tween(280, easing = arrive)) { -forward(direction) * it / 10 } +
         scaleOut(tween(280, easing = arrive), targetScale = 0.96f) + fadeOut(tween(140))
 
-    /** Going back: the screen leaves to the right and shrinks, the one below comes forward again. */
-    val popEnter: EnterTransition = slideInHorizontally(tween(260, easing = arrive)) { -it / 10 } +
+    /** Going back: the screen leaves to the end and shrinks, the one below comes forward again. */
+    fun popEnter(direction: LayoutDirection): EnterTransition = slideInHorizontally(tween(260, easing = arrive)) { -forward(direction) * it / 10 } +
         scaleIn(tween(260, easing = arrive), initialScale = 0.96f) + fadeIn(tween(160))
-    val popExit: ExitTransition = slideOutHorizontally(tween(240, easing = leave)) { it / 3 } +
+    fun popExit(direction: LayoutDirection): ExitTransition = slideOutHorizontally(tween(240, easing = leave)) { forward(direction) * it / 3 } +
         scaleOut(tween(240, easing = leave), targetScale = 0.94f) + fadeOut(tween(180, delayMillis = 40))
+
+    /** 1 where the screen runs to the right, -1 where it runs to the left. */
+    fun forward(direction: LayoutDirection): Int = if (direction == LayoutDirection.Rtl) -1 else 1
 
     /** Between tabs nothing travels: the old one fades out first, the new one fades in growing slightly. */
     val tabEnter: EnterTransition = fadeIn(tween(180, delayMillis = 50)) + scaleIn(tween(230, easing = arrive), initialScale = 0.97f)

@@ -72,6 +72,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -90,6 +91,7 @@ import com.sky.siplink.core.model.CallInfo
 import com.sky.siplink.core.model.CallPhase
 import com.sky.siplink.core.model.TransferStatus
 import com.sky.siplink.engine
+import com.sky.siplink.ui.Motion
 import com.sky.siplink.ui.components.FadingText
 import com.sky.siplink.ui.components.text
 import com.sky.siplink.ui.theme.Brand
@@ -292,15 +294,17 @@ fun CallScreen(
             // The keypad takes the place of the controls, under the name upright and beside it with
             // the phone on its side: the name, the notices, the top bar and the pictures stay in sight.
             val sideways = LocalWindowInfo.current.containerSize.let { it.width > it.height }
+            // On its side it comes from and goes back to the edge it stands at, the start: the slides take pixels as they are.
+            val fromStart = -Motion.forward(LocalLayoutDirection.current)
             AnimatedVisibility(
                 visible = keypadOpen && mode == Controls.ACTIVE && room == null,
                 modifier = Modifier.align(if (sideways) Alignment.CenterStart else Alignment.BottomCenter),
                 enter = if (sideways) {
-                    slideInHorizontally(spring(dampingRatio = 0.85f, stiffness = 300f)) { -it } + fadeIn()
+                    slideInHorizontally(spring(dampingRatio = 0.85f, stiffness = 300f)) { fromStart * it } + fadeIn()
                 } else {
                     slideInVertically(spring(dampingRatio = 0.85f, stiffness = 300f)) { it } + fadeIn()
                 },
-                exit = if (sideways) slideOutHorizontally(tween(220)) { -it } + fadeOut() else slideOutVertically(tween(220)) { it } + fadeOut(),
+                exit = if (sideways) slideOutHorizontally(tween(220)) { fromStart * it } + fadeOut() else slideOutVertically(tween(220)) { it } + fadeOut(),
             ) {
                 DtmfPanel(onDigit = calls::sendDtmf, onClose = { keypadOpen = false }, sideways = sideways)
             }
