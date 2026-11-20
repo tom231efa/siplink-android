@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The call features panel: the features of the PBX for one extension. -->
+<resources>
+    <string name="feature_sheet_title">Call features</string>
+    <string name="feature_sheet_extension">Extension %1$s</string>
+    <string name="feature_sheet_target">Target extension</string>
+    <string name="feature_sheet_target_hint">e.g. 1002</string>
+    <string name="feature_sheet_call">Call</string>
+    <string name="feature_sheet_add_shortcut">Add to shortcut keys</string>
+    <string name="feature_sheet_force_confirm">Tap again to force hang-up %1$s</string>
+</resources>

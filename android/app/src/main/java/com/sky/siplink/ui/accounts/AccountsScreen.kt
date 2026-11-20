@@ -63,9 +63,12 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sky.siplink.R
 import com.sky.siplink.core.logic.AccountRules
 import com.sky.siplink.core.logic.LineAdapt
 import com.sky.siplink.core.model.RegState
@@ -84,6 +87,7 @@ import com.sky.siplink.ui.components.ManagedLock
 import com.sky.siplink.ui.components.StatusDot
 import com.sky.siplink.ui.components.regStateColor
 import com.sky.siplink.ui.components.regStateLabel
+import com.sky.siplink.ui.components.text
 
 /** The accounts and their registrations. Where the configuration is locked they are only listed: nothing adds, imports or switches one. */
 @Composable
@@ -132,22 +136,22 @@ fun AccountsScreen(onBack: () -> Unit, onAdd: () -> Unit, onEdit: (String) -> Un
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
             TopAppBar(
-                title = { Text("SIP 账号") },
+                title = { Text(stringResource(R.string.account_list_title)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回") }
+                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.common_back)) }
                 },
                 actions = {
                     ManagedLock()
                     if (!locked) {
                         IconButton(onClick = { if (full) messenger(context.render(AccountRules.Error.LIMIT_REACHED.message)) else importOpen = true }) {
-                            Icon(Icons.Rounded.UploadFile, contentDescription = "批量导入账号")
+                            Icon(Icons.Rounded.UploadFile, contentDescription = stringResource(R.string.account_import_action))
                         }
                     }
                     IconButton(
                         onClick = { if (searching) closeSearch() else openSearch() },
                         enabled = accounts.isNotEmpty(),
                     ) {
-                        Icon(Icons.Rounded.Search, contentDescription = "搜索账号")
+                        Icon(Icons.Rounded.Search, contentDescription = stringResource(R.string.account_search_action))
                     }
                 },
             )
@@ -170,11 +174,11 @@ fun AccountsScreen(onBack: () -> Unit, onAdd: () -> Unit, onEdit: (String) -> Un
                         .fillMaxWidth()
                         .padding(start = 16.dp, end = 16.dp, bottom = 6.dp)
                         .focusRequester(focusRequester),
-                    placeholder = { FieldText("搜索账号") },
+                    placeholder = { FieldText(stringResource(R.string.account_search_placeholder)) },
                     leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
                     trailingIcon = {
                         IconButton(onClick = ::closeSearch) {
-                            Icon(Icons.Rounded.Close, contentDescription = "关闭搜索")
+                            Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.account_search_close))
                         }
                     },
                     singleLine = true,
@@ -184,9 +188,9 @@ fun AccountsScreen(onBack: () -> Unit, onAdd: () -> Unit, onEdit: (String) -> Un
             if (accounts.isEmpty()) {
                 EmptyState(
                     icon = Icons.Rounded.ManageAccounts,
-                    title = "暂无 SIP 账号",
+                    title = stringResource(R.string.account_empty),
                     modifier = Modifier.fillMaxSize(),
-                    action = if (locked) null else ({ Button(onClick = ::add) { Text("添加账号") } }),
+                    action = if (locked) null else ({ Button(onClick = ::add) { Text(stringResource(R.string.account_add)) } }),
                 )
             } else {
                 LazyColumn(
@@ -198,7 +202,7 @@ fun AccountsScreen(onBack: () -> Unit, onAdd: () -> Unit, onEdit: (String) -> Un
                     if (filtered.isEmpty()) {
                         item(key = "noMatch") {
                             Text(
-                                "无匹配的账号",
+                                stringResource(R.string.account_no_match),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = TextAlign.Center,
@@ -227,7 +231,7 @@ fun AccountsScreen(onBack: () -> Unit, onAdd: () -> Unit, onEdit: (String) -> Un
                 onClick = ::add,
                 expanded = fabExpanded,
                 icon = { Icon(Icons.Rounded.Add, contentDescription = null) },
-                text = { Text("添加账号") },
+                text = { Text(stringResource(R.string.account_add)) },
                 // Neutral like the rest of the list; the accent is kept for what is switched on.
                 containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                 contentColor = MaterialTheme.colorScheme.onSurface,
@@ -259,14 +263,19 @@ private fun SummaryRow(accounts: List<SipAccount>) {
             itemVerticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                "${accounts.size} / ${AccountRules.MAX_ACCOUNTS} 个账号",
+                pluralStringResource(
+                    R.plurals.account_summary_total,
+                    AccountRules.MAX_ACCOUNTS,
+                    accounts.size.toString(),
+                    AccountRules.MAX_ACCOUNTS.toString(),
+                ),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
             )
-            SummaryStat(regStateColor(RegState.OK), "已注册 $registered")
-            SummaryStat(regStateColor(RegState.FAILED), "失败 $failed")
-            SummaryStat(regStateColor(RegState.DISABLED), "停用 $disabled")
+            SummaryStat(regStateColor(RegState.OK), stringResource(R.string.account_summary_registered, registered.toString()))
+            SummaryStat(regStateColor(RegState.FAILED), stringResource(R.string.account_summary_failed, failed.toString()))
+            SummaryStat(regStateColor(RegState.DISABLED), stringResource(R.string.account_summary_disabled, disabled.toString()))
         }
     }
 }
@@ -335,7 +344,7 @@ private fun AccountRow(
                         Spacer(Modifier.width(6.dp))
                         Icon(
                             Icons.Rounded.Star,
-                            contentDescription = "默认账号",
+                            contentDescription = stringResource(R.string.account_default_marker),
                             tint = MaterialTheme.colorScheme.tertiary,
                             modifier = Modifier.size(16.dp),
                         )
@@ -359,8 +368,11 @@ private fun AccountRow(
                         Spacer(Modifier.width(3.dp))
                     }
                     FadingText(
-                        "${adapted?.let(LineAdapt::label) ?: account.transport.name} · ${account.error ?: regStateLabel(account.state)}" +
-                            if (account.onBackup) " · 备用代理服务器" else "",
+                        stringResource(
+                            if (account.onBackup) R.string.account_row_status_backup else R.string.account_row_status,
+                            adapted?.let { LineAdapt.label(it).text() } ?: account.transport.name,
+                            account.error ?: regStateLabel(account.state),
+                        ),
                         style = MaterialTheme.typography.labelMedium,
                         color = regStateColor(account.state),
                     )

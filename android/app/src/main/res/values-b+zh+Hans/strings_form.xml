@@ -16,4 +16,30 @@
     <string name="csv_unknown_type">未知的类型“%1$s”，可选 %2$s</string>
     <string name="csv_unknown_icon">未知的图标“%1$s”，可选 %2$s</string>
     <string name="csv_unknown_transport">未知的传输协议“%1$s”，可选 %2$s</string>
+
+    <!-- Parts of the form rows -->
+    <string name="form_expand">展开</string>
+    <string name="form_collapse">收起</string>
+    <string name="form_password_show">显示密码</string>
+    <string name="form_password_hide">隐藏密码</string>
+    <string name="form_placeholder_host_port">主机[:端口]</string>
+
+    <!-- The import sheet and its report -->
+    <string name="csv_choose_file">选择文件</string>
+    <string name="csv_import">导入</string>
+    <string name="csv_file_unreadable">无法读取所选文件</string>
+    <plurals name="csv_imported_accounts">
+        <item quantity="other">已导入 %1$s 个账号</item>
+    </plurals>
+    <plurals name="csv_imported_shortcuts">
+        <item quantity="other">已导入 %1$s 个快捷键</item>
+    </plurals>
+    <plurals name="csv_report_skipped">
+        <item quantity="other">；%1$s 个因超过 %2$s 个上限被跳过</item>
+    </plurals>
+    <plurals name="csv_report_errors">
+        <item quantity="other">；%1$s 行有误：</item>
+    </plurals>
+    <string name="csv_report_line">\n第 %1$s 行：%2$s</string>
+    <string name="csv_report_more">\n……</string>
 </resources>

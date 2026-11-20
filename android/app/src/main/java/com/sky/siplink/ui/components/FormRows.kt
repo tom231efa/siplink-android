@@ -41,10 +41,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import com.sky.siplink.R
 
 /** Titled group of rows drawn on a rounded surface. */
 @Composable
@@ -87,7 +89,7 @@ fun FoldingCard(title: String, open: Boolean, onToggle: () -> Unit, content: @Co
             Text(title, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
             Icon(
                 Icons.Rounded.ExpandMore,
-                contentDescription = if (open) "收起" else "展开",
+                contentDescription = stringResource(if (open) R.string.form_collapse else R.string.form_expand),
                 modifier = Modifier.graphicsLayer { rotationZ = rotation },
             )
         }
@@ -239,7 +241,7 @@ fun FormField(
                 ) {
                     Icon(
                         if (shown) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
-                        contentDescription = if (shown) "隐藏密码" else "显示密码",
+                        contentDescription = stringResource(if (shown) R.string.form_password_hide else R.string.form_password_show),
                     )
                 }
             }

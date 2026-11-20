@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The line diagnosis of an account: what it checks and what it found. -->
+<resources>
+    <string name="diagnosis_title">Line diagnosis</string>
+    <string name="diagnosis_rerun">Run again</string>
+    <string name="diagnosis_reset_title">Restore defaults?</string>
+    <string name="diagnosis_reset_text">The automatic adjustments of this account will be cleared.</string>
+    <string name="diagnosis_reset_confirm">Restore</string>
+    <string name="diagnosis_reset_done">Defaults restored</string>
+    <string name="diagnosis_not_tested">Not tested</string>
+    <string name="diagnosis_unknown">Unknown</string>
+    <string name="diagnosis_no_response">No response</string>
+    <string name="diagnosis_cannot_connect">Cannot connect</string>
+    <plurals name="diagnosis_seconds">
+        <item quantity="one">%1$s second</item>
+        <item quantity="other">%1$s seconds</item>
+    </plurals>
+
+    <!-- Network -->
+    <string name="diagnosis_network">Network</string>
+    <string name="diagnosis_type">Type</string>
+    <string name="diagnosis_type_cellular">Mobile data</string>
+    <string name="diagnosis_type_ethernet">Ethernet</string>
+    <string name="diagnosis_type_other">Other</string>
+    <string name="diagnosis_type_vpn">%1$s · VPN</string>
+    <string name="diagnosis_no_network">No network</string>
+    <string name="diagnosis_local_address">Local address</string>
+    <string name="diagnosis_public_address">Public address</string>
+    <string name="diagnosis_nat_none">None</string>
+    <string name="diagnosis_nat_present">Present</string>
+    <string name="diagnosis_nat_carrier">Carrier-grade</string>
+    <string name="diagnosis_nat_symmetric">Symmetric</string>
+    <string name="diagnosis_ipv6_yes">Yes</string>
+    <string name="diagnosis_ipv6_no">No</string>
+    <string name="diagnosis_validation">Network validation</string>
+    <string name="diagnosis_validation_login">Sign-in required</string>
+    <string name="diagnosis_validation_passed">Passed</string>
+    <string name="diagnosis_validation_failed">Not passed</string>
+    <string name="diagnosis_battery">Battery optimization</string>
+    <string name="diagnosis_battery_unrestricted">Unrestricted</string>
+    <string name="diagnosis_battery_restricted">Restricted</string>
+    <string name="diagnosis_battery_settings">Settings</string>
+
+    <!-- Server -->
+    <string name="diagnosis_server">Server</string>
+    <string name="diagnosis_address">Address</string>
+    <string name="diagnosis_resolved">Resolves to</string>
+    <string name="diagnosis_resolve_failed">Lookup failed</string>
+    <string name="diagnosis_udp_large">UDP large packets</string>
+    <string name="diagnosis_large_passed">Passed</string>
+    <string name="diagnosis_large_fragments_lost">Fragments lost</string>
+    <string name="diagnosis_large_lost">Lost</string>
+    <string name="diagnosis_alg_suspected">Suspected</string>
+    <string name="diagnosis_alg_not_found">Not found</string>
+    <string name="diagnosis_call_address">Call address</string>
+    <string name="diagnosis_call_address_internal">Internal</string>
+
+    <!-- Primary and backup servers -->
+    <string name="diagnosis_servers">Primary and backup servers</string>
+    <string name="diagnosis_current">Current</string>
+    <string name="diagnosis_on_proxy">Proxy</string>
+    <string name="diagnosis_on_backup">Backup proxy</string>
+    <string name="diagnosis_proxy">Proxy</string>
+    <string name="diagnosis_backup">Backup proxy</string>
+    <string name="diagnosis_reachable">Reachable</string>
+    <string name="diagnosis_probed_at">Last probe</string>
+    <string name="diagnosis_fast_timeout">Fast timeout</string>
+    <string name="diagnosis_off">Off</string>
+
+    <!-- Registration -->
+    <string name="diagnosis_registration">Registration</string>
+    <string name="diagnosis_state">Status</string>
+    <string name="diagnosis_transport">Transport</string>
+    <string name="diagnosis_expires">Expiry</string>
+
+    <!-- The last call -->
+    <string name="diagnosis_last_call">Last call</string>
+    <string name="diagnosis_sound">Sound</string>
+    <string name="diagnosis_sound_both">Both ways</string>
+    <string name="diagnosis_sound_send_only">Send only</string>
+    <string name="diagnosis_sound_receive_only">Receive only</string>
+    <string name="diagnosis_sound_none">None</string>
+    <string name="diagnosis_loss">Packet loss</string>
+    <string name="diagnosis_loss_value">↓ %1$s · ↑ %2$s</string>
+    <string name="diagnosis_jitter">Jitter</string>
+    <string name="diagnosis_round_trip">Round trip</string>
+    <string name="diagnosis_ended">Ended</string>
+
+    <!-- Automatic adjustments -->
+    <string name="diagnosis_adaptation">Automatic adjustments</string>
+    <string name="diagnosis_adapted_transport">Transport</string>
+    <string name="diagnosis_adapted_expires">Registration expiry</string>
+    <string name="diagnosis_on">On</string>
+</resources>

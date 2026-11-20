@@ -5,6 +5,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.sky.siplink.R
 import com.sky.siplink.engine
 import com.sky.siplink.restartApp
 
@@ -17,25 +19,21 @@ import com.sky.siplink.restartApp
 fun LdapRestartDialog(onDismiss: () -> Unit) {
     val context = LocalContext.current
     val messenger = LocalMessenger.current
+    val afterCall = stringResource(R.string.restart_after_call)
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("重启后对 LDAP 生效") },
-        text = {
-            Text(
-                "SIP 账号已启用新的证书设置。LDAP 通讯录的加密连接已在本次运行中建立，" +
-                    "需重启应用后方可使用新的 CA 证书。",
-            )
-        },
+        title = { Text(stringResource(R.string.restart_ldap_title)) },
+        text = { Text(stringResource(R.string.restart_ldap_text)) },
         confirmButton = {
             TextButton(onClick = {
                 if (context.engine.calls.call.value != null) {
                     onDismiss()
-                    messenger("请在通话结束后重启应用")
+                    messenger(afterCall)
                 } else {
                     context.restartApp()
                 }
-            }) { Text("立即重启") }
+            }) { Text(stringResource(R.string.restart_now)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("稍后") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.restart_later)) } },
     )
 }

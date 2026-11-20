@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Passwords of a remotely managed configuration. -->
+<resources>
+    <string name="managed_password_title">查看密码</string>
+    <string name="managed_password_text">密码受保护，请输入配置密码后查看。</string>
+    <string name="managed_password_field">配置密码</string>
+    <string name="managed_password_wrong">密码不正确</string>
+    <string name="managed_password_view">查看</string>
+</resources>

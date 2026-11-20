@@ -47,6 +47,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sky.siplink.R
 import com.sky.siplink.core.logic.FeatureDial
 import com.sky.siplink.engine
 
@@ -98,10 +99,10 @@ fun FeatureSheet(
                 .verticalScroll(rememberScrollState()),
         ) {
             Column(Modifier.padding(horizontal = 24.dp)) {
-                FadingText(name ?: "话务功能", style = MaterialTheme.typography.titleLarge)
+                FadingText(name ?: stringResource(R.string.feature_sheet_title), style = MaterialTheme.typography.titleLarge)
                 if (name != null) {
                     FadingText(
-                        "分机 $extension",
+                        stringResource(R.string.feature_sheet_extension, extension),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -114,8 +115,8 @@ fun FeatureSheet(
                             confirmForce = false
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        label = { FieldText("目标分机") },
-                        placeholder = { FieldText("例如 1002") },
+                        label = { FieldText(stringResource(R.string.feature_sheet_target)) },
+                        placeholder = { FieldText(stringResource(R.string.feature_sheet_target_hint)) },
                         singleLine = true,
                         shape = MaterialTheme.shapes.medium,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
@@ -125,9 +126,9 @@ fun FeatureSheet(
             Spacer(Modifier.height(8.dp))
 
             if (name != null) {
-                FeatureRow(Icons.Rounded.Call, "呼叫", hasTarget) { run { launcher.call(target, accountId) } }
+                FeatureRow(Icons.Rounded.Call, stringResource(R.string.feature_sheet_call), hasTarget) { run { launcher.call(target, accountId) } }
                 if (onAddShortcut != null) {
-                    FeatureRow(Icons.Rounded.Apps, "添加到快捷键", hasTarget) { run(onAddShortcut) }
+                    FeatureRow(Icons.Rounded.Apps, stringResource(R.string.feature_sheet_add_shortcut), hasTarget) { run(onAddShortcut) }
                 }
             }
             DialRow(FeatureDial.Action.INTERCOM, Icons.Rounded.Campaign)
@@ -136,7 +137,7 @@ fun FeatureSheet(
             DialRow(FeatureDial.Action.BARGE, Icons.Rounded.GroupAdd)
             FeatureRow(
                 icon = Icons.Rounded.PhoneDisabled,
-                title = if (confirmForce) "再次点按以确认强拆 $extension" else stringResource(FeatureDial.Action.FORCE_HANG_UP.label),
+                title = if (confirmForce) stringResource(R.string.feature_sheet_force_confirm, extension) else stringResource(FeatureDial.Action.FORCE_HANG_UP.label),
                 enabled = hasTarget || !forceConfigured,
                 destructive = true,
                 dimmed = !forceConfigured,
@@ -151,10 +152,10 @@ fun FeatureSheet(
             DialRow(FeatureDial.Action.PICKUP, Icons.AutoMirrored.Rounded.PhoneCallback)
 
             HorizontalDivider(Modifier.padding(horizontal = 24.dp, vertical = 6.dp))
-            FeatureRow(Icons.Rounded.Groups, "同组代接", true, dimmed = codes.groupPickup.isBlank()) {
+            FeatureRow(Icons.Rounded.Groups, stringResource(R.string.feature_group_pickup), true, dimmed = codes.groupPickup.isBlank()) {
                 run { launcher.groupPickup(accountId) }
             }
-            FeatureRow(Icons.Rounded.Voicemail, "语音信箱", true, dimmed = codes.voicemail.isBlank()) {
+            FeatureRow(Icons.Rounded.Voicemail, stringResource(R.string.feature_voicemail), true, dimmed = codes.voicemail.isBlank()) {
                 run { launcher.voicemail(accountId) }
             }
             Spacer(Modifier.height(12.dp))

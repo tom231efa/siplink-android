@@ -34,6 +34,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -44,6 +45,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sky.siplink.R
 import com.sky.siplink.core.logic.Formatters
 import com.sky.siplink.core.model.RegState
 import com.sky.siplink.ui.theme.Brand
@@ -78,13 +80,16 @@ fun regStateColor(state: RegState): Color = when (state) {
     RegState.NONE, RegState.DISABLED -> Color(0xFF9E9E9E)
 }
 
-fun regStateLabel(state: RegState): String = when (state) {
-    RegState.OK -> "已注册"
-    RegState.PROGRESS -> "注册中"
-    RegState.FAILED -> "注册失败"
-    RegState.NONE -> "未注册"
-    RegState.DISABLED -> "已停用"
-}
+@Composable
+fun regStateLabel(state: RegState): String = stringResource(
+    when (state) {
+        RegState.OK -> R.string.account_state_registered
+        RegState.PROGRESS -> R.string.account_state_registering
+        RegState.FAILED -> R.string.account_state_failed
+        RegState.NONE -> R.string.account_state_none
+        RegState.DISABLED -> R.string.account_state_disabled
+    },
+)
 
 /** Registration indicator; breathes while a registration is in progress. */
 @Composable

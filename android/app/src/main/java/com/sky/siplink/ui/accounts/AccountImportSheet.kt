@@ -2,6 +2,8 @@ package com.sky.siplink.ui.accounts
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.sky.siplink.R
 import com.sky.siplink.core.logic.AccountImport
 import com.sky.siplink.core.logic.AccountRules
 import com.sky.siplink.core.render
@@ -16,9 +18,9 @@ fun AccountImportSheet(onDismiss: () -> Unit) {
     val context = LocalContext.current
     val manager = context.engine.accounts
     CsvImportSheet(
-        title = "批量导入账号",
+        title = stringResource(R.string.account_import_title),
         formatHint = context.render(AccountImport.FORMAT),
-        placeholder = "1001,password,pbx.example.com,tls,张三,,前台",
+        placeholder = stringResource(R.string.account_import_example),
         onImport = { text ->
             // The accounts screen does not offer the import where the configuration is locked; the
             // manager refuses it all the same and then reports that it created none.
@@ -27,7 +29,7 @@ fun AccountImportSheet(onDismiss: () -> Unit) {
             val created = if (result.drafts.isEmpty()) 0 else manager.addAll(result.drafts)
             ImportOutcome(
                 finished = result.errors.isEmpty() && result.skippedForLimit == 0 && created > 0,
-                message = importReport(created, "账号", result.skippedForLimit, AccountRules.MAX_ACCOUNTS, result.errors, context::render),
+                message = importReport(R.plurals.csv_imported_accounts, created, result.skippedForLimit, AccountRules.MAX_ACCOUNTS, result.errors, context::render),
             )
         },
         onDismiss = onDismiss,

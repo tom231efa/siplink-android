@@ -31,9 +31,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sky.siplink.R
 import com.sky.siplink.core.logic.AccountRoute
 import com.sky.siplink.core.logic.AccountRules
 import com.sky.siplink.core.logic.ShortcutLines
@@ -74,9 +78,11 @@ private fun defaultPort(transport: SipTransport): String = AccountRoute.defaultP
 @Composable
 fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> Unit, onOpenLine: (String) -> Unit = {}) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val manager = context.engine.accounts
     val messenger = LocalMessenger.current
     val locked = LocalConfigLocked.current
+    val defaultSet = stringResource(R.string.account_default_set)
     val existing = remember(accountId) { accountId?.let { id -> manager.accounts.value.firstOrNull { it.id == id } } }
     // Normalized, the draft has the port of the account apart from its domain.
     val initial = existing?.toDraft()?.let(AccountRules::normalize) ?: AccountDraft()
@@ -139,29 +145,29 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
         // An error in a field that is folded away would go unseen.
         if (errors.any { it in advancedErrors }) advancedOpen = true
         if (errors.isEmpty()) {
-            messenger(if (existing == null) "账号已添加" else "账号已保存")
+            messenger(resources.getString(if (existing == null) R.string.account_added else R.string.account_saved))
             onBack()
         } else {
-            messenger(context.render(errors.first().full))
+            messenger(resources.render(errors.first().full))
         }
     }
 
     SubScreen(
         title = when {
-            existing == null -> "添加账号"
-            locked -> "账号详情"
-            else -> "编辑账号"
+            existing == null -> stringResource(R.string.account_edit_title_new)
+            locked -> stringResource(R.string.account_edit_title_view)
+            else -> stringResource(R.string.account_edit_title_edit)
         },
         onBack = onBack,
-        actions = { TextButton(onClick = ::save) { Text("保存") } },
+        actions = { TextButton(onClick = ::save) { Text(stringResource(R.string.common_save)) } },
     ) {
-        SectionCard(title = "账号信息") {
+        SectionCard(title = stringResource(R.string.account_section_info)) {
             Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 FormField(
                     value = name,
                     onValueChange = { name = it },
-                    label = "账号名称（可选）",
-                    placeholder = "例如 前台、销售一线",
+                    label = stringResource(R.string.account_field_name),
+                    placeholder = stringResource(R.string.account_field_name_hint),
                     error = error(AccountRules.Error.NAME_TOO_LONG, AccountRules.Error.NAME_TAKEN),
                 )
                 // The two fields stay aligned at their tops when one of them shows an error line.
@@ -169,9 +175,9 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
                     FormField(
                         value = username,
                         onValueChange = { username = it },
-                        label = "用户名",
+                        label = stringResource(R.string.account_field_username),
                         modifier = Modifier.weight(1f),
-                        placeholder = "例如 1001",
+                        placeholder = stringResource(R.string.account_field_username_hint),
                         keyboardType = KeyboardType.Email,
                         error = error(
                             AccountRules.Error.USERNAME_EMPTY,
@@ -183,7 +189,7 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
                     FormField(
                         value = port,
                         onValueChange = { port = it },
-                        label = "端口",
+                        label = stringResource(R.string.account_field_port),
                         modifier = Modifier.width(PORT_FIELD_WIDTH),
                         keyboardType = KeyboardType.Number,
                         error = error(AccountRules.Error.PORT_INVALID),
@@ -192,8 +198,8 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
                 FormField(
                     value = domain,
                     onValueChange = { domain = it },
-                    label = "域名 / 服务器",
-                    placeholder = "pbx.example.com 或 192.168.1.10",
+                    label = stringResource(R.string.account_field_domain),
+                    placeholder = stringResource(R.string.account_field_domain_hint),
                     keyboardType = KeyboardType.Uri,
                     error = error(
                         AccountRules.Error.DOMAIN_EMPTY,
@@ -204,8 +210,8 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
                 FormField(
                     value = password,
                     onValueChange = { password = it },
-                    label = "密码",
-                    placeholder = if (existing != null && !locked) "留空则不修改密码" else null,
+                    label = stringResource(R.string.account_field_password),
+                    placeholder = if (existing != null && !locked) stringResource(R.string.account_field_password_keep) else null,
                     password = true,
                     error = error(AccountRules.Error.PASSWORD_REQUIRED),
                     onUnlock = if (existing != null && passwordsProtected && !passwordOpened) ({ askConfigPassword = true }) else null,
@@ -213,12 +219,12 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
                 FormField(
                     value = displayName,
                     onValueChange = { displayName = it },
-                    label = "显示名称（可选）",
+                    label = stringResource(R.string.account_field_display_name),
                 )
             }
         }
 
-        SectionCard(title = "传输协议") {
+        SectionCard(title = stringResource(R.string.account_section_transport)) {
             ChoiceRow(
                 options = SipTransport.entries.map { it to it.name },
                 selected = transport,
@@ -231,33 +237,33 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
             )
             AnimatedVisibility(transport == SipTransport.TLS) {
                 NavRow(
-                    title = "TLS 与 CA 证书",
+                    title = stringResource(R.string.account_tls),
                     icon = Icons.Rounded.VerifiedUser,
                     onClick = onOpenTls,
                 )
             }
         }
 
-        FoldingCard(title = "高级设置", open = advancedOpen, onToggle = { advancedOpen = !advancedOpen }) {
+        FoldingCard(title = stringResource(R.string.account_section_advanced), open = advancedOpen, onToggle = { advancedOpen = !advancedOpen }) {
             Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 FormField(
                     value = authUser,
                     onValueChange = { authUser = it },
-                    label = "认证用户名（可选）",
+                    label = stringResource(R.string.account_field_auth_user),
                 )
                 FormField(
                     value = server,
                     onValueChange = { server = it },
-                    label = "代理服务器（可选）",
-                    placeholder = "主机[:端口]",
+                    label = stringResource(R.string.account_field_proxy),
+                    placeholder = stringResource(R.string.form_placeholder_host_port),
                     keyboardType = KeyboardType.Uri,
                     error = error(AccountRules.Error.SERVER_INVALID),
                 )
                 FormField(
                     value = backupServer,
                     onValueChange = { backupServer = it },
-                    label = "备用代理服务器（可选）",
-                    placeholder = "主机[:端口]",
+                    label = stringResource(R.string.account_field_backup_proxy),
+                    placeholder = stringResource(R.string.form_placeholder_host_port),
                     keyboardType = KeyboardType.Uri,
                     error = error(AccountRules.Error.BACKUP_INVALID, AccountRules.Error.BACKUP_SAME),
                 )
@@ -265,7 +271,7 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
                     FormField(
                         value = serverTimeout,
                         onValueChange = { serverTimeout = it },
-                        label = "快速超时（毫秒，可选）",
+                        label = stringResource(R.string.account_field_fast_timeout),
                         keyboardType = KeyboardType.Number,
                         error = error(AccountRules.Error.TIMEOUT_INVALID),
                     )
@@ -273,21 +279,21 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
                 FormField(
                     value = dnsServer,
                     onValueChange = { dnsServer = it },
-                    label = "DNS 服务器（可选）",
-                    placeholder = "IP[:端口]",
+                    label = stringResource(R.string.account_field_dns),
+                    placeholder = stringResource(R.string.account_field_dns_hint),
                     keyboardType = KeyboardType.Uri,
                     error = error(AccountRules.Error.DNS_INVALID),
                 )
                 FormField(
                     value = expires,
                     onValueChange = { expires = it },
-                    label = "注册有效期（秒）",
+                    label = stringResource(R.string.account_field_expires),
                     keyboardType = KeyboardType.Number,
                     error = error(AccountRules.Error.EXPIRES_OUT_OF_RANGE),
                 )
             }
             SwitchRow(
-                title = "订阅语音留言",
+                title = stringResource(R.string.account_subscribe_mwi),
                 icon = Icons.Rounded.Voicemail,
                 checked = subscribeMwi,
                 onCheckedChange = { subscribeMwi = it },
@@ -298,7 +304,7 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
             // Also under a managed configuration: the checks only look.
             SectionCard(title = null) {
                 NavRow(
-                    title = "线路诊断",
+                    title = stringResource(R.string.account_line_diagnosis),
                     icon = Icons.Rounded.NetworkCheck,
                     onClick = { onOpenLine(existing.id) },
                 )
@@ -307,7 +313,7 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
 
         SectionCard(title = null) {
             SwitchRow(
-                title = "启用此账号",
+                title = stringResource(R.string.account_enable),
                 icon = Icons.Rounded.Power,
                 checked = enabled,
                 onCheckedChange = { enabled = it },
@@ -319,13 +325,13 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
                 FilledTonalButton(
                     onClick = {
                         manager.setDefault(existing.id)
-                        messenger("已设为默认账号")
+                        messenger(defaultSet)
                     },
                     enabled = !existing.isDefault,
                     modifier = Modifier.weight(1f),
-                ) { Text(if (existing.isDefault) "当前默认账号" else "设为默认账号") }
+                ) { Text(stringResource(if (existing.isDefault) R.string.account_is_default else R.string.account_set_default)) }
                 OutlinedButton(onClick = { confirmDelete = true }, modifier = Modifier.weight(1f)) {
-                    Text("删除账号", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.account_delete), color = MaterialTheme.colorScheme.error)
                 }
             }
         }
@@ -343,13 +349,13 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
     if (confirmDelete && existing != null && !locked) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
-            title = { Text("删除账号？") },
+            title = { Text(stringResource(R.string.account_delete_title)) },
             text = {
                 val shortcuts by context.engine.shortcuts.shortcuts.collectAsStateWithLifecycle()
                 val keys = ShortcutLines.fixedTo(existing, shortcuts)
                 Text(
-                    "${existing.identity} 将从本机移除并注销。" +
-                        if (keys > 0) "\n$keys 个快捷键固定使用此线路，将改为拨出时选择。" else "",
+                    stringResource(R.string.account_delete_text, existing.identity) +
+                        if (keys > 0) pluralStringResource(R.plurals.account_delete_keys, keys, keys.toString()) else "",
                 )
             },
             confirmButton = {
@@ -357,9 +363,9 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
                     manager.remove(existing.id)
                     confirmDelete = false
                     onBack()
-                }) { Text("确认删除", color = MaterialTheme.colorScheme.error) }
+                }) { Text(stringResource(R.string.common_confirm_delete), color = MaterialTheme.colorScheme.error) }
             },
-            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("取消") } },
+            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text(stringResource(R.string.common_cancel)) } },
         )
     }
 }

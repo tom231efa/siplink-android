@@ -25,8 +25,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.sky.siplink.R
 import com.sky.siplink.core.CallSupport
 import com.sky.siplink.core.LineCheck
 import com.sky.siplink.core.LineNetwork
@@ -48,6 +51,7 @@ import com.sky.siplink.ui.components.text
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 /**
  * The line checks of one account: values only. It changes nothing but what the line adapted
@@ -64,6 +68,7 @@ fun LineDiagnosisScreen(accountId: String, onBack: () -> Unit) {
     var busy by remember { mutableStateOf(false) }
     var round by remember { mutableIntStateOf(0) }
     var confirmReset by remember { mutableStateOf(false) }
+    val resetDone = stringResource(R.string.diagnosis_reset_done)
 
     LaunchedEffect(round) {
         busy = check.run(accountId) {
@@ -75,9 +80,9 @@ fun LineDiagnosisScreen(accountId: String, onBack: () -> Unit) {
 
     Personal {
         SubScreen(
-            title = "线路诊断",
+            title = stringResource(R.string.diagnosis_title),
             onBack = onBack,
-            actions = { TextButton(onClick = { round++ }, enabled = !busy) { Text("重新诊断") } },
+            actions = { TextButton(onClick = { round++ }, enabled = !busy) { Text(stringResource(R.string.diagnosis_rerun)) } },
         ) {
             if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
             report?.let { shown ->
@@ -99,17 +104,17 @@ fun LineDiagnosisScreen(accountId: String, onBack: () -> Unit) {
     if (confirmReset) {
         AlertDialog(
             onDismissRequest = { confirmReset = false },
-            title = { Text("恢复默认？") },
-            text = { Text("将清除该账号的自动调整。") },
+            title = { Text(stringResource(R.string.diagnosis_reset_title)) },
+            text = { Text(stringResource(R.string.diagnosis_reset_text)) },
             confirmButton = {
                 TextButton(onClick = {
                     engine.accounts.resetAdaptation(accountId)
                     confirmReset = false
-                    messenger("已恢复默认")
+                    messenger(resetDone)
                     round++
-                }) { Text("恢复") }
+                }) { Text(stringResource(R.string.diagnosis_reset_confirm)) }
             },
-            dismissButton = { TextButton(onClick = { confirmReset = false }) { Text("取消") } },
+            dismissButton = { TextButton(onClick = { confirmReset = false }) { Text(stringResource(R.string.common_cancel)) } },
         )
     }
 }
@@ -118,61 +123,58 @@ private const val NONE = "—"
 
 private val CLOCK = DateTimeFormatter.ofPattern("HH:mm:ss")
 
-/** A check that was left out: a line on TLS asks nothing over UDP. */
-private const val NOT_ASKED = "未测"
-
 @Composable
 private fun NetworkCard(report: LineReport, onBattery: () -> Unit) {
     val network = report.network
-    SectionCard(title = "网络") {
+    SectionCard(title = stringResource(R.string.diagnosis_network)) {
         ValueRow(
-            "类型",
+            stringResource(R.string.diagnosis_type),
             network?.let {
                 val type = when (it.type) {
                     NetType.WIFI -> "Wi-Fi"
-                    NetType.CELLULAR -> "移动数据"
-                    NetType.ETHERNET -> "以太网"
-                    NetType.OTHER -> "其他"
+                    NetType.CELLULAR -> stringResource(R.string.diagnosis_type_cellular)
+                    NetType.ETHERNET -> stringResource(R.string.diagnosis_type_ethernet)
+                    NetType.OTHER -> stringResource(R.string.diagnosis_type_other)
                 }
-                if (it.vpn) "$type · VPN" else type
-            } ?: "无网络",
+                if (it.vpn) stringResource(R.string.diagnosis_type_vpn, type) else type
+            } ?: stringResource(R.string.diagnosis_no_network),
         )
-        ValueRow("本机地址", report.localAddress ?: NONE)
-        ValueRow("公网地址", report.publicAddress?.let(LineNetwork::hostPort) ?: NONE)
+        ValueRow(stringResource(R.string.diagnosis_local_address), report.localAddress ?: NONE)
+        ValueRow(stringResource(R.string.diagnosis_public_address), report.publicAddress?.let(LineNetwork::hostPort) ?: NONE)
         ValueRow(
             "NAT",
             when (report.nat) {
-                NatKind.NONE -> "无"
-                NatKind.PRESENT -> "有"
-                NatKind.CARRIER -> "运营商级"
-                NatKind.SYMMETRIC -> "对称"
-                NatKind.UNKNOWN -> "未知"
+                NatKind.NONE -> stringResource(R.string.diagnosis_nat_none)
+                NatKind.PRESENT -> stringResource(R.string.diagnosis_nat_present)
+                NatKind.CARRIER -> stringResource(R.string.diagnosis_nat_carrier)
+                NatKind.SYMMETRIC -> stringResource(R.string.diagnosis_nat_symmetric)
+                NatKind.UNKNOWN -> stringResource(R.string.diagnosis_unknown)
             },
         )
-        ValueRow("IPv6", if (network?.addresses?.any { ':' in it } == true) "有" else "无")
+        ValueRow("IPv6", stringResource(if (network?.addresses?.any { ':' in it } == true) R.string.diagnosis_ipv6_yes else R.string.diagnosis_ipv6_no))
         ValueRow(
-            "网络验证",
+            stringResource(R.string.diagnosis_validation),
             when {
                 network == null -> NONE
-                network.captive -> "需登录"
-                network.validated -> "已通过"
-                else -> "未通过"
+                network.captive -> stringResource(R.string.diagnosis_validation_login)
+                network.validated -> stringResource(R.string.diagnosis_validation_passed)
+                else -> stringResource(R.string.diagnosis_validation_failed)
             },
             error = network?.captive == true,
         )
         when (report.batteryUnrestricted) {
             null -> Unit
-            true -> ValueRow("电池优化", "不受限")
+            true -> ValueRow(stringResource(R.string.diagnosis_battery), stringResource(R.string.diagnosis_battery_unrestricted))
             false -> Row(
                 Modifier
                     .fillMaxWidth()
                     .padding(start = 16.dp, end = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Label("电池优化")
+                Label(stringResource(R.string.diagnosis_battery))
                 Spacer(Modifier.weight(1f))
-                Text("受限", style = MaterialTheme.typography.bodyMedium)
-                TextButton(onClick = onBattery) { Text("设置") }
+                Text(stringResource(R.string.diagnosis_battery_restricted), style = MaterialTheme.typography.bodyMedium)
+                TextButton(onClick = onBattery) { Text(stringResource(R.string.diagnosis_battery_settings)) }
             }
         }
     }
@@ -180,95 +182,97 @@ private fun NetworkCard(report: LineReport, onBattery: () -> Unit) {
 
 @Composable
 private fun ServerCard(report: LineReport) {
-    SectionCard(title = "服务器") {
-        ValueRow("地址", report.server)
-        ValueRow("解析", report.serverAddresses.joinToString(", ").ifEmpty { "解析失败" }, error = report.serverAddresses.isEmpty())
+    SectionCard(title = stringResource(R.string.diagnosis_server)) {
+        ValueRow(stringResource(R.string.diagnosis_address), report.server)
+        val resolveFailed = stringResource(R.string.diagnosis_resolve_failed)
+        ValueRow(stringResource(R.string.diagnosis_resolved), report.serverAddresses.joinToString(", ").ifEmpty { resolveFailed }, error = report.serverAddresses.isEmpty())
         // Only an account on UDP needs UDP; a line on TLS does not ask over it.
         val needsUdp = report.ownTransport == SipTransport.UDP
         ValueRow(
             "UDP",
-            report.udp?.let { "${it.rttMs} ms" } ?: if (report.udpAsked) "无响应" else NOT_ASKED,
+            report.udp?.let { "${it.rttMs} ms" } ?: stringResource(if (report.udpAsked) R.string.diagnosis_no_response else R.string.diagnosis_not_tested),
             error = report.udpAsked && report.udp == null && needsUdp,
         )
         report.udpInvite?.let { whole ->
             val large = when {
-                whole -> "通过"
-                report.udpLarge == true -> "分片丢失"
-                else -> "丢失"
+                whole -> stringResource(R.string.diagnosis_large_passed)
+                report.udpLarge == true -> stringResource(R.string.diagnosis_large_fragments_lost)
+                else -> stringResource(R.string.diagnosis_large_lost)
             }
-            ValueRow("UDP 大包", large, error = !whole && needsUdp)
+            ValueRow(stringResource(R.string.diagnosis_udp_large), large, error = !whole && needsUdp)
         }
-        ValueRow("TCP", report.tcpMs?.let { "$it ms" } ?: "无法连接")
-        ValueRow("TLS", report.tlsMs?.let { "$it ms" } ?: "无法连接")
-        report.algSuspected?.let { ValueRow("SIP ALG", if (it) "疑似" else "未发现", error = it) }
-        if (report.pbxUnreachable) ValueRow("通话地址", "内网", error = true)
+        ValueRow("TCP", report.tcpMs?.let { "$it ms" } ?: stringResource(R.string.diagnosis_cannot_connect))
+        ValueRow("TLS", report.tlsMs?.let { "$it ms" } ?: stringResource(R.string.diagnosis_cannot_connect))
+        report.algSuspected?.let { ValueRow("SIP ALG", stringResource(if (it) R.string.diagnosis_alg_suspected else R.string.diagnosis_alg_not_found), error = it) }
+        if (report.pbxUnreachable) ValueRow(stringResource(R.string.diagnosis_call_address), stringResource(R.string.diagnosis_call_address_internal), error = true)
     }
 }
 
 @Composable
 private fun ServersCard(servers: ServerReport) {
+    @Composable
     fun answer(found: Boolean?): String = when (found) {
-        true -> "可达"
-        false -> "无响应"
+        true -> stringResource(R.string.diagnosis_reachable)
+        false -> stringResource(R.string.diagnosis_no_response)
         null -> NONE
     }
-    SectionCard(title = "主备服务器") {
-        ValueRow("当前", if (servers.onBackup) "备用代理服务器" else "代理服务器")
-        ValueRow("代理服务器", answer(servers.primary), error = servers.primary == false)
-        ValueRow("备用代理服务器", answer(servers.backup), error = servers.backup == false)
-        ValueRow("探测时间", servers.checkedAt?.let { CLOCK.format(Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault())) } ?: NONE)
-        ValueRow("快速超时", if (servers.timeoutMs > 0) "${servers.timeoutMs} ms" else "关")
+    SectionCard(title = stringResource(R.string.diagnosis_servers)) {
+        ValueRow(stringResource(R.string.diagnosis_current), stringResource(if (servers.onBackup) R.string.diagnosis_on_backup else R.string.diagnosis_on_proxy))
+        ValueRow(stringResource(R.string.diagnosis_proxy), answer(servers.primary), error = servers.primary == false)
+        ValueRow(stringResource(R.string.diagnosis_backup), answer(servers.backup), error = servers.backup == false)
+        ValueRow(stringResource(R.string.diagnosis_probed_at), servers.checkedAt?.let { CLOCK.format(Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault())) } ?: NONE)
+        ValueRow(stringResource(R.string.diagnosis_fast_timeout), if (servers.timeoutMs > 0) "${servers.timeoutMs} ms" else stringResource(R.string.diagnosis_off))
     }
 }
 
 @Composable
 private fun RegistrationCard(report: LineReport) {
-    SectionCard(title = "注册") {
-        ValueRow("状态", report.error ?: regStateLabel(report.registration), error = report.error != null)
-        ValueRow("传输协议", report.adaptedTransport?.let { LineAdapt.label(it).text() } ?: report.transport.name)
+    SectionCard(title = stringResource(R.string.diagnosis_registration)) {
+        ValueRow(stringResource(R.string.diagnosis_state), report.error ?: regStateLabel(report.registration), error = report.error != null)
+        ValueRow(stringResource(R.string.diagnosis_transport), report.adaptedTransport?.let { LineAdapt.label(it).text() } ?: report.transport.name)
         ValueRow("Contact", report.contact ?: NONE)
-        ValueRow("有效期", "${report.expires} 秒")
+        ValueRow(stringResource(R.string.diagnosis_expires), pluralStringResource(R.plurals.diagnosis_seconds, report.expires, report.expires.toString()))
     }
 }
 
 @Composable
 private fun LastCallCard(report: LineReport) {
     val call = report.lastCall ?: return
-    SectionCard(title = "上次通话") {
+    SectionCard(title = stringResource(R.string.diagnosis_last_call)) {
         ValueRow(
-            "声音",
+            stringResource(R.string.diagnosis_sound),
             when (call.flow) {
-                MediaFlow.BOTH -> "双向"
-                MediaFlow.SEND_ONLY -> "仅发送"
-                MediaFlow.RECEIVE_ONLY -> "仅接收"
-                MediaFlow.NONE -> "无"
+                MediaFlow.BOTH -> stringResource(R.string.diagnosis_sound_both)
+                MediaFlow.SEND_ONLY -> stringResource(R.string.diagnosis_sound_send_only)
+                MediaFlow.RECEIVE_ONLY -> stringResource(R.string.diagnosis_sound_receive_only)
+                MediaFlow.NONE -> stringResource(R.string.diagnosis_sound_none)
             },
             error = call.flow != MediaFlow.BOTH,
         )
-        ValueRow("丢包", "↓ ${percent(call.lossDown)} · ↑ ${percent(call.lossUp)}")
-        ValueRow("抖动", "${call.jitterMs.toInt()} ms")
-        ValueRow("往返", "${call.roundTripMs.toInt()} ms")
+        ValueRow(stringResource(R.string.diagnosis_loss), stringResource(R.string.diagnosis_loss_value, percent(call.lossDown), percent(call.lossUp)))
+        ValueRow(stringResource(R.string.diagnosis_jitter), "${call.jitterMs.toInt()} ms")
+        ValueRow(stringResource(R.string.diagnosis_round_trip), "${call.roundTripMs.toInt()} ms")
         if (call.ice.isNotEmpty()) ValueRow("ICE", call.ice)
-        if (call.mediaLost) ValueRow("结束", CallSupport.NO_SOUND.text(), error = true)
+        if (call.mediaLost) ValueRow(stringResource(R.string.diagnosis_ended), CallSupport.NO_SOUND.text(), error = true)
     }
 }
 
 @Composable
 private fun AdaptationCard(report: LineReport, onReset: () -> Unit) {
-    SectionCard(title = "自动调整") {
-        report.adaptedTransport?.let { ValueRow("传输协议", it.name) }
-        report.adaptedExpires?.let { ValueRow("注册有效期", "$it 秒") }
-        if (report.adaptedIce) ValueRow("ICE", "开启")
+    SectionCard(title = stringResource(R.string.diagnosis_adaptation)) {
+        report.adaptedTransport?.let { ValueRow(stringResource(R.string.diagnosis_adapted_transport), it.name) }
+        report.adaptedExpires?.let { ValueRow(stringResource(R.string.diagnosis_adapted_expires), pluralStringResource(R.plurals.diagnosis_seconds, it, it.toString())) }
+        if (report.adaptedIce) ValueRow("ICE", stringResource(R.string.diagnosis_on))
         OutlinedButton(
             onClick = onReset,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
-        ) { Text("恢复默认") }
+        ) { Text(stringResource(R.string.common_restore_defaults)) }
     }
 }
 
-private fun percent(value: Float): String = "%.1f%%".format(value)
+private fun percent(value: Float): String = "%.1f%%".format(Locale.ROOT, value)
 
 @Composable
 private fun Label(text: String) {

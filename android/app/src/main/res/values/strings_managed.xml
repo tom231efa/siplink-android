@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Passwords of a remotely managed configuration. -->
+<resources>
+    <string name="managed_password_title">View password</string>
+    <string name="managed_password_text">The password is protected. Enter the configuration password to view it.</string>
+    <string name="managed_password_field">Configuration password</string>
+    <string name="managed_password_wrong">Incorrect password</string>
+    <string name="managed_password_view">View</string>
+</resources>

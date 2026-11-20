@@ -13,6 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.core.content.ContextCompat
 import com.sky.siplink.R
 import com.sky.siplink.core.SipEngine
@@ -89,6 +90,7 @@ class CallRequest(
 @Composable
 fun rememberCallLauncher(): CallLauncher {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val messenger by rememberUpdatedState(LocalMessenger.current)
     var pending by remember { mutableStateOf<CallRequest?>(null) }
 
@@ -110,7 +112,7 @@ fun rememberCallLauncher(): CallLauncher {
         when {
             request == null -> Unit
             microphone -> start(request)
-            else -> messenger("需要麦克风权限")
+            else -> messenger(resources.getString(R.string.launcher_microphone_permission))
         }
     }
 

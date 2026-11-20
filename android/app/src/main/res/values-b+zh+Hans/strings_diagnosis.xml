@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The line diagnosis of an account: what it checks and what it found. -->
+<resources>
+    <string name="diagnosis_title">线路诊断</string>
+    <string name="diagnosis_rerun">重新诊断</string>
+    <string name="diagnosis_reset_title">恢复默认？</string>
+    <string name="diagnosis_reset_text">将清除该账号的自动调整。</string>
+    <string name="diagnosis_reset_confirm">恢复</string>
+    <string name="diagnosis_reset_done">已恢复默认</string>
+    <string name="diagnosis_not_tested">未测</string>
+    <string name="diagnosis_unknown">未知</string>
+    <string name="diagnosis_no_response">无响应</string>
+    <string name="diagnosis_cannot_connect">无法连接</string>
+    <plurals name="diagnosis_seconds">
+        <item quantity="other">%1$s 秒</item>
+    </plurals>
+
+    <!-- Network -->
+    <string name="diagnosis_network">网络</string>
+    <string name="diagnosis_type">类型</string>
+    <string name="diagnosis_type_cellular">移动数据</string>
+    <string name="diagnosis_type_ethernet">以太网</string>
+    <string name="diagnosis_type_other">其他</string>
+    <string name="diagnosis_type_vpn">%1$s · VPN</string>
+    <string name="diagnosis_no_network">无网络</string>
+    <string name="diagnosis_local_address">本机地址</string>
+    <string name="diagnosis_public_address">公网地址</string>
+    <string name="diagnosis_nat_none">无</string>
+    <string name="diagnosis_nat_present">有</string>
+    <string name="diagnosis_nat_carrier">运营商级</string>
+    <string name="diagnosis_nat_symmetric">对称</string>
+    <string name="diagnosis_ipv6_yes">有</string>
+    <string name="diagnosis_ipv6_no">无</string>
+    <string name="diagnosis_validation">网络验证</string>
+    <string name="diagnosis_validation_login">需登录</string>
+    <string name="diagnosis_validation_passed">已通过</string>
+    <string name="diagnosis_validation_failed">未通过</string>
+    <string name="diagnosis_battery">电池优化</string>
+    <string name="diagnosis_battery_unrestricted">不受限</string>
+    <string name="diagnosis_battery_restricted">受限</string>
+    <string name="diagnosis_battery_settings">设置</string>
+
+    <!-- Server -->
+    <string name="diagnosis_server">服务器</string>
+    <string name="diagnosis_address">地址</string>
+    <string name="diagnosis_resolved">解析</string>
+    <string name="diagnosis_resolve_failed">解析失败</string>
+    <string name="diagnosis_udp_large">UDP 大包</string>
+    <string name="diagnosis_large_passed">通过</string>
+    <string name="diagnosis_large_fragments_lost">分片丢失</string>
+    <string name="diagnosis_large_lost">丢失</string>
+    <string name="diagnosis_alg_suspected">疑似</string>
+    <string name="diagnosis_alg_not_found">未发现</string>
+    <string name="diagnosis_call_address">通话地址</string>
+    <string name="diagnosis_call_address_internal">内网</string>
+
+    <!-- Primary and backup servers -->
+    <string name="diagnosis_servers">主备服务器</string>
+    <string name="diagnosis_current">当前</string>
+    <string name="diagnosis_on_proxy">代理服务器</string>
+    <string name="diagnosis_on_backup">备用代理服务器</string>
+    <string name="diagnosis_proxy">代理服务器</string>
+    <string name="diagnosis_backup">备用代理服务器</string>
+    <string name="diagnosis_reachable">可达</string>
+    <string name="diagnosis_probed_at">探测时间</string>
+    <string name="diagnosis_fast_timeout">快速超时</string>
+    <string name="diagnosis_off">关</string>
+
+    <!-- Registration -->
+    <string name="diagnosis_registration">注册</string>
+    <string name="diagnosis_state">状态</string>
+    <string name="diagnosis_transport">传输协议</string>
+    <string name="diagnosis_expires">有效期</string>
+
+    <!-- The last call -->
+    <string name="diagnosis_last_call">上次通话</string>
+    <string name="diagnosis_sound">声音</string>
+    <string name="diagnosis_sound_both">双向</string>
+    <string name="diagnosis_sound_send_only">仅发送</string>
+    <string name="diagnosis_sound_receive_only">仅接收</string>
+    <string name="diagnosis_sound_none">无</string>
+    <string name="diagnosis_loss">丢包</string>
+    <string name="diagnosis_loss_value">↓ %1$s · ↑ %2$s</string>
+    <string name="diagnosis_jitter">抖动</string>
+    <string name="diagnosis_round_trip">往返</string>
+    <string name="diagnosis_ended">结束</string>
+
+    <!-- Automatic adjustments -->
+    <string name="diagnosis_adaptation">自动调整</string>
+    <string name="diagnosis_adapted_transport">传输协议</string>
+    <string name="diagnosis_adapted_expires">注册有效期</string>
+    <string name="diagnosis_on">开启</string>
+</resources>

@@ -20,7 +20,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.sky.siplink.R
 import com.sky.siplink.core.logic.ManagedConfig
 import com.sky.siplink.engine
 
@@ -50,10 +52,10 @@ fun ConfigPasswordDialog(onDismiss: () -> Unit, onOpened: (String) -> Unit) {
     var wrong by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("查看密码") },
+        title = { Text(stringResource(R.string.managed_password_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("密码受保护，请输入配置密码后查看。")
+                Text(stringResource(R.string.managed_password_text))
                 // The dialog stands on a locked screen; what is typed into it changes no configuration.
                 CompositionLocalProvider(LocalConfigLocked provides false) {
                     FormField(
@@ -62,19 +64,19 @@ fun ConfigPasswordDialog(onDismiss: () -> Unit, onOpened: (String) -> Unit) {
                             typed = it
                             wrong = false
                         },
-                        label = "配置密码",
+                        label = stringResource(R.string.managed_password_field),
                         password = true,
-                        error = if (wrong) "密码不正确" else null,
+                        error = if (wrong) stringResource(R.string.managed_password_wrong) else null,
                     )
                 }
             }
         },
         confirmButton = {
             TextButton(onClick = { if (lock.showsPasswords(typed)) onOpened(typed) else wrong = true }, enabled = typed.isNotEmpty()) {
-                Text("查看")
+                Text(stringResource(R.string.managed_password_view))
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } },
     )
 }
 

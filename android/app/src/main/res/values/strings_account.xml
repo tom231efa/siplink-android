@@ -47,4 +47,85 @@
     <string name="user_agent_error_ascii_full">Client name (User-Agent): printable ASCII characters only</string>
     <string name="user_agent_error_spaces">No spaces at the start or end</string>
     <string name="user_agent_error_spaces_full">Client name (User-Agent) must not start or end with a space</string>
+
+    <!-- The registration state of an account -->
+    <string name="account_state_registered">Registered</string>
+    <string name="account_state_registering">Registering</string>
+    <string name="account_state_failed">Registration failed</string>
+    <string name="account_state_none">Not registered</string>
+    <string name="account_state_disabled">Disabled</string>
+
+    <!-- The account list -->
+    <string name="account_list_title">SIP accounts</string>
+    <string name="account_import_action">Bulk import accounts</string>
+    <string name="account_search_action">Search accounts</string>
+    <string name="account_search_placeholder">Search accounts</string>
+    <string name="account_search_close">Close search</string>
+    <string name="account_empty">No SIP accounts</string>
+    <string name="account_add">Add account</string>
+    <string name="account_no_match">No matching accounts</string>
+    <plurals name="account_summary_total">
+        <item quantity="one">%1$s / %2$s account</item>
+        <item quantity="other">%1$s / %2$s accounts</item>
+    </plurals>
+    <string name="account_summary_registered">Registered %1$s</string>
+    <string name="account_summary_failed">Failed %1$s</string>
+    <string name="account_summary_disabled">Disabled %1$s</string>
+    <string name="account_default_marker">Default account</string>
+    <string name="account_row_status">%1$s · %2$s</string>
+    <string name="account_row_status_backup">%1$s · %2$s · Backup proxy</string>
+
+    <!-- The account editor -->
+    <string name="account_added">Account added</string>
+    <string name="account_saved">Account saved</string>
+    <string name="account_edit_title_new">Add account</string>
+    <string name="account_edit_title_view">Account details</string>
+    <string name="account_edit_title_edit">Edit account</string>
+    <string name="account_section_info">Account</string>
+    <string name="account_field_name">Account name (optional)</string>
+    <string name="account_field_name_hint">e.g. Reception, Sales line 1</string>
+    <string name="account_field_username">User name</string>
+    <string name="account_field_username_hint">e.g. 1001</string>
+    <string name="account_field_port">Port</string>
+    <string name="account_field_domain">Domain / server</string>
+    <string name="account_field_domain_hint">pbx.example.com or 192.168.1.10</string>
+    <string name="account_field_password">Password</string>
+    <string name="account_field_password_keep">Leave empty to keep the current password</string>
+    <string name="account_field_display_name">Display name (optional)</string>
+    <string name="account_section_transport">Transport</string>
+    <string name="account_tls">TLS and CA certificates</string>
+    <string name="account_section_advanced">Advanced settings</string>
+    <string name="account_field_auth_user">Auth user name (optional)</string>
+    <string name="account_field_proxy">Proxy (optional)</string>
+    <string name="account_field_backup_proxy">Backup proxy (optional)</string>
+    <string name="account_field_fast_timeout">Fast timeout (ms, optional)</string>
+    <string name="account_field_dns">DNS server (optional)</string>
+    <string name="account_field_dns_hint">IP[:port]</string>
+    <string name="account_field_expires">Registration expiry (seconds)</string>
+    <string name="account_subscribe_mwi">Subscribe to voicemail</string>
+    <string name="account_line_diagnosis">Line diagnosis</string>
+    <string name="account_enable">Enable this account</string>
+    <string name="account_default_set">Default account set</string>
+    <string name="account_is_default">Default account</string>
+    <string name="account_set_default">Set as default</string>
+    <string name="account_delete">Delete account</string>
+    <string name="account_delete_title">Delete account?</string>
+    <string name="account_delete_text">%1$s will be removed from this phone and unregistered.</string>
+    <plurals name="account_delete_keys">
+        <item quantity="one">\n%1$s shortcut key uses this line only; it will ask for a line when calling.</item>
+        <item quantity="other">\n%1$s shortcut keys use this line only; they will ask for a line when calling.</item>
+    </plurals>
+
+    <!-- Choosing the account of a call -->
+    <string name="account_picker_title">Choose outgoing account</string>
+    <string name="account_picker_default">Use default account</string>
+    <string name="account_picker_search">Search name, number or domain</string>
+    <string name="account_picker_not_set">Not set</string>
+    <string name="account_picker_row">%1$s · %2$s</string>
+    <string name="account_picker_row_status">%1$s · %2$s</string>
+    <string name="account_picker_row_pinned">Selected on the dialer · %1$s · %2$s</string>
+
+    <!-- Bulk import of accounts -->
+    <string name="account_import_title">Bulk import accounts</string>
+    <string name="account_import_example">1001,password,pbx.example.com,tls,John Smith,,Reception</string>
 </resources>

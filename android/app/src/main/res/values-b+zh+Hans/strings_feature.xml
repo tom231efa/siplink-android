@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The call features panel: the features of the PBX for one extension. -->
+<resources>
+    <string name="feature_sheet_title">话务功能</string>
+    <string name="feature_sheet_extension">分机 %1$s</string>
+    <string name="feature_sheet_target">目标分机</string>
+    <string name="feature_sheet_target_hint">例如 1002</string>
+    <string name="feature_sheet_call">呼叫</string>
+    <string name="feature_sheet_add_shortcut">添加到快捷键</string>
+    <string name="feature_sheet_force_confirm">再次点按以确认强拆 %1$s</string>
+</resources>

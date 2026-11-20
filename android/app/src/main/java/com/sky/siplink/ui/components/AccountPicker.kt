@@ -28,8 +28,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import com.sky.siplink.R
 import com.sky.siplink.core.model.RegState
 import com.sky.siplink.core.model.SipAccount
 
@@ -49,8 +51,8 @@ fun AccountPickerSheet(
     selectedId: String?,
     onSelect: (String?) -> Unit,
     onDismiss: () -> Unit,
-    title: String = "选择呼出账号",
-    defaultTitle: String? = "跟随默认账号",
+    title: String = stringResource(R.string.account_picker_title),
+    defaultTitle: String? = stringResource(R.string.account_picker_default),
     pinnedId: String? = null,
     note: String? = null,
 ) {
@@ -79,7 +81,7 @@ fun AccountPickerSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 24.dp, vertical = 8.dp),
-                placeholder = { FieldText("搜索名称、号码或域名") },
+                placeholder = { FieldText(stringResource(R.string.account_picker_search)) },
                 leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
                 singleLine = true,
                 shape = CircleShape,
@@ -90,7 +92,8 @@ fun AccountPickerSheet(
                         val default = accounts.firstOrNull { it.isDefault }
                         PickerRow(
                             title = defaultTitle,
-                            subtitle = default?.let { "${it.label} · ${it.identity}" } ?: "尚未设置",
+                            subtitle = default?.let { stringResource(R.string.account_picker_row, it.label, it.identity) }
+                                ?: stringResource(R.string.account_picker_not_set),
                             state = default?.state ?: RegState.NONE,
                             selected = selectedId == null,
                             onClick = { onSelect(null) },
@@ -100,8 +103,11 @@ fun AccountPickerSheet(
                 items(filtered, key = { it.id }, contentType = { "row" }) { account ->
                     PickerRow(
                         title = account.label,
-                        subtitle = (if (account.id == pinnedId) "拨号页当前选择 · " else "") +
-                            "${account.identity} · ${regStateLabel(account.state)}",
+                        subtitle = stringResource(
+                            if (account.id == pinnedId) R.string.account_picker_row_pinned else R.string.account_picker_row_status,
+                            account.identity,
+                            regStateLabel(account.state),
+                        ),
                         state = account.state,
                         selected = account.id == selectedId,
                         onClick = { onSelect(account.id) },
