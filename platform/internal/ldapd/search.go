@@ -55,7 +55,7 @@ func (c *conn) search(m *message) bool {
 	t := c.s.dit.resolve(req.base)
 	if t.kind == tRoot && req.scope == scopeBase {
 		if req.filter.eval(rootDSENode(c.s)) == tTrue {
-			if !c.send(m.id, rootDSE(c.s, req.sel)) {
+			if !c.queue(m.id, rootDSE(c.s, req.sel)) {
 				return false
 			}
 		}
@@ -79,7 +79,7 @@ func (c *conn) search(m *message) bool {
 		if sent == limit {
 			return errStop
 		}
-		if !c.send(m.id, entryPacket(n, req.sel, req.typesOnly)) {
+		if !c.queue(m.id, entryPacket(n, req.sel, req.typesOnly)) {
 			writeFailed = true
 			return errStop
 		}

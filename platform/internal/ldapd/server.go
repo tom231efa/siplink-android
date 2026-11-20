@@ -170,13 +170,14 @@ type conn struct {
 	s     *Server
 	nc    net.Conn
 	r     *bufio.Reader
+	w     *bufio.Writer // responses; send flushes, a search flushes once at its end
 	ip    netip.Addr
 	tls   bool
 	ident identity
 }
 
 func (s *Server) handle(nc net.Conn, implicitTLS bool, ip netip.Addr) {
-	c := &conn{s: s, nc: nc, r: bufio.NewReader(nc), ip: ip, tls: implicitTLS}
+	c := &conn{s: s, nc: nc, r: bufio.NewReader(nc), w: bufio.NewWriter(nc), ip: ip, tls: implicitTLS}
 	if implicitTLS {
 		nc.SetDeadline(time.Now().Add(s.cfg.OpTimeout))
 		if err := nc.(*tls.Conn).Handshake(); err != nil {
@@ -203,8 +204,15 @@ func (s *Server) handle(nc net.Conn, implicitTLS bool, ip netip.Addr) {
 	}
 }
 
+// send writes a response and flushes it with whatever was queued before.
 func (c *conn) send(id int64, op *ber.Packet) bool {
-	_, err := c.nc.Write(envelope(id, op).Bytes())
+	return c.queue(id, op) && c.w.Flush() == nil
+}
+
+// queue writes a response into the connection's buffer, which goes out when it is full
+// or at the next send: the entries of a search leave in a few writes, not one each.
+func (c *conn) queue(id int64, op *ber.Packet) bool {
+	_, err := c.w.Write(envelope(id, op).Bytes())
 	return err == nil
 }
 
@@ -261,6 +269,6 @@ func (c *conn) extended(m *message) bool {
 	if err := tc.HandshakeContext(context.Background()); err != nil {
 		return false
 	}
-	c.nc, c.r, c.tls = tc, bufio.NewReader(tc), true
+	c.nc, c.r, c.w, c.tls = tc, bufio.NewReader(tc), bufio.NewWriter(tc), true
 	return true
 }

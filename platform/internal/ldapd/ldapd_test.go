@@ -2,9 +2,11 @@ package ldapd
 
 import (
 	"crypto/tls"
+	"net"
 	"slices"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/go-ldap/ldap/v3"
@@ -328,5 +330,57 @@ func TestConnectionLimits(t *testing.T) {
 			t.Error("third connection from one address served")
 		}
 		c.Close()
+	}
+}
+
+// writeCounter counts the writes to the connections it accepts.
+type writeCounter struct {
+	net.Listener
+	writes atomic.Int64
+}
+
+func (l *writeCounter) Accept() (net.Conn, error) {
+	c, err := l.Listener.Accept()
+	if err != nil {
+		return nil, err
+	}
+	return &countedConn{Conn: c, n: &l.writes}, nil
+}
+
+type countedConn struct {
+	net.Conn
+	n *atomic.Int64
+}
+
+func (c *countedConn) Write(b []byte) (int, error) {
+	c.n.Add(1)
+	return c.Conn.Write(b)
+}
+
+// TestSearchWritesOnce: the entries of a search and its result leave in one write when
+// they fit the connection's buffer, not in one write each; a bind answers at once.
+func TestSearchWritesOnce(t *testing.T) {
+	e := newEnv(t, func(c *Config) { c.RequireTLS = false })
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	counter := &writeCounter{Listener: ln}
+	go e.srv.Serve(counter, false)
+	t.Cleanup(func() { ln.Close() })
+	c, err := ldap.DialURL("ldap://" + ln.Addr().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	if err := c.Bind(accountDN("phone1"), e.passwords["phone1"]); err != nil || counter.writes.Load() != 1 {
+		t.Fatalf("bind: %v, %d writes", err, counter.writes.Load())
+	}
+	r, err := search(c, bookBase("staff"), ldap.ScopeWholeSubtree, 0, "(objectClass=*)")
+	if err != nil || len(r.Entries) < 5 {
+		t.Fatalf("search: %v %v", err, names(r))
+	}
+	if n := counter.writes.Load() - 1; n != 1 {
+		t.Errorf("%d entries and the result in %d writes", len(r.Entries), n)
 	}
 }
