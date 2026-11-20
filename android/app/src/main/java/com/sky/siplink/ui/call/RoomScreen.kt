@@ -553,7 +553,7 @@ private fun RoomControls(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+        KeyRow(keys = if (settings.videoCalls) 4 else 3) {
             ControlToggle(
                 icon = if (info.muted) Icons.Rounded.MicOff else Icons.Rounded.Mic,
                 label = stringResource(if (info.muted) R.string.call_muted else R.string.call_mute),

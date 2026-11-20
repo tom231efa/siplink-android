@@ -13,8 +13,10 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -47,11 +49,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -131,7 +135,7 @@ internal fun ActiveControls(
             }
         }
 
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+        KeyRow(keys = 4) {
             ControlToggle(
                 icon = if (info.muted) Icons.Rounded.MicOff else Icons.Rounded.Mic,
                 label = stringResource(if (info.muted) R.string.call_muted else R.string.call_mute),
@@ -148,7 +152,7 @@ internal fun ActiveControls(
                 onClick = calls::toggleHold,
             )
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+        KeyRow(keys = 4) {
             ControlToggle(
                 Icons.AutoMirrored.Rounded.PhoneForwarded,
                 stringResource(R.string.call_transfer),
@@ -323,10 +327,10 @@ internal fun ControlToggle(
             Icon(icon, contentDescription = label, tint = content, modifier = Modifier.size(26.dp))
         }
         Spacer(Modifier.height(6.dp))
-        // As wide as four keys in a row leave each: a longer label (other languages) takes a second line.
+        // As wide as its share of the row ([KeyRow]): a longer label (other languages) takes a second line.
         Text(
             label,
-            modifier = Modifier.widthIn(max = LabelWidth),
+            modifier = Modifier.widthIn(max = LocalKeyLabelWidth.current),
             style = MaterialTheme.typography.labelMedium,
             color = Color.White.copy(alpha = 0.82f),
             textAlign = TextAlign.Center,
@@ -336,8 +340,28 @@ internal fun ControlToggle(
     }
 }
 
-/** The widest a label under a key gets: four keys stand in a row on a phone 360 dp wide. */
-private val LabelWidth = 86.dp
+/** The widest a label under a key ([ControlToggle]) gets: four keys of a row on a phone 360 dp wide; a [KeyRow] narrows it to its share. */
+private val LocalKeyLabelWidth = staticCompositionLocalOf { KeyLabelWidth }
+
+/** The widest a label of a key outside a [KeyRow] gets. */
+private val KeyLabelWidth = 86.dp
+
+/**
+ * A row of [keys] keys spread evenly over the width, whose labels keep to their share of it: on
+ * a narrow screen, or with long words, a label takes its second line instead of running into
+ * its neighbour or off the screen.
+ */
+@Composable
+internal fun KeyRow(keys: Int, content: @Composable RowScope.() -> Unit) {
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        CompositionLocalProvider(LocalKeyLabelWidth provides minOf(KeyLabelWidth, maxWidth / keys - KeyLabelGap)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, content = content)
+        }
+    }
+}
+
+/** What keeps two labels side by side apart. */
+private val KeyLabelGap = 6.dp
 
 @Composable
 internal fun RoundAction(
