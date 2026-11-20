@@ -35,8 +35,8 @@
     <string name="remote_error_account">Account “%1$s”: %2$s</string>
     <string name="remote_error_directory">Directory “%1$s”: %2$s</string>
     <string name="remote_error_key">Key “%1$s”: %2$s</string>
-    <string name="remote_error_key_missing">Missing key</string>
-    <string name="remote_error_key_twice">Duplicate key</string>
+    <string name="remote_error_key_missing">The field “key” is missing</string>
+    <string name="remote_error_key_twice">The field “key” is used twice</string>
 
     <!-- The address of a remote configuration -->
     <string name="remote_address_invalid">Invalid address</string>

@@ -2,9 +2,9 @@
 <!-- Calls: what the commands answer, why a call ended, the PBX features. -->
 <resources>
     <string name="call_busy_already">A call is already in progress</string>
-    <string name="call_none">No call</string>
+    <string name="call_none">No active call</string>
     <string name="call_two_already">Two calls are already up</string>
-    <string name="call_consult_after_connect">Consultation is possible once the call is connected</string>
+    <string name="call_consult_after_connect">A consultation call can be placed once the call is connected</string>
     <string name="call_enter_number">Enter a number</string>
     <string name="call_add_account_first">Add a SIP account first</string>
     <string name="call_line_off">Line disabled</string>
@@ -13,7 +13,7 @@
     <string name="call_dtmf_in_call_only">Keys can only be sent during a call</string>
     <string name="call_room_no_video">The conference room has no video</string>
     <string name="call_no_pending_transfer">No transfer to complete</string>
-    <string name="call_room_after_connect">The conference room is possible once the call is connected</string>
+    <string name="call_room_after_connect">A conference room can be opened once the call is connected</string>
     <string name="call_room_transferring">Transfer in progress</string>
     <string name="call_room_supervised">Supervision calls cannot join the conference room</string>
     <string name="call_withheld">Anonymous</string>
@@ -21,7 +21,7 @@
     <!-- Why a call ended -->
     <string name="call_ended">Call ended</string>
     <string name="call_hung_up">Hung up</string>
-    <string name="call_cancelled">Cancelled</string>
+    <string name="call_cancelled">Canceled</string>
     <string name="call_end_busy">Busy</string>
     <string name="call_end_declined">Declined</string>
     <string name="call_end_not_found">Number does not exist</string>
@@ -36,18 +36,18 @@
     <string name="call_server_silent">Server not responding</string>
 
     <!-- Transfer and park -->
-    <string name="call_transfer_after_connect">Transfer is possible once the call is connected</string>
+    <string name="call_transfer_after_connect">The call can be transferred once it is connected</string>
     <string name="call_enter_transfer_number">Enter the transfer number</string>
-    <string name="call_transfer_after_answer">Transfer is possible once the other side answers</string>
+    <string name="call_transfer_after_answer">The call can be transferred once the other side answers</string>
     <string name="call_parked">Call parked</string>
     <string name="call_transferred">Transferred</string>
     <string name="call_transfer_send_failed">Transfer request could not be sent</string>
 
     <!-- Video -->
-    <string name="call_video_after_connect">Video is possible once the call is connected</string>
+    <string name="call_video_after_connect">Video can be turned on once the call is connected</string>
     <string name="call_video_not_supported">This call does not support video</string>
     <string name="call_cannot_change">The call cannot be changed</string>
-    <string name="call_camera_after_connect">The camera is possible once the call is connected</string>
+    <string name="call_camera_after_connect">The camera can be used once the call is connected</string>
     <string name="call_no_video">This call has no video</string>
     <string name="call_camera_permission">Camera permission required</string>
 

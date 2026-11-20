@@ -49,7 +49,7 @@
     <string name="shortcut_icon_phone">Phone</string>
     <string name="shortcut_icon_person">Person</string>
     <string name="shortcut_icon_group">Team</string>
-    <string name="shortcut_icon_star">Favourite</string>
+    <string name="shortcut_icon_star">Favorite</string>
     <string name="shortcut_icon_home">Home</string>
     <string name="shortcut_icon_office">Office</string>
     <string name="shortcut_icon_store">Store</string>
