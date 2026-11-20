@@ -12,8 +12,7 @@
 # The PBX sits behind the NAT box and announces the box's client-side address (LAB_ADDRESS, SIP
 # on LAB_SIP_PORT) to everybody but the accounts on port 5062: that is where the clients reach it,
 # so that the sound passes the box as well (media_address: the transport's external media
-# address alone left the PBX's own address in the SDP, which an emulator on the host reaches
-# around the box).
+# address alone left the PBX's own address in the SDP, which no client reaches).
 set -eu
 
 : "${SIP_PASSWORD:?SIP_PASSWORD is required}"

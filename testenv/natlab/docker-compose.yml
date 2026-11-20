@@ -6,7 +6,7 @@
 #     natc  172.31.251.2       SIP 5060 udp+tcp and 5062/udp, RTP 22000-22099/udp, AMI 5038/tcp
 #                              and STUN 3478/udp lead on to the PBX and the STUN server; the box
 #                              takes commands on 7000/tcp (see tools/ctl.go)
-#   inet   172.31.252.0/24   internal: only through the box
+#   inet   172.31.252.0/24   internal: only through the box, from this host as well
 #     natc  172.31.252.2       the address the PBX sees every client at
 #     pbx   172.31.252.10      accounts and numbers: see pbx/entrypoint.sh
 #     stun  172.31.252.20
@@ -69,6 +69,10 @@ networks:
   inet:
     driver: bridge
     internal: true
+    # Without it this host has an address on the network, and an emulator on this host reaches
+    # the PBX around the box (Docker: gateway modes, "isolated" needs an internal network).
+    driver_opts:
+      com.docker.network.bridge.gateway_mode_ipv4: isolated
     ipam:
       config:
         - subnet: 172.31.252.0/24
