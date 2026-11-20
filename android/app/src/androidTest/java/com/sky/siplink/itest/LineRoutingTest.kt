@@ -170,21 +170,21 @@ class LineRoutingTest : PbxTestBase() {
         report("No fast timeout: registered on the backup after the first server fell silent", SystemClock.elapsedRealtime() - start)
     }
 
-    /** A change of network has both servers asked at once, with the fast timeout off as well. */
+    /** A change of network has both servers asked at once: with the fast timeout, one silence there is enough. */
     @Test
     fun aChangeOfNetworkAsksBothServersAgain() {
-        addRoutedAccount(timeoutMs = 0)
+        addRoutedAccount(timeoutMs = FAST_MS)
         relay!!.silent = true
         val start = SystemClock.elapsedRealtime()
         moveTo(network(1))
-        await("the account to move to its backup server", NETWORK_FAILOVER_MS) { onBackupNow() }
+        await("the account to move to its backup server", FAST_FAILOVER_MS) { onBackupNow() }
         report("Change of network: registered on the backup", SystemClock.elapsedRealtime() - start)
 
         // The first server is there again on the next network: the account returns without the minute's wait.
         relay!!.silent = false
         val back = SystemClock.elapsedRealtime()
         moveTo(network(2))
-        await("the account to return to its first server", NETWORK_FAILOVER_MS) { onFirstNow() }
+        await("the account to return to its first server", FAST_FAILOVER_MS) { onFirstNow() }
         report("Change of network: back on the first server", SystemClock.elapsedRealtime() - back)
     }
 
@@ -210,6 +210,20 @@ class LineRoutingTest : PbxTestBase() {
         assertTrue("Not on the backup at once: port $port", port != RELAY_PORT)
         await("the account to register on its backup at home", NETWORK_FAILOVER_MS) { onBackupNow() }
         never("the account to go back to its first server at home", QUIET_WINDOW_MS) { !onBackupNow() }
+    }
+
+    /**
+     * A first server that answers, but only after the fast timeout, is out of reach by that
+     * measure: the account goes to its backup and is not taken back by the look at the first
+     * server a minute later, which judges by the same measure.
+     */
+    @Test
+    fun aFirstServerSlowerThanTheFastTimeoutDoesNotTakeTheAccountBack() {
+        startRelay()
+        relay!!.delayMs = SLOW_DELAY_MS
+        addAccount(draft(APP).copy(server = "$HOST:$RELAY_PORT", backupServer = env.pbxHost, serverTimeoutMs = FAST_MS))
+        await("the account to move to its backup server", NETWORK_FAILOVER_MS) { onBackupNow() }
+        never("the account to go back to its slow first server", RETURN_WINDOW_MS) { !onBackupNow() }
     }
 
     /** A call on the backup stays up while the first server answers again; the account returns after it. */
@@ -356,8 +370,17 @@ class LineRoutingTest : PbxTestBase() {
         const val FAST_MS = 500
         const val SLACK_MS = 1_000L
 
-        /** The fast timeout, the backup's probe and its registration. */
-        const val FAST_FAILOVER_MS = 10_000L
+        /**
+         * Two silent checks of 500 ms, the backup's answer and its registration (1.4 s measured):
+         * under the 4 s a probe without the fast timeout waits, which would pass a longer bound.
+         */
+        const val FAST_FAILOVER_MS = 3_500L
+
+        /** 800 ms there and back: the first server answers, after the fast timeout. */
+        const val SLOW_DELAY_MS = 400L
+
+        /** Past the first look at the first server a minute after the move. */
+        const val RETURN_WINDOW_MS = 75_000L
 
         /** A probe of four seconds, and a registration on the backup. */
         const val NETWORK_FAILOVER_MS = 15_000L
