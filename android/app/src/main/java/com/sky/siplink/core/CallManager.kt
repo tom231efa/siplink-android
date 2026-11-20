@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.linphone.core.Account
+import org.linphone.core.Address
 import org.linphone.core.Call
 import org.linphone.core.Core
 import org.linphone.core.Factory
@@ -119,6 +120,10 @@ class CallManager(
 
     private val room = ConferenceRoom(core, roomMonitor, ::partyOf, limit = { settings.current.roomLimit }, lineOn = accounts::isSwitchedOn) { publish() }
     private val transfer = CallTransfer(core, settings) { publish() }
+    private val retry = CallRetry(handler, accounts, ::redial)
+
+    /** A call out was placed again over the other server ([CallRetry]): its entry in the history goes, by its Call-ID. */
+    var onSuperseded: ((String) -> Unit)? = null
 
     // ---------------------------------------------------------------- placing calls
 
@@ -148,7 +153,13 @@ class CallManager(
         // A line that is switched off stays out of use, even where the PBX would take its calls.
         if (!accounts.isSwitchedOn(account)) return "线路已停用"
         val address = account.normalizeSipUri(cleaned) ?: return "号码或地址无效"
-        val params = core.createCallParams(null) ?: return "无法创建呼叫"
+        val created = place(address, account, kind, video) ?: return "呼叫失败"
+        retry.watch(created, inRoom = room.isOpen, consultation = kind.consultation)
+        return null
+    }
+
+    private fun place(address: Address, account: Account, kind: Pending, video: Boolean): Call? {
+        val params = core.createCallParams(null) ?: return null
         params.account = account
         this.video.prepare(params, video)
         val recordFile = recorder.prepare(params)
@@ -157,7 +168,15 @@ class CallManager(
         val created = core.inviteAddressWithParams(address, params)
         pending = null
         created?.let { recorder.attach(it, recordFile) }
-        return if (created == null) "呼叫失败" else null
+        return created
+    }
+
+    /** Places the current call [old] again, as it was placed, on its account now on its other server ([CallRetry]). */
+    private fun redial(old: Call): Boolean {
+        val account = old.params.account
+        if (!same(old, current) || room.isOpen || account == null) return false
+        val kind = Pending(metaOf(old).supervision, consultation = false)
+        return place(old.remoteAddress.clone(), account, kind, old.params.isVideoEnabled) != null
     }
 
     // ---------------------------------------------------------------- answering / ending
@@ -411,6 +430,17 @@ class CallManager(
         transfer.onStateChanged(call, transferState, both = listOfNotNull(live(current), live(other)))
 
     fun onCallStateChanged(call: Call, callState: Call.State?, message: String) {
+        if (retry.isSuperseded(call)) {
+            // Placed again: its successor is on the screen, and it leaves nothing behind.
+            if (callState == Call.State.Released) {
+                metas.remove(call.nativePointer)
+                video.onReleased(call)
+                recorder.onReleased(call)
+                retry.onReleased(call)
+                call.callLog.callId?.let { onSuperseded?.invoke(it) }
+            }
+            return
+        }
         room.onStateChanged(call, callState)
         when (callState) {
             Call.State.IncomingReceived -> onIncomingReceived(call)
@@ -524,7 +554,15 @@ class CallManager(
         val kind = pending
         val active = live(current)
         val referrer = call.transfererCall
+        val replaced = retry.replacing
         when {
+            // The same call, placed again over the other server: it takes the place of the one before.
+            replaced != null && same(replaced, current) -> {
+                current = call
+                metas[call.nativePointer] = metaOf(replaced)
+                retry.onReplacement(call)
+            }
+
             // Placed by the room, or by the PBX in place of a call of the room (if there is room for it).
             room.inviting -> room.onInvited(call)
             referrer != null && room.isMember(referrer) -> if (!room.replace(call, referrer)) refuse(call)
@@ -582,6 +620,7 @@ class CallManager(
     }
 
     private fun onReleased(call: Call) {
+        retry.onReleased(call)
         val meta = metas.remove(call.nativePointer)
         video.onReleased(call)
         recorder.onReleased(call)

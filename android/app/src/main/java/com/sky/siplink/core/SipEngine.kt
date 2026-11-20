@@ -151,6 +151,8 @@ class SipEngine(context: Context) {
         recordings = RecordingStore(File(appContext.filesDir, RecordingStore.DIRECTORY)) { settings.current.recordingsKept }
         calls = CallManager(core, settings, accounts, names, recordings, RoomMonitor(appContext))
         history = HistoryManager(core, names) { settings.current.features }
+        // A call placed again over the other server is one call in the history.
+        calls.onSuperseded = history::remove
         shortcuts = ShortcutManager(File(appContext.filesDir, SHORTCUTS_FILE), lock)
         accounts.onEdited = ::onAccountsEdited
         lock.onReleased = shortcuts::dropOwn
