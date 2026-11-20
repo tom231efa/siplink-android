@@ -35,8 +35,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sky.siplink.R
 import com.sky.siplink.core.logic.ManagedConfig
 import com.sky.siplink.core.logic.ShortcutRules
 import com.sky.siplink.core.model.Shortcut
@@ -66,6 +69,7 @@ import kotlinx.coroutines.withContext
 @Composable
 fun ShortcutsScreen(accountId: String?, onBack: () -> Unit) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val manager = context.engine.shortcuts
     val all by manager.shortcuts.collectAsStateWithLifecycle()
     val loaded by manager.loaded.collectAsStateWithLifecycle()
@@ -88,12 +92,13 @@ fun ShortcutsScreen(accountId: String?, onBack: () -> Unit) {
     var renaming by remember { mutableStateOf<String?>(null) }
     val newKey = {
         if (locked && !ShortcutRules.canAddOwn(all)) {
-            messenger(context.render(ShortcutRules.Error.OWN_LIMIT_REACHED.full))
+            messenger(resources.render(ShortcutRules.Error.OWN_LIMIT_REACHED.full))
         } else {
             edited = Shortcut(id = NEW_KEY, label = "", category = category.orEmpty())
         }
     }
 
+    val exportFailed = stringResource(R.string.shortcut_export_failed)
     val exporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         val text = manager.export()
@@ -101,7 +106,9 @@ fun ShortcutsScreen(accountId: String?, onBack: () -> Unit) {
             val written = withContext(Dispatchers.IO) {
                 runCatching { context.contentResolver.openOutputStream(uri)?.use { it.write(text.toByteArray()) } }.getOrNull()
             }
-            messenger(if (written == null) "导出失败" else "已导出 ${all.size} 个快捷键")
+            messenger(
+                if (written == null) exportFailed else resources.getQuantityString(R.plurals.shortcut_exported, all.size, all.size.toString()),
+            )
         }
     }
 
@@ -109,30 +116,34 @@ fun ShortcutsScreen(accountId: String?, onBack: () -> Unit) {
         TopAppBar(
             title = {
                 Column {
-                    Text("快捷键")
+                    Text(stringResource(R.string.shortcut_title))
                     // Under a managed configuration what counts is how many keys of their own the user has.
                     Text(
-                        if (locked) "$ownCount / ${ShortcutRules.MAX_OWN}" else "${all.size} / ${ShortcutRules.MAX_SHORTCUTS}",
+                        if (locked) {
+                            stringResource(R.string.shortcut_count_of, ownCount.toString(), ShortcutRules.MAX_OWN.toString())
+                        } else {
+                            stringResource(R.string.shortcut_count_of, all.size.toString(), ShortcutRules.MAX_SHORTCUTS.toString())
+                        },
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             },
             navigationIcon = {
-                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回") }
+                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.common_back)) }
             },
             actions = {
                 TextButton(onClick = { editing = !editing }, enabled = editable || editing) {
-                    AnimatedContent(editing, label = "editMode") { on -> Text(if (on) "完成" else "编辑") }
+                    AnimatedContent(editing, label = "editMode") { on -> Text(stringResource(if (on) R.string.common_done else R.string.common_edit)) }
                 }
                 IconButton(onClick = newKey, enabled = loaded) {
-                    Icon(Icons.Rounded.Add, contentDescription = "新建快捷键")
+                    Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.shortcut_new))
                 }
-                IconButton(onClick = { menuOpen = true }) { Icon(Icons.Rounded.MoreVert, contentDescription = "更多") }
+                IconButton(onClick = { menuOpen = true }) { Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.common_more)) }
                 DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                     if (!locked) {
                         DropdownMenuItem(
-                            text = { Text("批量导入") },
+                            text = { Text(stringResource(R.string.shortcut_bulk_import)) },
                             enabled = loaded,
                             onClick = {
                                 menuOpen = false
@@ -141,7 +152,7 @@ fun ShortcutsScreen(accountId: String?, onBack: () -> Unit) {
                         )
                     }
                     DropdownMenuItem(
-                        text = { Text("导出为 CSV") },
+                        text = { Text(stringResource(R.string.shortcut_export_csv)) },
                         enabled = all.isNotEmpty(),
                         onClick = {
                             menuOpen = false
@@ -151,7 +162,7 @@ fun ShortcutsScreen(accountId: String?, onBack: () -> Unit) {
                     val selected = category
                     if (!selected.isNullOrEmpty() && (!locked || ShortcutRules.ownsCategory(all, selected))) {
                         DropdownMenuItem(
-                            text = { Text("编辑分类“$selected”") },
+                            text = { Text(stringResource(R.string.shortcut_edit_category, selected)) },
                             onClick = {
                                 menuOpen = false
                                 renaming = selected
@@ -178,7 +189,7 @@ fun ShortcutsScreen(accountId: String?, onBack: () -> Unit) {
                     when {
                         !editing -> runner(key)
                         // A key that was handed out is not the user's to open.
-                        locked && !key.own -> messenger(context.render(ManagedConfig.NOTICE))
+                        locked && !key.own -> messenger(resources.render(ManagedConfig.NOTICE))
                         else -> edited = key
                     }
                 },
@@ -192,22 +203,25 @@ fun ShortcutsScreen(accountId: String?, onBack: () -> Unit) {
 
     if (importOpen && !locked) {
         CsvImportSheet(
-            title = "批量导入快捷键",
-            formatHint = context.render(ShortcutRules.FORMAT) +
-                "\n类型：" + ShortcutRules.typeWords.joinToString(" / ") +
-                "\n线路：账号名称或 user@domain；留空则拨出时选择" +
-                "\n图标：" + ShortcutRules.iconWords.joinToString(" / ") + "；留空则随类型",
-            placeholder = "前台,1001,speed,常用,,reception\n对讲仓库,*801005,speed,对讲,,warehouse\n开门,#9,dtmf,门禁,,door\n转总机,1000,bxfer,转接",
+            title = stringResource(R.string.shortcut_import_title),
+            // The words of the types and icons are data: what the CSV format takes.
+            formatHint = stringResource(
+                R.string.shortcut_import_hint,
+                resources.render(ShortcutRules.FORMAT),
+                ShortcutRules.typeWords.joinToString(" / "),
+                ShortcutRules.iconWords.joinToString(" / "),
+            ),
+            placeholder = stringResource(R.string.shortcut_import_example),
             onImport = { text ->
                 val result = manager.import(text)
                 if (result == null) {
-                    ImportOutcome(finished = false, message = context.render(ManagedConfig.NOTICE))
+                    ImportOutcome(finished = false, message = resources.render(ManagedConfig.NOTICE))
                 } else {
                     ImportOutcome(
                         finished = result.errors.isEmpty() && result.skippedForLimit == 0 && result.shortcuts.isNotEmpty(),
                         message = importReport(
+                            R.plurals.csv_imported_shortcuts,
                             result.shortcuts.size,
-                            "快捷键",
                             result.skippedForLimit,
                             ShortcutRules.MAX_SHORTCUTS,
                             result.errors,
@@ -222,10 +236,10 @@ fun ShortcutsScreen(accountId: String?, onBack: () -> Unit) {
 
     renaming?.takeIf { !locked || ShortcutRules.ownsCategory(all, it) }?.let { old ->
         CategoryNameDialog(
-            title = "分类",
+            title = stringResource(R.string.shortcut_category_title),
             initial = old,
             taken = remember(all, old) { ShortcutRules.categories(all).map { it.first }.filter { it != old } },
-            confirm = "确定",
+            confirm = stringResource(R.string.common_ok),
             onDismiss = { renaming = null },
             onConfirm = { name ->
                 manager.renameCategory(old, name)
@@ -244,10 +258,10 @@ fun ShortcutsScreen(accountId: String?, onBack: () -> Unit) {
 /** @param canImport false where the configuration is locked: keys are then made one by one, as the user's own */
 @Composable
 private fun EmptyBoard(canImport: Boolean, onAdd: () -> Unit, onImport: () -> Unit) {
-    EmptyState(icon = Icons.Rounded.Apps, title = "暂无快捷键", modifier = Modifier.fillMaxSize()) {
+    EmptyState(icon = Icons.Rounded.Apps, title = stringResource(R.string.shortcut_empty), modifier = Modifier.fillMaxSize()) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            if (canImport) OutlinedButton(onClick = onImport) { Text("批量导入") }
-            Button(onClick = onAdd) { Text("新建快捷键") }
+            if (canImport) OutlinedButton(onClick = onImport) { Text(stringResource(R.string.shortcut_bulk_import)) }
+            Button(onClick = onAdd) { Text(stringResource(R.string.shortcut_new)) }
         }
     }
 }

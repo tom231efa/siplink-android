@@ -28,4 +28,79 @@
     <string name="directory_error_placeholder">Must contain %</string>
     <string name="directory_error_name_filter_placeholder">Name filter must contain %</string>
     <string name="directory_error_number_filter_placeholder">Number filter must contain %</string>
+
+    <!-- The directory tab -->
+    <string name="directory_title">Directory</string>
+    <string name="directory_ldap_settings">LDAP settings</string>
+    <string name="directory_no_ldap">This SDK does not support LDAP</string>
+    <string name="directory_add_account_first">Add a SIP account first</string>
+    <string name="directory_none_configured">No LDAP directories configured</string>
+    <string name="directory_all_disabled">LDAP directories are disabled</string>
+    <string name="directory_search">Search names or numbers</string>
+    <string name="directory_no_match">No matching contacts</string>
+    <string name="directory_cache_searching">Local cache; querying the server…</string>
+    <string name="directory_from_cache">From local cache</string>
+    <plurals name="directory_first_only">
+        <item quantity="one">Showing the first %1$s only</item>
+        <item quantity="other">Showing the first %1$s only</item>
+    </plurals>
+    <string name="directory_number_organization">%1$s · %2$s</string>
+    <string name="directory_call_contact">Call %1$s</string>
+    <string name="directory_more_for">More for %1$s</string>
+
+    <!-- The list of LDAP directories -->
+    <string name="directory_ldap_title">LDAP directories</string>
+    <string name="directory_add">Add directory</string>
+    <plurals name="directory_count">
+        <item quantity="one">%1$s / %2$s directory</item>
+        <item quantity="other">%1$s / %2$s directories</item>
+    </plurals>
+    <string name="directory_disabled_summary">Disabled · %1$s</string>
+    <string name="directory_cache_title">Local cache</string>
+    <plurals name="directory_cache_usage">
+        <item quantity="one">%1$s entry cached, using %2$s / %3$s MB</item>
+        <item quantity="other">%1$s entries cached, using %2$s / %3$s MB</item>
+    </plurals>
+    <string name="directory_cache_cleared">Directory cache cleared</string>
+    <string name="directory_cache_clear">Clear cache</string>
+
+    <!-- A directory -->
+    <string name="directory_add_title">Add directory</string>
+    <string name="directory_details_title">Directory details</string>
+    <string name="directory_edit_title">Edit directory</string>
+    <string name="directory_user_required">User name is required</string>
+    <string name="directory_saved">Directory saved</string>
+    <string name="directory_section_server">Server</string>
+    <string name="directory_name_optional">Name (optional)</string>
+    <string name="directory_server_address">Server address</string>
+    <string name="directory_server_placeholder">host[:port]</string>
+    <string name="directory_base_dn">Base DN</string>
+    <string name="directory_encryption">Encryption</string>
+    <string name="directory_encryption_none">None</string>
+    <string name="directory_ca_certificates">CA certificates</string>
+    <string name="directory_section_sign_in">Sign-in</string>
+    <string name="directory_sign_in_account">Account</string>
+    <string name="directory_sign_in_anonymous">Anonymous</string>
+    <string name="directory_user_name">User name</string>
+    <string name="directory_password">Password</string>
+    <string name="directory_password_keep">Leave empty to keep the saved password</string>
+    <string name="directory_section_calls">Calls</string>
+    <string name="directory_line">Line</string>
+    <string name="directory_all_lines">All lines</string>
+    <string name="directory_line_named">%1$s · %2$s</string>
+    <string name="directory_lookup_incoming">Name for incoming calls</string>
+    <string name="directory_lookup_outgoing">Name for outgoing calls</string>
+    <string name="directory_advanced">Advanced settings</string>
+    <string name="directory_name_attributes">Name attributes</string>
+    <string name="directory_number_attributes">Number attributes</string>
+    <string name="directory_max_results">Max results</string>
+    <string name="directory_filter">Filter</string>
+    <string name="directory_filter_auto">Auto</string>
+    <string name="directory_filter_custom">Custom</string>
+    <string name="directory_name_filter">Name filter</string>
+    <string name="directory_number_filter">Number filter</string>
+    <string name="directory_enable">Enable this directory</string>
+    <string name="directory_delete">Delete directory</string>
+    <string name="directory_delete_title">Delete “%1$s”?</string>
+    <string name="directory_delete_text">Its settings and the contacts cached on this phone will be removed.</string>
 </resources>

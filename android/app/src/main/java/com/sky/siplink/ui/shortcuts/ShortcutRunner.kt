@@ -1,5 +1,6 @@
 package com.sky.siplink.ui.shortcuts
 
+import android.content.res.Resources
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.PhoneForwarded
 import androidx.compose.material.icons.rounded.Build
@@ -47,7 +48,10 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sky.siplink.R
 import com.sky.siplink.core.SipEngine
 import com.sky.siplink.core.logic.ManagedConfig
 import com.sky.siplink.core.logic.ShortcutLines
@@ -57,6 +61,7 @@ import com.sky.siplink.core.model.DndMode
 import com.sky.siplink.core.model.Shortcut
 import com.sky.siplink.core.model.ShortcutAction
 import com.sky.siplink.core.model.ShortcutIcon
+import com.sky.siplink.core.render
 import com.sky.siplink.engine
 import com.sky.siplink.ui.components.AccountPickerSheet
 import com.sky.siplink.ui.components.CallLauncher
@@ -139,6 +144,8 @@ private class Asking(val shortcut: Shortcut, val lost: String?)
 @Composable
 fun rememberShortcutRunner(accountId: String?, onOutcome: (ShortcutOutcome) -> Unit): (Shortcut) -> Unit {
     val engine = LocalContext.current.engine
+    // Texts of the outcomes are put together in callbacks: with the activity's resources, in its language.
+    val resources = LocalResources.current
     val launcher = rememberCallLauncher()
     val fallback by rememberUpdatedState(accountId)
     val report by rememberUpdatedState(onOutcome)
@@ -153,17 +160,17 @@ fun rememberShortcutRunner(accountId: String?, onOutcome: (ShortcutOutcome) -> U
             selectedId = preferred,
             onSelect = { id ->
                 asking = null
-                report(press(engine, launcher, ask.shortcut, id))
+                report(press(resources, engine, launcher, ask.shortcut, id))
             },
             onDismiss = { asking = null },
-            title = "${ShortcutRules.title(ask.shortcut).text()} · 选择出局线路",
+            title = stringResource(R.string.shortcut_choose_line_title, ShortcutRules.title(ask.shortcut).text()),
             defaultTitle = null,
             pinnedId = preferred,
-            note = ask.lost?.let { "固定线路“$it”不可用" },
+            note = ask.lost?.let { stringResource(R.string.shortcut_line_unavailable, it) },
         )
     }
 
-    return remember(engine, launcher) {
+    return remember(resources, engine, launcher) {
         { shortcut ->
             val phase = engine.calls.call.value?.phase
             val accounts = engine.accounts.accounts.value
@@ -172,14 +179,14 @@ fun rememberShortcutRunner(accountId: String?, onOutcome: (ShortcutOutcome) -> U
             when {
                 // The key acts on the call in progress or flips a switch: no line involved.
                 !ShortcutRules.placesCall(shortcut, inCall(phase), serverDnd(engine)) ->
-                    report(press(engine, launcher, shortcut, fallback))
-                phase != null && phase != CallPhase.ENDED -> report(ShortcutOutcome("已有通话正在进行"))
-                fixed != null -> report(press(engine, launcher, shortcut, fixed.id))
+                    report(press(resources, engine, launcher, shortcut, fallback))
+                phase != null && phase != CallPhase.ENDED -> report(ShortcutOutcome(resources.getString(R.string.call_busy_already)))
+                fixed != null -> report(press(resources, engine, launcher, shortcut, fixed.id))
                 // The fixed line is gone or switched off: ask, rather than call out on another one unasked.
                 shortcut.line.isNotEmpty() && usable > 0 -> asking = Asking(shortcut, lost = shortcut.line)
                 // No fixed line: ask, unless there is nothing to choose from.
                 usable > 1 -> asking = Asking(shortcut, lost = null)
-                else -> report(press(engine, launcher, shortcut, fallback))
+                else -> report(press(resources, engine, launcher, shortcut, fallback))
             }
         }
     }
@@ -189,8 +196,17 @@ private fun serverDnd(engine: SipEngine): Boolean = engine.settings.current.dndM
 
 private fun inCall(phase: CallPhase?): Boolean = phase == CallPhase.CONNECTED || phase == CallPhase.HELD
 
-/** Does what the key stands for, calling out with [account] (null: the default account) if it calls. */
-private fun press(engine: SipEngine, launcher: CallLauncher, shortcut: Shortcut, account: String?): ShortcutOutcome {
+/**
+ * Does what the key stands for, calling out with [account] (null: the default account) if it calls.
+ * What it tells is written with [resources], the activity's.
+ */
+private fun press(
+    resources: Resources,
+    engine: SipEngine,
+    launcher: CallLauncher,
+    shortcut: Shortcut,
+    account: String?,
+): ShortcutOutcome {
     val number = shortcut.number
     val calls = engine.calls
     val inCall = inCall(calls.call.value?.phase)
@@ -203,18 +219,22 @@ private fun press(engine: SipEngine, launcher: CallLauncher, shortcut: Shortcut,
             if (inCall) return onCall(calls.startConsultation(number)) else launcher.call(number, account)
         ShortcutAction.BLIND_TRANSFER ->
             if (inCall) return onCall(calls.blindTransfer(number)) else launcher.call(number, account)
-        ShortcutAction.DTMF -> return calls.sendDtmfs(number)?.let(::ShortcutOutcome) ?: ShortcutOutcome("已发送 $number", showCall = true)
+        ShortcutAction.DTMF -> return calls.sendDtmfs(number)?.let(::ShortcutOutcome) ?: ShortcutOutcome(resources.getString(R.string.shortcut_dtmf_sent, number), showCall = true)
         ShortcutAction.FORWARD -> {
             val on = engine.settings.current.forwardAlways != number
             // Forwarding is part of a managed configuration: the key then has nothing to switch.
-            if (!engine.updateSettings { it.copy(forwardAlways = if (on) number else "") }) return ShortcutOutcome(engine.texts.render(ManagedConfig.NOTICE))
-            return ShortcutOutcome(if (on) "全部来电将前转到 $number" else "已关闭呼叫前转")
+            if (!engine.updateSettings { it.copy(forwardAlways = if (on) number else "") }) return ShortcutOutcome(resources.render(ManagedConfig.NOTICE))
+            return ShortcutOutcome(
+                if (on) resources.getString(R.string.shortcut_forward_on, number) else resources.getString(R.string.shortcut_forward_off),
+            )
         }
         ShortcutAction.DND -> {
             val on = !engine.settings.current.doNotDisturb
             launcher.doNotDisturb(on, account)
             // On the PBX, the call to its feature code speaks for itself.
-            if (!serverDnd(engine)) return ShortcutOutcome(if (on) "已开启免打扰" else "已关闭免打扰")
+            if (!serverDnd(engine)) return ShortcutOutcome(
+                    resources.getString(if (on) R.string.shortcut_dnd_on else R.string.shortcut_dnd_off),
+                )
         }
     }
     return ShortcutOutcome(null)

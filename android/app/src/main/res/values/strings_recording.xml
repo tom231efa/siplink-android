@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The recordings of calls. -->
+<resources>
+    <string name="recording_title">Recordings</string>
+    <plurals name="recording_selected">
+        <item quantity="one">%1$s selected</item>
+        <item quantity="other">%1$s selected</item>
+    </plurals>
+    <string name="recording_clear_selection">Clear selection</string>
+    <string name="recording_export">Export</string>
+    <plurals name="recording_exported">
+        <item quantity="one">%1$s recording exported</item>
+        <item quantity="other">%1$s recordings exported</item>
+    </plurals>
+    <string name="recording_export_failed">Export failed</string>
+    <plurals name="recording_summary">
+        <item quantity="one">%1$s recording · %2$s</item>
+        <item quantity="other">%1$s recordings · %2$s</item>
+    </plurals>
+    <string name="recording_empty">No recordings</string>
+    <string name="recording_cannot_play">Cannot play</string>
+    <plurals name="recording_delete_title">
+        <item quantity="one">Delete %1$s recording?</item>
+        <item quantity="other">Delete %1$s recordings?</item>
+    </plurals>
+
+    <!-- The time filter -->
+    <string name="recording_period_all">All</string>
+    <string name="recording_period_today">Today</string>
+    <plurals name="recording_period_days">
+        <item quantity="one">%1$s day</item>
+        <item quantity="other">%1$s days</item>
+    </plurals>
+    <string name="recording_period_custom">Custom</string>
+    <string name="recording_period_range">%1$s–%2$s</string>
+
+    <!-- A recording: incoming or outgoing, start time, duration, size -->
+    <string name="recording_unknown_number">Unknown number</string>
+    <string name="recording_detail_incoming">Incoming · %1$s · %2$s · %3$s</string>
+    <string name="recording_detail_outgoing">Outgoing · %1$s · %2$s · %3$s</string>
+    <string name="recording_play">Play</string>
+    <string name="recording_stop">Stop</string>
+</resources>

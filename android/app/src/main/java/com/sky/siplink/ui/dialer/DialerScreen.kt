@@ -71,6 +71,8 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -79,6 +81,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sky.siplink.R
 import com.sky.siplink.core.model.SipAccount
 import com.sky.siplink.engine
 import com.sky.siplink.ui.components.AccountPickerSheet
@@ -111,10 +114,11 @@ fun DialerScreen(onAddAccount: () -> Unit, onOpenShortcuts: (accountId: String?)
     val selected = accounts.firstOrNull { it.id == selectedId }
     val active = selected ?: accounts.firstOrNull { it.isDefault } ?: accounts.firstOrNull()
 
+    val enterNumber = stringResource(R.string.call_enter_number)
     fun place(video: Boolean = false) {
         when {
             active == null -> onAddAccount()
-            number.isBlank() -> messenger("请输入号码")
+            number.isBlank() -> messenger(enterNumber)
             else -> launcher.call(number, selected?.id, video)
         }
     }
@@ -375,7 +379,7 @@ private fun TopRow(
 ) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         IconButton(onClick = onFeatures) {
-            Icon(Icons.Rounded.SupportAgent, contentDescription = "话务功能")
+            Icon(Icons.Rounded.SupportAgent, contentDescription = stringResource(R.string.dialer_call_features))
         }
         Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
             AccountChip(active, canAdd = !LocalConfigLocked.current, onClick = onAccount)
@@ -384,7 +388,7 @@ private fun TopRow(
             AnimatedContent(keyboardMode, label = "inputMode") { keyboard ->
                 Icon(
                     if (keyboard) Icons.Rounded.Dialpad else Icons.Rounded.Keyboard,
-                    contentDescription = if (keyboard) "切换到拨号盘" else "切换到键盘输入",
+                    contentDescription = stringResource(if (keyboard) R.string.dialer_switch_to_pad else R.string.dialer_switch_to_keyboard),
                 )
             }
         }
@@ -406,7 +410,7 @@ private fun AccountChip(account: SipAccount?, canAdd: Boolean, onClick: () -> Un
             if (account == null) {
                 Icon(if (canAdd) Icons.Rounded.PersonAdd else Icons.Rounded.PersonOff, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text(if (canAdd) "添加 SIP 账号" else "暂无 SIP 账号", style = MaterialTheme.typography.labelLarge)
+                Text(stringResource(if (canAdd) R.string.dialer_add_account else R.string.dialer_no_accounts), style = MaterialTheme.typography.labelLarge)
                 Spacer(Modifier.width(8.dp))
             } else {
                 StatusDot(account.state)
@@ -416,7 +420,7 @@ private fun AccountChip(account: SipAccount?, canAdd: Boolean, onClick: () -> Un
                     style = MaterialTheme.typography.labelLarge,
                     modifier = Modifier.sizeIn(maxWidth = 200.dp),
                 )
-                Icon(Icons.Rounded.ArrowDropDown, contentDescription = "选择呼出账号")
+                Icon(Icons.Rounded.ArrowDropDown, contentDescription = stringResource(R.string.dialer_choose_account))
             }
         }
     }
@@ -440,7 +444,7 @@ private fun StatusChips(
             if (doNotDisturb) {
                 AssistChip(
                     onClick = onDisableDnd,
-                    label = { Text("免打扰已开启", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    label = { Text(stringResource(R.string.dialer_dnd_on), maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     leadingIcon = {
                         Icon(Icons.Rounded.DoNotDisturbOn, contentDescription = null, tint = Brand.HangUpRed, modifier = Modifier.size(18.dp))
                     },
@@ -450,7 +454,7 @@ private fun StatusChips(
                 AssistChip(
                     onClick = onVoicemail,
                     modifier = Modifier.alpha(if (voicemailConfigured) 1f else 0.38f),
-                    label = { Text("$voicemail 条新留言", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    label = { Text(pluralStringResource(R.plurals.dialer_new_voicemail, voicemail, voicemail.toString()), maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     leadingIcon = { Icon(Icons.Rounded.Voicemail, contentDescription = null, modifier = Modifier.size(18.dp)) },
                 )
             }
@@ -480,7 +484,7 @@ private fun NumberDisplay(number: String) {
             val style = MaterialTheme.typography.titleMedium
             if (maxHeight >= with(density) { style.lineHeight.toDp() }) {
                 Text(
-                    "输入号码或 SIP 地址",
+                    stringResource(R.string.dialer_number_hint),
                     style = style,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                 )
@@ -551,8 +555,8 @@ private fun AddressInput(value: String, onChange: (String) -> Unit, onCall: () -
         value = value,
         onValueChange = onChange,
         modifier = Modifier.fillMaxWidth(),
-        label = { FieldText("号码或 SIP 地址") },
-        placeholder = { FieldText("例如 1001 或 alice@example.com") },
+        label = { FieldText(stringResource(R.string.dialer_address_label)) },
+        placeholder = { FieldText(stringResource(R.string.dialer_address_example, "1001", "alice@example.com")) },
         singleLine = true,
         shape = MaterialTheme.shapes.medium,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Go),

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The main screen: its tabs, the banner of a call, the questions asked at start. -->
+<resources>
+    <string name="main_tab_dialer">Dialer</string>
+    <string name="main_tab_history">History</string>
+    <string name="main_tab_directory">Directory</string>
+    <string name="main_tab_settings">Settings</string>
+    <string name="main_tab_update_news">%1$s, update available</string>
+
+    <!-- The banner that returns to the call -->
+    <string name="main_banner_incoming">Incoming call: %1$s</string>
+    <string name="main_banner_outgoing">Calling %1$s</string>
+    <string name="main_banner_in_call">In call: %1$s</string>
+    <string name="main_banner_return">Return to call</string>
+
+    <!-- Calls on the lock screen -->
+    <string name="main_lock_screen_title">Allow calls on the lock screen</string>
+    <string name="main_lock_screen_text">SipLink does not have the full-screen notifications permission. Incoming calls on the lock screen show only a notification, not the call screen.</string>
+    <string name="main_lock_screen_settings_failed">Cannot open the full-screen notification settings</string>
+    <string name="main_lock_screen_open_settings">Go to settings</string>
+    <string name="main_lock_screen_never">Don\'t remind me again</string>
+</resources>

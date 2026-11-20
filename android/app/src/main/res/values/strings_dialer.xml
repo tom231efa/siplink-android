@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The dialer. -->
+<resources>
+    <string name="dialer_call_features">Call features</string>
+    <string name="dialer_switch_to_pad">Switch to dial pad</string>
+    <string name="dialer_switch_to_keyboard">Switch to keyboard</string>
+    <string name="dialer_add_account">Add SIP account</string>
+    <string name="dialer_no_accounts">No SIP accounts</string>
+    <string name="dialer_choose_account">Choose outgoing account</string>
+    <string name="dialer_dnd_on">Do not disturb is on</string>
+    <plurals name="dialer_new_voicemail">
+        <item quantity="one">%1$s new voicemail</item>
+        <item quantity="other">%1$s new voicemails</item>
+    </plurals>
+    <string name="dialer_number_hint">Enter a number or SIP address</string>
+    <string name="dialer_address_label">Number or SIP address</string>
+    <string name="dialer_address_example">For example, %1$s or %2$s</string>
+
+    <!-- The keys beside the call button -->
+    <string name="dialer_video_call">Video call</string>
+    <string name="dialer_shortcuts">Shortcut keys</string>
+    <string name="dialer_backspace">Delete</string>
+    <string name="dialer_call">Call</string>
+</resources>

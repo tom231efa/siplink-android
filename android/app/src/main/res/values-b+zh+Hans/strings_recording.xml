@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The recordings of calls. -->
+<resources>
+    <string name="recording_title">录音文件</string>
+    <plurals name="recording_selected">
+        <item quantity="other">已选 %1$s</item>
+    </plurals>
+    <string name="recording_clear_selection">取消选择</string>
+    <string name="recording_export">导出</string>
+    <plurals name="recording_exported">
+        <item quantity="other">已导出 %1$s 条录音</item>
+    </plurals>
+    <string name="recording_export_failed">导出失败</string>
+    <plurals name="recording_summary">
+        <item quantity="other">%1$s 条 · %2$s</item>
+    </plurals>
+    <string name="recording_empty">暂无录音</string>
+    <string name="recording_cannot_play">无法播放</string>
+    <plurals name="recording_delete_title">
+        <item quantity="other">删除 %1$s 条录音？</item>
+    </plurals>
+
+    <!-- The time filter -->
+    <string name="recording_period_all">全部</string>
+    <string name="recording_period_today">今天</string>
+    <plurals name="recording_period_days">
+        <item quantity="other">%1$s 天</item>
+    </plurals>
+    <string name="recording_period_custom">自定义</string>
+    <string name="recording_period_range">%1$s–%2$s</string>
+
+    <!-- A recording: incoming or outgoing, start time, duration, size -->
+    <string name="recording_unknown_number">未知号码</string>
+    <string name="recording_detail_incoming">呼入 · %1$s · %2$s · %3$s</string>
+    <string name="recording_detail_outgoing">呼出 · %1$s · %2$s · %3$s</string>
+    <string name="recording_play">播放</string>
+    <string name="recording_stop">停止</string>
+</resources>

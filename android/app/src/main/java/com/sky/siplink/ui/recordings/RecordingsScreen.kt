@@ -37,8 +37,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sky.siplink.R
 import com.sky.siplink.core.logic.RecordingPeriod
 import com.sky.siplink.core.logic.RecordingRules
 import com.sky.siplink.core.model.Recording
@@ -61,6 +65,7 @@ import java.time.ZoneOffset
 @Composable
 fun RecordingsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val store = context.engine.recordings
     val all by store.recordings.collectAsStateWithLifecycle()
     val messenger = LocalMessenger.current
@@ -86,7 +91,9 @@ fun RecordingsScreen(onBack: () -> Unit) {
     // What the actions of the top bar work on: the selection, else what the filter shows.
     val target = if (selecting) shown.filter { it.id in selected } else shown
 
-    fun exported(count: Int, of: Int) = messenger(if (count == of) "已导出 $count 条录音" else "导出失败")
+    val exportFailed = stringResource(R.string.recording_export_failed)
+    fun exported(count: Int, of: Int) =
+        messenger(if (count == of) resources.getQuantityString(R.plurals.recording_exported, count, count.toString()) else exportFailed)
 
     val saveOne = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("audio/mp4")) { uri ->
         val recording = exportOne ?: return@rememberLauncherForActivityResult
@@ -111,12 +118,20 @@ fun RecordingsScreen(onBack: () -> Unit) {
 
     Column(Modifier.fillMaxSize()) {
         TopAppBar(
-            title = { Text(if (selecting) "已选 ${selected.size}" else "录音文件") },
+            title = {
+                Text(
+                    if (selecting) {
+                        pluralStringResource(R.plurals.recording_selected, selected.size, selected.size.toString())
+                    } else {
+                        stringResource(R.string.recording_title)
+                    },
+                )
+            },
             navigationIcon = {
                 if (selecting) {
-                    IconButton(onClick = { selected = emptySet() }) { Icon(Icons.Rounded.Close, contentDescription = "取消选择") }
+                    IconButton(onClick = { selected = emptySet() }) { Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.recording_clear_selection)) }
                 } else {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回") }
+                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.common_back)) }
                 }
             },
             actions = {
@@ -126,9 +141,9 @@ fun RecordingsScreen(onBack: () -> Unit) {
                         saveMany.launch(null)
                     },
                     enabled = target.isNotEmpty(),
-                ) { Icon(Icons.Rounded.FileDownload, contentDescription = "导出") }
+                ) { Icon(Icons.Rounded.FileDownload, contentDescription = stringResource(R.string.recording_export)) }
                 if (selecting) {
-                    IconButton(onClick = { confirmDelete = target }) { Icon(Icons.Rounded.Delete, contentDescription = "删除") }
+                    IconButton(onClick = { confirmDelete = target }) { Icon(Icons.Rounded.Delete, contentDescription = stringResource(R.string.common_delete)) }
                 }
             },
         )
@@ -142,14 +157,15 @@ fun RecordingsScreen(onBack: () -> Unit) {
             onPickRange = { pickingRange = true },
         )
         Text(
-            "${shown.size} 条 · ${RecordingRules.sizeText(shown.sumOf { it.bytes })}",
+            pluralStringResource(R.plurals.recording_summary, shown.size, shown.size.toString(), RecordingRules.sizeText(shown.sumOf { it.bytes })),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(start = 24.dp, top = 8.dp, bottom = 4.dp),
         )
         if (shown.isEmpty()) {
-            EmptyState(icon = Icons.Rounded.GraphicEq, title = "暂无录音", modifier = Modifier.fillMaxSize())
+            EmptyState(icon = Icons.Rounded.GraphicEq, title = stringResource(R.string.recording_empty), modifier = Modifier.fillMaxSize())
         } else {
+            val cannotPlay = stringResource(R.string.recording_cannot_play)
             LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) {
                 items(shown, key = { it.id }) { recording ->
                     RecordingRow(
@@ -166,7 +182,7 @@ fun RecordingsScreen(onBack: () -> Unit) {
                                 playing = recording.id
                             } else {
                                 playing = null
-                                messenger("无法播放")
+                                messenger(cannotPlay)
                             }
                         },
                         onSelect = { selected = if (recording.id in selected) selected - recording.id else selected + recording.id },
@@ -185,7 +201,7 @@ fun RecordingsScreen(onBack: () -> Unit) {
     confirmDelete?.let { doomed ->
         AlertDialog(
             onDismissRequest = { confirmDelete = null },
-            title = { Text("删除 ${doomed.size} 条录音？") },
+            title = { Text(pluralStringResource(R.plurals.recording_delete_title, doomed.size, doomed.size.toString())) },
             confirmButton = {
                 TextButton(onClick = {
                     if (doomed.any { it.id == playing }) {
@@ -195,9 +211,9 @@ fun RecordingsScreen(onBack: () -> Unit) {
                     store.remove(doomed)
                     selected = selected - doomed.mapTo(HashSet()) { it.id }
                     confirmDelete = null
-                }) { Text("确认删除", color = MaterialTheme.colorScheme.error) }
+                }) { Text(stringResource(R.string.common_confirm_delete), color = MaterialTheme.colorScheme.error) }
             },
-            dismissButton = { TextButton(onClick = { confirmDelete = null }) { Text("取消") } },
+            dismissButton = { TextButton(onClick = { confirmDelete = null }) { Text(stringResource(R.string.common_cancel)) } },
         )
     }
 
@@ -219,9 +235,9 @@ fun RecordingsScreen(onBack: () -> Unit) {
                         pickingRange = false
                     },
                     enabled = picker.selectedStartDateMillis != null,
-                ) { Text("确定") }
+                ) { Text(stringResource(R.string.common_ok)) }
             },
-            dismissButton = { TextButton(onClick = { pickingRange = false }) { Text("取消") } },
+            dismissButton = { TextButton(onClick = { pickingRange = false }) { Text(stringResource(R.string.common_cancel)) } },
         ) {
             DateRangePicker(state = picker, modifier = Modifier.weight(1f))
         }

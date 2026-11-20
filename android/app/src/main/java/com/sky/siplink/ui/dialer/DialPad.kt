@@ -50,10 +50,12 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sky.siplink.R
 import com.sky.siplink.ui.components.pressScale
 import com.sky.siplink.ui.theme.Brand
 
@@ -215,11 +217,11 @@ internal fun CallRow(
         ) { video ->
             if (video) {
                 SideAction(onClick = onVideoCall) {
-                    Icon(Icons.Rounded.Videocam, contentDescription = "视频呼叫")
+                    Icon(Icons.Rounded.Videocam, contentDescription = stringResource(R.string.dialer_video_call))
                 }
             } else {
                 SideAction(onClick = onShortcuts) {
-                    Icon(Icons.Rounded.Apps, contentDescription = "快捷键")
+                    Icon(Icons.Rounded.Apps, contentDescription = stringResource(R.string.dialer_shortcuts))
                 }
             }
         }
@@ -232,7 +234,7 @@ internal fun CallRow(
                 exit = fadeOut(tween(90)) + scaleOut(tween(120), targetScale = 0.7f),
             ) {
                 SideAction(onClick = onDelete, onLongClick = onClear) {
-                    Icon(Icons.AutoMirrored.Rounded.Backspace, contentDescription = "删除")
+                    Icon(Icons.AutoMirrored.Rounded.Backspace, contentDescription = stringResource(R.string.dialer_backspace))
                 }
             }
         }
@@ -263,7 +265,7 @@ private fun CallButton(enabled: Boolean, onClick: () -> Unit) {
             .clickable(interactionSource = interaction, indication = LocalIndication.current, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(Icons.Rounded.Call, contentDescription = "呼叫", tint = Color.White, modifier = Modifier.size(34.dp))
+        Icon(Icons.Rounded.Call, contentDescription = stringResource(R.string.dialer_call), tint = Color.White, modifier = Modifier.size(34.dp))
     }
 }
 

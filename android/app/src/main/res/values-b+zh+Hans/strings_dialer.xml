@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The dialer. -->
+<resources>
+    <string name="dialer_call_features">话务功能</string>
+    <string name="dialer_switch_to_pad">切换到拨号盘</string>
+    <string name="dialer_switch_to_keyboard">切换到键盘输入</string>
+    <string name="dialer_add_account">添加 SIP 账号</string>
+    <string name="dialer_no_accounts">暂无 SIP 账号</string>
+    <string name="dialer_choose_account">选择呼出账号</string>
+    <string name="dialer_dnd_on">免打扰已开启</string>
+    <plurals name="dialer_new_voicemail">
+        <item quantity="other">%1$s 条新留言</item>
+    </plurals>
+    <string name="dialer_number_hint">输入号码或 SIP 地址</string>
+    <string name="dialer_address_label">号码或 SIP 地址</string>
+    <string name="dialer_address_example">例如 %1$s 或 %2$s</string>
+
+    <!-- The keys beside the call button -->
+    <string name="dialer_video_call">视频呼叫</string>
+    <string name="dialer_shortcuts">快捷键</string>
+    <string name="dialer_backspace">删除</string>
+    <string name="dialer_call">呼叫</string>
+</resources>

@@ -73,4 +73,61 @@
     <string name="shortcut_icon_computer">机房</string>
     <string name="shortcut_icon_delivery">物流</string>
     <string name="shortcut_icon_light">照明</string>
+
+    <!-- The board of keys -->
+    <string name="shortcut_title">快捷键</string>
+    <string name="shortcut_count_of">%1$s / %2$s</string>
+    <string name="shortcut_new">新建快捷键</string>
+    <string name="shortcut_bulk_import">批量导入</string>
+    <string name="shortcut_export_csv">导出为 CSV</string>
+    <string name="shortcut_export_failed">导出失败</string>
+    <plurals name="shortcut_exported">
+        <item quantity="other">已导出 %1$s 个快捷键</item>
+    </plurals>
+    <string name="shortcut_edit_category">编辑分类“%1$s”</string>
+    <string name="shortcut_empty">暂无快捷键</string>
+    <string name="shortcut_search">搜索名称、号码、分类或类型</string>
+    <string name="shortcut_chip_all">全部 %1$s</string>
+    <string name="shortcut_chip_category">%1$s %2$s</string>
+    <string name="shortcut_no_match">无匹配的快捷键</string>
+    <string name="shortcut_category_title">分类</string>
+    <string name="shortcut_delete_category">删除分类</string>
+
+    <!-- Bulk import: %1$s is the format, %2$s the words of the types, %3$s those of the icons -->
+    <string name="shortcut_import_title">批量导入快捷键</string>
+    <string name="shortcut_import_hint">%1$s\n类型：%2$s\n线路：账号名称或 user@domain；留空则拨出时选择\n图标：%3$s；留空则随类型</string>
+    <string name="shortcut_import_example">前台,1001,speed,常用,,reception\n对讲仓库,*801005,speed,对讲,,warehouse\n开门,#9,dtmf,门禁,,door\n转总机,1000,bxfer,转接</string>
+
+    <!-- A key -->
+    <string name="shortcut_new_title">新建快捷键</string>
+    <string name="shortcut_edit_title">编辑快捷键</string>
+    <string name="shortcut_added">快捷键已添加</string>
+    <string name="shortcut_saved">快捷键已保存</string>
+    <string name="shortcut_deleted">快捷键已删除</string>
+    <string name="shortcut_field_name">名称</string>
+    <string name="shortcut_field_keys">按键</string>
+    <string name="shortcut_field_forward_to">前转到</string>
+    <string name="shortcut_field_number">号码或功能码</string>
+    <string name="shortcut_field_type">类型</string>
+    <string name="shortcut_field_line_mode">出局线路</string>
+    <string name="shortcut_field_line">线路</string>
+    <string name="shortcut_field_icon">图标</string>
+    <string name="shortcut_icon_default">默认（随类型）</string>
+    <string name="shortcut_field_category">分类</string>
+    <string name="shortcut_new_category_title">新建分类</string>
+    <string name="shortcut_create">创建</string>
+    <string name="shortcut_line_fixed">固定线路</string>
+    <string name="shortcut_line_ask">拨出时选择</string>
+    <string name="shortcut_line_named">%1$s · %2$s</string>
+    <string name="shortcut_line_disabled">%1$s · 已停用</string>
+    <string name="shortcut_line_gone">线路“%1$s”已不存在</string>
+
+    <!-- Pressing a key -->
+    <string name="shortcut_choose_line_title">%1$s · 选择出局线路</string>
+    <string name="shortcut_line_unavailable">固定线路“%1$s”不可用</string>
+    <string name="shortcut_dtmf_sent">已发送 %1$s</string>
+    <string name="shortcut_forward_on">全部来电将前转到 %1$s</string>
+    <string name="shortcut_forward_off">已关闭呼叫前转</string>
+    <string name="shortcut_dnd_on">已开启免打扰</string>
+    <string name="shortcut_dnd_off">已关闭免打扰</string>
 </resources>

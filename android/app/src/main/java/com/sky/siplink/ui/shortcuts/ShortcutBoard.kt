@@ -55,6 +55,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sky.siplink.R
 import com.sky.siplink.core.logic.ShortcutRules
 import com.sky.siplink.core.model.Shortcut
 import com.sky.siplink.core.model.ShortcutAction
@@ -126,7 +127,7 @@ internal fun ShortcutBoard(
         SearchField(
             value = query,
             onValueChange = { query = it },
-            placeholder = "搜索名称、号码、分类或类型",
+            placeholder = stringResource(R.string.shortcut_search),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp),
@@ -141,14 +142,15 @@ internal fun ShortcutBoard(
                     FilterChip(
                         selected = category == null,
                         onClick = { onCategoryChange(null) },
-                        label = { Text("全部 ${all.size}") },
+                        label = { Text(stringResource(R.string.shortcut_chip_all, all.size.toString())) },
                     )
                 }
                 items(categories, key = { "c:${it.first}" }, contentType = { "chip" }) { (name, count) ->
+                    val shownName = name.ifEmpty { stringResource(R.string.shortcut_category_none) }
                     FilterChip(
                         selected = category == name,
                         onClick = { onCategoryChange(if (category == name) null else name) },
-                        label = { Text("${name.ifEmpty { "未分类" }} $count") },
+                        label = { Text(stringResource(R.string.shortcut_chip_category, shownName, count.toString())) },
                         modifier = Modifier.animateItem(),
                     )
                 }
@@ -159,7 +161,7 @@ internal fun ShortcutBoard(
 
         if (shown.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("无匹配的快捷键", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.shortcut_no_match), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
             LazyVerticalGrid(
@@ -270,7 +272,7 @@ private fun ShortcutKey(
             if (editing) {
                 Icon(
                     Icons.Rounded.Edit,
-                    contentDescription = "编辑",
+                    contentDescription = stringResource(R.string.common_edit),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
@@ -313,7 +315,7 @@ private fun SearchField(value: String, onValueChange: (String) -> Unit, placehol
                 }
                 if (value.isNotEmpty()) {
                     IconButton(onClick = { onValueChange("") }, modifier = Modifier.size(34.dp)) {
-                        Icon(Icons.Rounded.Clear, contentDescription = "清除", modifier = Modifier.size(18.dp))
+                        Icon(Icons.Rounded.Clear, contentDescription = stringResource(R.string.common_clear), modifier = Modifier.size(18.dp))
                     }
                 }
             }

@@ -26,4 +26,76 @@
     <string name="directory_error_placeholder">需包含 %</string>
     <string name="directory_error_name_filter_placeholder">姓名过滤器需包含 %</string>
     <string name="directory_error_number_filter_placeholder">号码过滤器需包含 %</string>
+
+    <!-- The directory tab -->
+    <string name="directory_title">通讯录</string>
+    <string name="directory_ldap_settings">LDAP 设置</string>
+    <string name="directory_no_ldap">当前 SDK 不支持 LDAP</string>
+    <string name="directory_add_account_first">请先添加 SIP 账号</string>
+    <string name="directory_none_configured">尚未配置 LDAP 通讯录</string>
+    <string name="directory_all_disabled">LDAP 通讯录已停用</string>
+    <string name="directory_search">搜索姓名或号码</string>
+    <string name="directory_no_match">无匹配的联系人</string>
+    <string name="directory_cache_searching">本地缓存，正在查询服务器…</string>
+    <string name="directory_from_cache">来自本地缓存</string>
+    <plurals name="directory_first_only">
+        <item quantity="other">仅显示前 %1$s 条</item>
+    </plurals>
+    <string name="directory_number_organization">%1$s · %2$s</string>
+    <string name="directory_call_contact">呼叫 %1$s</string>
+    <string name="directory_more_for">%1$s 的更多功能</string>
+
+    <!-- The list of LDAP directories -->
+    <string name="directory_ldap_title">LDAP 通讯录</string>
+    <string name="directory_add">添加通讯录</string>
+    <plurals name="directory_count">
+        <item quantity="other">%1$s / %2$s 个通讯录</item>
+    </plurals>
+    <string name="directory_disabled_summary">已停用 · %1$s</string>
+    <string name="directory_cache_title">本地缓存</string>
+    <plurals name="directory_cache_usage">
+        <item quantity="other">已缓存 %1$s 条，占用 %2$s / %3$s MB</item>
+    </plurals>
+    <string name="directory_cache_cleared">已清空通讯录缓存</string>
+    <string name="directory_cache_clear">清空缓存</string>
+
+    <!-- A directory -->
+    <string name="directory_add_title">添加通讯录</string>
+    <string name="directory_details_title">通讯录详情</string>
+    <string name="directory_edit_title">编辑通讯录</string>
+    <string name="directory_user_required">用户名必填</string>
+    <string name="directory_saved">通讯录已保存</string>
+    <string name="directory_section_server">服务器</string>
+    <string name="directory_name_optional">名称（可选）</string>
+    <string name="directory_server_address">服务器地址</string>
+    <string name="directory_server_placeholder">主机[:端口]</string>
+    <string name="directory_base_dn">搜索基准</string>
+    <string name="directory_encryption">加密</string>
+    <string name="directory_encryption_none">不加密</string>
+    <string name="directory_ca_certificates">CA 证书</string>
+    <string name="directory_section_sign_in">登录</string>
+    <string name="directory_sign_in_account">账号</string>
+    <string name="directory_sign_in_anonymous">匿名</string>
+    <string name="directory_user_name">用户名</string>
+    <string name="directory_password">密码</string>
+    <string name="directory_password_keep">留空则保留已保存的密码</string>
+    <string name="directory_section_calls">来去电</string>
+    <string name="directory_line">线路</string>
+    <string name="directory_all_lines">全部线路</string>
+    <string name="directory_line_named">%1$s · %2$s</string>
+    <string name="directory_lookup_incoming">来电显示姓名</string>
+    <string name="directory_lookup_outgoing">去电显示姓名</string>
+    <string name="directory_advanced">高级设置</string>
+    <string name="directory_name_attributes">姓名属性</string>
+    <string name="directory_number_attributes">号码属性</string>
+    <string name="directory_max_results">最大结果数</string>
+    <string name="directory_filter">过滤器</string>
+    <string name="directory_filter_auto">自动</string>
+    <string name="directory_filter_custom">自定义</string>
+    <string name="directory_name_filter">姓名过滤器</string>
+    <string name="directory_number_filter">号码过滤器</string>
+    <string name="directory_enable">启用此通讯录</string>
+    <string name="directory_delete">删除通讯录</string>
+    <string name="directory_delete_title">删除“%1$s”？</string>
+    <string name="directory_delete_text">其设置及本机缓存的联系人将被移除。</string>
 </resources>

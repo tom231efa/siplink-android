@@ -1,5 +1,6 @@
 package com.sky.siplink.ui
 
+import androidx.annotation.StringRes
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -28,19 +29,21 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
+import com.sky.siplink.R
 
 /** The four main screens, in the order of the bar and of the rail. */
-internal enum class Tab(val route: String, val label: String, val icon: ImageVector, val selectedIcon: ImageVector) {
-    DIALER("dialer", "拨号", Icons.Outlined.Dialpad, Icons.Rounded.Dialpad),
-    HISTORY("history", "记录", Icons.Outlined.History, Icons.Rounded.History),
-    DIRECTORY("directory", "通讯录", Icons.Outlined.Contacts, Icons.Rounded.Contacts),
-    SETTINGS("settings", "设置", Icons.Outlined.Settings, Icons.Rounded.Settings),
+internal enum class Tab(val route: String, @StringRes val label: Int, val icon: ImageVector, val selectedIcon: ImageVector) {
+    DIALER("dialer", R.string.main_tab_dialer, Icons.Outlined.Dialpad, Icons.Rounded.Dialpad),
+    HISTORY("history", R.string.main_tab_history, Icons.Outlined.History, Icons.Rounded.History),
+    DIRECTORY("directory", R.string.main_tab_directory, Icons.Outlined.Contacts, Icons.Rounded.Contacts),
+    SETTINGS("settings", R.string.main_tab_settings, Icons.Outlined.Settings, Icons.Rounded.Settings),
 }
 
 /**
@@ -54,9 +57,6 @@ internal val RailFromWidth = 600.dp
 
 /** Whether a window [width] wide (the whole window, the system bars included) shows the rail. */
 internal fun usesRail(width: Dp): Boolean = width >= RailFromWidth
-
-/** What the settings tab adds to its name for a screen reader while it carries the dot. */
-private const val UPDATE_NEWS = "有新版本可用"
 
 /** The bar of the tabs, at the bottom of a narrow window. */
 @Composable
@@ -148,5 +148,8 @@ private fun TabIcon(tab: Tab, selected: Boolean, news: Boolean) {
  */
 @Composable
 private fun TabLabel(tab: Tab, news: Boolean) {
-    Text(tab.label, modifier = if (news) Modifier.semantics { contentDescription = "${tab.label}，$UPDATE_NEWS" } else Modifier)
+    val label = stringResource(tab.label)
+    // What the settings tab says to a screen reader while it carries the dot.
+    val withNews = stringResource(R.string.main_tab_update_news, label)
+    Text(label, modifier = if (news) Modifier.semantics { contentDescription = withNews } else Modifier)
 }

@@ -78,4 +78,62 @@
     <string name="shortcut_icon_computer">Server room</string>
     <string name="shortcut_icon_delivery">Delivery</string>
     <string name="shortcut_icon_light">Lighting</string>
+
+    <!-- The board of keys -->
+    <string name="shortcut_title">Shortcut keys</string>
+    <string name="shortcut_count_of">%1$s / %2$s</string>
+    <string name="shortcut_new">New shortcut key</string>
+    <string name="shortcut_bulk_import">Bulk import</string>
+    <string name="shortcut_export_csv">Export as CSV</string>
+    <string name="shortcut_export_failed">Export failed</string>
+    <plurals name="shortcut_exported">
+        <item quantity="one">%1$s shortcut key exported</item>
+        <item quantity="other">%1$s shortcut keys exported</item>
+    </plurals>
+    <string name="shortcut_edit_category">Edit category “%1$s”</string>
+    <string name="shortcut_empty">No shortcut keys</string>
+    <string name="shortcut_search">Search name, number, category or type</string>
+    <string name="shortcut_chip_all">All %1$s</string>
+    <string name="shortcut_chip_category">%1$s %2$s</string>
+    <string name="shortcut_no_match">No matching shortcut keys</string>
+    <string name="shortcut_category_title">Category</string>
+    <string name="shortcut_delete_category">Delete category</string>
+
+    <!-- Bulk import: %1$s is the format, %2$s the words of the types, %3$s those of the icons -->
+    <string name="shortcut_import_title">Bulk import shortcut keys</string>
+    <string name="shortcut_import_hint">%1$s\nType: %2$s\nLine: account name or user@domain; empty means choose when calling\nIcon: %3$s; empty follows the type</string>
+    <string name="shortcut_import_example">Reception,1001,speed,Favorites,,reception\nWarehouse intercom,*801005,speed,Intercom,,warehouse\nOpen door,#9,dtmf,Door access,,door\nTo operator,1000,bxfer,Transfer</string>
+
+    <!-- A key -->
+    <string name="shortcut_new_title">New shortcut key</string>
+    <string name="shortcut_edit_title">Edit shortcut key</string>
+    <string name="shortcut_added">Shortcut key added</string>
+    <string name="shortcut_saved">Shortcut key saved</string>
+    <string name="shortcut_deleted">Shortcut key deleted</string>
+    <string name="shortcut_field_name">Name</string>
+    <string name="shortcut_field_keys">Keys</string>
+    <string name="shortcut_field_forward_to">Forward to</string>
+    <string name="shortcut_field_number">Number or feature code</string>
+    <string name="shortcut_field_type">Type</string>
+    <string name="shortcut_field_line_mode">Outgoing line</string>
+    <string name="shortcut_field_line">Line</string>
+    <string name="shortcut_field_icon">Icon</string>
+    <string name="shortcut_icon_default">Default (follows type)</string>
+    <string name="shortcut_field_category">Category</string>
+    <string name="shortcut_new_category_title">New category</string>
+    <string name="shortcut_create">Create</string>
+    <string name="shortcut_line_fixed">Specific line</string>
+    <string name="shortcut_line_ask">Choose when calling</string>
+    <string name="shortcut_line_named">%1$s · %2$s</string>
+    <string name="shortcut_line_disabled">%1$s · Disabled</string>
+    <string name="shortcut_line_gone">Line “%1$s” no longer exists</string>
+
+    <!-- Pressing a key -->
+    <string name="shortcut_choose_line_title">%1$s · Choose outgoing line</string>
+    <string name="shortcut_line_unavailable">Specific line “%1$s” is not available</string>
+    <string name="shortcut_dtmf_sent">Sent %1$s</string>
+    <string name="shortcut_forward_on">All calls will be forwarded to %1$s</string>
+    <string name="shortcut_forward_off">Call forwarding turned off</string>
+    <string name="shortcut_dnd_on">Do not disturb turned on</string>
+    <string name="shortcut_dnd_off">Do not disturb turned off</string>
 </resources>

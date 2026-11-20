@@ -49,6 +49,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
@@ -58,6 +59,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.sky.siplink.BuildConfig
+import com.sky.siplink.R
 import com.sky.siplink.core.logic.ManagedConfig
 import com.sky.siplink.core.logic.UpdateRules
 import com.sky.siplink.core.model.BannerPosition
@@ -394,16 +396,16 @@ private fun ActiveCallBanner(call: CallInfo?, visible: Boolean, onClick: () -> U
                 Spacer(Modifier.width(10.dp))
                 FadingText(
                     text = when (call?.phase) {
-                        CallPhase.INCOMING -> "来电：${call.remoteName}"
-                        CallPhase.OUTGOING -> "正在呼叫 ${call.remoteName}"
-                        else -> "通话中：${call?.remoteName.orEmpty()}"
+                        CallPhase.INCOMING -> stringResource(R.string.main_banner_incoming, call.remoteName)
+                        CallPhase.OUTGOING -> stringResource(R.string.main_banner_outgoing, call.remoteName)
+                        else -> stringResource(R.string.main_banner_in_call, call?.remoteName.orEmpty())
                     },
                     color = Color.White,
                     style = MaterialTheme.typography.labelLarge,
                     modifier = Modifier.weight(1f),
                 )
                 Spacer(Modifier.width(8.dp))
-                Text("返回通话", color = Color.White, style = MaterialTheme.typography.labelMedium, maxLines = 1)
+                Text(stringResource(R.string.main_banner_return), color = Color.White, style = MaterialTheme.typography.labelMedium, maxLines = 1)
             }
         }
     }

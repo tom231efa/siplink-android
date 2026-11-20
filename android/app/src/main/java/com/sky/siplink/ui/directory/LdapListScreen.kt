@@ -15,8 +15,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sky.siplink.R
 import com.sky.siplink.core.logic.LdapRules
 import com.sky.siplink.core.model.LdapDirectory
 import com.sky.siplink.engine
@@ -42,57 +45,78 @@ fun LdapListScreen(onBack: () -> Unit, onAdd: () -> Unit, onEdit: (String) -> Un
     LaunchedEffect(Unit) { manager.refreshCacheStats() }
 
     SubScreen(
-        title = "LDAP 通讯录",
+        title = stringResource(R.string.directory_ldap_title),
         onBack = onBack,
         actions = {
             if (directories.size < LdapRules.MAX_DIRECTORIES) {
-                IconButton(onClick = onAdd) { Icon(Icons.Rounded.Add, contentDescription = "添加通讯录") }
+                IconButton(onClick = onAdd) { Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.directory_add)) }
             }
         },
     ) {
         if (directories.isEmpty()) {
             EmptyState(
                 icon = Icons.Rounded.Dns,
-                title = "尚未配置 LDAP 通讯录",
+                title = stringResource(R.string.directory_none_configured),
                 modifier = Modifier.padding(vertical = 48.dp),
-                action = if (locked) null else ({ Button(onClick = onAdd) { Text("添加通讯录") } }),
+                action = if (locked) null else ({ Button(onClick = onAdd) { Text(stringResource(R.string.directory_add)) } }),
             )
         } else {
-            SectionCard(title = "${directories.size} / ${LdapRules.MAX_DIRECTORIES} 个通讯录") {
+            SectionCard(
+                title = pluralStringResource(
+                    R.plurals.directory_count,
+                    LdapRules.MAX_DIRECTORIES,
+                    directories.size.toString(),
+                    LdapRules.MAX_DIRECTORIES.toString(),
+                ),
+            ) {
+                val disabled = stringResource(R.string.directory_disabled_summary)
                 directories.forEach { directory ->
                     NavRow(
                         title = directory.title,
-                        subtitle = summary(directory),
+                        subtitle = summary(directory, disabled),
                         icon = Icons.Rounded.Dns,
                         onClick = { onEdit(directory.id) },
                     )
                 }
             }
 
-            SectionCard(title = "本地缓存") {
+            SectionCard(title = stringResource(R.string.directory_cache_title)) {
                 Text(
-                    "已缓存 ${cache.entries} 条，占用 ${megabytes(cache.bytes)} / ${megabytes(cache.maxBytes)} MB",
+                    pluralStringResource(
+                        R.plurals.directory_cache_usage,
+                        cache.entries.toPluralCount(),
+                        cache.entries.toString(),
+                        megabytes(cache.bytes),
+                        megabytes(cache.maxBytes),
+                    ),
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 10.dp),
                 )
+                val cleared = stringResource(R.string.directory_cache_cleared)
                 TextButton(
                     onClick = {
                         manager.clearCache()
-                        messenger("已清空通讯录缓存")
+                        messenger(cleared)
                     },
                     enabled = cache.entries > 0,
                     modifier = Modifier.padding(horizontal = 8.dp),
-                ) { Text("清空缓存") }
+                ) { Text(stringResource(R.string.directory_cache_clear)) }
             }
         }
     }
 }
 
-/** Where the directory is, and that it is switched off when it is: said first, so that a long host cannot fade it out. */
-private fun summary(directory: LdapDirectory): String {
+/**
+ * Where the directory is, and that it is switched off when it is: said first, so that a long host
+ * cannot fade it out. [disabled] is the pattern of a switched-off one, the server as its argument.
+ */
+private fun summary(directory: LdapDirectory, disabled: String): String {
     val server = LdapRules.serverText(directory)
-    return if (directory.enabled) server else "已停用 · $server"
+    return if (directory.enabled) server else disabled.format(server)
 }
 
+/** The count that picks the plural form of a number of entries. */
+private fun Long.toPluralCount(): Int = coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+
 /** A size in bytes as megabytes with one decimal. */
-private fun megabytes(bytes: Long): String = String.format(Locale.US, "%.1f", bytes / (1024.0 * 1024.0))
+private fun megabytes(bytes: Long): String = String.format(Locale.ROOT, "%.1f", bytes / (1024.0 * 1024.0))

@@ -55,11 +55,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sky.siplink.R
 import com.sky.siplink.core.logic.ListKeys
 import com.sky.siplink.core.model.DirectoryContact
 import com.sky.siplink.engine
@@ -112,10 +115,10 @@ fun DirectoryScreen(onOpenSettings: () -> Unit) {
 
     Column(Modifier.fillMaxSize()) {
         TopAppBar(
-            title = { Text("通讯录") },
+            title = { Text(stringResource(R.string.directory_title)) },
             actions = {
                 IconButton(onClick = onOpenSettings) {
-                    Icon(Icons.Rounded.Tune, contentDescription = "LDAP 设置")
+                    Icon(Icons.Rounded.Tune, contentDescription = stringResource(R.string.directory_ldap_settings))
                 }
             },
         )
@@ -123,7 +126,7 @@ fun DirectoryScreen(onOpenSettings: () -> Unit) {
         when {
             !directory.isAvailable -> EmptyState(
                 icon = Icons.Rounded.Dns,
-                title = "当前 SDK 不支持 LDAP",
+                title = stringResource(R.string.directory_no_ldap),
                 modifier = Modifier.fillMaxSize(),
             )
 
@@ -131,16 +134,16 @@ fun DirectoryScreen(onOpenSettings: () -> Unit) {
             // and drops every entry while there is none.
             accounts.isEmpty() -> EmptyState(
                 icon = Icons.Rounded.Contacts,
-                title = "请先添加 SIP 账号",
+                title = stringResource(R.string.directory_add_account_first),
                 modifier = Modifier.fillMaxSize(),
             )
 
             current == null -> EmptyState(
                 icon = Icons.Rounded.Dns,
-                title = if (directories.isEmpty()) "尚未配置 LDAP 通讯录" else "LDAP 通讯录已停用",
+                title = stringResource(if (directories.isEmpty()) R.string.directory_none_configured else R.string.directory_all_disabled),
                 modifier = Modifier.fillMaxSize(),
             ) {
-                Button(onClick = onOpenSettings) { Text("LDAP 设置") }
+                Button(onClick = onOpenSettings) { Text(stringResource(R.string.directory_ldap_settings)) }
             }
 
             else -> {
@@ -166,12 +169,12 @@ fun DirectoryScreen(onOpenSettings: () -> Unit) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp),
-                    placeholder = { FieldText("搜索姓名或号码") },
+                    placeholder = { FieldText(stringResource(R.string.directory_search)) },
                     leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
                     trailingIcon = {
                         AnimatedVisibility(query.isNotEmpty(), enter = fadeIn(), exit = fadeOut()) {
                             IconButton(onClick = { query = "" }) {
-                                Icon(Icons.Rounded.Close, contentDescription = "清除")
+                                Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.common_clear))
                             }
                         }
                     },
@@ -200,7 +203,7 @@ fun DirectoryScreen(onOpenSettings: () -> Unit) {
                 when {
                     contacts.isEmpty() && !state.searching && state.directory == current.id && state.query == trimmed -> EmptyState(
                         icon = Icons.Rounded.SearchOff,
-                        title = "无匹配的联系人",
+                        title = stringResource(R.string.directory_no_match),
                         modifier = Modifier.fillMaxSize(),
                     )
 
@@ -208,7 +211,7 @@ fun DirectoryScreen(onOpenSettings: () -> Unit) {
                         if (state.fromCache && contacts.isNotEmpty()) {
                             item(key = "cache", contentType = "note") {
                                 Text(
-                                    if (state.searching) "本地缓存，正在查询服务器…" else "来自本地缓存",
+                                    stringResource(if (state.searching) R.string.directory_cache_searching else R.string.directory_from_cache),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier
@@ -228,7 +231,7 @@ fun DirectoryScreen(onOpenSettings: () -> Unit) {
                         if (state.limitReached) {
                             item(key = "limit") {
                                 Text(
-                                    "仅显示前 ${contacts.size} 条",
+                                    pluralStringResource(R.plurals.directory_first_only, contacts.size, contacts.size.toString()),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
@@ -274,16 +277,20 @@ private fun ContactRow(
         Column(Modifier.weight(1f)) {
             FadingText(contact.name, style = MaterialTheme.typography.titleMedium)
             FadingText(
-                if (contact.organization.isEmpty()) contact.number else "${contact.number} · ${contact.organization}",
+                if (contact.organization.isEmpty()) {
+                    contact.number
+                } else {
+                    stringResource(R.string.directory_number_organization, contact.number, contact.organization)
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         FilledIconButton(onClick = onCall) {
-            Icon(Icons.Rounded.Call, contentDescription = "呼叫 ${contact.name}")
+            Icon(Icons.Rounded.Call, contentDescription = stringResource(R.string.directory_call_contact, contact.name))
         }
         IconButton(onClick = onMore) {
-            Icon(Icons.Rounded.MoreVert, contentDescription = "${contact.name} 的更多功能")
+            Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.directory_more_for, contact.name))
         }
     }
 }

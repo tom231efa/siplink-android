@@ -38,7 +38,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.sky.siplink.R
 import com.sky.siplink.core.logic.Formatters
 import com.sky.siplink.core.logic.RecordingPeriod
 import com.sky.siplink.core.logic.RecordingRules
@@ -60,12 +63,22 @@ internal fun PeriodRow(period: RecordingPeriod, range: Pair<LocalDate, LocalDate
             .padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        listOf(RecordingPeriod.ALL to "全部", RecordingPeriod.TODAY to "今天", RecordingPeriod.WEEK to "7 天", RecordingPeriod.MONTH to "30 天")
+        listOf(
+            RecordingPeriod.ALL to stringResource(R.string.recording_period_all),
+            RecordingPeriod.TODAY to stringResource(R.string.recording_period_today),
+            RecordingPeriod.WEEK to pluralStringResource(R.plurals.recording_period_days, 7, "7"),
+            RecordingPeriod.MONTH to pluralStringResource(R.plurals.recording_period_days, 30, "30"),
+        )
             .forEach { (value, label) -> FilterChip(selected = period == value, onClick = { onPeriod(value) }, label = { Text(label) }) }
         FilterChip(
             selected = period == RecordingPeriod.RANGE,
             onClick = onPickRange,
-            label = { Text(range?.let { (from, to) -> "${DAY.format(from)}–${DAY.format(to)}" } ?: "自定义") },
+            label = {
+                Text(
+                    range?.let { (from, to) -> stringResource(R.string.recording_period_range, DAY.format(from), DAY.format(to)) }
+                        ?: stringResource(R.string.recording_period_custom),
+                )
+            },
         )
     }
 }
@@ -89,14 +102,15 @@ internal fun RecordingRow(
     modifier: Modifier = Modifier,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
-    val title = recording.name.ifEmpty { recording.number }.ifEmpty { "未知号码" }
+    val unknown = stringResource(R.string.recording_unknown_number)
+    val title = recording.name.ifEmpty { recording.number }.ifEmpty { unknown }
     val time = TIME.format(Instant.ofEpochMilli(recording.startedAt).atZone(zone))
-    val detail = listOf(
-        if (recording.incoming) "呼入" else "呼出",
+    val detail = stringResource(
+        if (recording.incoming) R.string.recording_detail_incoming else R.string.recording_detail_outgoing,
         time,
         Formatters.duration(recording.durationMs / 1000),
         RecordingRules.sizeText(recording.bytes),
-    ).joinToString(" · ")
+    )
     Box(modifier) {
         Row(
             Modifier
@@ -109,7 +123,7 @@ internal fun RecordingRow(
                 Checkbox(checked = selected, onCheckedChange = { onSelect() })
             } else {
                 FilledTonalIconButton(onClick = onPlay) {
-                    Icon(if (playing) Icons.Rounded.Stop else Icons.Rounded.PlayArrow, contentDescription = if (playing) "停止" else "播放")
+                    Icon(if (playing) Icons.Rounded.Stop else Icons.Rounded.PlayArrow, contentDescription = stringResource(if (playing) R.string.recording_stop else R.string.recording_play))
                 }
             }
             Spacer(Modifier.width(12.dp))
@@ -129,12 +143,12 @@ internal fun RecordingRow(
                 }
             }
             if (!selecting) {
-                IconButton(onClick = { menuOpen = true }) { Icon(Icons.Rounded.MoreVert, contentDescription = "更多") }
+                IconButton(onClick = { menuOpen = true }) { Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.common_more)) }
             }
         }
         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }, modifier = Modifier.align(Alignment.TopEnd)) {
             DropdownMenuItem(
-                text = { Text("导出") },
+                text = { Text(stringResource(R.string.recording_export)) },
                 leadingIcon = { Icon(Icons.Rounded.FileDownload, contentDescription = null) },
                 onClick = {
                     menuOpen = false
@@ -142,7 +156,7 @@ internal fun RecordingRow(
                 },
             )
             DropdownMenuItem(
-                text = { Text("删除") },
+                text = { Text(stringResource(R.string.common_delete)) },
                 leadingIcon = { Icon(Icons.Rounded.Delete, contentDescription = null) },
                 onClick = {
                     menuOpen = false

@@ -20,6 +20,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
+import com.sky.siplink.R
 import com.sky.siplink.core.logic.ShortcutRules
 import com.sky.siplink.ui.components.text
 
@@ -71,8 +72,10 @@ internal fun CategoryNameDialog(
         },
         confirmButton = {
             Row {
-                if (onDelete != null) TextButton(onClick = onDelete) { Text("删除分类", color = MaterialTheme.colorScheme.error) }
-                TextButton(onClick = onDismiss) { Text("取消") }
+                if (onDelete != null) {
+                    TextButton(onClick = onDelete) { Text(stringResource(R.string.shortcut_delete_category), color = MaterialTheme.colorScheme.error) }
+                }
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
                 TextButton(onClick = ::done, enabled = problem == null) { Text(confirm) }
             }
         },

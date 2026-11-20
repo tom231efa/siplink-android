@@ -1,5 +1,6 @@
 package com.sky.siplink.ui.shortcuts
 
+import android.content.res.Resources
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
@@ -48,6 +49,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sky.siplink.R
 import com.sky.siplink.core.logic.ShortcutLines
 import com.sky.siplink.core.logic.ShortcutRules
 import com.sky.siplink.core.model.DndMode
@@ -117,13 +119,16 @@ internal fun ShortcutEditSheet(shortcut: Shortcut, onDismiss: () -> Unit) {
     val lineError = when {
         lineAccount != null -> null
         // The account was removed, or the key came from an import that named one this phone lacks.
-        line.isNotEmpty() -> "线路“$line”已不存在"
-        lineChecked -> "必填"
+        line.isNotEmpty() -> stringResource(R.string.shortcut_line_gone, line)
+        lineChecked -> stringResource(R.string.form_required)
         else -> null
     }
 
     fun error(vararg candidates: ShortcutRules.Error): String? = errors.firstOrNull { it in candidates }?.message?.let(context::render)
 
+    val added = stringResource(R.string.shortcut_added)
+    val saved = stringResource(R.string.shortcut_saved)
+    val deleted = stringResource(R.string.shortcut_deleted)
     fun save() {
         val keepsLine = usesLine && fixedLine
         if (keepsLine && lineAccount == null) {
@@ -140,7 +145,7 @@ internal fun ShortcutEditSheet(shortcut: Shortcut, onDismiss: () -> Unit) {
         )
         errors = if (isNew) manager.add(draft) else manager.update(draft)
         if (errors.isEmpty()) {
-            messenger(if (isNew) "快捷键已添加" else "快捷键已保存")
+            messenger(if (isNew) added else saved)
             onDismiss()
         } else {
             // What has no field of the sheet to stand under.
@@ -159,14 +164,18 @@ internal fun ShortcutEditSheet(shortcut: Shortcut, onDismiss: () -> Unit) {
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(if (isNew) "新建快捷键" else "编辑快捷键", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                    Text(
+                        stringResource(if (isNew) R.string.shortcut_new_title else R.string.shortcut_edit_title),
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.weight(1f),
+                    )
                     ManagedLock()
                 }
 
                 FormField(
                     value = label,
                     onValueChange = { label = it },
-                    label = "名称",
+                    label = stringResource(R.string.shortcut_field_name),
                     error = error(ShortcutRules.Error.LABEL_TOO_LONG),
                 )
                 AnimatedVisibility(action.hasNumber) {
@@ -174,9 +183,9 @@ internal fun ShortcutEditSheet(shortcut: Shortcut, onDismiss: () -> Unit) {
                         value = number,
                         onValueChange = { number = it },
                         label = when (action) {
-                            ShortcutAction.DTMF -> "按键"
-                            ShortcutAction.FORWARD -> "前转到"
-                            else -> "号码或功能码"
+                            ShortcutAction.DTMF -> stringResource(R.string.shortcut_field_keys)
+                            ShortcutAction.FORWARD -> stringResource(R.string.shortcut_field_forward_to)
+                            else -> stringResource(R.string.shortcut_field_number)
                         },
                         keyboardType = KeyboardType.Phone,
                         error = error(
@@ -192,7 +201,7 @@ internal fun ShortcutEditSheet(shortcut: Shortcut, onDismiss: () -> Unit) {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     DropdownField(
                         value = stringResource(action.label),
-                        label = "类型",
+                        label = stringResource(R.string.shortcut_field_type),
                         options = ShortcutAction.entries,
                         optionLabel = { resources.getString(it.label) },
                         onSelect = {
@@ -205,10 +214,10 @@ internal fun ShortcutEditSheet(shortcut: Shortcut, onDismiss: () -> Unit) {
                     )
                     if (usesLine) {
                         DropdownField(
-                            value = lineModeLabel(fixedLine),
-                            label = "出局线路",
+                            value = lineModeLabel(resources, fixedLine),
+                            label = stringResource(R.string.shortcut_field_line_mode),
                             options = listOf(false, true),
-                            optionLabel = ::lineModeLabel,
+                            optionLabel = { lineModeLabel(resources, it) },
                             onSelect = {
                                 fixedLine = it
                                 lineChecked = false
@@ -220,17 +229,17 @@ internal fun ShortcutEditSheet(shortcut: Shortcut, onDismiss: () -> Unit) {
                 }
                 AnimatedVisibility(usesLine && fixedLine) {
                     DropdownField(
-                        value = lineAccount?.let(::lineLabel) ?: line,
-                        label = "线路",
+                        value = lineAccount?.let { lineLabel(resources, it) } ?: line,
+                        label = stringResource(R.string.shortcut_field_line),
                         options = accounts,
-                        optionLabel = ::lineLabel,
+                        optionLabel = { lineLabel(resources, it) },
                         onSelect = { line = ShortcutLines.of(it) },
                         selected = lineAccount,
                         error = lineError,
                     )
                 }
 
-                Text("图标", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 4.dp))
+                Text(stringResource(R.string.shortcut_field_icon), style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 4.dp))
                 // The row of icons runs to the edges of the sheet, so that the one cut off at the
                 // edge reads as "more to the side" rather than as something clipped by mistake.
                 LazyHorizontalGrid(
@@ -245,7 +254,9 @@ internal fun ShortcutEditSheet(shortcut: Shortcut, onDismiss: () -> Unit) {
                 ) {
                     // First the picture of the type, which is what a key shows when none is chosen.
                     item(key = "type") {
-                        IconChoice(shortcutIcon(action), "默认（随类型）", selected = icon == null, enabled = !locked) { icon = null }
+                        IconChoice(shortcutIcon(action), stringResource(R.string.shortcut_icon_default), selected = icon == null, enabled = !locked) {
+                            icon = null
+                        }
                     }
                     items(ShortcutIcon.entries, key = { it.name }) { choice ->
                         IconChoice(shortcutIcon(choice), stringResource(choice.label), selected = icon == choice, enabled = !locked) { icon = choice }
@@ -254,10 +265,10 @@ internal fun ShortcutEditSheet(shortcut: Shortcut, onDismiss: () -> Unit) {
 
                 // No category, the ones there are, and (null) the way to make another.
                 DropdownField(
-                    value = categoryLabel(category),
-                    label = "分类",
+                    value = categoryLabel(resources, category),
+                    label = stringResource(R.string.shortcut_field_category),
                     options = listOf("") + (categories + madeCategories).distinct() + null,
-                    optionLabel = ::categoryLabel,
+                    optionLabel = { categoryLabel(resources, it) },
                     onSelect = { if (it == null) makingCategory = true else category = it },
                     selected = category,
                     error = error(ShortcutRules.Error.CATEGORY_TOO_LONG),
@@ -271,7 +282,7 @@ internal fun ShortcutEditSheet(shortcut: Shortcut, onDismiss: () -> Unit) {
                                 onClick = {
                                     if (confirmDelete) {
                                         manager.remove(listOf(shortcut.id))
-                                        messenger("快捷键已删除")
+                                        messenger(deleted)
                                         onDismiss()
                                     } else {
                                         confirmDelete = true
@@ -279,10 +290,13 @@ internal fun ShortcutEditSheet(shortcut: Shortcut, onDismiss: () -> Unit) {
                                 },
                                 modifier = Modifier.weight(1f),
                             ) {
-                                Text(if (confirmDelete) "确认删除" else "删除", color = MaterialTheme.colorScheme.error)
+                                Text(
+                                    stringResource(if (confirmDelete) R.string.common_confirm_delete else R.string.common_delete),
+                                    color = MaterialTheme.colorScheme.error,
+                                )
                             }
                         }
-                        Button(onClick = ::save, modifier = Modifier.weight(1f)) { Text("保存") }
+                        Button(onClick = ::save, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.common_save)) }
                     }
                 }
                 Spacer(Modifier.height(12.dp))
@@ -292,10 +306,10 @@ internal fun ShortcutEditSheet(shortcut: Shortcut, onDismiss: () -> Unit) {
 
     if (makingCategory) {
         CategoryNameDialog(
-            title = "新建分类",
+            title = stringResource(R.string.shortcut_new_category_title),
             initial = "",
             taken = categories + madeCategories,
-            confirm = "创建",
+            confirm = stringResource(R.string.shortcut_create),
             onDismiss = { makingCategory = false },
             onConfirm = { name ->
                 madeCategories = madeCategories + name
@@ -306,9 +320,10 @@ internal fun ShortcutEditSheet(shortcut: Shortcut, onDismiss: () -> Unit) {
     }
 }
 
-private fun categoryLabel(category: String?): String = when {
-    category == null -> "新建分类"
-    category.isEmpty() -> "未分类"
+/** A choice of the category list: a category, none (empty), or the way to make another (null). */
+private fun categoryLabel(resources: Resources, category: String?): String = when {
+    category == null -> resources.getString(R.string.shortcut_category_new)
+    category.isEmpty() -> resources.getString(R.string.shortcut_category_none)
     else -> category
 }
 
@@ -319,11 +334,12 @@ private fun categoryIcon(category: String?): ImageVector = when {
 }
 
 /** A key either asks for its line whenever it calls out, or keeps to one. */
-private fun lineModeLabel(fixed: Boolean): String = if (fixed) "固定线路" else "拨出时选择"
+private fun lineModeLabel(resources: Resources, fixed: Boolean): String =
+    resources.getString(if (fixed) R.string.shortcut_line_fixed else R.string.shortcut_line_ask)
 
-private fun lineLabel(account: SipAccount): String {
-    val name = if (account.name.isBlank()) account.identity else "${account.name} · ${account.identity}"
-    return if (account.enabled) name else "$name · 已停用"
+private fun lineLabel(resources: Resources, account: SipAccount): String {
+    val name = if (account.name.isBlank()) account.identity else resources.getString(R.string.shortcut_line_named, account.name, account.identity)
+    return if (account.enabled) name else resources.getString(R.string.shortcut_line_disabled, name)
 }
 
 private val IconChoiceSize = 46.dp

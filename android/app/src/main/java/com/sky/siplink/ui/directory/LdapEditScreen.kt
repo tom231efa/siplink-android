@@ -25,9 +25,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sky.siplink.R
 import com.sky.siplink.core.logic.LdapRules
 import com.sky.siplink.core.model.LdapDirectory
 import com.sky.siplink.core.model.LdapSecurity
@@ -104,10 +106,12 @@ fun LdapEditScreen(directoryId: String?, onBack: () -> Unit, onOpenTls: () -> Un
 
     fun error(vararg candidates: LdapRules.Error): String? = errors.firstOrNull { it in candidates }?.message?.let(context::render)
 
+    val userRequired = stringResource(R.string.directory_user_required)
+    val saved = stringResource(R.string.directory_saved)
     fun save() {
         userMissing = logsIn && bindDn.isBlank()
         if (userMissing) {
-            messenger("用户名必填")
+            messenger(userRequired)
             return
         }
         val directory = LdapDirectory(
@@ -132,7 +136,7 @@ fun LdapEditScreen(directoryId: String?, onBack: () -> Unit, onOpenTls: () -> Un
         )
         errors = manager.save(directory)
         if (errors.isEmpty()) {
-            messenger("通讯录已保存")
+            messenger(saved)
             onBack()
         } else {
             if (errors.any { it in advancedErrors }) advancedOpen = true
@@ -142,26 +146,26 @@ fun LdapEditScreen(directoryId: String?, onBack: () -> Unit, onOpenTls: () -> Un
 
     SubScreen(
         title = when {
-            stored == null -> "添加通讯录"
-            locked -> "通讯录详情"
-            else -> "编辑通讯录"
+            stored == null -> stringResource(R.string.directory_add_title)
+            locked -> stringResource(R.string.directory_details_title)
+            else -> stringResource(R.string.directory_edit_title)
         },
         onBack = onBack,
-        actions = { TextButton(onClick = ::save) { Text("保存") } },
+        actions = { TextButton(onClick = ::save) { Text(stringResource(R.string.common_save)) } },
     ) {
-        SectionCard(title = "服务器") {
+        SectionCard(title = stringResource(R.string.directory_section_server)) {
             Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 FormField(
                     value = name,
                     onValueChange = { name = it.take(LdapRules.MAX_NAME_LENGTH) },
-                    label = "名称（可选）",
+                    label = stringResource(R.string.directory_name_optional),
                     error = error(LdapRules.Error.NAME_TAKEN, LdapRules.Error.NAME_TOO_LONG),
                 )
                 FormField(
                     value = server,
                     onValueChange = { server = it },
-                    label = "服务器地址",
-                    placeholder = "主机[:端口]",
+                    label = stringResource(R.string.directory_server_address),
+                    placeholder = stringResource(R.string.directory_server_placeholder),
                     keyboardType = KeyboardType.Uri,
                     error = error(
                         LdapRules.Error.HOST_EMPTY,
@@ -174,27 +178,30 @@ fun LdapEditScreen(directoryId: String?, onBack: () -> Unit, onOpenTls: () -> Un
                 FormField(
                     value = baseDn,
                     onValueChange = { baseDn = it },
-                    label = "搜索基准",
+                    label = stringResource(R.string.directory_base_dn),
                     placeholder = "dc=example,dc=com",
                     error = error(LdapRules.Error.BASE_DN_EMPTY),
                 )
-                Text("加密", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 4.dp))
+                Text(stringResource(R.string.directory_encryption), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 4.dp))
                 ChoiceRow(
-                    options = listOf(LdapSecurity.NONE to "不加密", LdapSecurity.START_TLS to "StartTLS"),
+                    options = listOf(LdapSecurity.NONE to stringResource(R.string.directory_encryption_none), LdapSecurity.START_TLS to "StartTLS"),
                     selected = security,
                     onSelect = { security = it },
                     modifier = Modifier.padding(vertical = 4.dp),
                 )
             }
             AnimatedVisibility(security == LdapSecurity.START_TLS) {
-                NavRow(title = "CA 证书", icon = Icons.Rounded.VerifiedUser, onClick = onOpenTls)
+                NavRow(title = stringResource(R.string.directory_ca_certificates), icon = Icons.Rounded.VerifiedUser, onClick = onOpenTls)
             }
         }
 
-        SectionCard(title = "登录") {
+        SectionCard(title = stringResource(R.string.directory_section_sign_in)) {
             Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 ChoiceRow(
-                    options = listOf(true to "账号", false to "匿名"),
+                    options = listOf(
+                        true to stringResource(R.string.directory_sign_in_account),
+                        false to stringResource(R.string.directory_sign_in_anonymous),
+                    ),
                     selected = logsIn,
                     onSelect = { logsIn = it },
                     modifier = Modifier.padding(vertical = 4.dp),
@@ -207,15 +214,19 @@ fun LdapEditScreen(directoryId: String?, onBack: () -> Unit, onOpenTls: () -> Un
                                 bindDn = it
                                 userMissing = false
                             },
-                            label = "用户名",
+                            label = stringResource(R.string.directory_user_name),
                             placeholder = "cn=reader,dc=example,dc=com",
-                            error = if (userMissing) "必填" else null,
+                            error = if (userMissing) stringResource(R.string.form_required) else null,
                         )
                         FormField(
                             value = password,
                             onValueChange = { password = it },
-                            label = "密码",
-                            placeholder = if (stored != null && stored.bindDn.isNotEmpty() && !locked) "留空则保留已保存的密码" else null,
+                            label = stringResource(R.string.directory_password),
+                            placeholder = if (stored != null && stored.bindDn.isNotEmpty() && !locked) {
+                                stringResource(R.string.directory_password_keep)
+                            } else {
+                                null
+                            },
                             password = true,
                             onUnlock = if (stored != null && passwordsProtected && !passwordOpened) ({ askConfigPassword = true }) else null,
                         )
@@ -224,14 +235,16 @@ fun LdapEditScreen(directoryId: String?, onBack: () -> Unit, onOpenTls: () -> Un
             }
         }
 
-        SectionCard(title = "来去电") {
+        SectionCard(title = stringResource(R.string.directory_section_calls)) {
             Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                 // "" stands for every line.
                 val lines = remember(accounts) { listOf("") + accounts.map { it.id } }
-                val lineName = { id: String -> lineLabel(accounts.firstOrNull { it.id == id }) }
+                val allLines = stringResource(R.string.directory_all_lines)
+                val namedLine = stringResource(R.string.directory_line_named)
+                val lineName = { id: String -> lineLabel(accounts.firstOrNull { it.id == id }, allLines, namedLine) }
                 DropdownField(
                     value = lineName(line),
-                    label = "线路",
+                    label = stringResource(R.string.directory_line),
                     options = lines,
                     optionLabel = lineName,
                     onSelect = { line = it },
@@ -239,43 +252,46 @@ fun LdapEditScreen(directoryId: String?, onBack: () -> Unit, onOpenTls: () -> Un
                 )
             }
             SwitchRow(
-                title = "来电显示姓名",
+                title = stringResource(R.string.directory_lookup_incoming),
                 icon = Icons.AutoMirrored.Rounded.CallReceived,
                 checked = lookupIncoming,
                 onCheckedChange = { lookupIncoming = it },
             )
             SwitchRow(
-                title = "去电显示姓名",
+                title = stringResource(R.string.directory_lookup_outgoing),
                 icon = Icons.AutoMirrored.Rounded.CallMade,
                 checked = lookupOutgoing,
                 onCheckedChange = { lookupOutgoing = it },
             )
         }
 
-        FoldingCard(title = "高级设置", open = advancedOpen, onToggle = { advancedOpen = !advancedOpen }) {
+        FoldingCard(title = stringResource(R.string.directory_advanced), open = advancedOpen, onToggle = { advancedOpen = !advancedOpen }) {
             Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 FormField(
                     value = nameAttributes,
                     onValueChange = { nameAttributes = it },
-                    label = "姓名属性",
+                    label = stringResource(R.string.directory_name_attributes),
                     error = error(LdapRules.Error.NAME_ATTRIBUTES_EMPTY),
                 )
                 FormField(
                     value = numberAttributes,
                     onValueChange = { numberAttributes = it },
-                    label = "号码属性",
+                    label = stringResource(R.string.directory_number_attributes),
                     error = error(LdapRules.Error.NUMBER_ATTRIBUTES_EMPTY),
                 )
                 FormField(
                     value = maxResults,
                     onValueChange = { maxResults = it },
-                    label = "最大结果数",
+                    label = stringResource(R.string.directory_max_results),
                     keyboardType = KeyboardType.Number,
                     error = error(LdapRules.Error.MAX_RESULTS_OUT_OF_RANGE),
                 )
-                Text("过滤器", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 4.dp))
+                Text(stringResource(R.string.directory_filter), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 4.dp))
                 ChoiceRow(
-                    options = listOf(false to "自动", true to "自定义"),
+                    options = listOf(
+                        false to stringResource(R.string.directory_filter_auto),
+                        true to stringResource(R.string.directory_filter_custom),
+                    ),
                     selected = ownFilters,
                     onSelect = { own ->
                         // Start from what the attributes make, which is what was in use until now.
@@ -290,14 +306,14 @@ fun LdapEditScreen(directoryId: String?, onBack: () -> Unit, onOpenTls: () -> Un
                         FormField(
                             value = nameFilter,
                             onValueChange = { nameFilter = it },
-                            label = "姓名过滤器",
+                            label = stringResource(R.string.directory_name_filter),
                             singleLine = false,
                             error = error(LdapRules.Error.NAME_FILTER_NO_PLACEHOLDER),
                         )
                         FormField(
                             value = numberFilter,
                             onValueChange = { numberFilter = it },
-                            label = "号码过滤器",
+                            label = stringResource(R.string.directory_number_filter),
                             singleLine = false,
                             error = error(LdapRules.Error.NUMBER_FILTER_NO_PLACEHOLDER),
                         )
@@ -308,7 +324,7 @@ fun LdapEditScreen(directoryId: String?, onBack: () -> Unit, onOpenTls: () -> Un
 
         SectionCard(title = null) {
             SwitchRow(
-                title = "启用此通讯录",
+                title = stringResource(R.string.directory_enable),
                 icon = Icons.Rounded.Power,
                 checked = enabled,
                 onCheckedChange = { enabled = it },
@@ -317,7 +333,7 @@ fun LdapEditScreen(directoryId: String?, onBack: () -> Unit, onOpenTls: () -> Un
 
         if (stored != null && !locked) {
             OutlinedButton(onClick = { confirmDelete = true }, modifier = Modifier.fillMaxWidth()) {
-                Text("删除通讯录", color = MaterialTheme.colorScheme.error)
+                Text(stringResource(R.string.directory_delete), color = MaterialTheme.colorScheme.error)
             }
         }
         Spacer(Modifier.height(8.dp))
@@ -334,23 +350,26 @@ fun LdapEditScreen(directoryId: String?, onBack: () -> Unit, onOpenTls: () -> Un
     if (confirmDelete && stored != null && !locked) {
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
-            title = { Text("删除“${stored.title}”？") },
-            text = { Text("其设置及本机缓存的联系人将被移除。") },
+            title = { Text(stringResource(R.string.directory_delete_title, stored.title)) },
+            text = { Text(stringResource(R.string.directory_delete_text)) },
             confirmButton = {
                 TextButton(onClick = {
                     manager.remove(stored.id)
                     confirmDelete = false
                     onBack()
-                }) { Text("确认删除", color = MaterialTheme.colorScheme.error) }
+                }) { Text(stringResource(R.string.common_confirm_delete), color = MaterialTheme.colorScheme.error) }
             },
-            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("取消") } },
+            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text(stringResource(R.string.common_cancel)) } },
         )
     }
 }
 
-/** An account as the line of a directory; none means the directory is for every line. */
-private fun lineLabel(account: SipAccount?): String = when {
-    account == null -> "全部线路"
+/**
+ * An account as the line of a directory; none means the directory is for every line, [allLines].
+ * [named] is the pattern of an account with a name: the name, then the identity.
+ */
+private fun lineLabel(account: SipAccount?, allLines: String, named: String): String = when {
+    account == null -> allLines
     account.name.isBlank() -> account.identity
-    else -> "${account.name} · ${account.identity}"
+    else -> named.format(account.name, account.identity)
 }

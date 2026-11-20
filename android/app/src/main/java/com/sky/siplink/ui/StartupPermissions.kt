@@ -15,8 +15,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sky.siplink.R
 import com.sky.siplink.engine
 import com.sky.siplink.ui.components.LocalMessenger
 import com.sky.siplink.ui.components.openLockScreenCallSettings
@@ -67,21 +69,22 @@ private fun LockScreenCallPrompt() {
     // Once granted the question is settled for this launch, whatever happens to the access later.
     LaunchedEffect(allowed) { if (allowed) open = false }
     if (!open || allowed || declined) return
+    val openFailed = stringResource(R.string.main_lock_screen_settings_failed)
 
     AlertDialog(
         onDismissRequest = { open = false },
-        title = { Text("允许在锁屏时显示来电") },
-        text = { Text("SipLink 未获得全屏通知权限，锁屏时来电仅显示通知，不显示来电界面。") },
+        title = { Text(stringResource(R.string.main_lock_screen_title)) },
+        text = { Text(stringResource(R.string.main_lock_screen_text)) },
         confirmButton = {
             TextButton(onClick = {
                 if (!context.openLockScreenCallSettings()) {
                     open = false
-                    messenger("无法打开全屏通知设置")
+                    messenger(openFailed)
                 }
-            }) { Text("前往设置") }
+            }) { Text(stringResource(R.string.main_lock_screen_open_settings)) }
         },
         dismissButton = {
-            TextButton(onClick = { engine.updateSettings { it.copy(lockScreenPromptDeclined = true) } }) { Text("不再提醒") }
+            TextButton(onClick = { engine.updateSettings { it.copy(lockScreenPromptDeclined = true) } }) { Text(stringResource(R.string.main_lock_screen_never)) }
         },
     )
 }
