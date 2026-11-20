@@ -2,6 +2,7 @@
 
 package com.sky.siplink.ui.history
 
+import android.text.format.DateFormat
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
@@ -45,9 +46,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sky.siplink.R
 import com.sky.siplink.core.logic.Formatters
 import com.sky.siplink.core.model.HistoryEntry
 import com.sky.siplink.core.model.HistoryKind
@@ -59,19 +64,37 @@ import com.sky.siplink.ui.components.FeatureSheet
 import com.sky.siplink.ui.components.rememberCallLauncher
 import com.sky.siplink.ui.shortcuts.NewShortcutSheet
 import com.sky.siplink.ui.theme.Brand
+import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 
 private val timeFormat = DateTimeFormatter.ofPattern("HH:mm")
-private val dayFormat = DateTimeFormatter.ofPattern("M月d日")
-private val dayWithYearFormat = DateTimeFormatter.ofPattern("yyyy年M月d日")
 
 /** A line of the list: a day header ([entry] is null, [text] the day) or a call ([text] its time). */
 private class HistoryListRow(val key: String, val text: String, val entry: HistoryEntry?)
 
-private fun historyRows(entries: List<HistoryEntry>, zone: ZoneId): List<HistoryListRow> {
+/** How the day headers name the days that have a word of their own. */
+private class DayWords(val today: String, val yesterday: String)
+
+/**
+ * [day] as a header of the list writes it in [locale], the language of the app: month and day,
+ * and the year as well when it is not [today]'s ("11月21日", "2026年11月21日" in Chinese). The
+ * pattern is the locale's own for the skeleton, as Android's DateFormat gives it.
+ */
+internal fun historyDate(day: LocalDate, today: LocalDate, locale: Locale): String {
+    val skeleton = if (day.year == today.year) "MMMd" else "yMMMd"
+    val format = SimpleDateFormat(DateFormat.getBestDateTimePattern(locale, skeleton), locale)
+    format.timeZone = TimeZone.getTimeZone("UTC")
+    return format.format(Date(day.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()))
+}
+
+private fun historyRows(entries: List<HistoryEntry>, zone: ZoneId, locale: Locale, words: DayWords): List<HistoryListRow> {
     val today = LocalDate.now(zone)
     val rows = ArrayList<HistoryListRow>(entries.size + 8)
     var previousDay: LocalDate? = null
@@ -80,7 +103,7 @@ private fun historyRows(entries: List<HistoryEntry>, zone: ZoneId): List<History
         val day = moment.toLocalDate()
         if (day != previousDay) {
             previousDay = day
-            rows += HistoryListRow("day-$day", dayLabel(day, today), null)
+            rows += HistoryListRow("day-$day", dayLabel(day, today, locale, words), null)
         }
         rows += HistoryListRow(entry.id, moment.format(timeFormat), entry)
     }
@@ -100,11 +123,11 @@ fun HistoryScreen() {
 
     Column(Modifier.fillMaxSize()) {
         TopAppBar(
-            title = { Text("通话记录") },
+            title = { Text(stringResource(R.string.history_title)) },
             actions = {
                 if (entries.isNotEmpty()) {
                     IconButton(onClick = { confirmClear = true }) {
-                        Icon(Icons.Rounded.DeleteSweep, contentDescription = "清空通话记录")
+                        Icon(Icons.Rounded.DeleteSweep, contentDescription = stringResource(R.string.history_clear))
                     }
                 }
             },
@@ -112,12 +135,16 @@ fun HistoryScreen() {
         if (entries.isEmpty()) {
             EmptyState(
                 icon = Icons.Rounded.History,
-                title = "暂无通话记录",
+                title = stringResource(R.string.history_empty),
                 modifier = Modifier.fillMaxSize(),
             )
         } else {
             // Day headers and clock times are worked out once per change of the list, not while scrolling.
-            val rows = remember(entries) { historyRows(entries, ZoneId.systemDefault()) }
+            val locale = LocalConfiguration.current.locales[0]
+            val words = DayWords(stringResource(R.string.history_today), stringResource(R.string.history_yesterday))
+            val rows = remember(entries, locale, words.today, words.yesterday) {
+                historyRows(entries, ZoneId.systemDefault(), locale, words)
+            }
             LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) {
                 items(rows, key = { it.key }, contentType = { it.entry == null }) { row ->
                     val entry = row.entry
@@ -162,24 +189,23 @@ fun HistoryScreen() {
     if (confirmClear) {
         AlertDialog(
             onDismissRequest = { confirmClear = false },
-            title = { Text("清空通话记录？") },
-            text = { Text("全部 ${entries.size} 条记录将被删除，且无法恢复。") },
+            title = { Text(stringResource(R.string.history_clear_title)) },
+            text = { Text(pluralStringResource(R.plurals.history_clear_text, entries.size, entries.size.toString())) },
             confirmButton = {
                 TextButton(onClick = {
                     history.clear()
                     confirmClear = false
-                }) { Text("确认清空", color = MaterialTheme.colorScheme.error) }
+                }) { Text(stringResource(R.string.history_clear_confirm), color = MaterialTheme.colorScheme.error) }
             },
-            dismissButton = { TextButton(onClick = { confirmClear = false }) { Text("取消") } },
+            dismissButton = { TextButton(onClick = { confirmClear = false }) { Text(stringResource(R.string.common_cancel)) } },
         )
     }
 }
 
-private fun dayLabel(day: LocalDate, today: LocalDate): String = when {
-    day == today -> "今天"
-    day == today.minusDays(1) -> "昨天"
-    day.year == today.year -> day.format(dayFormat)
-    else -> day.format(dayWithYearFormat)
+private fun dayLabel(day: LocalDate, today: LocalDate, locale: Locale, words: DayWords): String = when {
+    day == today -> words.today
+    day == today.minusDays(1) -> words.yesterday
+    else -> historyDate(day, today, locale)
 }
 
 @Composable
@@ -198,15 +224,15 @@ private fun HistoryRow(
         HistoryKind.OUTGOING -> Triple(
             Icons.AutoMirrored.Rounded.CallMade,
             Brand.CallGreen,
-            "呼出 · ${Formatters.duration(entry.durationSec.toLong())}",
+            stringResource(R.string.history_outgoing, Formatters.duration(entry.durationSec.toLong())),
         )
         HistoryKind.INCOMING -> Triple(
             Icons.AutoMirrored.Rounded.CallReceived,
             MaterialTheme.colorScheme.primary,
-            "呼入 · ${Formatters.duration(entry.durationSec.toLong())}",
+            stringResource(R.string.history_incoming, Formatters.duration(entry.durationSec.toLong())),
         )
-        HistoryKind.MISSED -> Triple(Icons.AutoMirrored.Rounded.CallMissed, Brand.HangUpRed, "未接来电")
-        HistoryKind.FAILED -> Triple(Icons.AutoMirrored.Rounded.CallMade, MaterialTheme.colorScheme.outline, "未接通")
+        HistoryKind.MISSED -> Triple(Icons.AutoMirrored.Rounded.CallMissed, Brand.HangUpRed, stringResource(R.string.history_missed))
+        HistoryKind.FAILED -> Triple(Icons.AutoMirrored.Rounded.CallMade, MaterialTheme.colorScheme.outline, stringResource(R.string.history_failed))
     }
     Box(modifier) {
         Row(
@@ -228,7 +254,7 @@ private fun HistoryRow(
                     Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(15.dp))
                     Spacer(Modifier.width(4.dp))
                     FadingText(
-                        "$time · $detail",
+                        stringResource(R.string.history_time_detail, time, detail),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -240,12 +266,12 @@ private fun HistoryRow(
                 )
             }
             FilledTonalIconButton(onClick = onCall) {
-                Icon(Icons.Rounded.Call, contentDescription = "回拨")
+                Icon(Icons.Rounded.Call, contentDescription = stringResource(R.string.history_call_back))
             }
         }
         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
             DropdownMenuItem(
-                text = { Text("添加到快捷键") },
+                text = { Text(stringResource(R.string.history_add_shortcut)) },
                 leadingIcon = { Icon(Icons.Rounded.Apps, contentDescription = null) },
                 onClick = {
                     menuOpen = false
@@ -253,7 +279,7 @@ private fun HistoryRow(
                 },
             )
             DropdownMenuItem(
-                text = { Text("话务功能…") },
+                text = { Text(stringResource(R.string.history_call_features)) },
                 leadingIcon = { Icon(Icons.Rounded.SupportAgent, contentDescription = null) },
                 onClick = {
                     menuOpen = false
@@ -261,7 +287,7 @@ private fun HistoryRow(
                 },
             )
             DropdownMenuItem(
-                text = { Text("删除记录") },
+                text = { Text(stringResource(R.string.history_delete)) },
                 leadingIcon = { Icon(Icons.Rounded.Delete, contentDescription = null) },
                 onClick = {
                     menuOpen = false
