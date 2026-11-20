@@ -11,6 +11,7 @@ services:
       - "${LAN_ADDRESS}:5080:5060/tcp"
       - "${LAN_ADDRESS}:5081:5038/tcp"
       - "${LAN_ADDRESS}:5082:5062/udp"
+      - "${LAN_ADDRESS}:5084:5064/udp"
       - "${LAN_ADDRESS}:5083:7000/tcp"
       - "${LAN_ADDRESS}:3478:3478/udp"
       - "${LAN_ADDRESS}:22000-22099:22000-22099/udp"
@@ -19,3 +20,4 @@ services:
     environment:
       LAB_ADDRESS: ${LAN_ADDRESS}
       LAB_SIP_PORT: "5080"
+      LAB_SIGNALLING_PORT: "5084"

@@ -33,7 +33,7 @@ set +a
 # docker-compose.lan.yml).
 case "$ANDROID_SERIAL" in
   emulator-*)
-    lab_host=172.31.251.2 sip_port=5060 inner_port=5062 ami_port=5038 ctl_port=7000
+    lab_host=172.31.251.2 sip_port=5060 inner_port=5062 signalling_port=5064 ami_port=5038 ctl_port=7000
     ;;
   *)
     published=$(docker compose port --protocol udp natc 5060 2>/dev/null || true)
@@ -41,7 +41,7 @@ case "$ANDROID_SERIAL" in
       echo "A phone reaches the lab only where it is published: LAN_ADDRESS=... ./up.sh" >&2
       exit 1
     fi
-    lab_host=${published%:*} sip_port=5080 inner_port=5082 ami_port=5081 ctl_port=5083
+    lab_host=${published%:*} sip_port=5080 inner_port=5082 signalling_port=5084 ami_port=5081 ctl_port=5083
     ;;
 esac
 
@@ -49,6 +49,7 @@ env_blob=$(base64 -w0 <<EOF
 labHost=$lab_host
 sipPort=$sip_port
 innerPort=$inner_port
+signallingPort=$signalling_port
 amiPort=$ami_port
 ctlPort=$ctl_port
 stunPort=3478

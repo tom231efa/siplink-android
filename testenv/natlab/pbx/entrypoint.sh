@@ -7,12 +7,15 @@
 #   4001-4010  as 1001-1010, on port 5062, where the PBX announces its own address instead of the
 #              box's: a PBX behind a NAT it does not know of
 #   5001-5010  as 3001-3010, with ICE: its candidate is the box's address (ice_host_candidates)
+#   6001-6010  as 1001-1010, on port 5064, which announces the box's address for SIP
+#              (LAB_SIGNALLING_PORT) and the PBX's own address for the sound: a PBX that knows its
+#              external signalling address but not its media address
 #   600        answers and echoes        601  answers and sends a tone        602  answers, silent
 #
 # The PBX sits behind the NAT box and announces the box's client-side address (LAB_ADDRESS, SIP
-# on LAB_SIP_PORT) to everybody but the accounts on port 5062: that is where the clients reach it,
-# so that the sound passes the box as well (media_address: the transport's external media
-# address alone left the PBX's own address in the SDP, which no client reaches).
+# on LAB_SIP_PORT) to everybody but the accounts on ports 5062 and 5064: that is where the
+# clients reach it, so that the sound passes the box as well (media_address: the transport's
+# external media address alone left the PBX's own address in the SDP, which no client reaches).
 set -eu
 
 : "${SIP_PASSWORD:?SIP_PASSWORD is required}"
@@ -21,6 +24,7 @@ set -eu
 : "${LAB_ADDRESS:?LAB_ADDRESS is required}"
 : "${PBX_ADDRESS:?PBX_ADDRESS is required}"
 LAB_SIP_PORT=${LAB_SIP_PORT:-5060}
+LAB_SIGNALLING_PORT=${LAB_SIGNALLING_PORT:-5064}
 
 conf=/etc/asterisk
 mkdir -p /var/run/asterisk
@@ -53,6 +57,14 @@ external_media_address = $LAB_ADDRESS
 type = transport
 protocol = udp
 bind = 0.0.0.0:5062
+
+[transport-signalling]
+type = transport
+protocol = udp
+bind = 0.0.0.0:5064
+local_net = 127.0.0.0/8
+external_signaling_address = $LAB_ADDRESS
+external_signaling_port = $LAB_SIGNALLING_PORT
 EOF
 
 {
@@ -97,12 +109,16 @@ endpoint/transport = transport-inner
 [ice](!,plain)
 endpoint/ice_support = yes
 
+[signalling](!,handling)
+endpoint/transport = transport-signalling
+
 EOF
-  for first in 1000 3000 4000 5000; do
+  for first in 1000 3000 4000 5000 6000; do
     template=nat
     [ "$first" = 3000 ] && template=plain
     [ "$first" = 4000 ] && template=behind
     [ "$first" = 5000 ] && template=ice
+    [ "$first" = 6000 ] && template=signalling
     i=1
     while [ "$i" -le 10 ]; do
       n=$((first + i))
@@ -118,7 +134,7 @@ static = yes
 writeprotect = yes
 
 [internal]
-exten => _[1345]0XX,1,Dial(PJSIP/${EXTEN},25)
+exten => _[13456]0XX,1,Dial(PJSIP/${EXTEN},25)
  same => n,Hangup()
 
 exten => 600,1,Answer()

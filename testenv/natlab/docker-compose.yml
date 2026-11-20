@@ -3,7 +3,7 @@
 # timeouts, a SIP ALG), and a STUN server next to the PBX.
 #
 #   client 172.31.251.0/24   reachable from this host, and so from an emulator running on it
-#     natc  172.31.251.2       SIP 5060 udp+tcp and 5062/udp, RTP 22000-22099/udp, AMI 5038/tcp
+#     natc  172.31.251.2       SIP 5060 udp+tcp, 5062/udp and 5064/udp, RTP 22000-22099/udp, AMI 5038/tcp
 #                              and STUN 3478/udp lead on to the PBX and the STUN server; the box
 #                              takes commands on 7000/tcp (see tools/ctl.go)
 #   inet   172.31.252.0/24   internal: only through the box, from this host as well
@@ -45,6 +45,7 @@ services:
       AMI_SECRET: ${AMI_SECRET:?run ./up.sh}
       LAB_ADDRESS: 172.31.251.2
       LAB_SIP_PORT: "5060"
+      LAB_SIGNALLING_PORT: "5064"
       PBX_ADDRESS: 172.31.252.10
     volumes:
       - ./pbx/entrypoint.sh:/natlab-entrypoint.sh:ro

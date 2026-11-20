@@ -3,14 +3,17 @@ package com.sky.siplink.itest.natlab
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.sky.siplink.core.CallSupport
 import com.sky.siplink.core.model.CallPhase
+import com.sky.siplink.core.model.MediaFlow
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * The sound of the calls: what the call screen says while none comes in, and the way by the
- * server for a PBX that announces an address of its own network.
+ * The sound of the calls: what the call screen says while none comes in; a PBX that names an
+ * address of its own network for its calls, and one that does so for its sound only.
  */
 @RunWith(AndroidJUnit4::class)
 class NatMediaTest : NatLabTestBase() {
@@ -50,7 +53,7 @@ class NatMediaTest : NatLabTestBase() {
     }
 
     @Test
-    fun aPbxBehindANatOfItsOwnIsReachedByWayOfTheServer() {
+    fun aPbxThatNamesAHopOfItsOwnNetworkIsShownAndNothingChanges() {
         addAccount(BEHIND_ACCOUNT, port = lab.innerPort)
         awaitRegistered(BEHIND_ACCOUNT)
         val id = account(BEHIND_ACCOUNT)!!.id
@@ -58,26 +61,45 @@ class NatMediaTest : NatLabTestBase() {
         await("the call to connect") { call()?.phase == CallPhase.CONNECTED }
         Thread.sleep(QUIET_WINDOW_MS)
         onMain { engine.calls.hangUp() }
-        await("the way by the server") { onMain { engine.accounts.adaptation(id) }?.viaServer == true }
-        assertEquals(1, onMain { engine.core.config.getInt("rtp", "symmetric", 0) })
-        assertTrue(onMain { engine.accounts.find(id)!!.params.isOutboundProxyEnabled })
-        await("the PBX to have no channel") { pbx.list("CoreShowChannels").isEmpty() }
-
-        // The ACK reaches the PBX now: the call outlasts the half minute the PBX waits for it,
-        // and the BYE ends it there as well.
-        dial(ECHO)
-        await("the call to connect") { call()?.phase == CallPhase.CONNECTED }
-        never("the call to end", NO_ACK_WINDOW_MS) { call()?.phase != CallPhase.CONNECTED }
-        onMain { engine.calls.hangUp() }
-        await("the PBX to have no channel", BYE_TIMEOUT_MS) { pbx.list("CoreShowChannels").isEmpty() }
+        await("the finding") { onMain { engine.accounts.pbxUnreachable(id) } }
+        // The BYE went to the PBX's own address as well: the PBX ends the call itself.
+        await("the PBX to have no channel", NO_ACK_WINDOW_MS + BYE_TIMEOUT_MS) { pbx.list("CoreShowChannels").isEmpty() }
         val report = check(BEHIND_ACCOUNT)
         println("natlab evidence: PBX behind a NAT of its own $report")
-        assertTrue(report.viaServer)
-
-        // Restored, the account goes its own way again, and so does RTP.
-        onMain { engine.accounts.resetAdaptation(id) }
-        assertEquals(0, onMain { engine.core.config.getInt("rtp", "symmetric", 0) })
+        assertTrue(report.pbxUnreachable)
+        // Nothing on the phone repairs it, and nothing is changed.
+        assertNull(onMain { engine.accounts.adaptation(id) })
         assertEquals(false, onMain { engine.accounts.find(id)!!.params.isOutboundProxyEnabled })
+        assertEquals(0, onMain { engine.core.config.getInt("rtp", "symmetric", 0) })
+    }
+
+    @Test
+    fun aPbxThatKnowsOnlyItsSignallingAddressKeepsItsCallsButNotItsSound() {
+        addAccount(SIGNALLING_ACCOUNT, port = lab.signallingPort)
+        awaitRegistered(SIGNALLING_ACCOUNT)
+        val id = account(SIGNALLING_ACCOUNT)!!.id
+        // Without sound the SIP core ends a call after its 30 seconds (nortp_timeout, counted
+        // from the start when nothing ever came): off here, so that the call shows whether its
+        // ACK reached the PBX.
+        val noRtpTimeout = onMain { engine.core.nortpTimeout }
+        onMain { engine.core.nortpTimeout = 0 }
+        try {
+            dial(ECHO)
+            await("the call to connect") { call()?.phase == CallPhase.CONNECTED }
+            // The ACK reaches the PBX: the call outlasts the half minute the PBX waits for it.
+            never("the call to end", NO_ACK_WINDOW_MS) { call()?.phase != CallPhase.CONNECTED }
+            onMain { engine.calls.hangUp() }
+            await("the PBX to have no channel", BYE_TIMEOUT_MS) { pbx.list("CoreShowChannels").isEmpty() }
+        } finally {
+            onMain { engine.core.nortpTimeout = noRtpTimeout }
+        }
+        val report = check(SIGNALLING_ACCOUNT)
+        println("natlab evidence: PBX with its own media address $report")
+        assertFalse(report.pbxUnreachable)
+        // Its sound goes to the phone's own address, the phone's to the PBX's: nothing comes in.
+        assertTrue("${report.lastCall}", report.lastCall?.flow in setOf(MediaFlow.SEND_ONLY, MediaFlow.NONE))
+        assertNull(onMain { engine.accounts.adaptation(id) })
+        assertEquals(0, onMain { engine.core.config.getInt("rtp", "symmetric", 0) })
     }
 
     private companion object {

@@ -48,6 +48,9 @@ abstract class NatLabTestBase {
 
         /** Where the PBX announces its own address instead of the box's (accounts [BEHIND_ACCOUNT]...). */
         val innerPort: Int get() = value("innerPort").toInt()
+
+        /** Where the PBX announces the box's address for SIP and its own for the sound (accounts [SIGNALLING_ACCOUNT]...). */
+        val signallingPort: Int get() = value("signallingPort").toInt()
         val amiPort: Int get() = value("amiPort").toInt()
         val ctlPort: Int get() = value("ctlPort").toInt()
         val sipPassword: String get() = value("sipPassword")
@@ -226,6 +229,9 @@ abstract class NatLabTestBase {
 
         /** As [PLAIN_ACCOUNT], at a PBX that does ICE. */
         const val ICE_ACCOUNT = 5001
+
+        /** As [NAT_ACCOUNT], at a PBX that knows its address for SIP but not for the sound. */
+        const val SIGNALLING_ACCOUNT = 6001
         const val DEFAULT_SIP_PORT = 5060
         const val ECHO = "600"
         const val TONE = "601"

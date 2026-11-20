@@ -192,7 +192,7 @@ func (b *box) apply() error {
 	if s.alg {
 		fmt.Fprintf(&r, "    iifname %q udp dport 5060 dnat to %s:%d\n", b.client, b.clientAddress, algPort)
 	}
-	fmt.Fprintf(&r, "    iifname %q udp dport { 5060, 5062, 22000-22099 } dnat to %s\n", b.client, b.pbx)
+	fmt.Fprintf(&r, "    iifname %q udp dport { 5060, 5062, 5064, 22000-22099 } dnat to %s\n", b.client, b.pbx)
 	fmt.Fprintf(&r, "    iifname %q tcp dport { 5060, 5038 } dnat to %s\n", b.client, b.pbx)
 	fmt.Fprintf(&r, "    iifname %q udp dport 3478 dnat to %s\n", b.client, b.stun)
 	r.WriteString("  }\n")
