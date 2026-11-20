@@ -146,6 +146,8 @@ class SipEngine(context: Context) {
         tls.applySettings(settings.current)
         accounts = AccountManager(core, lock)
         applyNetworkOptions(settings.current)
+        // Its far end is often muted, or sends alone: its silence says nothing of the line.
+        accounts.media.isIntercom = { call -> CallSupport.isIntercom(call, settings.current.features) }
         recordings = RecordingStore(File(appContext.filesDir, RecordingStore.DIRECTORY)) { settings.current.recordingsKept }
         calls = CallManager(core, settings, accounts, names, recordings, RoomMonitor(appContext))
         history = HistoryManager(core, names) { settings.current.features }

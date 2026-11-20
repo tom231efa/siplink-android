@@ -35,6 +35,7 @@ import com.sky.siplink.core.model.LineReport
 import com.sky.siplink.core.model.MediaFlow
 import com.sky.siplink.core.model.NatKind
 import com.sky.siplink.core.model.NetType
+import com.sky.siplink.core.model.SipTransport
 import com.sky.siplink.engine
 import com.sky.siplink.ui.components.FadingText
 import com.sky.siplink.ui.components.LocalMessenger
@@ -109,6 +110,9 @@ fun LineDiagnosisScreen(accountId: String, onBack: () -> Unit) {
 
 private const val NONE = "—"
 
+/** A check that was left out: a line on TLS asks nothing over UDP. */
+private const val NOT_ASKED = "未测"
+
 @Composable
 private fun NetworkCard(report: LineReport, onBattery: () -> Unit) {
     val network = report.network
@@ -171,8 +175,21 @@ private fun ServerCard(report: LineReport) {
     SectionCard(title = "服务器") {
         ValueRow("地址", report.server)
         ValueRow("解析", report.serverAddresses.joinToString(", ").ifEmpty { "解析失败" }, error = report.serverAddresses.isEmpty())
-        ValueRow("UDP", report.udp?.let { "${it.rttMs} ms" } ?: "无响应", error = report.udp == null)
-        report.udpLarge?.let { ValueRow("UDP 大包", if (it) "通过" else "丢失", error = !it) }
+        // Only an account on UDP needs UDP; a line on TLS does not ask over it.
+        val needsUdp = report.ownTransport == SipTransport.UDP
+        ValueRow(
+            "UDP",
+            report.udp?.let { "${it.rttMs} ms" } ?: if (report.udpAsked) "无响应" else NOT_ASKED,
+            error = report.udpAsked && report.udp == null && needsUdp,
+        )
+        report.udpInvite?.let { whole ->
+            val large = when {
+                whole -> "通过"
+                report.udpLarge == true -> "分片丢失"
+                else -> "丢失"
+            }
+            ValueRow("UDP 大包", large, error = !whole && needsUdp)
+        }
         ValueRow("TCP", report.tcpMs?.let { "$it ms" } ?: "无法连接")
         ValueRow("TLS", report.tlsMs?.let { "$it ms" } ?: "无法连接")
         report.algSuspected?.let { ValueRow("SIP ALG", if (it) "疑似" else "未发现", error = it) }

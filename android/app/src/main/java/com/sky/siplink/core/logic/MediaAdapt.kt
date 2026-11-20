@@ -10,7 +10,7 @@ import com.sky.siplink.core.model.NatKind
  * STUN server sees as the default one (IceService chooseDefaultCandidates: relay, then server
  * reflexive, then host), which a PBX without ICE takes from the offer's c= and m= lines; a PBX
  * with ICE checks the candidates. Kept once a call ICE took part in had sound both ways without a
- * set-up slowed by the gathering, given up on this network otherwise. A call that comes in from a
+ * set-up slowed by the gathering, given up on this network otherwise ([afterCall]). A call that comes in from a
  * PBX without ICE goes without it (IceService::updateFromRemoteMediaDescription deletes the
  * session) and tells nothing.
  *
@@ -57,7 +57,10 @@ object MediaAdapt {
         /** In use: a call had sound both ways with it. */
         ON,
 
-        /** Tried, and the sound still went one way, or the calls were set up too slowly: not tried again on this network. */
+        /**
+         * Tried, and the sound still went one way, the calls were set up too slowly or failed in
+         * their set-up, or [TRIAL_CALLS] calls told nothing: not tried again on this network.
+         */
         REFUSED,
     }
 
@@ -77,25 +80,68 @@ object MediaAdapt {
             (nat == NatKind.PRESENT || nat == NatKind.CARRIER) && stunSet && ice == Ice.NONE
 
     /**
-     * Whether ICE took part in a call: one out offered its candidates; one that came in did only
-     * where the other side offered ICE as well ([iceState]: the SIP core's IceState of its sound).
+     * Whether ICE took part in a call: one out did where it offered candidates ([offered]: its
+     * account's NAT policy had ICE as it started); one that came in only where the other side
+     * offered ICE as well ([iceState]: the SIP core's IceState of its sound).
      */
-    fun iceTookPart(outgoing: Boolean, iceState: String): Boolean = outgoing || (iceState.isNotEmpty() && iceState != NOT_ACTIVATED)
+    fun iceTookPart(outgoing: Boolean, offered: Boolean, iceState: String): Boolean =
+        if (outgoing) offered else iceState.isNotEmpty() && iceState != NOT_ACTIVATED
 
     /**
-     * Where ICE stands after a call of [flow] on a line where it stood at [ice]. Only a call ICE
-     * [tookPart] in, with a verdict on its sound, tells: sound both ways and a set-up no slower
-     * than [SLOW_SETUP_MS] ([setupMs]: from the start of a call out to its INVITE; null for one
-     * that came in) keep it; anything else gives it up.
+     * Whether a call out that failed with SIP status [code] before its sound ran may be the doing
+     * of ICE: its INVITE, larger with the candidates, got no answer (408), or the other side
+     * refused the offer (488, 606) or failed on it (5xx).
      */
-    fun iceAfter(ice: Ice, flow: MediaFlow?, tookPart: Boolean, setupMs: Long?): Ice = when {
-        ice != Ice.TRIAL || flow == null || !tookPart -> ice
-        flow == MediaFlow.BOTH && (setupMs == null || setupMs <= SLOW_SETUP_MS) -> Ice.ON
-        else -> Ice.REFUSED
+    fun isSetupFailure(code: Int): Boolean = code == TIMEOUT || code == NOT_ACCEPTABLE_HERE || code == NOT_ACCEPTABLE || code in SERVER_ERRORS
+
+    /** Ends of a call out that are the other side's or the user's choice (busy, cancelled, declined): they tell nothing about ICE, nor count. */
+    private val CHOSEN = setOf(486, 487, 600, 603)
+
+    /** Calls with ICE on trial that tell nothing, after which ICE is given up on the line. */
+    const val TRIAL_CALLS = 3
+
+    /**
+     * The record of a line after a call ICE [tookPart] in, while ICE is on trial there. Sound both
+     * ways ([flow]) with a set-up no slower than [SLOW_SETUP_MS] ([setupMs]: from the start of a
+     * call out to its INVITE; null for one that came in) keeps it: in use until it is given up to
+     * see whether the line still needs it ([iceWithdrawn]), later each time the line needed it again.
+     * Sound one way, a slow set-up, or a call out that failed before its sound ran
+     * ([failedWith], [isSetupFailure]) gives it up on this network. [TRIAL_CALLS] calls that tell
+     * nothing (too short for a verdict, or failed otherwise) give it up as well.
+     */
+    fun afterCall(record: LineAdapt.Record, flow: MediaFlow?, tookPart: Boolean, setupMs: Long?, failedWith: Int?, now: Long): LineAdapt.Record {
+        if (record.ice != Ice.TRIAL || !tookPart || failedWith in CHOSEN) return record
+        val ice = when {
+            failedWith != null -> Ice.REFUSED.takeIf { isSetupFailure(failedWith) }
+            flow == null -> null
+            flow == MediaFlow.BOTH && (setupMs == null || setupMs <= SLOW_SETUP_MS) -> Ice.ON
+            else -> Ice.REFUSED
+        }
+        if (ice == null) {
+            val calls = record.iceCalls + 1
+            return if (calls >= TRIAL_CALLS) record.copy(ice = Ice.REFUSED, iceCalls = 0) else record.copy(iceCalls = calls)
+        }
+        val retestAt = if (ice == Ice.ON) now + LineAdapt.retestDelay(record.iceRetests) else 0
+        return record.copy(ice = ice, iceCalls = 0, iceRetestAt = retestAt)
     }
+
+    /**
+     * ICE in use is given up when its time came ([LineAdapt.Record.iceRetestAt]), between calls: the
+     * line tries it again when its sound goes one way again, and keeps it longer then.
+     */
+    fun iceWithdrawn(record: LineAdapt.Record, now: Long, calls: Int): LineAdapt.Record =
+        if (record.ice == Ice.ON && now >= record.iceRetestAt && calls == 0) {
+            record.copy(ice = Ice.NONE, iceRetestAt = 0, iceRetests = record.iceRetests + 1)
+        } else {
+            record
+        }
 
     /** The SIP core's name of a call that goes without ICE (org.linphone.core.IceState). */
     private const val NOT_ACTIVATED = "NotActivated"
+    private const val TIMEOUT = 408
+    private const val NOT_ACCEPTABLE_HERE = 488
+    private const val NOT_ACCEPTABLE = 606
+    private val SERVER_ERRORS = 500..599
 
     /**
      * The host the requests within a call go to: the Record-Route entry next to this phone
@@ -144,18 +190,20 @@ object MediaAdapt {
 
     /**
      * Whether the next hop of a call ([hop], see [nextHop]) is an address of the PBX's own
-     * network: no public address, and neither the server the line connects to ([server]: the
-     * name it is set up with and the addresses that stands for) nor in a network of this phone
-     * ([local], its own addresses). The requests sent there go nowhere: the ACK of a call out
-     * (the PBX then ends the call after half a minute) and the BYE.
+     * network: no public address, neither the server the line connects to ([server]: the name it
+     * is set up with and the addresses that stands for) nor in a network of this phone
+     * ([local]: the phone's networks, `network/prefix` with their real prefix lengths, link-local
+     * ones among them). The requests sent there go nowhere: the ACK of a call out (the PBX then
+     * ends the call after half a minute) and the BYE. Without the phone's networks there is no
+     * verdict.
      */
     fun unreachableHop(hop: String?, server: Collection<String>, local: Collection<String>): Boolean {
         val host = hop?.removePrefix("[")?.removeSuffix("]") ?: return false
+        if (local.isEmpty()) return false
         val kind = NetAddress.kind(host)
         if (kind == NetAddress.Kind.PUBLIC || kind == NetAddress.Kind.INVALID) return false
         val bytes = NetAddress.parse(host) ?: return false
         if (server.any { NetAddress.parse(it)?.contentEquals(bytes) == true }) return false
-        val subnet = NetAddress.subnet(host)
-        return local.none { NetAddress.subnet(it) == subnet }
+        return local.none { NetAddress.inSubnet(host, it) }
     }
 }

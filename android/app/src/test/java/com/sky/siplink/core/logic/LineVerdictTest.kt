@@ -1,13 +1,12 @@
 package com.sky.siplink.core.logic
 
+import com.sky.siplink.core.logic.LineVerdict.FarReports
 import com.sky.siplink.core.model.Mapped
 import com.sky.siplink.core.model.MediaFlow
 import com.sky.siplink.core.model.NatKind
 import com.sky.siplink.core.model.OptionsAnswer
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LineVerdictTest {
@@ -53,13 +52,23 @@ class LineVerdictTest {
 
     @Test
     fun `missing sound is judged after a few seconds, sound both ways at once`() {
-        assertNull(LineVerdict.flow(10, 0, null, 2_000))
-        assertEquals(MediaFlow.BOTH, LineVerdict.flow(10, 8, null, 1_000))
-        assertEquals(MediaFlow.BOTH, LineVerdict.flow(300, 290, 0f, 6_000))
-        assertEquals(MediaFlow.SEND_ONLY, LineVerdict.flow(300, 0, null, 6_000))
-        assertEquals(MediaFlow.RECEIVE_ONLY, LineVerdict.flow(300, 280, 100f, 6_000))
-        assertEquals(MediaFlow.NONE, LineVerdict.flow(0, 0, null, 6_000))
-        assertTrue(LineVerdict.flow(1, 1, 50f, 6_000) == MediaFlow.BOTH)
-        assertFalse(LineVerdict.flow(1, 0, null, 6_000) == MediaFlow.BOTH)
+        // As the SIP core gives them: no loss figure (0) until a report of the other side came.
+        assertNull(LineVerdict.flow(10, 0, FarReports.NONE, 0f, 2_000))
+        assertEquals(MediaFlow.BOTH, LineVerdict.flow(10, 8, FarReports.NONE, 0f, 1_000))
+        assertEquals(MediaFlow.BOTH, LineVerdict.flow(300, 290, FarReports.ABOUT_US, 0f, 6_000))
+        assertEquals(MediaFlow.SEND_ONLY, LineVerdict.flow(300, 0, FarReports.NONE, 0f, 6_000))
+        assertEquals(MediaFlow.NONE, LineVerdict.flow(0, 0, FarReports.NONE, 0f, 6_000))
+        assertEquals(MediaFlow.BOTH, LineVerdict.flow(1, 1, FarReports.ABOUT_US, 50f, 6_000))
+    }
+
+    @Test
+    fun `sound that does not reach the other side shows in its reports`() {
+        // Its reports came, and none was about this phone's stream: nothing of it arrived.
+        assertEquals(MediaFlow.RECEIVE_ONLY, LineVerdict.flow(300, 280, FarReports.SILENT, 0f, 6_000))
+        // It reported all of it lost.
+        assertEquals(MediaFlow.RECEIVE_ONLY, LineVerdict.flow(300, 280, FarReports.ABOUT_US, 100f, 6_000))
+        // Without reports nothing is known of it: it counts as arriving.
+        assertEquals(MediaFlow.BOTH, LineVerdict.flow(300, 280, FarReports.NONE, 0f, 6_000))
+        assertNull(LineVerdict.flow(300, 280, FarReports.SILENT, 0f, 2_000))
     }
 }

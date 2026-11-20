@@ -1,8 +1,10 @@
 package com.sky.siplink.core
 
+import com.sky.siplink.core.logic.FeatureDial
 import com.sky.siplink.core.logic.IntercomHeaders
 import com.sky.siplink.core.model.AudioRoute
 import com.sky.siplink.core.model.CallPhase
+import com.sky.siplink.core.model.FeatureCodes
 import com.sky.siplink.core.model.MemberState
 import com.sky.siplink.core.model.SideCall
 import org.linphone.core.Account
@@ -60,6 +62,14 @@ internal object CallSupport {
             answerMode = remote.getCustomHeader(IntercomHeaders.ANSWER_MODE),
         )
     }
+
+    /**
+     * Whether [call] is an intercom or paging call: one the caller asks to be answered by itself
+     * ([isIntercom]), or one out to the intercom feature code of [codes] ("*801005").
+     */
+    fun isIntercom(call: Call, codes: FeatureCodes): Boolean =
+        isIntercom(call) ||
+            (call.dir == Call.Dir.Outgoing && FeatureDial.parse(call.remoteAddress.username.orEmpty(), codes)?.first == FeatureDial.Action.INTERCOM)
 
     /**
      * Who is on the other side. Once the call is established the PBX may tell us that the party

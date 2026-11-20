@@ -3,6 +3,7 @@ package com.sky.siplink.core
 import com.sky.siplink.core.logic.AccountRoute
 import com.sky.siplink.core.logic.DnsMessage
 import com.sky.siplink.core.logic.LineAdapt
+import com.sky.siplink.core.logic.NetAddress
 import com.sky.siplink.core.logic.SipPing
 import com.sky.siplink.core.logic.StunMessage
 import com.sky.siplink.core.model.Mapped
@@ -111,17 +112,24 @@ internal object LineNetwork {
     class UdpProbe(val from: Mapped?, val answer: OptionsAnswer?, val stun: Mapped?)
 
     /**
+     * Who asks in an OPTIONS request: `user@domain` of an account, and what the app calls itself
+     * in its other requests.
+     */
+    class Asker(val from: String, val userAgent: String)
+
+    /**
      * Sends an OPTIONS request to the SIP server at [host]:[port] and, with [stun], a STUN Binding
      * request from the same socket: where both see it says what kind of NAT is in the way.
      *
+     * @param asker who asks; null: no OPTIONS request, the STUN server alone is asked (a line on
+     *   TLS sends nothing in clear)
      * @param size the request is padded to this many bytes, to see whether large packets get through
      */
     fun probeUdp(
         host: String,
         port: Int,
         server: String,
-        from: String,
-        userAgent: String,
+        asker: Asker?,
         size: Int = 0,
         stun: InetSocketAddress? = null,
     ): UdpProbe = try {
@@ -133,17 +141,17 @@ internal object LineNetwork {
             socket.disconnect()
             val local = hostPort(sentFrom)
             val token = Random.nextLong().toULong().toString(16)
-            val request = SipPing.options(server, from, local, token, userAgent, size).toByteArray(Charsets.US_ASCII)
+            val request = asker?.let { SipPing.options(server, it.from, local, token, it.userAgent, size).toByteArray(Charsets.US_ASCII) }
             val stunId = Random.nextBytes(STUN_ID)
             val stunRequest = stun?.let { StunMessage.request(stunId) }
             var answer: OptionsAnswer? = null
             var mapped: Mapped? = null
             for (attempt in 1..ATTEMPTS) {
                 val sentAt = System.nanoTime()
-                if (answer == null) socket.send(DatagramPacket(request, request.size, target))
+                if (request != null && answer == null) socket.send(DatagramPacket(request, request.size, target))
                 if (stunRequest != null && mapped == null) socket.send(DatagramPacket(stunRequest, stunRequest.size, stun))
                 val deadline = sentAt + TIMEOUT_MS * NANOS_PER_MS
-                while (answer == null || (stun != null && mapped == null)) {
+                while ((request != null && answer == null) || (stun != null && mapped == null)) {
                     val left = (deadline - System.nanoTime()) / NANOS_PER_MS
                     if (left <= 0) break
                     socket.soTimeout = left.toInt()
@@ -160,7 +168,7 @@ internal object LineNetwork {
                         mapped = mapped ?: StunMessage.mapped(packet.data, packet.length, stunId)
                     }
                 }
-                if (answer != null && (stun == null || mapped != null)) break
+                if ((request == null || answer != null) && (stun == null || mapped != null)) break
             }
             UdpProbe(sentFrom, answer, mapped)
         }
@@ -207,20 +215,26 @@ internal object LineNetwork {
     fun hostPort(mapped: Mapped): String = if (':' in mapped.address) "[${mapped.address}]:${mapped.port}" else "${mapped.address}:${mapped.port}"
 
     /**
-     * Which transports get through to a SIP server, for the adaptation of a line.
+     * Which transports get through to a SIP server, for the adaptation of a line. The address
+     * asked is the one the SIP core goes to ([NetAddress.coreOrder]).
      *
      * @param host the server's name or address, [port] its port when the account names one
-     * @param server and [from] as for [answers]
+     * @param server the server as the account knows it, `host[:port]`
+     * @param asker who asks over UDP; null: UDP is not asked (a line on TLS sends nothing in clear)
+     * @param ipv6 the SIP core's IPv6 is on; [sixFirst] it goes over IPv6 first ([NetAddress.sixFirst])
      */
-    fun transports(host: String, port: Int?, server: String, from: String, userAgent: String): LineAdapt.Probe {
-        val address = lookup(host).firstOrNull() ?: return LineAdapt.Probe(udp = false, udpLarge = null, tcp = false, tls = null)
+    fun transports(host: String, port: Int?, server: String, asker: Asker?, ipv6: Boolean, sixFirst: Boolean): LineAdapt.Probe {
+        val address = NetAddress.coreOrder(lookup(host), ipv6, sixFirst).firstOrNull() ?: return nothing(asker)
         val sipPort = port ?: AccountRoute.defaultPort(SipTransport.UDP)
-        val udp = probeUdp(address, sipPort, server, from, userAgent).answer != null
-        val large = if (udp) probeUdp(address, sipPort, server, from, userAgent, size = LineAdapt.LARGE_PACKET).answer != null else null
+        val udp = asker?.let { probeUdp(address, sipPort, server, it).answer != null }
+        val large = if (udp == true) probeUdp(address, sipPort, server, asker, size = LineAdapt.INVITE_PACKET).answer != null else null
         // An account that names its port has TLS somewhere else, if at all: only its own port is tried.
         val tls = if (port == null) connectMs(address, AccountRoute.defaultPort(SipTransport.TLS)) != null else null
         return LineAdapt.Probe(udp = udp, udpLarge = large, tcp = connectMs(address, sipPort) != null, tls = tls)
     }
+
+    /** What a probe that reached nothing found. */
+    fun nothing(asker: Asker?): LineAdapt.Probe = LineAdapt.Probe(udp = if (asker == null) null else false, udpLarge = null, tcp = false, tls = null)
 
     private const val STUN_ID = 12
     private const val NANOS_PER_MS = 1_000_000L

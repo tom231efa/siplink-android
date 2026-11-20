@@ -3,10 +3,14 @@ package com.sky.siplink.core
 import android.os.Handler
 import android.os.SystemClock
 import android.util.Log
+import com.sky.siplink.BuildConfig
 import com.sky.siplink.core.logic.AccountRoute
 import com.sky.siplink.core.logic.LineAdapt
+import com.sky.siplink.core.logic.LineAdapt.Leave
+import com.sky.siplink.core.logic.LineSteps
 import com.sky.siplink.core.logic.LineVerdict
 import com.sky.siplink.core.logic.MediaAdapt
+import com.sky.siplink.core.logic.NetAddress
 import com.sky.siplink.core.logic.NetworkKey
 import com.sky.siplink.core.model.MediaFlow
 import com.sky.siplink.core.model.NatKind
@@ -23,19 +27,20 @@ import org.linphone.core.CoreListenerStub
 import org.linphone.core.NatPolicy
 import org.linphone.core.RegistrationState
 import org.linphone.core.TransportType
-import java.util.concurrent.Executors
 
 /**
  * Adapts the lines (an account on one network) to what the network lets through, by the rules
- * of [LineAdapt]: another transport where UDP does not get through, a shorter registration
- * interval where the NAT forgets the line between registrations. After the calls it gives a line
- * whose sound went one way ICE ([MediaAdapt]), and notes an account whose PBX names an address of
- * its own network as the next hop of its calls, which nothing on the phone repairs. It also has
- * the SIP core look at the network again where it would not notice a change by itself, and holds
- * back while the network wants a login first.
+ * of [LineAdapt] and the steps of [LineSteps]: another transport where UDP does not get through,
+ * a shorter registration interval where the NAT forgets the line between registrations. After the
+ * calls it gives a line whose sound went one way ICE ([MediaAdapt]), and notes an account whose PBX
+ * names an address of its own network as the next hop of its calls, which nothing on the phone
+ * repairs. It also has the SIP core look at the network again where it would not notice a change
+ * by itself, and holds back while the network wants a login first.
  *
  * What it changes it changes in the core only: the account's own settings are kept aside
- * ([own]) and shown and edited as they are. Main thread only.
+ * ([own]) and shown and edited as they are. A line on TLS (its own transport, or the one it
+ * adapted to) sends nothing in clear: no OPTIONS request with the account's identity. Release
+ * builds log no addresses. Main thread only.
  *
  * @param find the account with an id, [idOf] the id of an account
  * @param onChanged called after an account was changed, so that it is shown anew
@@ -47,9 +52,6 @@ internal class LineDoctor(
     private val idOf: (Account) -> String,
     private val onChanged: (Account) -> Unit,
 ) {
-    /** The settings of an account that the doctor replaced in the core. */
-    class Own(val transport: SipTransport, val expires: Int, val outbound: Boolean)
-
     /** What is going on with one account on the current network. */
     private class State {
         /** Looks again whether a registration that failed for want of an answer still fails ([LineAdapt.CONFIRM_MS]). */
@@ -60,8 +62,12 @@ internal class LineDoctor(
 
         /** The line went back to its own transport for a test; this is the one to return to if that fails. */
         var revertTo: SipTransport? = null
-        var probing = false
-        var probedAt = 0L
+
+        /** When the server was last asked for this account ([SystemClock.elapsedRealtime]); null: not on this network. */
+        var probedAt: Long? = null
+
+        /** Probes asked for too soon after the last one: they run once [LineSteps.MIN_PROBE_GAP_MS] is over. */
+        val later = ArrayList<Runnable>()
 
         /** Where the server saw the line at its last registration, and over which server and when. */
         var contact: String? = null
@@ -76,28 +82,32 @@ internal class LineDoctor(
             field = value
             dropStates()
             applyAll()
-            if (!value) core.config.cleanSection(SECTION)
+            if (!value) records.forgetAll()
         }
 
-    /** The STUN server the lines' ICE asks, `host[:port]`; empty: none, and no ICE. */
+    /** The STUN server the lines' ICE asks, `host[:port]`; empty: none, and no ICE. A value that cannot be one is not taken. */
     var stunServer = ""
         set(value) {
-            if (field == value) return
-            field = value
+            val next = value.trim()
+            if (field == next || !MediaAdapt.isValidStunServer(next)) return
+            field = next
             applyAll()
         }
 
+    private val records = LineRecords(core.config)
+    private val prober = LineProber(handler)
     private val adapted = MutableStateFlow<Map<String, SipTransport>>(emptyMap())
 
     /** The accounts whose line runs on another transport than their own, with that transport. */
     val transports: StateFlow<Map<String, SipTransport>> = adapted.asStateFlow()
 
     private val states = HashMap<String, State>()
-    private val workers = Executors.newSingleThreadExecutor()
-    private val probes = HashMap<String, ArrayList<(LineAdapt.Probe) -> Unit>>()
     private var facts: NetworkFacts? = NetworkWatch.facts
     private var network: String? = facts?.let(NetworkKey::of)
     private var networkChangedAt = SystemClock.elapsedRealtime()
+
+    /** Only an IPv6 prefix changed during a call: the SIP core looks at the network once the calls are over. */
+    private var lookAgainAfterCalls = false
     private val lookAgain = Runnable {
         // As the SDK does itself when the kind of network changes: connections anew, registrations anew.
         Log.i(TAG, "Another network of the same kind: the SIP core looks again")
@@ -111,6 +121,7 @@ internal class LineDoctor(
             if (state == Call.State.Error && call.dir == Call.Dir.Outgoing && call.errorInfo.protocolCode == TIMEOUT) {
                 call.params.account?.let(::callTimedOut)
             }
+            if (state == Call.State.Released && lookAgainAfterCalls) handler.post(::lookAgainIfIdle)
         }
     }
 
@@ -118,27 +129,14 @@ internal class LineDoctor(
         // Both live as long as the core, which is as long as the process.
         NetworkWatch.listen(::onNetwork)
         core.addListener(calls)
-        prune()
+        records.prune(System.currentTimeMillis())
         publish()
     }
 
     // ---------------------------------------------------------------- for the account manager
 
     /** The account's own settings where the doctor replaced some in the core; null where it did not. */
-    fun own(id: String): Own? {
-        val fields = core.config.getString(APPLIED, id, null)?.split(SEPARATOR) ?: return null
-        if (fields.size != 3) return null
-        val transport = SipTransport.entries.firstOrNull { it.name == fields[0] } ?: return null
-        return Own(transport, fields[1].toIntOrNull() ?: return null, fields[2] == "1")
-    }
-
-    private fun storeOwn(id: String, own: Own?) {
-        if (own == null) {
-            core.config.cleanEntry(APPLIED, id)
-        } else {
-            core.config.setString(APPLIED, id, listOf(own.transport.name, own.expires, if (own.outbound) "1" else "0").joinToString(SEPARATOR))
-        }
-    }
+    fun own(id: String): LineSteps.Own? = records.own(id)
 
     /** Whether registrations that fail are to be taken as they come: the network wants a login first. */
     fun holds(): Boolean = enabled && facts?.captive == true
@@ -149,21 +147,15 @@ internal class LineDoctor(
      * [reapply] follows once the change is in the core.
      */
     fun release(id: String, params: AccountParams, forget: Boolean) {
-        own(id)?.let { own ->
-            params.serverAddress?.clone()?.let { server ->
-                server.transport = typeOf(own.transport)
-                params.serverAddress = server
-            }
-            params.expires = own.expires
-            params.isOutboundProxyEnabled = own.outbound
-            params.natPolicy = null
-            storeOwn(id, null)
+        records.own(id)?.let { own ->
+            putOwn(params, own)
+            records.storeOwn(id, null)
         }
         if (forget) {
-            forgetRecords(id)
-            core.config.cleanEntry(PBX, id)
+            records.forget(id)
+            records.storePbxHop(id, null)
         }
-        states.remove(id)?.let(::cancelConfirm)
+        states.remove(id)?.let(::cancel)
     }
 
     /** Puts the lines on what is remembered for them once the user's change is in the core. */
@@ -171,11 +163,29 @@ internal class LineDoctor(
 
     /** Account [id] is gone, or the user wants it on its own settings everywhere ("restore defaults"). */
     fun forget(id: String) {
-        forgetRecords(id)
-        core.config.cleanEntry(PBX, id)
-        states.remove(id)?.let(::cancelConfirm)
+        records.forget(id)
+        records.storePbxHop(id, null)
+        states.remove(id)?.let(::cancel)
+        // Back on its own settings here and now: before the network is known the lines are not touched otherwise.
+        val account = find(id)
+        val own = records.own(id)
+        if (account != null && own != null) {
+            account.params = account.params.clone().also { putOwn(it, own) }
+            onChanged(account)
+        }
+        records.storeOwn(id, null)
         applyAll()
-        storeOwn(id, null)
+        publish()
+    }
+
+    private fun putOwn(params: AccountParams, own: LineSteps.Own) {
+        params.serverAddress?.clone()?.let { server ->
+            server.transport = typeOf(own.transport)
+            params.serverAddress = server
+        }
+        params.expires = own.expires
+        params.isOutboundProxyEnabled = own.outbound
+        params.natPolicy = null
     }
 
     /**
@@ -188,7 +198,7 @@ internal class LineDoctor(
 
     fun adaptation(id: String): Adaptation? {
         val params = find(id)?.params ?: return null
-        val own = own(id) ?: return null
+        val own = records.own(id) ?: return null
         return Adaptation(
             transport = transportOf(params.serverAddress).takeIf { it != own.transport },
             expires = params.expires.takeIf { it != own.expires },
@@ -197,7 +207,7 @@ internal class LineDoctor(
     }
 
     /** Whether the PBX of account [id] named an address of its own network as the next hop of its last call ([MediaAdapt.unreachableHop]). */
-    fun pbxUnreachable(id: String): Boolean = core.config.getString(PBX, id, null) != null
+    fun pbxUnreachable(id: String): Boolean = records.pbxHop(id) != null
 
     /** The core looks at the network anew (its connections may be new ones): where the server sees the lines starts over. */
     fun onReachable() {
@@ -221,56 +231,41 @@ internal class LineDoctor(
         cancelConfirm(state)
         state.trial = null
         val now = System.currentTimeMillis()
-        val stored = record(id)
+        val stored = records.record(id, network)
         var record = stored ?: LineAdapt.Record()
         if (state.revertTo != null) {
-            // Back on its own transport, the line holds: what was learned here no longer applies.
+            // Back on its own transport for a test, the line holds.
             state.revertTo = null
-            record = record.copy(failed = emptySet(), reverts = 0)
+            record = LineSteps.returned(record)
         }
         record = LineAdapt.bindingSteady(watchBinding(account, id, state, record, now), now)
+        record = LineSteps.held(record, now)
         if (!record.isPlain && now - record.usedAt > USED_AT_STEP_MS) record = record.copy(usedAt = now)
-        // ICE in use is given up from time to time, between calls: the line tries it again when its sound goes one way again.
-        if (record.ice == MediaAdapt.Ice.ON && now >= record.iceRetestAt && core.callsNb == 0) {
-            record = record.copy(ice = MediaAdapt.Ice.NONE, iceRetestAt = 0)
-        }
-        if (record != (stored ?: LineAdapt.Record())) store(id, record)
+        record = MediaAdapt.iceWithdrawn(record, now, core.callsNb)
+        if (record != (stored ?: LineAdapt.Record())) records.store(id, network, record)
         // Not from inside this notification: the core is in the middle of the registration.
         if (record.expires != stored?.expires || record.ice != (stored?.ice ?: MediaAdapt.Ice.NONE)) handler.post(::applyAll)
-        val ownExpires = own(id)?.expires ?: account.params.expires
+        val ownExpires = records.own(id)?.expires ?: account.params.expires
         val newLoss = record.lost.lastOrNull() != stored?.lost?.lastOrNull()
         if (newLoss && record.lost.isNotEmpty() && LineAdapt.bindingHopeless(record, ownExpires)) {
-            leaveForgetfulUdp(account, id, state)
+            // The NAT forgets the line however often it registers: over TCP the connection keeps it.
+            leaveUdp(account, id, state, Leave.NAT_FORGETS) { true }
         } else {
             retestIfDue(account, id, state, record, now)
         }
     }
 
-    /** The NAT forgets the line however often it registers: over TCP the connection keeps it. */
-    private fun leaveForgetfulUdp(account: Account, id: String, state: State) =
-        // Over TCP the line is not watched for losses: the interval of its own is enough there.
-        leaveUdp(account, id, state, { true }) { it.copy(expires = null, lost = emptyList()) }
-
-    /**
-     * Moves a line on UDP that works, but not well enough, to another transport the probe finds
-     * open, when [why] holds for what the probe found; [change] adds to the record what else changes.
-     */
-    private fun leaveUdp(
-        account: Account,
-        id: String,
-        state: State,
-        why: (LineAdapt.Probe) -> Boolean,
-        change: (LineAdapt.Record) -> LineAdapt.Record = { it },
-    ) {
-        val own = own(id)?.transport ?: transportOf(account.params.serverAddress)
+    /** Moves a line on UDP that works, but not well enough ([why]), to another transport, when [unfit] holds for what the probe found. */
+    private fun leaveUdp(account: Account, id: String, state: State, why: Leave, unfit: (LineAdapt.Probe) -> Boolean) {
+        val own = ownTransport(id, account)
         if (own != SipTransport.UDP || transportOf(account.params.serverAddress) != SipTransport.UDP) return
         probe(account, id, state) { probe ->
-            if (!why(probe)) return@probe
-            val record = record(id) ?: LineAdapt.Record()
-            val next = LineAdapt.nextTransport(own, SipTransport.UDP, record.failed, probe, udpUnfit = true) ?: return@probe
-            val now = System.currentTimeMillis()
-            state.trial = next
-            store(id, change(record).copy(transport = next, retestAt = now + LineAdapt.retestDelay(record.reverts), usedAt = now))
+            if (!unfit(probe)) return@probe
+            val change = LineSteps.leaveUdp(records.record(id, network) ?: LineAdapt.Record(), own, probe, why, System.currentTimeMillis())
+                ?: return@probe
+            Log.i(TAG, "Line $id leaves UDP ($why) for ${change.trial}")
+            state.trial = change.trial
+            records.store(id, network, change.record)
             applyAll()
         }
     }
@@ -293,25 +288,36 @@ internal class LineDoctor(
         state.contactServer = server
         state.contactAt = SystemClock.elapsedRealtime()
         if (!sameWay || before == contact) return record
-        return LineAdapt.bindingLost(record, own(id)?.expires ?: params.expires, now)
+        return LineAdapt.bindingLost(record, records.own(id)?.expires ?: params.expires, now)
     }
 
     /**
-     * A registration failed. One that got no answer is looked at again after a while
-     * ([LineAdapt.CONFIRM_MS]); [stillFailing] follows if it has not recovered by then.
+     * A registration failed ([LineSteps.failure]). One that got no answer is looked at again after
+     * a while ([LineAdapt.CONFIRM_MS]); one the server refused on a transport on test ends that
+     * test at once. Either way a line on another transport looks whether its own one gets through
+     * again, when it is time.
      */
     private fun failed(account: Account, id: String, state: State) {
-        if (holds() || !LineAdapt.isTransportFailure(account.errorInfo.protocolCode)) {
-            cancelConfirm(state)
-            return
+        val onTrial = state.revertTo != null || state.trial != null || transportOf(account.params.serverAddress) != ownTransport(id, account)
+        when (LineSteps.failure(account.errorInfo.protocolCode, holds(), onTrial)) {
+            LineSteps.Failure.NOTHING -> cancelConfirm(state)
+            LineSteps.Failure.END_TRIAL -> {
+                cancelConfirm(state)
+                stillFailing(account, id, state, refused = true)
+            }
+            LineSteps.Failure.CONFIRM -> confirmLater(id, state)
         }
+        if (!holds()) records.record(id, network)?.let { retestIfDue(account, id, state, it, System.currentTimeMillis()) }
+    }
+
+    private fun confirmLater(id: String, state: State) {
         if (state.confirm != null) return
         val task = Runnable {
             state.confirm = null
             val current = find(id)
             // Dropped states (another network, another setting) have nothing to confirm.
             if (current != null && enabled && states[id] === state && current.state == RegistrationState.Failed && !holds()) {
-                stillFailing(current, id, state)
+                stillFailing(current, id, state, refused = false)
             }
         }
         state.confirm = task
@@ -323,49 +329,44 @@ internal class LineDoctor(
         state.confirm = null
     }
 
+    /** Stops whatever is pending for a line whose state is dropped. */
+    private fun cancel(state: State) {
+        cancelConfirm(state)
+        state.later.forEach(handler::removeCallbacks)
+        state.later.clear()
+    }
+
     /** Starts over with every account: another network, or the adaptation switched. */
     private fun dropStates() {
-        states.values.forEach(::cancelConfirm)
+        states.values.forEach(::cancel)
         states.clear()
     }
 
-    private fun stillFailing(account: Account, id: String, state: State) {
-        val now = System.currentTimeMillis()
+    /**
+     * The registration still fails ([refused]: the server refused the line on the transport on
+     * test): back to what worked after a test of its own transport, else the next transport the
+     * probe finds open, or its own one ([LineSteps.afterFailure]).
+     */
+    private fun stillFailing(account: Account, id: String, state: State, refused: Boolean) {
         val revertTo = state.revertTo
         if (revertTo != null) {
             // Back on its own transport for a test, the line did not hold: back to what worked, and a longer wait.
             state.revertTo = null
-            val record = record(id) ?: LineAdapt.Record()
-            val reverts = record.reverts + 1
-            store(id, record.copy(transport = revertTo, reverts = reverts, retestAt = now + LineAdapt.retestDelay(reverts), usedAt = now))
+            records.store(id, network, LineSteps.revertFailed(records.record(id, network) ?: LineAdapt.Record(), revertTo, System.currentTimeMillis()))
             applyAll()
             return
         }
-        val own = own(id)?.transport ?: transportOf(account.params.serverAddress)
+        val own = ownTransport(id, account)
         if (own != SipTransport.UDP) return
-        // A line found on another transport (as after a start) is on trial as well.
+        // A line found on another transport (as after a start) is on test as well.
         val trial = state.trial ?: transportOf(account.params.serverAddress).takeIf { it != own }
         probe(account, id, state) { probe ->
-            Log.i(TAG, "Line $id fails on ${account.params.serverAddress?.asStringUriOnly()}: $probe")
             val current = find(id)?.params?.serverAddress ?: return@probe
-            val record = record(id) ?: LineAdapt.Record()
-            // A transport that is open but did not register is not tried here again; one that is
-            // closed now, like everything else, says nothing about it: the server is down.
-            val stillOpen = when (trial) {
-                SipTransport.TCP -> probe.tcp
-                SipTransport.TLS -> probe.tls == true
-                else -> false
-            }
-            if (!probe.udp && !probe.tcp && probe.tls != true) return@probe
-            val failed = if (trial != null && stillOpen) record.failed + trial else record.failed
-            val next = LineAdapt.nextTransport(own, transportOf(current), failed, probe, udpUnfit = probe.udp && probe.udpLarge == false)
-            state.trial = next
-            when {
-                next != null -> store(id, record.copy(transport = next, failed = failed, retestAt = now + LineAdapt.retestDelay(record.reverts), usedAt = now))
-                // Nothing left to try: its own transport again.
-                trial != null -> store(id, record.copy(transport = null, failed = failed, usedAt = now))
-                else -> return@probe
-            }
+            Log.i(TAG, "Line $id fails on ${transportOf(current)}${if (refused) ", refused" else ""}: $probe")
+            val record = records.record(id, network) ?: LineAdapt.Record()
+            val change = LineSteps.afterFailure(record, own, transportOf(current), trial, probe, refused, System.currentTimeMillis()) ?: return@probe
+            state.trial = change.trial
+            records.store(id, network, change.record)
             applyAll()
         }
     }
@@ -377,56 +378,65 @@ internal class LineDoctor(
     private fun callTimedOut(account: Account) {
         if (!enabled || holds()) return
         val id = idOf(account)
-        leaveUdp(account, id, states.getOrPut(id, ::State), { it.udp && it.udpLarge == false })
+        leaveUdp(account, id, states.getOrPut(id, ::State), Leave.LARGE_LOST) { it.udp == true && it.udpLarge == false }
     }
 
-    /** A line on another transport looks again, when it is time, whether its own one gets through now. */
+    /** A line on another transport looks again, when it is time, whether its own one gets through now ([LineSteps.retestDue]). */
     private fun retestIfDue(account: Account, id: String, state: State, record: LineAdapt.Record, now: Long) {
+        if (!LineSteps.retestDue(record, now, core.callsNb)) return
         val adapted = record.transport ?: return
-        if (now < record.retestAt || core.callsNb > 0) return
         probe(account, id, state) { probe ->
-            val current = record(id) ?: return@probe
+            val current = records.record(id, network) ?: return@probe
             if (current.transport != adapted) return@probe
-            if (LineAdapt.udpBack(probe) && core.callsNb == 0) {
-                state.revertTo = adapted
-                store(id, current.copy(transport = null))
-                applyAll()
-            } else {
-                store(id, current.copy(retestAt = now + LineAdapt.retestDelay(current.reverts)))
-            }
+            val (next, back) = LineSteps.afterRetest(current, probe, core.callsNb, System.currentTimeMillis())
+            if (back) state.revertTo = adapted
+            records.store(id, network, next)
+            if (back) applyAll()
         }
     }
 
     /**
-     * Asks which transports get through to the server of [account], on a worker thread, once for
-     * all accounts on that server; not more often than every [MIN_PROBE_GAP_MS] for one account.
+     * Asks which transports get through to the server of [account] ([LineProber]), once for all
+     * accounts on that server; not more often than every [LineSteps.MIN_PROBE_GAP_MS] for one
+     * account: one asked for sooner runs once that is over, as long as the line's state stands.
      */
     private fun probe(account: Account, id: String, state: State, then: (LineAdapt.Probe) -> Unit) {
-        val server = account.params.serverAddress ?: return
+        val params = account.params
+        val server = params.serverAddress ?: return
+        val ask = LineProber.Ask(
+            host = connectHostOf(server),
+            port = server.port.takeIf { it > 0 },
+            server = hostPortOf(server),
+            asker = askerOf(id, account),
+            ipv6 = core.isIpv6Enabled,
+            sixFirst = NetAddress.sixFirst(account.contactAddress?.domain, facts?.addresses.orEmpty()),
+        )
+        val answer: (LineAdapt.Probe) -> Unit = { probe -> if (enabled && states[id] === state) then(probe) }
+        if (prober.join(network, ask, answer)) return
         val now = SystemClock.elapsedRealtime()
-        if (state.probing || (state.probedAt > 0 && now - state.probedAt < MIN_PROBE_GAP_MS)) return
-        state.probing = true
-        state.probedAt = now
-        val host = connectHostOf(server)
-        val port = server.port.takeIf { it > 0 }
-        val target = hostPortOf(server)
-        val from = fromOf(account.params.identityAddress)
-        val userAgent = core.userAgent
-        val key = "$host|$port"
-        val answer: (LineAdapt.Probe) -> Unit = { probe ->
-            state.probing = false
-            if (enabled && states[id] === state) then(probe)
-        }
-        probes[key]?.let {
-            it += answer
+        val wait = LineSteps.probeWait(state.probedAt, now)
+        if (wait > 0) {
+            val retry = object : Runnable {
+                override fun run() {
+                    state.later.remove(this)
+                    if (enabled && states[id] === state) find(id)?.let { probe(it, id, state, then) }
+                }
+            }
+            state.later += retry
+            handler.postDelayed(retry, wait)
             return
         }
-        probes[key] = arrayListOf(answer)
-        workers.execute {
-            val probe = LineNetwork.transports(host, port, target, from, userAgent)
-            handler.post { probes.remove(key)?.forEach { it(probe) } }
-        }
+        state.probedAt = now
+        prober.start(network, ask, answer)
     }
+
+    /** Who the OPTIONS requests of account [id] come from; null for a line on TLS, which sends nothing in clear. */
+    private fun askerOf(id: String, account: Account): LineNetwork.Asker? {
+        val tls = transportOf(account.params.serverAddress) == SipTransport.TLS || ownTransport(id, account) == SipTransport.TLS
+        return if (tls) null else LineNetwork.Asker(fromOf(account.params.identityAddress), core.userAgent)
+    }
+
+    private fun ownTransport(id: String, account: Account): SipTransport = records.own(id)?.transport ?: transportOf(account.params.serverAddress)
 
     // ---------------------------------------------------------------- the network
 
@@ -443,41 +453,29 @@ internal class LineDoctor(
         }
         if (!enabled) return
         if (moved) {
-            prune()
+            records.prune(System.currentTimeMillis())
             applyAll()
         }
         // Logged in at last: the registrations need not wait for their next try.
         if (before?.captive == true && !next.captive) core.refreshRegisters()
-        if (NetworkKey.unnoticedChange(before, next)) {
+        if (before != null && NetworkKey.unnoticedChange(before, next)) {
             handler.removeCallbacks(lookAgain)
-            handler.postDelayed(lookAgain, SETTLE_MS)
+            // A new IPv6 prefix alone does not cut a call short: the core looks once the calls are over.
+            lookAgainAfterCalls = inCall() && NetworkKey.onlyIpv6Changed(before, next)
+            if (!lookAgainAfterCalls) handler.postDelayed(lookAgain, SETTLE_MS)
         }
     }
 
-    // ---------------------------------------------------------------- what is remembered
-
-    private fun record(id: String): LineAdapt.Record? {
-        val net = network ?: return null
-        return LineAdapt.decode(core.config.getString(SECTION, LineAdapt.key(id, net), null))
+    private fun lookAgainIfIdle() {
+        if (!lookAgainAfterCalls || inCall()) return
+        lookAgainAfterCalls = false
+        lookAgain.run()
     }
 
-    private fun store(id: String, record: LineAdapt.Record) {
-        val net = network ?: return
-        val key = LineAdapt.key(id, net)
-        if (record.isPlain) core.config.cleanEntry(SECTION, key) else core.config.setString(SECTION, key, LineAdapt.encode(record))
-    }
+    /** Whether a call is under way: one that ended may still be in the core's list a moment. */
+    private fun inCall(): Boolean = core.calls.any { it.state != Call.State.End && it.state != Call.State.Error && it.state != Call.State.Released }
 
-    private fun keys(): List<String> = core.config.getKeysNamesList(SECTION).toList()
-
-    private fun forgetRecords(id: String) {
-        keys().filter { LineAdapt.accountOf(it) == id }.forEach { core.config.cleanEntry(SECTION, it) }
-    }
-
-    /** Forgets the networks not seen for long, and those beyond the most recent ones. */
-    private fun prune() {
-        val records = keys().associateWith { LineAdapt.decode(core.config.getString(SECTION, it, null)) ?: LineAdapt.Record() }
-        LineAdapt.stale(records, System.currentTimeMillis()).forEach { core.config.cleanEntry(SECTION, it) }
-    }
+    // ---------------------------------------------------------------- what the lines run on
 
     /** Puts every line on what is remembered for it on this network, or back on its own settings. */
     private fun applyAll() {
@@ -487,105 +485,26 @@ internal class LineDoctor(
         publish()
     }
 
-    /** Puts the line of [account] on what is remembered for it, or back on its own settings. */
+    /** Puts the line of [account] on what is remembered for it ([LineSteps.target]), or back on its own settings. */
     private fun apply(account: Account) {
         val id = idOf(account)
         val params = account.params
         val server = params.serverAddress ?: return
-        val own = own(id) ?: Own(transportOf(server), params.expires, params.isOutboundProxyEnabled)
-        val record = if (enabled) record(id) else null
-        val transport = record?.transport?.takeIf { own.transport == SipTransport.UDP } ?: own.transport
-        val expires = record?.expires?.takeIf { it < own.expires } ?: own.expires
-        // Calls take the way of the registration, which the domain of the account may not lead to.
-        val outbound = transport != own.transport || own.outbound
-        val stun = stunServer.trim().takeIf { MediaAdapt.stunServer(it) != null }
-        val ice = stun?.takeIf { record?.ice == MediaAdapt.Ice.TRIAL || record?.ice == MediaAdapt.Ice.ON }
+        val own = records.own(id) ?: LineSteps.Own(transportOf(server), params.expires, params.isOutboundProxyEnabled)
+        val target = LineSteps.target(own, if (enabled) records.record(id, network) else null, stunServer)
         val iceNow = params.natPolicy?.takeIf { it.isIceEnabled }?.stunServer
-        if (transport != transportOf(server) || expires != params.expires || outbound != params.isOutboundProxyEnabled || ice != iceNow) {
+        if (target.transport != transportOf(server) || target.expires != params.expires || target.outbound != params.isOutboundProxyEnabled || target.ice != iceNow) {
             val next = params.clone()
-            if (transport != transportOf(server)) next.serverAddress = server.clone().also { it.transport = typeOf(transport) }
-            next.expires = expires
-            next.isOutboundProxyEnabled = outbound
-            next.natPolicy = ice?.let(::icePolicy)
+            if (target.transport != transportOf(server)) next.serverAddress = server.clone().also { it.transport = typeOf(target.transport) }
+            next.expires = target.expires
+            next.isOutboundProxyEnabled = target.outbound
+            next.natPolicy = target.ice?.let(::icePolicy)
             account.params = next
             states[id]?.contact = null
             onChanged(account)
-            Log.i(TAG, "Line $id on $network: $transport, ${expires}s, outbound $outbound, ICE ${ice != null} (own: ${own.transport}, ${own.expires}s, ${own.outbound})")
+            Log.i(TAG, "Line $id on $network: ${target.transport}, ${target.expires}s, outbound ${target.outbound}, ICE ${target.ice != null} (own: ${own.transport}, ${own.expires}s, ${own.outbound})")
         }
-        val adapted = transport != own.transport || expires != own.expires || outbound != own.outbound || ice != null
-        storeOwn(id, if (adapted) own else null)
-    }
-
-    // ---------------------------------------------------------------- the sound of the calls
-
-    /**
-     * A call whose sound ran ended on [account]: what the line needs for its sound ([MediaAdapt])
-     * is in place for the next call, and whether its PBX names a next hop nothing reaches is noted
-     * (with the adaptation switched off as well: it changes nothing).
-     */
-    fun onCallFinished(account: Account, call: CallMediaWatch.Finished) {
-        val id = idOf(account)
-        val net = network
-        val flow = call.summary?.flow
-        val hop = MediaAdapt.nextHop(call.contact, call.recordRoute, call.outgoing)
-        Log.i(TAG, "Line $id: a call ${if (call.outgoing) "out, set up in ${call.setupMs} ms" else "in"}, sound $flow, ICE ${call.summary?.ice}, next hop $hop")
-        var ice = MediaAdapt.Ice.NONE
-        if (enabled) {
-            val record = record(id) ?: LineAdapt.Record()
-            val tookPart = MediaAdapt.iceTookPart(call.outgoing, call.summary?.ice.orEmpty())
-            ice = MediaAdapt.iceAfter(record.ice, flow, tookPart, call.setupMs)
-            if (ice != record.ice) {
-                Log.i(TAG, "Line $id on $net: ICE $ice")
-                val retestAt = if (ice == MediaAdapt.Ice.ON) System.currentTimeMillis() + LineAdapt.retestDelay(0) else 0
-                store(id, record.copy(ice = ice, iceRetestAt = retestAt))
-                if (ice == MediaAdapt.Ice.REFUSED) applyAll()
-            }
-        }
-        val stun = MediaAdapt.stunServer(stunServer)
-        val askNat = enabled && stun != null && ice == MediaAdapt.Ice.NONE && (flow == MediaFlow.SEND_ONLY || flow == MediaFlow.RECEIVE_ONLY)
-        val params = account.params
-        val server = params.serverAddress ?: return
-        val host = connectHostOf(server)
-        val port = server.port.takeIf { it > 0 && transportOf(server) != SipTransport.TLS } ?: AccountRoute.defaultPort(SipTransport.UDP)
-        val target = hostPortOf(server)
-        val from = fromOf(params.identityAddress)
-        val userAgent = core.userAgent
-        val local = facts?.addresses.orEmpty()
-        workers.execute {
-            val addresses = LineNetwork.lookup(host)
-            val nat = if (askNat) natOf(addresses.firstOrNull(), port, target, from, userAgent, stun, local) else NatKind.UNKNOWN
-            val unreachable = MediaAdapt.unreachableHop(hop, addresses + host, local)
-            handler.post { learn(id, net, flow, nat, hop.takeIf { unreachable }) }
-        }
-    }
-
-    /** What lies between the phone and the server at [address], as the SIP server and the STUN server see one socket. Worker thread. */
-    private fun natOf(address: String?, port: Int, target: String, from: String, userAgent: String, stun: Pair<String, Int>?, local: List<String>): NatKind {
-        if (address == null || stun == null) return NatKind.UNKNOWN
-        val stunAddress = LineNetwork.socketAddress(stun.first, stun.second) ?: return NatKind.UNKNOWN
-        val probe = LineNetwork.probeUdp(address, port, target, from, userAgent, stun = stunAddress)
-        return LineVerdict.nat(local, probe.from?.let { LineVerdict.seen(probe.answer, it) }, probe.stun)
-    }
-
-    /** After a call of line [id] on network [net]: ICE on trial where it may help; [unreachableHop]: the next hop its PBX named, which nothing reaches. */
-    private fun learn(id: String, net: String?, flow: MediaFlow?, nat: NatKind, unreachableHop: String?) {
-        if ((unreachableHop != null) != pbxUnreachable(id)) {
-            if (unreachableHop == null) {
-                core.config.cleanEntry(PBX, id)
-                Log.i(TAG, "Line $id: the PBX names a next hop this phone reaches again")
-            } else {
-                core.config.setString(PBX, id, unreachableHop)
-                Log.i(TAG, "Line $id: the PBX names $unreachableHop, of its own network, as the next hop of its calls: their ACK and BYE get lost")
-            }
-            find(id)?.let(onChanged)
-        }
-        if (!enabled) return
-        val record = record(id) ?: LineAdapt.Record()
-        if (net == network && MediaAdapt.tryIce(flow, nat, MediaAdapt.stunServer(stunServer) != null, record.ice)) {
-            Log.i(TAG, "Line $id on $net: ICE on trial ($flow, $nat)")
-            store(id, record.copy(ice = MediaAdapt.Ice.TRIAL, usedAt = System.currentTimeMillis()))
-            applyAll()
-        }
+        records.storeOwn(id, own.takeIf { target.adapted(it) })
     }
 
     /** A NAT policy that gathers ICE candidates, with the address the STUN server at [server] sees among them. */
@@ -598,30 +517,95 @@ internal class LineDoctor(
     private fun publish() {
         adapted.value = core.accountList.mapNotNull { account ->
             val id = idOf(account)
-            val own = own(id) ?: return@mapNotNull null
+            val own = records.own(id) ?: return@mapNotNull null
             val transport = transportOf(account.params.serverAddress)
             if (transport == own.transport) null else id to transport
         }.toMap()
     }
 
+    // ---------------------------------------------------------------- the sound of the calls
+
+    /**
+     * A call ended on [account]: where ICE stands on its line ([MediaAdapt.afterCall]) is in place
+     * for the next call. After one whose sound ran, a line whose sound went one way may try ICE
+     * ([learn]), and whether its PBX names a next hop nothing reaches is noted (with the
+     * adaptation switched off as well: it changes nothing).
+     */
+    fun onCallFinished(account: Account, call: CallMediaWatch.Finished) {
+        val id = idOf(account)
+        val net = network
+        // An intercom or paging call may go one way by design: it teaches nothing.
+        val flow = call.summary?.flow?.takeIf { call.judged }
+        val tookPart = MediaAdapt.iceTookPart(call.outgoing, call.iceOffered, call.summary?.ice.orEmpty())
+        Log.i(TAG, "Line $id: a call ${if (call.outgoing) "out, set up in ${call.setupMs} ms" else "in"}, sound ${call.summary?.flow}${if (call.judged) "" else " (not judged)"}, ICE ${call.summary?.ice}, failed ${call.failedWith}")
+        var ice = MediaAdapt.Ice.NONE
+        // A call not judged that ran tells nothing of ICE either, nor counts.
+        if (enabled && (call.judged || call.failedWith != null)) {
+            val record = records.record(id, net) ?: LineAdapt.Record()
+            val next = MediaAdapt.afterCall(record, flow, tookPart, call.setupMs, call.failedWith, System.currentTimeMillis())
+            ice = next.ice
+            if (next != record) {
+                if (next.ice != record.ice) Log.i(TAG, "Line $id on $net: ICE ${next.ice}")
+                records.store(id, net, next)
+                if (next.ice != record.ice) applyAll()
+            }
+        }
+        // A call that never ran says nothing of the way of its sound, nor of its PBX's next hop.
+        if (call.failedWith != null) return
+        val hop = MediaAdapt.nextHop(call.contact, call.recordRoute, call.outgoing)
+        if (BuildConfig.DEBUG) Log.d(TAG, "Line $id: next hop $hop")
+        val stun = MediaAdapt.stunServer(stunServer)
+        val askNat = enabled && stun != null && ice == MediaAdapt.Ice.NONE && (flow == MediaFlow.SEND_ONLY || flow == MediaFlow.RECEIVE_ONLY)
+        val params = account.params
+        val server = params.serverAddress ?: return
+        val host = connectHostOf(server)
+        val port = server.port.takeIf { it > 0 && transportOf(server) != SipTransport.TLS } ?: AccountRoute.defaultPort(SipTransport.UDP)
+        val target = hostPortOf(server)
+        // A line on TLS sends nothing in clear: its NAT is told by the STUN server alone.
+        val asker = askerOf(id, account)
+        val local = facts?.addresses.orEmpty()
+        val subnets = facts?.subnets.orEmpty()
+        val ipv6 = core.isIpv6Enabled
+        val sixFirst = NetAddress.sixFirst(account.contactAddress?.domain, local)
+        prober.run {
+            val addresses = LineNetwork.lookup(host)
+            val address = NetAddress.coreOrder(addresses, ipv6, sixFirst).firstOrNull()
+            val nat = if (askNat) natOf(address, port, target, asker, stun, local) else NatKind.UNKNOWN
+            val unreachable = MediaAdapt.unreachableHop(hop, addresses + host, subnets)
+            handler.post { learn(id, net, flow, nat, hop.takeIf { unreachable }) }
+        }
+    }
+
+    /** What lies between the phone and the server at [address], as the SIP server (unless [asker] is null) and the STUN server see one socket. Worker thread. */
+    private fun natOf(address: String?, port: Int, target: String, asker: LineNetwork.Asker?, stun: Pair<String, Int>?, local: List<String>): NatKind {
+        if (address == null || stun == null) return NatKind.UNKNOWN
+        val stunAddress = LineNetwork.socketAddress(stun.first, stun.second) ?: return NatKind.UNKNOWN
+        val probe = LineNetwork.probeUdp(address, port, target, asker, stun = stunAddress)
+        return LineVerdict.nat(local, probe.from?.let { LineVerdict.seen(probe.answer, it) }, probe.stun)
+    }
+
+    /** After a call of line [id] on network [net]: ICE on trial where it may help; [unreachableHop]: the next hop its PBX named, which nothing reaches. */
+    private fun learn(id: String, net: String?, flow: MediaFlow?, nat: NatKind, unreachableHop: String?) {
+        if ((unreachableHop != null) != pbxUnreachable(id)) {
+            records.storePbxHop(id, unreachableHop)
+            if (unreachableHop == null) {
+                Log.i(TAG, "Line $id: the PBX names a next hop this phone reaches again")
+            } else {
+                Log.i(TAG, "Line $id: the PBX names an address of its own network as the next hop of its calls: their ACK and BYE get lost")
+                if (BuildConfig.DEBUG) Log.d(TAG, "Line $id: unreachable next hop $unreachableHop")
+            }
+            find(id)?.let(onChanged)
+        }
+        if (!enabled) return
+        val record = records.record(id, net) ?: LineAdapt.Record()
+        if (net == network && MediaAdapt.tryIce(flow, nat, MediaAdapt.stunServer(stunServer) != null, record.ice)) {
+            Log.i(TAG, "Line $id on $net: ICE on trial ($flow, $nat)")
+            records.store(id, net, record.copy(ice = MediaAdapt.Ice.TRIAL, iceCalls = 0, usedAt = System.currentTimeMillis()))
+            applyAll()
+        }
+    }
+
     private companion object {
-        /** Section of the core configuration holding the [LineAdapt.Record]s, keyed by `account|network`. */
-        const val SECTION = "siplink_line_adapt"
-
-        /** Section holding the [Own] settings of the accounts the doctor changed, keyed by account id. */
-        const val APPLIED = "siplink_line_applied"
-
-        /** Section holding, by account id, the next hop of its PBX's last call where nothing reaches that ([pbxUnreachable]). */
-        const val PBX = "siplink_line_pbx"
-        const val SEPARATOR = "|"
-
-        /**
-         * A server is asked again for one account after this long at the earliest: PBXs block who
-         * asks too often. Shorter than [LineAdapt.CONFIRM_MS], so that a confirmed failure is
-         * always looked into.
-         */
-        const val MIN_PROBE_GAP_MS = 30_000L
-
         /** A change of address settles for this long before the core looks at the network again. */
         const val SETTLE_MS = 2_000L
 

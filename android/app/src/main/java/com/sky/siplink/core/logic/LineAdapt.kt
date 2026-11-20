@@ -25,6 +25,12 @@ object LineAdapt {
      * @param usedAt when the phone was last on this network with this account
      * @param ice where ICE stands for the sound of the line ([MediaAdapt])
      * @param iceRetestAt when ICE in use is given up to see whether the line still needs it (ms since the epoch)
+     * @param left why the line left UDP, while that counts: until it is back on UDP and holds there
+     * @param backAt when the line went back to UDP after the NAT forgot it ([Leave.NAT_FORGETS]),
+     *   until it held there a day; 0: it did not, or it held
+     * @param iceRetests how often ICE in use was given up and the line needed it again: the next
+     *   time it is given up later ([retestDelay])
+     * @param iceCalls calls with ICE on trial that told nothing ([MediaAdapt.TRIAL_CALLS])
      */
     data class Record(
         val transport: SipTransport? = null,
@@ -36,10 +42,27 @@ object LineAdapt {
         val usedAt: Long = 0,
         val ice: MediaAdapt.Ice = MediaAdapt.Ice.NONE,
         val iceRetestAt: Long = 0,
+        val left: Leave? = null,
+        val backAt: Long = 0,
+        val iceRetests: Int = 0,
+        val iceCalls: Int = 0,
     ) {
         /** Nothing in effect and nothing to remember. */
         val isPlain: Boolean
-            get() = transport == null && expires == null && failed.isEmpty() && lost.isEmpty() && reverts == 0 && ice == MediaAdapt.Ice.NONE
+            get() = transport == null && expires == null && failed.isEmpty() && lost.isEmpty() && reverts == 0 &&
+                ice == MediaAdapt.Ice.NONE && left == null && backAt == 0L && iceRetests == 0 && iceCalls == 0
+    }
+
+    /** Why a line left UDP. */
+    enum class Leave {
+        /** Its requests got no answer over UDP. */
+        NO_ANSWER,
+
+        /** Small requests got through and large ones did not. */
+        LARGE_LOST,
+
+        /** The NAT kept forgetting it between registrations ([bindingHopeless]): no probe shows that. */
+        NAT_FORGETS,
     }
 
     private const val SEPARATOR = '|'
@@ -54,11 +77,16 @@ object LineAdapt {
         record.usedAt.toString(),
         record.ice.name,
         record.iceRetestAt.toString(),
+        record.left?.name.orEmpty(),
+        record.backAt.toString(),
+        record.iceRetests.toString(),
+        record.iceCalls.toString(),
     ).joinToString(SEPARATOR.toString())
 
+    /** The record of [text]; null for none. One written before the last four fields came lacks them. */
     fun decode(text: String?): Record? {
         val fields = text?.split(SEPARATOR) ?: return null
-        if (fields.size != 9) return null
+        if (fields.size != FIELDS && fields.size != FIELDS_BEFORE) return null
         return Record(
             transport = SipTransport.entries.firstOrNull { it.name == fields[0] },
             expires = fields[1].toIntOrNull(),
@@ -69,8 +97,15 @@ object LineAdapt {
             usedAt = fields[6].toLongOrNull() ?: 0,
             ice = MediaAdapt.Ice.entries.firstOrNull { it.name == fields[7] } ?: MediaAdapt.Ice.NONE,
             iceRetestAt = fields[8].toLongOrNull() ?: 0,
+            left = Leave.entries.firstOrNull { it.name == fields.getOrNull(9) },
+            backAt = fields.getOrNull(10)?.toLongOrNull() ?: 0,
+            iceRetests = fields.getOrNull(11)?.toIntOrNull() ?: 0,
+            iceCalls = fields.getOrNull(12)?.toIntOrNull() ?: 0,
         )
     }
+
+    private const val FIELDS = 13
+    private const val FIELDS_BEFORE = 9
 
     /**
      * Whether a registration that failed with SIP status [code] may be the network's doing: no
@@ -89,15 +124,27 @@ object LineAdapt {
     /**
      * What the probes found on the way to the server of an account.
      *
-     * @param udp the server answered an OPTIONS request over UDP
-     * @param udpLarge it answered one padded to [LARGE_PACKET] bytes; null: not asked
+     * @param udp the server answered an OPTIONS request over UDP; null: not asked (a line on TLS
+     *   sends nothing in clear)
+     * @param udpLarge it answered one padded to [INVITE_PACKET] bytes; null: not asked
      * @param tcp a TCP connection to its SIP port was taken
      * @param tls a TCP connection to its TLS port was taken; null: TLS is out of the question there
      */
-    data class Probe(val udp: Boolean, val udpLarge: Boolean?, val tcp: Boolean, val tls: Boolean?)
+    data class Probe(val udp: Boolean?, val udpLarge: Boolean?, val tcp: Boolean, val tls: Boolean?)
 
-    /** The size of the padded request: past the 1300 bytes from which RFC 3261 §18.1.1 wants TCP. */
+    /**
+     * A request this large still fits one packet on an Ethernet or Wi-Fi path (MTU 1500), and is
+     * past the 1300 bytes from which RFC 3261 §18.1.1 wants TCP. The line checks send it where one
+     * of [INVITE_PACKET] bytes is lost, to tell a lost fragment from a path that loses large packets.
+     */
     const val LARGE_PACKET = 1400
+
+    /**
+     * About the size of an INVITE with ICE candidates (1831 bytes were seen in the NAT lab, more
+     * with IPv6 candidates or video): beyond one packet, so it goes in IP fragments, which some
+     * NATs and firewalls drop.
+     */
+    const val INVITE_PACKET = 2000
 
     /**
      * The transport to try next on a line now on [current] whose own transport is [own], or null
@@ -109,7 +156,7 @@ object LineAdapt {
      */
     fun nextTransport(own: SipTransport, current: SipTransport, failed: Set<SipTransport>, probe: Probe, udpUnfit: Boolean = false): SipTransport? {
         if (own != SipTransport.UDP) return null
-        if (current == SipTransport.UDP && probe.udp && !udpUnfit) return null
+        if (current == SipTransport.UDP && probe.udp == true && !udpUnfit) return null
         val order = listOf(SipTransport.TCP, SipTransport.TLS)
         val after = order.dropWhile { current != SipTransport.UDP && it != current }.drop(if (current == SipTransport.UDP) 0 else 1)
         return after.firstOrNull { candidate ->
@@ -122,9 +169,9 @@ object LineAdapt {
     }
 
     /** Whether the line can go back to UDP: small and large requests get through again. */
-    fun udpBack(probe: Probe): Boolean = probe.udp && probe.udpLarge != false
+    fun udpBack(probe: Probe): Boolean = probe.udp == true && probe.udpLarge != false
 
-    private const val DAY_MS = 24 * 60 * 60_000L
+    const val DAY_MS = 24 * 60 * 60_000L
     private const val MAX_RETEST_MS = 7 * DAY_MS
 
     /** When to test again after the line needed another transport [reverts] times after going back: a day, doubling up to a week. */

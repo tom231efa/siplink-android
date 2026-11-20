@@ -1,0 +1,217 @@
+package com.sky.siplink.core.logic
+
+import com.sky.siplink.core.logic.LineAdapt.Leave
+import com.sky.siplink.core.logic.LineAdapt.Probe
+import com.sky.siplink.core.logic.LineAdapt.Record
+import com.sky.siplink.core.logic.LineSteps.Failure
+import com.sky.siplink.core.logic.LineSteps.Own
+import com.sky.siplink.core.logic.MediaAdapt.Ice
+import com.sky.siplink.core.model.SipTransport.TCP
+import com.sky.siplink.core.model.SipTransport.TLS
+import com.sky.siplink.core.model.SipTransport.UDP
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class LineStepsTest {
+    private val day = LineAdapt.DAY_MS
+    private val now = 100 * day
+    private val blocked = Probe(udp = false, udpLarge = null, tcp = true, tls = true)
+    private val open = Probe(udp = true, udpLarge = true, tcp = true, tls = true)
+    private val down = Probe(udp = false, udpLarge = null, tcp = false, tls = false)
+
+    @Test
+    fun `own settings survive being stored`() {
+        val own = Own(UDP, 3600, outbound = true)
+        assertEquals(own, LineSteps.decodeOwn(LineSteps.encodeOwn(own)))
+        assertNull(LineSteps.decodeOwn("UDP|x|1"))
+        assertNull(LineSteps.decodeOwn(null))
+    }
+
+    @Test
+    fun `no answer is confirmed first, a refusal ends a test at once`() {
+        assertEquals(Failure.CONFIRM, LineSteps.failure(408, holds = false, onTrial = false))
+        assertEquals(Failure.CONFIRM, LineSteps.failure(503, holds = false, onTrial = true))
+        assertEquals(Failure.END_TRIAL, LineSteps.failure(403, holds = false, onTrial = true))
+        assertEquals(Failure.END_TRIAL, LineSteps.failure(488, holds = false, onTrial = true))
+        // On its own transport a refusal is the account's own business: wrong password, unknown user.
+        assertEquals(Failure.NOTHING, LineSteps.failure(401, holds = false, onTrial = false))
+        // Behind a login page nothing counts.
+        assertEquals(Failure.NOTHING, LineSteps.failure(408, holds = true, onTrial = true))
+        assertEquals(Failure.NOTHING, LineSteps.failure(403, holds = true, onTrial = true))
+    }
+
+    @Test
+    fun `a line whose udp gets no answer moves on to what the probe found open`() {
+        val change = LineSteps.afterFailure(Record(), UDP, UDP, null, blocked, refused = false, now = now)!!
+        assertEquals(TCP, change.trial)
+        assertEquals(TCP, change.record.transport)
+        assertEquals(Leave.NO_ANSWER, change.record.left)
+        assertEquals(now + day, change.record.retestAt)
+        val large = LineSteps.afterFailure(Record(), UDP, UDP, null, open.copy(udpLarge = false), refused = false, now = now)!!
+        assertEquals(Leave.LARGE_LOST, large.record.left)
+    }
+
+    @Test
+    fun `a server that is down changes nothing`() {
+        assertNull(LineSteps.afterFailure(Record(), UDP, UDP, null, down, refused = false, now = now))
+        assertNull(LineSteps.afterFailure(Record(transport = TCP), UDP, TCP, TCP, down, refused = false, now = now))
+        // An account set to TCP or TLS is never changed.
+        assertNull(LineSteps.afterFailure(Record(), TCP, TCP, null, blocked, refused = false, now = now))
+    }
+
+    @Test
+    fun `a transport on test that the server refused ends its test, on to the next or back to the own one`() {
+        val onTcp = Record(transport = TCP, left = Leave.NO_ANSWER)
+        // Refused over TCP while TLS is open: TLS is next.
+        val next = LineSteps.afterFailure(onTcp, UDP, TCP, TCP, blocked, refused = true, now = now)!!
+        assertEquals(TLS, next.trial)
+        assertEquals(setOf(TCP), next.record.failed)
+        assertEquals(Leave.NO_ANSWER, next.record.left)
+        // Nothing left: back on its own transport, with TCP not tried here again.
+        val back = LineSteps.afterFailure(onTcp, UDP, TCP, TCP, blocked.copy(tls = false), refused = true, now = now)!!
+        assertNull(back.trial)
+        assertNull(back.record.transport)
+        assertNull(back.record.left)
+        assertEquals(setOf(TCP), back.record.failed)
+        // Refused, the transport counts as open even where the probe found nothing: the server answered on it.
+        val refusedEverywhere = LineSteps.afterFailure(Record(transport = TLS, failed = setOf(TCP)), UDP, TLS, TLS, down, refused = true, now = now)!!
+        assertNull(refusedEverywhere.record.transport)
+        assertEquals(setOf(TCP, TLS), refusedEverywhere.record.failed)
+    }
+
+    @Test
+    fun `a transport on test that got no answer either is only marked where it is open`() {
+        val closedTcp = LineSteps.afterFailure(Record(transport = TCP), UDP, TCP, TCP, open.copy(tcp = false, tls = false), refused = false, now = now)!!
+        assertEquals(emptySet<Any>(), closedTcp.record.failed)
+        assertNull(closedTcp.record.transport)
+        val openTcp = LineSteps.afterFailure(Record(transport = TCP), UDP, TCP, TCP, blocked, refused = false, now = now)!!
+        assertEquals(setOf(TCP), openTcp.record.failed)
+        assertEquals(TLS, openTcp.trial)
+    }
+
+    @Test
+    fun `a test of the own transport that fails goes back to what worked, with a longer wait`() {
+        val back = LineSteps.revertFailed(Record(transport = null, reverts = 1, backAt = now - 10), TCP, now)
+        assertEquals(TCP, back.transport)
+        assertEquals(2, back.reverts)
+        assertEquals(now + 4 * day, back.retestAt)
+        assertEquals(0L, back.backAt)
+    }
+
+    @Test
+    fun `the own transport is tested again when it is time, between calls, and never from tls`() {
+        val onTcp = Record(transport = TCP, retestAt = now)
+        assertTrue(LineSteps.retestDue(onTcp, now, calls = 0))
+        assertFalse(LineSteps.retestDue(onTcp, now - 1, calls = 0))
+        assertFalse(LineSteps.retestDue(onTcp, now, calls = 1))
+        assertFalse(LineSteps.retestDue(Record(), now, calls = 0))
+        // From TLS the probe would send a request in clear: the line stays on TLS there.
+        assertFalse(LineSteps.retestDue(Record(transport = TLS, retestAt = now), now, calls = 0))
+    }
+
+    @Test
+    fun `a retest goes back where udp gets through, else waits again`() {
+        val onTcp = Record(transport = TCP, reverts = 1, left = Leave.NO_ANSWER)
+        val (back, goes) = LineSteps.afterRetest(onTcp, open, calls = 0, now = now)
+        assertTrue(goes)
+        assertNull(back.transport)
+        assertEquals(0L, back.backAt)
+        val (waits, stays) = LineSteps.afterRetest(onTcp, blocked, calls = 0, now = now)
+        assertFalse(stays)
+        assertEquals(TCP, waits.transport)
+        assertEquals(now + 2 * day, waits.retestAt)
+        assertFalse(LineSteps.afterRetest(onTcp, open, calls = 1, now = now).second)
+        // Once back and registered, what was learned no longer applies.
+        val held = LineSteps.returned(back.copy(failed = setOf(TLS)))
+        assertEquals(Record(), held)
+    }
+
+    @Test
+    fun `a line that left udp because the nat forgot it is judged by the day that follows its return`() {
+        val left = LineSteps.leaveUdp(Record(expires = 300, lost = listOf(now - 10)), UDP, open, Leave.NAT_FORGETS, now)!!
+        assertEquals(TCP, left.trial)
+        assertEquals(Leave.NAT_FORGETS, left.record.left)
+        assertNull(left.record.expires)
+        assertTrue(left.record.lost.isEmpty())
+        assertEquals(0, left.record.reverts)
+        // A probe cannot tell whether the NAT still forgets: back on UDP once it answers, and watched.
+        val due = now + day
+        val (back, goes) = LineSteps.afterRetest(left.record, open, calls = 0, now = due)
+        assertTrue(goes)
+        assertEquals(due, back.backAt)
+        val registered = LineSteps.returned(back)
+        assertEquals(Leave.NAT_FORGETS, registered.left)
+        assertEquals(due, registered.backAt)
+        // It forgets the line again within the day: off UDP once more, and a longer wait.
+        val again = LineSteps.leaveUdp(registered.copy(lost = listOf(due + 1000, due + 2000)), UDP, open, Leave.NAT_FORGETS, due + 3000)!!
+        assertEquals(1, again.record.reverts)
+        assertEquals(0L, again.record.backAt)
+        assertEquals(due + 3000 + 2 * day, again.record.retestAt)
+        // It holds a day without a loss: forgotten.
+        assertEquals(registered, LineSteps.held(registered, due + day - 1))
+        val settled = LineSteps.held(registered, due + day)
+        assertNull(settled.left)
+        assertEquals(0L, settled.backAt)
+        assertEquals(0, settled.reverts)
+        // A loss since the return keeps it watched.
+        val lossy = registered.copy(lost = listOf(due + 10))
+        assertEquals(lossy, LineSteps.held(lossy, due + day))
+    }
+
+    @Test
+    fun `large packets lost move a line on udp only where something else is open`() {
+        val change = LineSteps.leaveUdp(Record(), UDP, open.copy(udpLarge = false), Leave.LARGE_LOST, now)!!
+        assertEquals(TCP, change.record.transport)
+        assertEquals(Leave.LARGE_LOST, change.record.left)
+        assertNull(LineSteps.leaveUdp(Record(), UDP, open.copy(udpLarge = false, tcp = false, tls = false), Leave.LARGE_LOST, now))
+        assertNull(LineSteps.leaveUdp(Record(), TCP, open, Leave.LARGE_LOST, now))
+    }
+
+    @Test
+    fun `a server is asked at most every half minute for one line`() {
+        assertEquals(0L, LineSteps.probeWait(null, 5))
+        assertEquals(LineSteps.MIN_PROBE_GAP_MS - 1_000, LineSteps.probeWait(10_000, 11_000))
+        assertEquals(0L, LineSteps.probeWait(10_000, 10_000 + LineSteps.MIN_PROBE_GAP_MS))
+    }
+
+    @Test
+    fun `a line runs on what is remembered for it, and on its own settings without a record`() {
+        val own = Own(UDP, 3600, outbound = false)
+        val record = Record(transport = TCP, expires = 300, ice = Ice.TRIAL)
+        val adapted = LineSteps.target(own, record, "stun.example.com")
+        assertEquals(LineSteps.Target(TCP, 300, true, "stun.example.com"), adapted)
+        assertTrue(adapted.adapted(own))
+        // Switched off, or forgotten: the own settings.
+        val plain = LineSteps.target(own, null, "stun.example.com")
+        assertEquals(LineSteps.Target(UDP, 3600, false, null), plain)
+        assertFalse(plain.adapted(own))
+        // ICE needs a STUN server that can be one, and a trial or a keeper.
+        assertNull(LineSteps.target(own, record, "").ice)
+        assertNull(LineSteps.target(own, record, "stun example").ice)
+        assertNull(LineSteps.target(own, record.copy(ice = Ice.REFUSED), "stun.example.com").ice)
+        assertEquals("stun.example.com:3479", LineSteps.target(own, record.copy(ice = Ice.ON), " stun.example.com:3479 ").ice)
+        // An account set to TCP keeps it; a longer interval than its own is not taken.
+        assertEquals(TCP, LineSteps.target(own.copy(transport = TCP), record.copy(transport = TLS), "").transport)
+        assertEquals(3600, LineSteps.target(own, Record(expires = 7200), "").expires)
+    }
+
+    @Test
+    fun `a line blocked on udp walks to tcp, is refused there, and goes back to its own transport`() {
+        // UDP gets no answer: confirmed, then on to TCP.
+        assertEquals(Failure.CONFIRM, LineSteps.failure(408, holds = false, onTrial = false))
+        val toTcp = LineSteps.afterFailure(Record(), UDP, UDP, null, blocked.copy(tls = false), refused = false, now = now)!!
+        assertEquals(TCP, toTcp.trial)
+        // TCP refuses the registration (403): the test ends at once, and nothing else is open.
+        assertEquals(Failure.END_TRIAL, LineSteps.failure(403, holds = false, onTrial = true))
+        val back = LineSteps.afterFailure(toTcp.record, UDP, TCP, toTcp.trial, blocked.copy(tls = false), refused = true, now = now + 1)!!
+        assertNull(back.trial)
+        assertNull(back.record.transport)
+        // Still no answer over UDP: nothing more to try, nothing changes.
+        assertNull(LineSteps.afterFailure(back.record, UDP, UDP, null, blocked.copy(tls = false), refused = false, now = now + 2))
+        // Nothing stays in effect that would put it back on TCP.
+        assertEquals(LineSteps.Target(UDP, 3600, false, null), LineSteps.target(Own(UDP, 3600, false), back.record, ""))
+    }
+}

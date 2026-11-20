@@ -20,6 +20,7 @@ import kotlin.concurrent.thread
 /** The probes of the line checks against small servers on this machine. */
 class LineNetworkTest {
     private val loopback = InetAddress.getByName("127.0.0.1")
+    private val asker = LineNetwork.Asker("1001@example.com", "test")
     private val closing = ArrayList<AutoCloseable>()
 
     @After
@@ -75,7 +76,7 @@ class LineNetworkTest {
     @Test
     fun `the answer tells where the server saw the probe`() {
         val (port, _) = sipServer()
-        val probe = LineNetwork.probeUdp("127.0.0.1", port, "127.0.0.1:$port", "1001@example.com", "test")
+        val probe = LineNetwork.probeUdp("127.0.0.1", port, "127.0.0.1:$port", asker)
         assertNotNull(probe.answer)
         val answer = probe.answer!!
         assertEquals(200, answer.status)
@@ -88,21 +89,32 @@ class LineNetworkTest {
     @Test
     fun `a padded probe has the size asked for`() {
         val (port, sizes) = sipServer()
-        LineNetwork.probeUdp("127.0.0.1", port, "127.0.0.1:$port", "1001@example.com", "test", size = LineAdapt.LARGE_PACKET)
-        assertEquals(LineAdapt.LARGE_PACKET, sizes.first())
+        LineNetwork.probeUdp("127.0.0.1", port, "127.0.0.1:$port", asker, size = LineAdapt.LARGE_PACKET)
+        LineNetwork.probeUdp("127.0.0.1", port, "127.0.0.1:$port", asker, size = LineAdapt.INVITE_PACKET)
+        assertEquals(listOf(LineAdapt.LARGE_PACKET, LineAdapt.INVITE_PACKET), sizes.toList())
+    }
+
+    @Test
+    fun `a probe without an asker sends the sip server nothing and asks the stun server alone`() {
+        val (port, sizes) = sipServer()
+        val stun = stunServer()
+        val probe = LineNetwork.probeUdp("127.0.0.1", port, "127.0.0.1:$port", null, stun = stun)
+        assertNull(probe.answer)
+        assertEquals(Mapped("127.0.0.1", probe.from!!.port), probe.stun)
+        assertTrue(sizes.isEmpty())
     }
 
     @Test
     fun `a server that drops large packets answers only the small probe`() {
         val (port, _) = sipServer(maxAnswered = 1200)
-        assertNotNull(LineNetwork.probeUdp("127.0.0.1", port, "127.0.0.1:$port", "a@b", "test").answer)
-        assertNull(LineNetwork.probeUdp("127.0.0.1", port, "127.0.0.1:$port", "a@b", "test", size = LineAdapt.LARGE_PACKET).answer)
+        assertNotNull(LineNetwork.probeUdp("127.0.0.1", port, "127.0.0.1:$port", asker).answer)
+        assertNull(LineNetwork.probeUdp("127.0.0.1", port, "127.0.0.1:$port", asker, size = LineAdapt.LARGE_PACKET).answer)
     }
 
     @Test
     fun `a rewritten via is seen`() {
         val (port, _) = sipServer { it.replace("Via: SIP/2.0/UDP 127.0.0.1:", "Via: SIP/2.0/UDP 192.0.2.1:") }
-        val answer = LineNetwork.probeUdp("127.0.0.1", port, "127.0.0.1:$port", "a@b", "test").answer
+        val answer = LineNetwork.probeUdp("127.0.0.1", port, "127.0.0.1:$port", asker).answer
         assertFalse(answer!!.sentByIntact)
     }
 
@@ -110,7 +122,7 @@ class LineNetworkTest {
     fun `the stun server is asked from the same socket`() {
         val (port, _) = sipServer()
         val stun = stunServer()
-        val probe = LineNetwork.probeUdp("127.0.0.1", port, "127.0.0.1:$port", "a@b", "test", stun = stun)
+        val probe = LineNetwork.probeUdp("127.0.0.1", port, "127.0.0.1:$port", asker, stun = stun)
         assertNotNull(probe.answer)
         assertEquals(Mapped("127.0.0.1", probe.from!!.port), probe.stun)
     }
@@ -118,7 +130,7 @@ class LineNetworkTest {
     @Test
     fun `nobody there means no answer`() {
         val silent = DatagramSocket(0, loopback).also(closing::add)
-        val probe = LineNetwork.probeUdp("127.0.0.1", silent.localPort, "127.0.0.1", "a@b", "test")
+        val probe = LineNetwork.probeUdp("127.0.0.1", silent.localPort, "127.0.0.1", asker)
         assertNull(probe.answer)
         assertNotNull(probe.from)
     }
@@ -136,8 +148,22 @@ class LineNetworkTest {
     fun `the transports of a server with a port of its own leave tls out`() {
         val (port, _) = sipServer(maxAnswered = 1200)
         val tcp = ServerSocket(port, 1, loopback).also(closing::add)
-        val probe = LineNetwork.transports("127.0.0.1", tcp.localPort, "127.0.0.1:$port", "a@b", "test")
+        val probe = LineNetwork.transports("127.0.0.1", tcp.localPort, "127.0.0.1:$port", asker, ipv6 = true, sixFirst = true)
         assertEquals(LineAdapt.Probe(udp = true, udpLarge = false, tcp = true, tls = null), probe)
+    }
+
+    @Test
+    fun `the transports of a line that sends nothing in clear leave udp unasked`() {
+        val (port, sizes) = sipServer()
+        val tcp = ServerSocket(port, 1, loopback).also(closing::add)
+        val probe = LineNetwork.transports("127.0.0.1", tcp.localPort, "127.0.0.1:$port", null, ipv6 = true, sixFirst = false)
+        assertEquals(LineAdapt.Probe(udp = null, udpLarge = null, tcp = true, tls = null), probe)
+        assertTrue(sizes.isEmpty())
+    }
+
+    @Test
+    fun `with ipv6 off an ipv6 server is not asked`() {
+        assertEquals(LineAdapt.Probe(udp = false, udpLarge = null, tcp = false, tls = null), LineNetwork.transports("::1", 5060, "[::1]", asker, ipv6 = false, sixFirst = true))
     }
 
     @Test

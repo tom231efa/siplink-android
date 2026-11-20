@@ -90,9 +90,15 @@ data class CallMediaSummary(
  * @param publicAddress where the servers see the phone: the STUN server, else the SIP server
  * @param server the server the account is on now, `host[:port]`
  * @param serverAddresses what the server's name was found to stand for
- * @param udp the SIP server's answer to an OPTIONS request over UDP; null without one
- * @param udpLarge the same, padded to [com.sky.siplink.core.logic.LineAdapt.LARGE_PACKET]
- *   bytes, got an answer; null: not asked (no answer to the small one)
+ * @param udp the SIP server's answer to an OPTIONS request over UDP; null without one, or when
+ *   none was sent ([udpAsked])
+ * @param udpAsked an OPTIONS request went over UDP: not on a line on TLS, which sends nothing in
+ *   clear (its NAT is told by the STUN server alone)
+ * @param udpInvite the same, padded to [com.sky.siplink.core.logic.LineAdapt.INVITE_PACKET]
+ *   bytes (sent in IP fragments), got an answer; null: not asked (no answer to the small one)
+ * @param udpLarge one padded to [com.sky.siplink.core.logic.LineAdapt.LARGE_PACKET] bytes (one
+ *   packet) got an answer; null: not asked, which it is only where the larger one got none
+ * @param ownTransport the account's own transport
  * @param tcpMs time to a TCP connection to the server's SIP port; null: none was taken
  * @param tlsMs the same to its TLS port
  * @param transport the transport the line runs on now
@@ -111,6 +117,8 @@ data class LineReport(
     val server: String,
     val serverAddresses: List<String>,
     val udp: OptionsAnswer?,
+    val udpAsked: Boolean,
+    val udpInvite: Boolean?,
     val udpLarge: Boolean?,
     val tcpMs: Long?,
     val tlsMs: Long?,
@@ -118,6 +126,7 @@ data class LineReport(
     val registration: RegState,
     val error: String?,
     val transport: SipTransport,
+    val ownTransport: SipTransport,
     val contact: String?,
     val expires: Int,
     val adaptedTransport: SipTransport?,

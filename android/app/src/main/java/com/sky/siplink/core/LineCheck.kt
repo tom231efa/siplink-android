@@ -8,6 +8,7 @@ import com.sky.siplink.core.logic.AccountRoute
 import com.sky.siplink.core.logic.LineAdapt
 import com.sky.siplink.core.logic.LineVerdict
 import com.sky.siplink.core.logic.MediaAdapt
+import com.sky.siplink.core.logic.NetAddress
 import com.sky.siplink.core.logic.NetworkKey
 import com.sky.siplink.core.model.LineReport
 import com.sky.siplink.core.model.NatKind
@@ -38,10 +39,16 @@ class LineCheck(private val context: Context, private val core: Core, private va
         val host = connectHostOf(server)
         val port = server.port.takeIf { it > 0 }
         val target = hostPortOf(server)
-        val from = fromOf(params.identityAddress)
-        val userAgent = core.userAgent
+        // A line on TLS sends nothing in clear: no OPTIONS request with the account's identity
+        // over UDP, the STUN server alone tells its NAT. (A request without the identity would be
+        // one from no known endpoint, which an Asterisk logs as "No matching endpoint found",
+        // where fail2ban counts it against the phone's public address.)
+        val quiet = transport == SipTransport.TLS || shown.transport == SipTransport.TLS
+        val asker = if (quiet) null else LineNetwork.Asker(fromOf(params.identityAddress), core.userAgent)
         val stun = accounts.stunServer
         val facts = NetworkWatch.facts
+        val ipv6 = core.isIpv6Enabled
+        val sixFirst = NetAddress.sixFirst(account.contactAddress?.domain, facts?.addresses.orEmpty())
         val adaptation = accounts.adaptation(id)
         val pbxUnreachable = accounts.pbxUnreachable(id)
         val power = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
@@ -51,17 +58,21 @@ class LineCheck(private val context: Context, private val core: Core, private va
         val lastCall = accounts.lastCall(id)
         worker.execute {
             val addresses = LineNetwork.lookup(host)
-            val address = addresses.firstOrNull()
+            // The address the SIP core goes to.
+            val address = NetAddress.coreOrder(addresses, ipv6, sixFirst).firstOrNull()
             // The port of the account counts for the transport it names; the others are tried on theirs.
             val sipPort = port?.takeIf { transport != SipTransport.TLS } ?: AccountRoute.defaultPort(SipTransport.UDP)
             val tlsPort = port?.takeIf { transport == SipTransport.TLS } ?: AccountRoute.defaultPort(SipTransport.TLS)
             val stunAddress = MediaAdapt.stunServer(stun)?.let { (stunHost, stunPort) -> LineNetwork.socketAddress(stunHost, stunPort) }
-            val udp = address?.let { LineNetwork.probeUdp(it, sipPort, target, from, userAgent, stun = stunAddress) }
+            val udp = address?.let { LineNetwork.probeUdp(it, sipPort, target, asker, stun = stunAddress) }
             val answer = udp?.answer
-            val large = if (address != null && answer != null) {
-                LineNetwork.probeUdp(address, sipPort, target, from, userAgent, size = LineAdapt.LARGE_PACKET).answer != null
-            } else {
-                null
+            fun answers(size: Int): Boolean = address != null && LineNetwork.probeUdp(address, sipPort, target, asker, size = size).answer != null
+            val invite = if (answer != null) answers(LineAdapt.INVITE_PACKET) else null
+            // One packet gets through where the fragments of a larger one do: only asked where those were lost.
+            val large = when (invite) {
+                null -> null
+                true -> true
+                false -> answers(LineAdapt.LARGE_PACKET)
             }
             val tcpMs = address?.let { LineNetwork.connectMs(it, sipPort) }
             val tlsMs = address?.let { LineNetwork.connectMs(it, tlsPort) }
@@ -76,6 +87,8 @@ class LineCheck(private val context: Context, private val core: Core, private va
                 server = target,
                 serverAddresses = addresses,
                 udp = answer,
+                udpAsked = asker != null && address != null,
+                udpInvite = invite,
                 udpLarge = large,
                 tcpMs = tcpMs,
                 tlsMs = tlsMs,
@@ -83,6 +96,7 @@ class LineCheck(private val context: Context, private val core: Core, private va
                 registration = shown.state,
                 error = shown.error,
                 transport = transport,
+                ownTransport = shown.transport,
                 contact = contact,
                 expires = expires,
                 adaptedTransport = adaptation?.transport,

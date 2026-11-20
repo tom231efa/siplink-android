@@ -17,7 +17,7 @@ class LineAdaptTest {
 
     @Test
     fun `records survive being stored`() {
-        val record = Record(TCP, 300, setOf(TLS), 123, 2, listOf(5, 6), 99, MediaAdapt.Ice.ON, 456)
+        val record = Record(TCP, 300, setOf(TLS), 123, 2, listOf(5, 6), 99, MediaAdapt.Ice.ON, 456, LineAdapt.Leave.NAT_FORGETS, 789, 3, 1)
         assertEquals(record, LineAdapt.decode(LineAdapt.encode(record)))
         assertEquals(Record(), LineAdapt.decode(LineAdapt.encode(Record())))
         assertNull(LineAdapt.decode("TCP|300"))
@@ -25,6 +25,14 @@ class LineAdaptTest {
         assertTrue(Record().isPlain)
         assertFalse(Record(transport = TCP).isPlain)
         assertFalse(Record(ice = MediaAdapt.Ice.REFUSED).isPlain)
+        assertFalse(Record(iceRetests = 1).isPlain)
+        assertFalse(Record(backAt = 1).isPlain)
+    }
+
+    @Test
+    fun `a record written before the last fields came is read with them empty`() {
+        val before = "TCP|300|TLS|123|2|5,6|99|ON|456"
+        assertEquals(Record(TCP, 300, setOf(TLS), 123, 2, listOf(5, 6), 99, MediaAdapt.Ice.ON, 456), LineAdapt.decode(before))
     }
 
     @Test
@@ -71,6 +79,8 @@ class LineAdaptTest {
         assertTrue(LineAdapt.udpBack(Probe(udp = true, udpLarge = null, tcp = true, tls = null)))
         assertFalse(LineAdapt.udpBack(Probe(udp = true, udpLarge = false, tcp = true, tls = null)))
         assertFalse(LineAdapt.udpBack(blocked))
+        // A probe that did not ask over UDP says nothing for it.
+        assertFalse(LineAdapt.udpBack(Probe(udp = null, udpLarge = null, tcp = true, tls = true)))
     }
 
     @Test
