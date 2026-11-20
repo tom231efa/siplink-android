@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="csv_unclosed_quote">引用符が閉じられていません</string>
+    <string name="csv_too_few_fields">フィールドが不足しています。形式：%1$s</string>
+    <string name="csv_unknown_type">不明な種類「%1$s」です。使用可能：%2$s</string>
+    <string name="csv_unknown_icon">不明なアイコン「%1$s」です。使用可能：%2$s</string>
+    <string name="csv_unknown_transport">不明なトランスポート「%1$s」です。使用可能：%2$s</string>
+    <string name="csv_choose_file">ファイルを選択</string>
+    <string name="csv_import">インポート</string>
+    <string name="csv_file_unreadable">選択したファイルを読み取れません</string>
+    <plurals name="csv_imported_accounts">
+        <item quantity="other">%1$s 件のアカウントをインポートしました</item>
+    </plurals>
+    <plurals name="csv_imported_shortcuts">
+        <item quantity="other">%1$s 個のショートカットキーをインポートしました</item>
+    </plurals>
+    <plurals name="csv_report_skipped">
+        <item quantity="other">。上限の %2$s 件を超えた %1$s 件はスキップしました</item>
+    </plurals>
+    <plurals name="csv_report_errors">
+        <item quantity="other">。%1$s 行にエラーがあります：</item>
+    </plurals>
+    <string name="csv_report_line">\n%1$s 行目：%2$s</string>
+    <string name="csv_report_more">\n…</string>
+</resources>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="form_required">必須</string>
+    <string name="form_taken">すでに存在します</string>
+    <string name="form_invalid">形式が正しくありません</string>
+    <string name="form_host_port">「ホスト[:ポート]」の形式で指定してください</string>
+    <string name="form_port_range">1～65535 にしてください</string>
+    <plurals name="form_max_chars">
+        <item quantity="other">%1$s 文字以内にしてください</item>
+    </plurals>
+    <string name="form_expand">展開</string>
+    <string name="form_collapse">折りたたむ</string>
+    <string name="form_password_show">パスワードを表示</string>
+    <string name="form_password_hide">パスワードを非表示</string>
+    <string name="form_placeholder_host_port">ホスト[:ポート]</string>
+</resources>

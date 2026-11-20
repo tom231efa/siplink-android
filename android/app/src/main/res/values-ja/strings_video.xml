@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="video_request">相手がビデオをオンにするよう求めています</string>
+    <string name="video_request_decline">拒否</string>
+    <string name="video_request_accept">オンにする</string>
+    <string name="video_answer_with_video">ビデオで応答</string>
+    <string name="video_answer_with_audio">音声で応答</string>
+    <string name="video_own_picture">自分の映像</string>
+    <string name="video_other_picture">相手の映像</string>
+    <string name="video_swap">映像を入れ替え</string>
+    <string name="video_move_left">左へ移動</string>
+    <string name="video_move_right">右へ移動</string>
+    <string name="video_move_up">上へ移動</string>
+    <string name="video_move_down">下へ移動</string>
+    <string name="video_show_whole">映像全体を表示</string>
+    <string name="video_fill">画面いっぱいに表示</string>
+    <string name="video_switch_camera">カメラを切り替え</string>
+    <string name="video_camera_off">カメラをオフ</string>
+    <string name="video_camera_on">カメラをオン</string>
+</resources>

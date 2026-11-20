@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="auto_answer_section_intercom">インターコム</string>
+    <string name="auto_answer_intercom">インターコムの自動応答</string>
+    <string name="auto_answer_intercom_speaker">インターコムでスピーカーを使用</string>
+    <string name="auto_answer_section_regular">通常の通話</string>
+    <string name="auto_answer_regular">自動応答</string>
+    <string name="auto_answer_delay">自動応答までの時間</string>
+    <string name="auto_answer_now">即時</string>
+    <plurals name="auto_answer_seconds">
+        <item quantity="other">%1$s 秒</item>
+    </plurals>
+</resources>

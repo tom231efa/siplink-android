@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="main_tab_dialer">ダイヤル</string>
+    <string name="main_tab_history">履歴</string>
+    <string name="main_tab_directory">電話帳</string>
+    <string name="main_tab_settings">設定</string>
+    <string name="main_tab_update_news">%1$s、アップデートがあります</string>
+    <string name="main_banner_incoming">着信：%1$s</string>
+    <string name="main_banner_outgoing">%1$s に発信中</string>
+    <string name="main_banner_in_call">通話中：%1$s</string>
+    <string name="main_banner_return">通話に戻る</string>
+    <string name="main_lock_screen_title">ロック画面での着信表示を許可</string>
+    <string name="main_lock_screen_text">SipLink に全画面通知の権限がありません。ロック画面では着信の通知のみが表示され、着信画面は表示されません。</string>
+    <string name="main_lock_screen_settings_failed">全画面通知の設定を開けません</string>
+    <string name="main_lock_screen_open_settings">設定を開く</string>
+    <string name="main_lock_screen_never">今後表示しない</string>
+</resources>

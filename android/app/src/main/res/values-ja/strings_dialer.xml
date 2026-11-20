@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="dialer_call_features">通話機能</string>
+    <string name="dialer_switch_to_pad">ダイヤルパッドに切り替え</string>
+    <string name="dialer_switch_to_keyboard">キーボードに切り替え</string>
+    <string name="dialer_add_account">SIP アカウントを追加</string>
+    <string name="dialer_no_accounts">SIP アカウントがありません</string>
+    <string name="dialer_choose_account">発信アカウントを選択</string>
+    <string name="dialer_dnd_on">おやすみモードがオンです</string>
+    <plurals name="dialer_new_voicemail">
+        <item quantity="other">新着ボイスメール %1$s 件</item>
+    </plurals>
+    <string name="dialer_number_hint">番号または SIP アドレスを入力</string>
+    <string name="dialer_address_label">番号または SIP アドレス</string>
+    <string name="dialer_address_example">例：%1$s、%2$s</string>
+    <string name="dialer_video_call">ビデオ通話</string>
+    <string name="dialer_shortcuts">ショートカットキー</string>
+    <string name="dialer_backspace">削除</string>
+    <string name="dialer_call">発信</string>
+</resources>

@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="room_name">会議室</string>
+    <plurals name="room_full">
+        <item quantity="other">会議室が満員です（最大 %1$s 人）</item>
+    </plurals>
+    <plurals name="room_free">
+        <item quantity="other">あと最大 %1$s 人追加できます</item>
+    </plurals>
+    <string name="room_not_now">少し待ってから再度お試しください</string>
+    <string name="room_retry_later">しばらくしてから再度お試しください</string>
+    <string name="room_create_failed">会議室を作成できませんでした</string>
+    <string name="room_rejoin_failed">会議室に戻れません</string>
+    <string name="room_join_failed">会議室に参加できません</string>
+    <string name="room_already_in">すでに会議室に参加しています</string>
+    <string name="room_member_queued">待機中</string>
+    <string name="room_member_calling">発信中</string>
+    <string name="room_member_ringing">呼び出し中</string>
+    <string name="room_member_connected">通話中</string>
+    <string name="room_member_held">保留中</string>
+    <string name="room_member_left">退出済み</string>
+    <string name="room_member_held_back">未発信</string>
+    <string name="room_line_full">回線の空きなし</string>
+    <string name="room_refused">PBX が拒否</string>
+    <string name="room_busy">話中</string>
+    <string name="room_unavailable">接続不可</string>
+    <string name="room_end_title">会議を終了しますか？</string>
+    <plurals name="room_end_text">
+        <item quantity="other">%1$s 件の通話を切断します。</item>
+    </plurals>
+    <string name="room_end_confirm">終了</string>
+    <string name="room_end">会議を終了</string>
+    <string name="room_add_members">参加者を追加</string>
+    <string name="room_show_readings">測定値を表示</string>
+    <string name="room_warning_heat">端末の温度が高すぎます</string>
+    <string name="room_warning_load">端末の負荷が高すぎます</string>
+    <string name="room_warning_memory">メモリ不足</string>
+    <string name="room_warning_network">ネットワーク品質が低下しています</string>
+    <string name="room_reading_cpu">CPU</string>
+    <string name="room_reading_thread">最も負荷の高いスレッド</string>
+    <string name="room_reading_temperature">端末の温度</string>
+    <string name="room_reading_memory">メモリ</string>
+    <string name="room_memory_low">不足</string>
+    <string name="room_memory_normal">正常</string>
+    <string name="room_thermal_unknown">不明</string>
+    <string name="room_thermal_none">正常</string>
+    <string name="room_thermal_light">軽度</string>
+    <string name="room_thermal_moderate">中度</string>
+    <string name="room_thermal_severe">重度</string>
+    <string name="room_thermal_critical">危険</string>
+    <string name="room_thermal_emergency">緊急</string>
+    <string name="room_thermal_shutdown">シャットダウン中</string>
+    <string name="room_link_readings">"ロス ↑%1$s%% ↓%2$s%%  ジッター %3$s ms  往復 %4$s ms"</string>
+    <string name="room_member_retry">%1$s に再発信</string>
+    <string name="room_member_remove">%1$s を削除</string>
+    <string name="room_member_hang_up">%1$s を切断</string>
+    <string name="room_signal_poor">通話品質が低下しています</string>
+    <string name="room_signal">通話品質 %1$s/%2$s</string>
+    <string name="room_away">離席中</string>
+    <string name="room_return">会議室に戻る</string>
+    <string name="room_waiting_new">新しい着信</string>
+    <string name="room_waiting_decline">拒否</string>
+    <string name="room_join">会議室に参加</string>
+    <string name="room_add_title">参加者を追加</string>
+    <string name="room_source_recent">最近の通話</string>
+    <string name="room_source_directory">電話帳</string>
+    <string name="room_source_shortcuts">ショートカットキー</string>
+    <string name="room_add_field">番号または名前</string>
+    <string name="room_add_number">番号を追加</string>
+    <string name="room_pick_remove">%1$s を削除</string>
+    <string name="room_call">発信</string>
+    <string name="room_call_count">発信（%1$s）</string>
+    <string name="room_candidate_in_room">%1$s · 会議室に参加済み</string>
+</resources>

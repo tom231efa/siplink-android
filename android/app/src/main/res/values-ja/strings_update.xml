@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="update_check_failed">アップデートの確認に失敗しました</string>
+    <string name="update_rate_limited">リクエストが多すぎます</string>
+    <string name="update_downloading">%1$s をダウンロード中</string>
+    <string name="update_downloaded">%1$s をダウンロードしました</string>
+    <string name="update_checking">確認中…</string>
+    <string name="update_available">アップデートがあります：%1$s</string>
+    <string name="update_skipped">%1$s をスキップしました</string>
+    <string name="update_latest">最新の状態です</string>
+    <string name="update_tap_to_check">タップしてアップデートを確認</string>
+</resources>

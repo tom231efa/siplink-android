@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="about_license_app">SipLink：GNU AGPL-3.0</string>
+    <string name="about_license_sdk">SIP スタック：Belledonne Communications Linphone SDK、GNU AGPLv3</string>
+    <string name="about_browser_failed">ブラウザを開けません</string>
+    <string name="about_repository">GitHub リポジトリ</string>
+    <string name="about_version">バージョン %1$s</string>
+    <string name="about_auto_check">アップデートを自動で確認</string>
+    <string name="about_new_version">新しいバージョン %1$s</string>
+    <string name="about_current_version">現在のバージョン %1$s</string>
+    <string name="about_download_failed">ダウンロードに失敗しました</string>
+    <string name="about_skip_version">このバージョンをスキップ</string>
+    <string name="about_open_download_page">ダウンロードページを開く</string>
+    <string name="about_cancel_download">ダウンロードをキャンセル</string>
+    <string name="about_install">インストール</string>
+    <string name="about_download_again">再ダウンロード</string>
+    <string name="about_download_install">ダウンロードしてインストール</string>
+</resources>

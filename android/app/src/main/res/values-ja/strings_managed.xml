@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="managed_password_title">パスワードを表示</string>
+    <string name="managed_password_text">パスワードは保護されています。表示するには設定パスワードを入力してください。</string>
+    <string name="managed_password_field">設定パスワード</string>
+    <string name="managed_password_wrong">パスワードが正しくありません</string>
+    <string name="managed_password_view">表示</string>
+    <string name="managed_notice">設定はリモートで配布されているため、この端末では変更できません</string>
+    <string name="managed_locked">リモートで配布</string>
+</resources>

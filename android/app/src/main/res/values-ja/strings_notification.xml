@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="notification_running">SipLink を実行中</string>
+    <string name="notification_no_accounts">有効な SIP アカウントがありません</string>
+    <plurals name="notification_registered">
+        <item quantity="other">%1$s / %2$s 件のアカウントが登録済み</item>
+    </plurals>
+    <string name="notification_calling">発信中…</string>
+    <string name="notification_intercom">インターコム通話</string>
+    <string name="notification_video_call">ビデオ着信</string>
+    <string name="notification_incoming">着信</string>
+    <string name="notification_incoming_text">%1$s · %2$s</string>
+    <string name="notification_missed">不在着信</string>
+    <string name="notification_missed_text">%1$s（%2$s）</string>
+    <string name="notification_channel_service_name">バックグラウンドで接続を維持</string>
+    <string name="notification_channel_service_desc">着信を受けられるよう SIP アカウントの登録を維持します</string>
+    <string name="notification_channel_incoming_name">着信</string>
+    <string name="notification_channel_incoming_desc">着信の通知と全画面の着信画面</string>
+    <string name="notification_channel_call_name">通話中</string>
+    <string name="notification_channel_call_desc">進行中の通話</string>
+    <string name="notification_channel_missed_name">不在着信</string>
+    <string name="notification_channel_missed_desc">不在着信の通知</string>
+</resources>

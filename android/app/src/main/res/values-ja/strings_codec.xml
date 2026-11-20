@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="codec_restored">コーデックの設定をデフォルトに戻しました</string>
+    <string name="codec_keep_audio">音声コーデックを 1 つ以上残してください</string>
+    <string name="codec_keep_video">ビデオコーデックを 1 つ以上残してください</string>
+    <string name="codec_audio">音声</string>
+    <string name="codec_video">ビデオ</string>
+    <string name="codec_resolution">解像度</string>
+    <string name="codec_frame_rate">フレームレート（fps）</string>
+    <string name="codec_frame_rate_auto">自動</string>
+    <string name="codec_rate">%1$s Hz</string>
+    <string name="codec_move_up">%1$s の優先度を上げる</string>
+    <string name="codec_move_down">%1$s の優先度を下げる</string>
+    <plurals name="codec_rate_channels">
+        <item quantity="other">%1$s Hz · %2$s チャンネル</item>
+    </plurals>
+</resources>

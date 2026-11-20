@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="advanced_title">詳細設定</string>
+    <string name="advanced_section_incoming">着信</string>
+    <string name="advanced_dnd_mode">おやすみモードの方式</string>
+    <string name="advanced_dnd_software">端末で拒否</string>
+    <string name="advanced_dnd_server">サーバーの機能コード</string>
+    <string name="advanced_dnd_codes">%1$s / %2$s</string>
+    <string name="advanced_call_waiting">通話中着信</string>
+    <string name="advanced_reject_anonymous">非通知着信を拒否</string>
+    <string name="advanced_dtmf_mode">DTMF 方式</string>
+    <string name="advanced_section_forwarding">着信転送</string>
+    <string name="advanced_forward_always">無条件転送</string>
+    <string name="advanced_forward_busy">話中時転送</string>
+    <string name="advanced_forward_no_answer">無応答時転送</string>
+    <string name="advanced_no_answer_seconds">無応答の待機時間（秒）</string>
+    <string name="advanced_range">%1$s～%2$s にしてください</string>
+    <string name="advanced_section_room">会議室</string>
+    <string name="advanced_room_limit">参加者の上限</string>
+    <string name="advanced_section_media">メディアとネットワーク</string>
+    <string name="advanced_rate_control">適応レート制御</string>
+    <string name="advanced_echo_cancellation">エコーキャンセル</string>
+    <string name="advanced_ipv6">IPv6 を許可</string>
+    <string name="advanced_auto_network">ネットワークに自動で適応</string>
+    <string name="advanced_stun_server">STUN サーバー</string>
+    <string name="advanced_host_port_hint">ホスト[:ポート]</string>
+    <string name="advanced_section_identity">クライアントの識別</string>
+    <string name="advanced_user_agent">クライアント名（User-Agent）</string>
+    <plurals name="advanced_user_agent_error_too_long">
+        <item quantity="other">クライアント名（User-Agent）は %1$s 文字以内にしてください</item>
+    </plurals>
+    <string name="advanced_user_agent_error_ascii">印刷可能な ASCII 文字のみ使用できます</string>
+    <string name="advanced_user_agent_error_ascii_full">クライアント名（User-Agent）には印刷可能な ASCII 文字のみ使用できます</string>
+    <string name="advanced_user_agent_error_spaces">先頭と末尾にスペースは使用できません</string>
+    <string name="advanced_user_agent_error_spaces_full">クライアント名（User-Agent）の先頭と末尾にスペースは使用できません</string>
+</resources>

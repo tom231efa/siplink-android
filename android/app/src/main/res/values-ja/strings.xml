@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="list_separator">。</string>
+    <string name="common_cancel">キャンセル</string>
+    <string name="common_back">戻る</string>
+    <string name="common_delete">削除</string>
+    <string name="common_confirm_delete">削除する</string>
+    <string name="common_save">保存</string>
+    <string name="common_ok">OK</string>
+    <string name="common_edit">編集</string>
+    <string name="common_done">完了</string>
+    <string name="common_close">閉じる</string>
+    <string name="common_more">その他</string>
+    <string name="common_clear">クリア</string>
+    <string name="common_restore_defaults">デフォルトに戻す</string>
+</resources>

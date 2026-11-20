@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="feature_sheet_title">通話機能</string>
+    <string name="feature_sheet_extension">内線 %1$s</string>
+    <string name="feature_sheet_target">対象の内線</string>
+    <string name="feature_sheet_target_hint">例：1002</string>
+    <string name="feature_sheet_call">発信</string>
+    <string name="feature_sheet_add_shortcut">ショートカットキーに追加</string>
+    <string name="feature_sheet_force_confirm">もう一度タップすると %1$s を強制切断します</string>
+    <string name="feature_intercom">インターコム</string>
+    <string name="feature_listen">モニター</string>
+    <string name="feature_whisper">ウィスパー</string>
+    <string name="feature_barge">割り込み</string>
+    <string name="feature_force_hang_up">強制切断</string>
+    <string name="feature_pickup">代理応答</string>
+    <string name="feature_voicemail">ボイスメール</string>
+    <string name="feature_group_pickup">グループ代理応答</string>
+    <string name="feature_park">パーク</string>
+    <string name="feature_dnd_on">おやすみモードをオン</string>
+    <string name="feature_dnd_off">おやすみモードをオフ</string>
+    <string name="feature_to">%1$s %2$s</string>
+    <string name="feature_code_missing">「%1$s」の機能コードが設定されていません</string>
+    <string name="feature_codes_pickup">指定代理応答</string>
+    <string name="feature_codes_restored">機能コードをデフォルトに戻しました</string>
+    <string name="feature_codes_invalid" tools:ignore="TypographyDashes">0-9 * # のみ使用できます</string>
+</resources>

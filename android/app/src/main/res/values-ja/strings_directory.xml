@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <plurals name="directory_limit">
+        <item quantity="other">電話帳は %1$s 件までです</item>
+    </plurals>
+    <string name="directory_error_name_taken">名前はすでに存在します</string>
+    <plurals name="directory_error_name_too_long">
+        <item quantity="other">名前は %1$s 文字以内にしてください</item>
+    </plurals>
+    <string name="directory_error_host_empty">サーバーアドレスは必須です</string>
+    <string name="directory_error_host_invalid">サーバーアドレスは「ホスト[:ポート]」の形式で指定してください</string>
+    <string name="directory_error_ldaps">ldaps:// は使用できません。StartTLS を使用してください</string>
+    <string name="directory_error_host_ldaps">サーバーアドレスに ldaps:// は使用できません。StartTLS を使用してください</string>
+    <string name="directory_error_starttls_name">StartTLS にはホスト名が必要です</string>
+    <string name="directory_error_host_starttls_name">サーバーアドレス：StartTLS にはホスト名が必要です</string>
+    <string name="directory_error_port_range">ポートは 1～65535 にしてください</string>
+    <string name="directory_error_host_port_range">サーバーアドレス：ポートは 1～65535 にしてください</string>
+    <string name="directory_error_user_for_password">必須です（パスワードが入力されています）</string>
+    <string name="directory_error_user_for_password_full">ユーザー名は必須です（パスワードが入力されています）</string>
+    <string name="directory_error_base_dn_empty">Base DN は必須です</string>
+    <string name="directory_error_max_results_range">1～%1$s にしてください</string>
+    <string name="directory_error_max_results_invalid">最大結果数は 1～%1$s にしてください</string>
+    <string name="directory_error_name_attributes_empty">氏名の属性は必須です</string>
+    <string name="directory_error_number_attributes_empty">番号の属性は必須です</string>
+    <string name="directory_error_placeholder">% を含めてください</string>
+    <string name="directory_error_name_filter_placeholder">氏名のフィルターには % を含めてください</string>
+    <string name="directory_error_number_filter_placeholder">番号のフィルターには % を含めてください</string>
+    <string name="directory_title">電話帳</string>
+    <string name="directory_ldap_settings">LDAP 設定</string>
+    <string name="directory_no_ldap">この SDK は LDAP に対応していません</string>
+    <string name="directory_add_account_first">先に SIP アカウントを追加してください</string>
+    <string name="directory_none_configured">LDAP 電話帳が設定されていません</string>
+    <string name="directory_all_disabled">LDAP 電話帳は無効になっています</string>
+    <string name="directory_search">氏名または番号を検索</string>
+    <string name="directory_no_match">一致する連絡先はありません</string>
+    <string name="directory_cache_searching">ローカルキャッシュ。サーバーに問い合わせ中…</string>
+    <string name="directory_from_cache">ローカルキャッシュから表示</string>
+    <plurals name="directory_first_only">
+        <item quantity="other">最初の %1$s 件のみ表示</item>
+    </plurals>
+    <string name="directory_number_organization">%1$s · %2$s</string>
+    <string name="directory_call_contact">%1$s に発信</string>
+    <string name="directory_more_for">%1$s のその他の機能</string>
+    <string name="directory_ldap_title">LDAP 電話帳</string>
+    <string name="directory_add">電話帳を追加</string>
+    <plurals name="directory_count">
+        <item quantity="other">電話帳 %1$s / %2$s 件</item>
+    </plurals>
+    <string name="directory_disabled_summary">無効 · %1$s</string>
+    <string name="directory_cache_title">ローカルキャッシュ</string>
+    <plurals name="directory_cache_usage">
+        <item quantity="other">%1$s 件をキャッシュ済み（%2$s / %3$s MB 使用）</item>
+    </plurals>
+    <string name="directory_cache_cleared">電話帳のキャッシュをクリアしました</string>
+    <string name="directory_cache_clear">キャッシュをクリア</string>
+    <string name="directory_add_title">電話帳を追加</string>
+    <string name="directory_details_title">電話帳の詳細</string>
+    <string name="directory_edit_title">電話帳の編集</string>
+    <string name="directory_user_required">ユーザー名は必須です</string>
+    <string name="directory_saved">電話帳を保存しました</string>
+    <string name="directory_section_server">サーバー</string>
+    <string name="directory_name_optional">名前（任意）</string>
+    <string name="directory_server_address">サーバーアドレス</string>
+    <string name="directory_server_placeholder">ホスト[:ポート]</string>
+    <string name="directory_base_dn">Base DN</string>
+    <string name="directory_encryption">暗号化</string>
+    <string name="directory_encryption_none">暗号化しない</string>
+    <string name="directory_ca_certificates">CA 証明書</string>
+    <string name="directory_section_sign_in">ログイン</string>
+    <string name="directory_sign_in_account">アカウント</string>
+    <string name="directory_sign_in_anonymous">匿名</string>
+    <string name="directory_user_name">ユーザー名</string>
+    <string name="directory_password">パスワード</string>
+    <string name="directory_password_keep">保存済みのパスワードを使用する場合は空欄のまま</string>
+    <string name="directory_section_calls">通話</string>
+    <string name="directory_line">回線</string>
+    <string name="directory_all_lines">すべての回線</string>
+    <string name="directory_line_named">%1$s · %2$s</string>
+    <string name="directory_lookup_incoming">着信時に名前を検索</string>
+    <string name="directory_lookup_outgoing">発信時に名前を検索</string>
+    <string name="directory_advanced">詳細設定</string>
+    <string name="directory_name_attributes">氏名の属性</string>
+    <string name="directory_number_attributes">番号の属性</string>
+    <string name="directory_max_results">最大結果数</string>
+    <string name="directory_filter">フィルター</string>
+    <string name="directory_filter_auto">自動</string>
+    <string name="directory_filter_custom">カスタム</string>
+    <string name="directory_name_filter">氏名のフィルター</string>
+    <string name="directory_number_filter">番号のフィルター</string>
+    <string name="directory_enable">この電話帳を有効にする</string>
+    <string name="directory_delete">電話帳を削除</string>
+    <string name="directory_delete_title">「%1$s」を削除しますか？</string>
+    <string name="directory_delete_text">設定と、この端末にキャッシュされた連絡先が削除されます。</string>
+</resources>

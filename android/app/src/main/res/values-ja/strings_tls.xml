@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tls_invalid_file">有効な X.509 証明書ファイルではありません（PEM / CRT / CER / DER）</string>
+    <string name="tls_save_failed">証明書を保存できませんでした：%1$s</string>
+    <string name="tls_read_failed">選択したファイルを読み取れません</string>
+    <string name="tls_file_too_large">ファイルが大きすぎます</string>
+    <string name="tls_already_trusted">証明書はすでに存在します</string>
+    <string name="tls_section_imported">インポートした CA 証明書</string>
+    <string name="tls_none">インポートした証明書はありません</string>
+    <string name="tls_import">CA 証明書をインポート</string>
+    <string name="tls_section_verification">サーバー証明書の検証</string>
+    <string name="tls_verify_certificate">サーバー証明書を検証</string>
+    <string name="tls_verify_hostname">ホスト名を検証</string>
+    <string name="tls_verification_off_warning">検証をオフにすると、通話が盗聴されるおそれがあります</string>
+    <string name="tls_section_srtp">メディアの暗号化（SRTP）</string>
+    <string name="tls_srtp_off">オフ</string>
+    <string name="tls_srtp_preferred">優先</string>
+    <string name="tls_srtp_mandatory">必須</string>
+    <string name="tls_remove_title">証明書を削除しますか？</string>
+    <string name="tls_remove_text">「%1$s」が発行したサーバー証明書は信頼されなくなり、この証明書に依存する TLS アカウントは登録に失敗します。</string>
+    <string name="tls_remove_confirm">削除</string>
+    <string name="tls_issuer">発行者：%1$s</string>
+    <string name="tls_expired">%1$s に期限切れ</string>
+    <string name="tls_valid_until_not_ca">有効期限 %1$s · CA 証明書ではありません</string>
+    <string name="tls_valid_until">有効期限 %1$s</string>
+    <string name="tls_remove">証明書を削除</string>
+    <plurals name="tls_imported">
+        <item quantity="other">%1$s 件の証明書をインポートしました。アカウントを再登録しています</item>
+    </plurals>
+    <string name="tls_restart_ldap_title">LDAP への適用には再起動が必要です</string>
+    <string name="tls_restart_ldap_text">SIP アカウントは新しい証明書設定を使用しています。LDAP 電話帳の暗号化接続は今回の起動中にすでに確立されているため、新しい CA 証明書を使用するにはアプリを再起動してください。</string>
+    <string name="tls_restart_after_call">通話の終了後にアプリを再起動してください</string>
+    <string name="tls_restart_now">今すぐ再起動</string>
+    <string name="tls_restart_later">後で</string>
+</resources>
