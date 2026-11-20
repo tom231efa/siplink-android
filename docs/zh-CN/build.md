@@ -109,19 +109,31 @@ android/app/src/main/java/com/sky/siplink/
 
 ## 语言
 
-应用的文字都是字符串资源：默认的英文在 `res/values/`，简体中文在 `res/values-b+zh+Hans/`。应用提供的语言列在 `core/model/Language.kt` 和 `res/xml/locales_config.xml`（清单中的 `android:localeConfig`）；`android/app/build.gradle.kts` 中的 `androidResources.localeFilters` 让依赖库的文字也只保留这些语言。文字按领域分文件：`strings.xml` 只放各领域共用的文字（`app_name`、`list_separator` 和公共按钮 `common_*`），每个领域有自己的 `strings_{area}.xml`（`strings_call.xml`、`strings_room.xml`、`strings_settings.xml`、`strings_dialer.xml` 等），其中每个名称为小写下划线并以 `{area}_` 开头（`strings_call.xml` 中的 `call_ended`、`strings_remote.xml` 中的 `remote_invalid`）。同样的字用在两种角色（按钮与状态、标题与取值）时是两条文字，因为其他语言可能需要不同的词。
+应用有八种语言。文字都是字符串资源：默认的英文在 `res/values/`；简体中文在 `res/values-b+zh+Hans/`，繁体中文在 `res/values-b+zh+Hant/`，日语在 `res/values-ja/`，阿拉伯语在 `res/values-ar/`，法语在 `res/values-fr/`，俄语在 `res/values-ru/`，西班牙语在 `res/values-es/`。应用提供的语言列在 `core/model/Language.kt` 和 `res/xml/locales_config.xml`（清单中的 `android:localeConfig`）；`android/app/build.gradle.kts` 中的 `androidResources.localeFilters` 让依赖库的文字也只保留这些语言。文字按领域分文件：`strings.xml` 只放各领域共用的文字（`app_name`、`list_separator` 和公共按钮 `common_*`），每个领域有自己的 `strings_{area}.xml`（`strings_call.xml`、`strings_room.xml`、`strings_settings.xml`、`strings_dialer.xml` 等），其中每个名称为小写下划线并以 `{area}_` 开头（`strings_call.xml` 中的 `call_ended`、`strings_remote.xml` 中的 `remote_invalid`）。同样的字用在两种角色（按钮与状态、标题与取值）时是两条文字，因为其他语言可能需要不同的词。
 
 ### 选择语言
 
-设置 › 语言 中有“跟随系统”（新安装时即为此项）和以各自名称显示的语言。Android 13 起，所选语言就是系统的应用专属语言（`LocaleManager`），与系统设置中本应用的语言页是同一个值；Android 13 之前由应用保存在自己的偏好设置中，并放进各 Activity 的配置。界面之外生成的文字使用该设置中的语言，或系统语言（`core/AppLanguage.kt`）。一个语言列表得到哪套文字，由 Android 自己的资源匹配决定：应用没有的语言顺延到列表中的下一个语言，最后是英文。中文按书写体系匹配：`zh`、`zh-CN`、`zh-SG` 用简体文字，`zh-TW`、`zh-HK`、`zh-MO` 用繁体文字（应用还没有繁体时为英文）。
+设置 › 语言 中有“跟随系统”（新安装时即为此项）和以各自名称显示的语言。Android 13 起，所选语言就是系统的应用专属语言（`LocaleManager`），与系统设置中本应用的语言页是同一个值；Android 13 之前由应用保存在自己的偏好设置中，并放进各 Activity 的配置。界面之外生成的文字使用该设置中的语言，或系统语言（`core/AppLanguage.kt`）。一个语言列表得到哪套文字，由 Android 自己的资源匹配决定：应用没有的语言顺延到列表中的下一个语言，最后是英文。中文按书写体系匹配：`zh`、`zh-CN`、`zh-SG` 用简体文字，`zh-TW`、`zh-HK`、`zh-MO` 用繁体文字。
 
 ### 文字的流转
 
 - `core/logic` 不含文字，只返回枚举、`@StringRes` id 或 `Phrase`（`core/model/Phrase.kt`）：带参数的资源、带数量的复数资源，或原样显示的文字。
 - 各管理器保存类型化的值，用 `AppTexts` 生成发布出去的快照（`StateFlow`）。语言改变时，`SipLinkApp` 调用 `SipEngine.onLanguageChanged()`，各管理器重新发布快照，`CallNotifier` 重命名通知渠道，服务更新它的通知。
-- 界面用 `Phrase.text()`（`ui/components/Phrases.kt`）显示 `Phrase`，自己的文字用 `stringResource` 和 `pluralStringResource`。组合之外需要的文字（回调中生成的提示）取 Activity 的 context 的资源，而不是 application 的。
+- 界面用 `Phrase.text()`（`ui/components/Phrases.kt`）显示 `Phrase`；自己不带参数的文字用 `stringResource`，带参数的用同一文件中的 `stringOf(id, …)` 和 `pluralOf(id, count, …)`，它们与 core 的 phrase 一样经 `PhraseFormat` 生成，不用 `stringResource(id, args)` 或 `pluralStringResource`。组合之外需要的文字（回调中生成的提示）用 Activity 的 context 的资源生成，而不是 application 的：`resources.render(Phrase.of(…))`。
 - 生成后的文字不保存。远程配置保存的错误按资源名称存为 phrase（`core/logic/PhraseCodec.kt`）；旧版本保存的文字原样显示。
 - 参数带编号（`%1$s`、`%2$s`），不拼接文字片段。数字用西文数字（`Locale.ROOT`）；在从右到左的文字中，每个值都被隔离（U+2068 … U+2069），使数字和地址保持顺序。数量用 `<plurals>`。日期跟随应用语言：语言区域取自组合的配置（`LocalConfiguration.current.locales[0]`），带文字的日期格式来自 `DateFormat.getBestDateTimePattern`（通话记录的日期标题：骨架 `MMMd` 和 `yMMMd`）；纯数字的时间戳（`yyyy-MM-dd HH:mm`、`HH:mm:ss`）在所有语言中相同。
+
+### 从右向左
+
+阿拉伯语从右向左书写（`android:supportsRtl="true"`）：界面镜像，行、列表和导航从右侧开始，内边距用 start 和 end，有方向的图标（返回箭头、箭头符号）用自动镜像的版本。以下内容在所有语言中保持物理位置或从左向右的顺序：
+
+- 拨号盘和通话中按键盘的按键（1 2 3 从左到右），以及拨号页删除键的图标（从号码末尾删除）：`LeftToRight`（`ui/components/Direction.kt`）；
+- 来电的滑动条（向右接听、向左挂断，与其文字一致）以及视频画面及其“左移 / 右移”操作，按左边缘放置（`LeftToRight`）；横屏时小画面避开控制按钮所在的一侧；
+- 输入号码、地址、主机名、端口或密码的输入框：`FormField(machineValue = true)`（除纯文本外的所有键盘类型默认如此），或在自建输入框上用 `machineValueStyle()`；从左向右书写，位于该语言的起始一侧；
+- 句中的值：`PhraseFormat` 将其隔离（U+2068 … U+2069），core 的 phrase 和界面的 `stringOf` / `pluralOf` 都是如此；
+- 单独显示的值（地址、号码、通话计时）：应用的字体样式（`ui/theme/Theme.kt`）让每段文字按其第一个字母定方向，没有字母的文字从左向右书写（`TextDirection.ContentOrLtr`）；若按界面方向，阿拉伯语中“2501@host”会显示成“host@2501”。自身不含字母的模式（“%1$s · %2$s”）由 `PhraseFormat` 在开头加从右向左标记，使阿拉伯语中各个值从右向左排列。
+
+标签为较长的语言留出空间：列表行的标题可占两行；通话界面按键下的标签宽度为该按键在一行中所占的宽度，可换到第二行。仍放不下时，选用仍然准确的较短词语，并写入术语表。
 
 ### 是数据而不是文字的内容
 
@@ -129,7 +141,7 @@ android/app/src/main/java/com/sky/siplink/
 
 ### 添加一条文字
 
-把字符串加到 `res/values/` 和每个 `res/values-*/` 目录中对应领域的文件，占位符相同。在 `core` 中返回 `Phrase.of(R.string.name, …)`（或 `Phrase.count(R.plurals.name, n, …)`）；在界面中用 `stringResource`（或 `pluralStringResource`）。
+把字符串加到 `res/values/` 和每个 `res/values-*/` 目录中对应领域的文件，占位符相同。各译文对应用术语（账号、线路、快捷键、会议室等）的译法在术语表 `docs/glossary/{language}.md`（`ja`、`ar`、`fr`、`ru`、`es`、`zh-Hant`）中；新文字沿用这些译法，新术语也加入术语表。在 `core` 中返回 `Phrase.of(R.string.name, …)`（或 `Phrase.count(R.plurals.name, n, …)`）；在界面中，不带参数的文字用 `stringResource`，带参数的用 `stringOf` / `pluralOf`。
 
 可能被保存的文字，其名称在发布后就是保存格式的一部分：远程配置的错误及其中可能包含的所有文字按名称保存（`PhraseCodec`），之后改名会丢掉按旧名称保存的内容。
 
@@ -140,8 +152,9 @@ android/app/src/main/java/com/sky/siplink/
 ### 测试
 
 - `LanguageCatalogTest`（单元测试）把每种语言与默认语言比较：键相同、占位符相同、具备该语言需要的复数形式、没有空文字；检查每条文字都在其领域的文件中；并把语言与 `Language` 和 `locales_config.xml` 比较。
+- `FilledTextTest`：带参数的文字用 Android 自己的格式化（`stringResource(id, args)`、`pluralStringResource`、`getString(id, args)`、`getQuantityString`）而不经 `PhraseFormat` 时失败；并检查阿拉伯语中的隔离符和从右向左标记。
 - `SourceTextTest`：Kotlin 源码的字符串字面量中出现中日韩字符、且不在允许列表中时失败。允许列表只有数据（`Language.kt`、`ShortcutRules.kt` 中 CSV 的词）。
 - 单元测试断言真实文字：`Texts` 读取资源文件，以某种语言生成 `Phrase`（简体中文用 `zh(…)`）。
-- 集成测试在每个测试前通过应用自己的设置把应用语言设为简体中文（`PbxTestBase.pinLanguage`），跑完后保持简体中文，不改手机的系统语言。`AppLanguageTest` 覆盖选择语言、跟随系统、回退到英文、中文的书写体系、应用没有界面时在应用外改语言、通话中切换语言、core 生成的文字，以及通话记录的日期标题。`EnglishScreensTest` 以英文走遍四个标签页、各设置页面、通话界面和会议室，界面上出现任何中文字符即失败（语言自身的名称和数据除外）。
+- 集成测试在每个测试前通过应用自己的设置把应用语言设为简体中文（`PbxTestBase.pinLanguage`），跑完后保持简体中文，不改手机的系统语言。`AppLanguageTest` 覆盖选择语言、跟随系统、回退到英文、中文的书写体系、应用没有界面时在应用外改语言、通话中切换语言、core 生成的文字，以及通话记录的日期标题。`AppLanguageTest` 还在设置中逐一选择八种语言，检查一条界面文字和一条 core 文字。`EnglishScreensTest` 以英文走遍四个标签页、各设置页面、通话界面和会议室，界面上出现任何中文字符即失败（语言自身的名称和数据除外）。`LanguageScreensTest` 以每种语言走遍标签页、设置、高级设置、账号表单、通话界面及其按键盘（竖屏和横屏）、会议室和来电界面，崩溃即失败，并把每个界面的截图存到应用缓存目录的 `shots/{language}/`；阿拉伯语下检查标签栏从右向左、两个按键盘都是 1 在 3 的左边、滑动条向右接听。
 
 测试见[测试](testing.md)。
