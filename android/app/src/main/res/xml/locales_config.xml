@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The languages of the app (core/model/Language.kt), for the system's page of the app's language. -->
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+    <locale android:name="en" />
+    <locale android:name="zh-Hans" />
+    <locale android:name="zh-Hant" />
+    <locale android:name="ja" />
+    <locale android:name="ar" />
+    <locale android:name="fr" />
+    <locale android:name="ru" />
+    <locale android:name="es" />
+</locale-config>

@@ -22,6 +22,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.sky.siplink.core.AppLanguage
 import com.sky.siplink.core.logic.VideoRules
 import com.sky.siplink.core.model.CallInfo
 import com.sky.siplink.core.model.ThemeMode
@@ -64,6 +65,8 @@ class CallActivity : ComponentActivity() {
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
             answerNotice = engine.calls.answer(answerWithVideo)
         }
+
+    override fun attachBaseContext(newBase: Context) = super.attachBaseContext(AppLanguage.wrap(newBase))
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge(

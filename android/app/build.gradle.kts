@@ -88,11 +88,23 @@ android {
     }
 
     androidResources {
+        // The libraries bring their texts in many languages: only those of the app's languages are
+        // kept (core/model/Language.kt). A filter without a region keeps no regional folder, and the
+        // libraries keep their Chinese by region: zh-rCN Simplified, zh-rTW and zh-rHK Traditional.
+        localeFilters += listOf("en", "zh", "zh-rCN", "zh-rTW", "zh-rHK", "ja", "ar", "fr", "ru", "es")
         // Media the Linphone SDK ships but this app has no use for: its own ring tones (the device
         // ringtone is used), hold music (the PBX plays its own) and demo recordings. About 9 MB.
         // The first part is the default pattern of the build tools, which this setting replaces.
         ignoreAssetsPattern = "!.svn:!.git:!.ds_store:!*.scc:.*:<dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~" +
             ":!*.mkv:!toy-mono.wav:!hello8000.wav:!hello16000.wav:!oldphone-mono.wav"
+    }
+
+    // The language is chosen in the app, at any time: an app bundle keeps every language in the
+    // base APK instead of installing only those of the system.
+    bundle {
+        language {
+            enableSplit = false
+        }
     }
 
     lint {

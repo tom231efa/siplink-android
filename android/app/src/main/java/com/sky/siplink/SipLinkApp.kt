@@ -6,6 +6,7 @@ import android.app.Application
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.os.Bundle
 import androidx.core.content.ContextCompat
 import com.sky.siplink.core.CallManager
@@ -22,6 +23,9 @@ class SipLinkApp : Application(), CallManager.Host {
 
     private var startedActivities = 0
 
+    /** The activities that exist, to be made anew in another language before Android 13 ([onLanguageChanged]). */
+    private val activities = LinkedHashSet<Activity>()
+
     override val isAppVisible: Boolean get() = startedActivities > 0
 
     override val canUseCamera: Boolean
@@ -29,8 +33,9 @@ class SipLinkApp : Application(), CallManager.Host {
 
     override fun onCreate() {
         super.onCreate()
-        notifier = CallNotifier(this)
         engine = SipEngine(this)
+        notifier = CallNotifier(this, engine.language)
+        engine.language.onChanged = ::onLanguageChanged
         engine.calls.host = this
         engine.onMissedCall = notifier::showMissedCall
         engine.onKeepAliveChanged = { SipService.sync(this) }
@@ -44,15 +49,45 @@ class SipLinkApp : Application(), CallManager.Host {
                 startedActivities = (startedActivities - 1).coerceAtLeast(0)
             }
 
-            override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) = Unit
+            override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
+                activities += activity
+            }
+
+            override fun onActivityDestroyed(activity: Activity) {
+                activities -= activity
+            }
+
             override fun onActivityResumed(activity: Activity) = Unit
             override fun onActivityPaused(activity: Activity) = Unit
             override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
-            override fun onActivityDestroyed(activity: Activity) = Unit
         })
 
         SipService.sync(this)
         engine.remote.start()
+    }
+
+    /**
+     * The system changed the configuration: a change of the system's languages comes this way,
+     * and from Android 13 on one of the app's language made on the system's page. The system
+     * makes the activities anew, or hands the call screen the change (it keeps its views, see the
+     * manifest); the texts rendered outside them follow (AppLanguage.refresh).
+     */
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        engine.language.refresh()
+    }
+
+    /**
+     * Everything rendered outside the activities is rendered again in the language of the moment:
+     * the snapshots of the core, the notification channels and the notification of the service.
+     * Before Android 13 the app chose the language itself ([recreate]): its activities are made
+     * anew in it, the call screen too (the call goes on; the screen shows it again).
+     */
+    private fun onLanguageChanged(recreate: Boolean) {
+        engine.onLanguageChanged()
+        notifier.onLanguageChanged()
+        SipService.sync(this)
+        if (recreate) activities.toList().forEach(Activity::recreate)
     }
 
     override fun showIncomingCall(info: CallInfo) {
