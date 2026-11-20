@@ -70,13 +70,28 @@ class MediaAdaptTest {
 
     @Test
     fun `a call out with ice on trial that fails in a way ice can cause gives ice up`() {
-        // Its INVITE got no answer (larger with the candidates), or the other side refused the offer.
-        for (code in listOf(408, 488, 606)) assertEquals("$code", Ice.REFUSED, after(null, failedWith = code).ice)
-        // Busy, cancelled, declined, unavailable, unknown, or a server error: not ICE's doing, and not counted.
-        for (code in listOf(404, 480, 486, 487, 500, 503, 600, 603)) assertEquals("$code", trial, after(null, failedWith = code))
+        // Its INVITE got no answer or was too large (larger with the candidates), or the other
+        // side or an SBC could not take the offer.
+        for (code in listOf(400, 408, 415, 488, 513, 606)) assertEquals("$code", Ice.REFUSED, after(null, failedWith = code).ice)
+        // Busy, cancelled or declined: the other side's or the user's choice, not counted.
+        for (code in listOf(486, 487, 600, 603)) assertEquals("$code", trial, after(null, failedWith = code))
+        var busy = trial
+        repeat(MediaAdapt.TRIAL_CALLS + 1) { busy = after(null, failedWith = 486, record = busy) }
+        assertEquals(trial, busy)
+    }
+
+    @Test
+    fun `other failures count towards the end of the trial`() {
+        // Unavailable, unknown, a server error: not ICE's doing, but a trial does not last for ever.
+        for (code in listOf(404, 480, 500, 503)) assertEquals("$code", trial.copy(iceCalls = 1), after(null, failedWith = code))
         var record = trial
-        repeat(MediaAdapt.TRIAL_CALLS + 1) { record = after(null, failedWith = 480, record = record) }
-        assertEquals(trial, record)
+        repeat(MediaAdapt.TRIAL_CALLS - 1) {
+            record = after(null, failedWith = 480, record = record)
+            assertEquals(Ice.TRIAL, record.ice)
+        }
+        record = after(null, failedWith = 503, record = record)
+        assertEquals(Ice.REFUSED, record.ice)
+        assertEquals(5, MediaAdapt.TRIAL_CALLS)
     }
 
     @Test

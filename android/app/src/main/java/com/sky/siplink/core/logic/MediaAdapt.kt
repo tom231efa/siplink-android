@@ -90,14 +90,20 @@ object MediaAdapt {
 
     /**
      * Whether a call out that failed with SIP status [code] before its sound ran may be the doing
-     * of ICE: its INVITE, larger with the candidates, got no answer (408), or the other side
-     * refused the offer (488, 606). Any other failure (busy, unavailable, a server error) is not
-     * ICE's, and tells nothing.
+     * of ICE: its INVITE, larger with the candidates, got no answer (408) or was too large for the
+     * other side (513), or the other side, or an SBC on the way, could not take the offer (400,
+     * 415, 488, 606).
      */
-    fun isSetupFailure(code: Int): Boolean = code == TIMEOUT || code == NOT_ACCEPTABLE_HERE || code == NOT_ACCEPTABLE
+    fun isSetupFailure(code: Int): Boolean = code in SETUP_FAILURES
 
-    /** Calls with ICE on trial whose sound ran too short to tell, after which ICE is given up on the line. */
-    const val TRIAL_CALLS = 3
+    /** Ends of a call out that are the other side's or the user's choice (busy, cancelled, declined): they tell nothing about ICE, nor count. */
+    private val CHOSEN = setOf(486, 487, 600, 603)
+
+    /**
+     * Calls with ICE on trial that told nothing (too short for a verdict, or failed in a way ICE
+     * does not cause, such as 480 or 503), after which ICE is given up on the line.
+     */
+    const val TRIAL_CALLS = 5
 
     /** How long ICE given up stays given up on a network: then a call whose sound goes one way may try it again. */
     const val REFUSED_MS = 7 * LineAdapt.DAY_MS
@@ -108,15 +114,14 @@ object MediaAdapt {
      * call out to its INVITE; null for one that came in) keeps it: in use until it is given up to
      * see whether the line still needs it ([iceWithdrawn]), later each time the line needed it again.
      * Sound one way, a slow set-up, or a call out that failed before its sound ran in a way ICE
-     * can cause ([failedWith], [isSetupFailure]) gives it up on this network for [REFUSED_MS];
-     * a call out that failed otherwise tells nothing, nor counts. [TRIAL_CALLS] calls whose sound
-     * ran too short for a verdict give it up as well.
+     * can cause ([failedWith], [isSetupFailure]) gives it up on this network for [REFUSED_MS].
+     * Busy, cancelled or declined tells nothing, nor counts; [TRIAL_CALLS] calls that tell
+     * nothing otherwise (too short for a verdict, or failed in another way) give it up as well.
      */
     fun afterCall(record: LineAdapt.Record, flow: MediaFlow?, tookPart: Boolean, setupMs: Long?, failedWith: Int?, now: Long): LineAdapt.Record {
-        if (record.ice != Ice.TRIAL || !tookPart) return record
-        if (failedWith != null && !isSetupFailure(failedWith)) return record
+        if (record.ice != Ice.TRIAL || !tookPart || failedWith in CHOSEN) return record
         val ice = when {
-            failedWith != null -> Ice.REFUSED
+            failedWith != null -> Ice.REFUSED.takeIf { isSetupFailure(failedWith) }
             flow == null -> null
             flow == MediaFlow.BOTH && (setupMs == null || setupMs <= SLOW_SETUP_MS) -> Ice.ON
             else -> Ice.REFUSED
@@ -141,9 +146,9 @@ object MediaAdapt {
 
     /** The SIP core's name of a call that goes without ICE (org.linphone.core.IceState). */
     private const val NOT_ACTIVATED = "NotActivated"
-    private const val TIMEOUT = 408
-    private const val NOT_ACCEPTABLE_HERE = 488
-    private const val NOT_ACCEPTABLE = 606
+
+    /** Bad Request, Request Timeout, Unsupported Media Type, Not Acceptable Here, Message Too Large, Not Acceptable. */
+    private val SETUP_FAILURES = setOf(400, 408, 415, 488, 513, 606)
 
     /**
      * The host the requests within a call go to: the Record-Route entry next to this phone
