@@ -270,7 +270,7 @@ internal class LineDoctor(
         val own = ownTransport(id, account)
         if (own != SipTransport.UDP || transportOf(account.params.serverAddress) != SipTransport.UDP) return
         probe(account, id, state) { probe ->
-            if (!unfit(probe)) return@probe
+            if (!stillOn(id, SipTransport.UDP) || !unfit(probe)) return@probe
             val change = LineSteps.leaveUdp(records.record(id, network) ?: LineAdapt.Record(), own, probe, why, System.currentTimeMillis())
                 ?: return@probe
             Log.i(TAG, "Line $id leaves UDP ($why) for ${change.trial}")
@@ -314,6 +314,8 @@ internal class LineDoctor(
             LineSteps.Failure.END_TRIAL -> {
                 cancelConfirm(state)
                 stillFailing(account, id, state, refused = true)
+                // The end of the test decides where the line goes: no retest besides.
+                return
             }
             LineSteps.Failure.CONFIRM -> confirmLater(id, state)
         }
@@ -368,13 +370,15 @@ internal class LineDoctor(
         }
         val own = ownTransport(id, account)
         if (own != SipTransport.UDP) return
-        // A line found on another transport (as after a start) is on test as well.
-        val trial = state.trial ?: transportOf(account.params.serverAddress).takeIf { it != own }
+        val asked = transportOf(account.params.serverAddress)
         probe(account, id, state) { probe ->
-            val current = find(id)?.params?.serverAddress ?: return@probe
-            Log.i(TAG, "Line $id fails on ${transportOf(current)}${if (refused) ", refused" else ""}: $probe")
+            // Another answer to the same probe may have moved the line already.
+            if (!stillOn(id, asked)) return@probe
+            Log.i(TAG, "Line $id fails on $asked${if (refused) ", refused" else ""}: $probe")
             val record = records.record(id, network) ?: LineAdapt.Record()
-            val change = LineSteps.afterFailure(record, own, transportOf(current), trial, probe, refused, System.currentTimeMillis()) ?: return@probe
+            // A line found on another transport (as after a start) is on test as well.
+            val trial = state.trial ?: asked.takeIf { it != own }
+            val change = LineSteps.afterFailure(record, own, asked, trial, probe, refused, System.currentTimeMillis()) ?: return@probe
             state.trial = change.trial
             records.store(id, network, change.record)
             applyAll()
@@ -397,7 +401,7 @@ internal class LineDoctor(
         val adapted = record.transport ?: return
         probe(account, id, state) { probe ->
             val current = records.record(id, network) ?: return@probe
-            if (current.transport != adapted) return@probe
+            if (current.transport != adapted || !stillOn(id, adapted)) return@probe
             val (next, back) = LineSteps.afterRetest(current, probe, core.callsNb, System.currentTimeMillis())
             if (back) state.revertTo = adapted
             records.store(id, network, next)
@@ -447,6 +451,9 @@ internal class LineDoctor(
      */
     private fun askerOf(id: String, account: Account): LineNetwork.Asker? =
         if (ownTransport(id, account) == SipTransport.TLS) null else LineNetwork.Asker(fromOf(account.params.identityAddress), core.userAgent)
+
+    /** Whether the line of account [id] still runs on [transport]. */
+    private fun stillOn(id: String, transport: SipTransport): Boolean = find(id)?.params?.serverAddress?.let(::transportOf) == transport
 
     private fun ownTransport(id: String, account: Account): SipTransport = records.own(id)?.transport ?: transportOf(account.params.serverAddress)
 
