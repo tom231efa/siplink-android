@@ -2,7 +2,9 @@ package com.sky.siplink.core.logic
 
 import com.sky.siplink.core.logic.NetAddress.Kind
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class NetAddressTest {
@@ -56,5 +58,42 @@ class NetAddressTest {
         assertEquals("2001:db8::1", NetAddress.format(NetAddress.parse("2001:0db8:0000:0000:0000:0000:0000:0001")!!))
         assertEquals("::", NetAddress.format(ByteArray(16)))
         assertEquals("1:0:2::3", NetAddress.format(NetAddress.parse("1:0:2:0:0:0:0:3")!!))
+    }
+
+    @Test
+    fun `an address lies in a network by its prefix`() {
+        assertTrue(NetAddress.inSubnet("192.168.10.55", "192.168.10.0/24"))
+        assertTrue(NetAddress.inSubnet("172.20.9.5", "172.20.1.0/16"))
+        assertFalse(NetAddress.inSubnet("192.168.10.99", "192.168.10.0/28"))
+        assertTrue(NetAddress.inSubnet("fe80::1234", "fe80::/64"))
+        assertTrue(NetAddress.inSubnet("[2001:db8:1:2::9]", "2001:db8:1:2::/64"))
+        // Families do not mix; what is no network says no.
+        assertFalse(NetAddress.inSubnet("192.168.10.55", "2001:db8::/32"))
+        assertFalse(NetAddress.inSubnet("192.168.10.55", "192.168.10.0"))
+        assertFalse(NetAddress.inSubnet("192.168.10.55", "192.168.10.0/33"))
+        assertFalse(NetAddress.inSubnet("pbx.example.com", "192.168.10.0/24"))
+    }
+
+    @Test
+    fun `the same address is told however it is written`() {
+        assertTrue(NetAddress.same("2001:db8::1", "2001:0DB8:0:0::1"))
+        assertTrue(NetAddress.same("[2001:db8::1]", "2001:db8::1"))
+        assertTrue(NetAddress.same("192.168.10.1", "192.168.10.1"))
+        assertFalse(NetAddress.same("192.168.10.1", "192.168.10.2"))
+        assertFalse(NetAddress.same("pbx.example.com", "pbx.example.com"))
+    }
+
+    @Test
+    fun `the servers are asked at the address the sip core goes to`() {
+        val both = listOf("192.0.2.5", "2001:db8::5", "192.0.2.6")
+        assertEquals(listOf("192.0.2.5", "192.0.2.6"), NetAddress.coreOrder(both, ipv6 = false, sixFirst = true))
+        assertEquals(listOf("2001:db8::5", "192.0.2.5", "192.0.2.6"), NetAddress.coreOrder(both, ipv6 = true, sixFirst = true))
+        assertEquals(listOf("192.0.2.5", "192.0.2.6", "2001:db8::5"), NetAddress.coreOrder(both, ipv6 = true, sixFirst = false))
+        // As the registration went, else by whether the phone has IPv6 beyond its link.
+        assertTrue(NetAddress.sixFirst("2001:db8::77", listOf("192.168.10.55")))
+        assertFalse(NetAddress.sixFirst("203.0.113.7", listOf("2001:db8:1::5")))
+        assertTrue(NetAddress.sixFirst(null, listOf("192.168.10.55", "2001:db8:1::5")))
+        assertFalse(NetAddress.sixFirst(null, listOf("192.168.10.55")))
+        assertFalse(NetAddress.sixFirst("pbx.example.com", listOf("192.168.10.55")))
     }
 }

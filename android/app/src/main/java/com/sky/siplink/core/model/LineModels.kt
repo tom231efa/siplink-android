@@ -8,6 +8,8 @@ enum class NetType { WIFI, CELLULAR, ETHERNET, OTHER }
  * the network state is needed: the name of a Wi-Fi network is not part of it).
  *
  * @param addresses the phone's own addresses on it, link-local ones left out
+ * @param subnets the networks of all its addresses on it, link-local ones among them, as
+ *   `network/prefix` with the prefix length the system gives
  * @param gateways the next hops of its default routes
  * @param validated the system reached the internet through it
  * @param captive the system found a login page in the way
@@ -16,6 +18,7 @@ data class NetworkFacts(
     val type: NetType,
     val vpn: Boolean,
     val addresses: List<String>,
+    val subnets: List<String>,
     val gateways: List<String>,
     val dns: List<String>,
     val validated: Boolean,

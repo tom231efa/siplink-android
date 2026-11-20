@@ -16,8 +16,8 @@ object LineVerdict {
      */
     fun nat(local: List<String>, seen: Mapped?, stun: Mapped? = null): NatKind {
         val outside = seen ?: stun ?: return NatKind.UNKNOWN
-        if (seen != null && stun != null && seen.address == stun.address && seen.port != stun.port) return NatKind.SYMMETRIC
-        if (local.any { it.equals(outside.address, ignoreCase = true) }) return NatKind.NONE
+        if (seen != null && stun != null && NetAddress.same(seen.address, stun.address) && seen.port != stun.port) return NatKind.SYMMETRIC
+        if (local.any { NetAddress.same(it, outside.address) }) return NatKind.NONE
         return if (local.any { NetAddress.kind(it) == NetAddress.Kind.SHARED }) NatKind.CARRIER else NatKind.PRESENT
     }
 

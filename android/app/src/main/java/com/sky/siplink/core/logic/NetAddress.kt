@@ -48,6 +48,50 @@ object NetAddress {
         return "${format(masked)}/$prefix"
     }
 
+    /** Whether [address] lies in [network], `network/prefix` as [subnet] writes it. False for anything that is no such pair. */
+    fun inSubnet(address: String, network: String): Boolean {
+        val prefix = network.substringAfterLast('/', "").toIntOrNull() ?: return false
+        val base = parse(network.substringBeforeLast('/')) ?: return false
+        val bytes = parse(address) ?: return false
+        if (bytes.size != base.size || prefix !in 0..bytes.size * BITS) return false
+        return subnet(address, prefix, prefix) == subnet(format(base), prefix, prefix)
+    }
+
+    /** Whether [a] and [b] are the same address, however each is written. False when either is no address. */
+    fun same(a: String, b: String): Boolean {
+        val left = parse(a) ?: return false
+        return parse(b)?.contentEquals(left) == true
+    }
+
+    private const val BITS = 8
+
+    /**
+     * The addresses of a server in the order the SIP core tries them: IPv4 alone while its IPv6
+     * is off ([ipv6]); with it on, IPv6 first where [sixFirst], else IPv4 first. (belle-sip
+     * resolves both and puts the AAAA answers first, its family preference being IPv6:
+     * sipstack.c, belle_sip_resolver.c dual_resolver_context_notify.)
+     */
+    fun coreOrder(addresses: List<String>, ipv6: Boolean, sixFirst: Boolean): List<String> {
+        val (six, four) = addresses.partition { parse(it)?.size == IPV6_BYTES }
+        return when {
+            !ipv6 -> four
+            sixFirst -> six + four
+            else -> four + six
+        }
+    }
+
+    /**
+     * Whether the SIP core goes to the servers over IPv6 first, for [coreOrder]: as the server saw
+     * the registration ([contactHost], the host of its contact; null while it has none), else
+     * where the phone has an IPv6 address that reaches beyond its link ([local], its addresses).
+     */
+    fun sixFirst(contactHost: String?, local: Collection<String>): Boolean {
+        contactHost?.let(::parse)?.let { return it.size == IPV6_BYTES }
+        return local.any { parse(it)?.size == IPV6_BYTES && kind(it).let { k -> k == Kind.PUBLIC || k == Kind.UNIQUE_LOCAL } }
+    }
+
+    private const val IPV6_BYTES = 16
+
     /** The canonical text of an address: dotted IPv4, or IPv6 in groups with the longest run of zeros shortened. */
     fun format(bytes: ByteArray): String {
         if (bytes.size == 4) return bytes.joinToString(".") { (it.toInt() and 0xFF).toString() }

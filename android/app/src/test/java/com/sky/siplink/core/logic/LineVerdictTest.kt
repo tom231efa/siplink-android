@@ -44,6 +44,14 @@ class LineVerdictTest {
     }
 
     @Test
+    fun `addresses count however they are written`() {
+        val six = listOf("2001:db8:0:0::55")
+        assertEquals(NatKind.NONE, LineVerdict.nat(six, Mapped("2001:db8::55", 40000)))
+        assertEquals(NatKind.NONE, LineVerdict.nat(six, Mapped("[2001:DB8::55]", 40000)))
+        assertEquals(NatKind.SYMMETRIC, LineVerdict.nat(local, Mapped("2001:db8::7", 40000), Mapped("2001:0db8::0:7", 51000)))
+    }
+
+    @Test
     fun `missing sound is judged after a few seconds, sound both ways at once`() {
         assertNull(LineVerdict.flow(10, 0, null, 2_000))
         assertEquals(MediaFlow.BOTH, LineVerdict.flow(10, 8, null, 1_000))

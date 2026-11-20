@@ -28,6 +28,9 @@ import org.linphone.core.tools.AndroidPlatformHelper
 class NetworkWatch(context: Context) {
     private val connectivity = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
+    /** The network the facts are of: the default one, as the callbacks last named it. */
+    private var current: Network? = null
+
     private val callback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
             lookAgain()
@@ -42,7 +45,12 @@ class NetworkWatch(context: Context) {
 
         override fun onLinkPropertiesChanged(network: Network, properties: LinkProperties) = update(network, null, properties)
 
-        override fun onLost(network: Network) = publish(null)
+        override fun onLost(network: Network) {
+            // A network that was the default one before may be lost after the new one came.
+            if (network != current) return
+            current = null
+            publish(null)
+        }
     }
 
     init {
@@ -58,6 +66,7 @@ class NetworkWatch(context: Context) {
     private fun update(network: Network, capabilities: NetworkCapabilities?, properties: LinkProperties?) {
         val caps = capabilities ?: connectivity.getNetworkCapabilities(network) ?: return
         val link = properties ?: connectivity.getLinkProperties(network) ?: return
+        current = network
         publish(factsOf(caps, link))
     }
 
@@ -92,8 +101,10 @@ class NetworkWatch(context: Context) {
                 capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> NetType.ETHERNET
                 else -> NetType.OTHER
             }
-            val addresses = link.linkAddresses.mapNotNull { it.address.hostAddress?.substringBefore('%') }
-                .filter { NetAddress.kind(it) != NetAddress.Kind.LINK_LOCAL && NetAddress.kind(it) != NetAddress.Kind.LOOPBACK }
+            val linked = link.linkAddresses.mapNotNull { linkAddress ->
+                linkAddress.address.hostAddress?.substringBefore('%')?.let { it to linkAddress.prefixLength }
+            }.filter { (address, _) -> NetAddress.kind(address) != NetAddress.Kind.LOOPBACK }
+            val addresses = linked.map { it.first }.filter { NetAddress.kind(it) != NetAddress.Kind.LINK_LOCAL }
             val gateways = link.routes.filter { it.isDefaultRoute }
                 .mapNotNull { route -> route.gateway?.takeUnless { it.isAnyLocalAddress }?.hostAddress?.substringBefore('%') }
             return NetworkFacts(
@@ -101,6 +112,7 @@ class NetworkWatch(context: Context) {
                 vpn = capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN),
                 // IPv4 first: it is the address shown.
                 addresses = addresses.sortedBy(::ipv4First),
+                subnets = linked.mapNotNull { (address, prefix) -> NetAddress.subnet(address, prefix, prefix) }.distinct().sortedBy(::ipv4First),
                 gateways = gateways.distinct().sortedBy(::ipv4First),
                 dns = link.dnsServers.mapNotNull { it.hostAddress?.substringBefore('%') }.sortedBy(::ipv4First),
                 validated = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED),
