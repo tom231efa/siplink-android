@@ -4,6 +4,7 @@ import com.sky.siplink.core.logic.AccountRoute
 import com.sky.siplink.core.logic.DnsMessage
 import com.sky.siplink.core.logic.LineAdapt
 import com.sky.siplink.core.logic.NetAddress
+import com.sky.siplink.core.logic.ServerChoice
 import com.sky.siplink.core.logic.SipPing
 import com.sky.siplink.core.logic.StunMessage
 import com.sky.siplink.core.model.Mapped
@@ -14,9 +15,13 @@ import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
 import java.net.InetSocketAddress
+import java.net.PortUnreachableException
 import java.net.Socket
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
+import java.nio.channels.SelectionKey
+import java.nio.channels.Selector
+import java.nio.channels.SocketChannel
 import kotlin.random.Random
 
 /**
@@ -62,42 +67,106 @@ internal object LineNetwork {
 
     /**
      * Whether a SIP server is there at [host]:[port]. Over UDP it is sent an OPTIONS request,
-     * which any server answers; for TCP and TLS it is enough that it takes the connection.
+     * which any server answers; for TCP and TLS it is enough that it takes the connection
+     * (nothing is sent: an account on TLS sends nothing in clear). With the fast timeout
+     * [timeoutMs] it is asked several times within that time ([ServerChoice.sendTimes]).
      *
      * @param server the server as the account knows it, `host[:port]`
      * @param from `user@domain` of the account that asks
      * @param userAgent what the app calls itself in its other requests
      */
-    fun answers(host: String, port: Int, transport: SipTransport, server: String, from: String, userAgent: String): Boolean = try {
-        if (transport == SipTransport.UDP) {
-            answersOptions(host, port, server, from, userAgent)
+    fun answers(
+        host: String,
+        port: Int,
+        transport: SipTransport,
+        server: String,
+        from: String,
+        userAgent: String,
+        timeoutMs: Int = 0,
+    ): Boolean = try {
+        val target = InetSocketAddress(host, port)
+        if (target.isUnresolved) {
+            false
+        } else if (transport == SipTransport.UDP) {
+            answersOptions(target, server, from, userAgent, timeoutMs)
         } else {
-            Socket().use { it.connect(InetSocketAddress(host, port), TIMEOUT_MS) }
-            true
+            connects(target, ServerChoice.sendTimes(timeoutMs, reliable = true), ServerChoice.waitMs(timeoutMs))
         }
     } catch (_: IOException) {
         false
     } catch (_: IllegalArgumentException) {
         false
+    } catch (_: SecurityException) {
+        false
     }
 
-    private fun answersOptions(host: String, port: Int, server: String, from: String, userAgent: String): Boolean = DatagramSocket().use { socket ->
-        socket.soTimeout = TIMEOUT_MS
-        socket.connect(InetSocketAddress(host, port))
-        val token = Random.nextLong().toULong().toString(16)
-        val local = "${socket.localAddress.hostAddress}:${socket.localPort}"
-        val request = SipPing.options(server, from, local, token, userAgent).toByteArray(Charsets.US_ASCII)
-        repeat(ATTEMPTS) {
-            socket.send(DatagramPacket(request, request.size))
+    private fun answersOptions(target: InetSocketAddress, server: String, from: String, userAgent: String, timeoutMs: Int): Boolean =
+        DatagramSocket().use { socket ->
+            socket.connect(target)
+            val token = Random.nextLong().toULong().toString(16)
+            val local = "${socket.localAddress.hostAddress}:${socket.localPort}"
+            val request = SipPing.options(server, from, local, token, userAgent).toByteArray(Charsets.US_ASCII)
+            awaitAnswer(socket, DatagramPacket(request, request.size), token, timeoutMs)
+        }
+
+    /** Sends [request] on the connected [socket] at the times of [ServerChoice.sendTimes] until the answer with [token] comes. */
+    private fun awaitAnswer(socket: DatagramSocket, request: DatagramPacket, token: String, timeoutMs: Int): Boolean {
+        val start = System.nanoTime()
+        val sends = ArrayDeque(ServerChoice.sendTimes(timeoutMs, reliable = false))
+        val wait = ServerChoice.waitMs(timeoutMs)
+        while (true) {
+            val elapsed = (System.nanoTime() - start) / NANOS_PER_MS
+            while (sends.isNotEmpty() && sends.first() <= elapsed) {
+                sends.removeFirst()
+                socket.send(request)
+            }
+            if (elapsed >= wait) return false
+            val until = minOf(wait, sends.firstOrNull() ?: wait)
+            socket.soTimeout = (until - elapsed).coerceAtLeast(1).toInt()
             val packet = DatagramPacket(ByteArray(MAX_PACKET), MAX_PACKET)
             try {
                 socket.receive(packet)
                 if (SipPing.isAnswer(String(packet.data, 0, packet.length, Charsets.ISO_8859_1), token)) return true
             } catch (_: SocketTimeoutException) {
-                // Ask once more.
+                // Time to send again, or to give up.
+            } catch (_: PortUnreachableException) {
+                // Nothing listens there just now; asked again, it may.
             }
         }
-        false
+    }
+
+    /** Whether one of the connections started at [starts] (ms after the first) to [target] is taken within [waitMs]. */
+    private fun connects(target: InetSocketAddress, starts: List<Long>, waitMs: Long): Boolean {
+        val selector = Selector.open()
+        val channels = ArrayList<SocketChannel>()
+        try {
+            val start = System.nanoTime()
+            val pending = ArrayDeque(starts)
+            while (true) {
+                val elapsed = (System.nanoTime() - start) / NANOS_PER_MS
+                while (pending.isNotEmpty() && pending.first() <= elapsed) {
+                    pending.removeFirst()
+                    val channel = SocketChannel.open().also(channels::add)
+                    channel.configureBlocking(false)
+                    if (channel.connect(target)) return true
+                    channel.register(selector, SelectionKey.OP_CONNECT)
+                }
+                if (elapsed >= waitMs) return false
+                val until = minOf(waitMs, pending.firstOrNull() ?: waitMs)
+                selector.select((until - elapsed).coerceAtLeast(1))
+                val ready = selector.selectedKeys().toList()
+                selector.selectedKeys().clear()
+                for (key in ready) {
+                    val channel = key.channel() as SocketChannel
+                    key.cancel()
+                    // A refused connection counts as none; another one started may still be taken.
+                    if (runCatching { channel.finishConnect() }.getOrDefault(false)) return true
+                }
+            }
+        } finally {
+            channels.forEach { runCatching { it.close() } }
+            selector.close()
+        }
     }
 
     // ---------------------------------------------------------------- the line checks
