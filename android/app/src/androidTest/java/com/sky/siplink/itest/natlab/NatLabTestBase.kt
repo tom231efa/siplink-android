@@ -172,9 +172,16 @@ abstract class NatLabTestBase {
 
     protected fun call(): CallInfo? = engine.calls.call.value
 
-    protected fun dial(target: String) {
-        val error = onMain { engine.calls.dial(target, null) }
+    /** Dials [target]; with [video] the offer carries video as well, which makes the INVITE larger than one packet. */
+    protected fun dial(target: String, video: Boolean = false) {
+        val error = onMain { engine.calls.dial(target, null, video = video) }
         assertTrue("The app refused to dial: $error", error == null)
+    }
+
+    /** Has the lines use the lab's STUN server; the app takes a new one once the typing has stopped. */
+    protected fun useStunServer() {
+        onMain { engine.updateSettings { it.copy(stunServer = lab.stunServer) } }
+        await("the STUN server in use") { onMain { engine.accounts.stunServer } == lab.stunServer }
     }
 
     /** Level of the audio the app receives, in dBm0 (about -120 for silence). */
@@ -232,6 +239,9 @@ abstract class NatLabTestBase {
 
         /** As [NAT_ACCOUNT], at a PBX that knows its address for SIP but not for the sound. */
         const val SIGNALLING_ACCOUNT = 6001
+
+        /** As [NAT_ACCOUNT], with one registration that stands until it expires: a second one is refused (403). */
+        const val SINGLE_ACCOUNT = 7001
         const val DEFAULT_SIP_PORT = 5060
         const val ECHO = "600"
         const val TONE = "601"
@@ -248,7 +258,10 @@ abstract class NatLabTestBase {
         /** How long a call runs to show that something does not happen. */
         const val QUIET_WINDOW_MS = 8_000L
 
-        /** Five seconds without sound, and the time the statistics take to come. */
-        const val NO_SOUND_TIMEOUT_MS = 20_000L
+        /**
+         * Fifteen seconds without sound after some came (five while none came at all), and the
+         * time the statistics take to come; the SIP core ends the call only after 30.
+         */
+        const val NO_SOUND_TIMEOUT_MS = 25_000L
     }
 }

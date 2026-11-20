@@ -19,9 +19,7 @@ import org.linphone.core.IceState
 @RunWith(AndroidJUnit4::class)
 class NatIceTest : NatLabTestBase() {
     @Before
-    fun stun() {
-        onMain { engine.updateSettings { it.copy(stunServer = lab.stunServer) } }
-    }
+    fun stun() = useStunServer()
 
     @Test
     fun iceGivesTheSoundOfAPbxWithoutNatHandlingItsWay() {
@@ -95,6 +93,22 @@ class NatIceTest : NatLabTestBase() {
         assertEquals(Ice.ON, ice(id))
     }
 
+    @Test
+    fun aTrialWhoseCallsFailInTheirSetUpIsGivenUp() {
+        addAccount(PLAIN_ACCOUNT)
+        awaitRegistered(PLAIN_ACCOUNT)
+        val id = account(PLAIN_ACCOUNT)!!.id
+        oneWayCall(id, TONE)
+
+        // The INVITE with the candidates is larger than one packet: its fragments are dropped.
+        box("fragments off")
+        dial(TONE)
+        await("the call to fail", CALL_FAIL_MS) { call() == null || call()?.phase == CallPhase.ENDED }
+        await("ICE to be given up") { ice(id) == Ice.REFUSED }
+        await("ICE out of the core") { onMain { engine.accounts.adaptation(id) }?.ice != true }
+        println("natlab evidence: ICE trial, INVITE in fragments dropped: ${call()?.endReason}, line on ${adapted(PLAIN_ACCOUNT)}")
+    }
+
     /** A call out to [target] whose sound goes one way: the line [id] tries ICE afterwards. */
     private fun oneWayCall(id: String, target: String) {
         dial(target)
@@ -138,5 +152,8 @@ class NatIceTest : NatLabTestBase() {
         /** Where LineDoctor keeps what it remembers of the lines. */
         const val ADAPT_SECTION = "siplink_line_adapt"
         val CONNECTED = setOf(IceState.HostConnection, IceState.ReflexiveConnection, IceState.RelayConnection)
+
+        /** How long a UDP request of the SIP core waits for its answer (64 × T1), with a margin. */
+        const val CALL_FAIL_MS = 90_000L
     }
 }

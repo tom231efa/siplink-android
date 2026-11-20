@@ -26,6 +26,7 @@ class NatDiagnosisTest : NatLabTestBase() {
         assertEquals(NatKind.PRESENT, report.nat)
         assertEquals(BOX_INET, report.publicAddress?.address)
         assertNotNull(report.udp)
+        assertEquals(true, report.udpInvite)
         assertEquals(true, report.udpLarge)
         assertNotNull(report.tcpMs)
         assertEquals(false, report.algSuspected)
@@ -43,7 +44,7 @@ class NatDiagnosisTest : NatLabTestBase() {
     @Test
     fun aSymmetricNatIsToldWithAStunServer() {
         box("mode symmetric")
-        onMain { engine.updateSettings { it.copy(stunServer = lab.stunServer) } }
+        useStunServer()
         addAccount(NAT_ACCOUNT)
         awaitRegistered(NAT_ACCOUNT)
         val report = check(NAT_ACCOUNT)
