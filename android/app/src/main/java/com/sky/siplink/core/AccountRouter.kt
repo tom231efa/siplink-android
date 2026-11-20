@@ -66,8 +66,12 @@ internal class AccountRouter(
         /** Changes whenever the route is decided anew: the answer to an older question is dropped. */
         var generation = 0
 
-        /** The account just went back to its first server; [failedReturns] counts the times that did not hold, the last at [failedReturnAt]. */
-        var returning = false
+        /**
+         * When the account last went back to its first server, until that held
+         * ([ServerChoice.RETURN_HOLD_MS]); 0: it did not, or it held. [failedReturns] counts the
+         * returns that did not hold, the last at [failedReturnAt].
+         */
+        var returnedAt = 0L
         var failedReturns = 0
         var failedReturnAt = 0L
         var probe: Runnable? = null
@@ -102,10 +106,15 @@ internal class AccountRouter(
     }
 
     /** One asking of both servers; [waiters] are told whether the account moved. */
-    private class Check(val timeoutMs: Int) {
+    private class Check(val id: String, val timeoutMs: Int) {
         var primary = Answer.PENDING
         var backup = Answer.PENDING
         var deadline: Runnable? = null
+
+        /** The first request to each server went out; [unasked] judges one that did not in time. */
+        var primaryAsked = false
+        var backupAsked = false
+        var unasked: Runnable? = null
         val waiters = ArrayList<(Boolean) -> Unit>()
 
         /** A call out without an answer waits for it: silence is enough to leave ([ServerChoice.next]). */
@@ -128,13 +137,10 @@ internal class AccountRouter(
 
     private val states = HashMap<String, State>()
     private var generations = 0
-    private var freshAsks = 0
-    private val workers = Executors.newFixedThreadPool(WORKERS)
-    private val lookups = SharedAsk<List<String>>(handler, workers, LOOKUP_KEEP_MS, failed = emptyList())
-    private val probes = SharedAsk(handler, workers, PROBE_KEEP_MS, failed = false)
 
-    /** Probes with the fast timeout run on threads of their own: they never wait behind probes of servers that do not answer. */
-    private val fastProbes = SharedAsk(handler, Executors.newFixedThreadPool(WORKERS), PROBE_KEEP_MS, failed = false)
+    /** The lookups of the registrations' own servers do not wait behind probes of servers that do not answer. */
+    private val lookups = SharedAsk<List<String>>(handler, Executors.newFixedThreadPool(LOOKUP_WORKERS), LOOKUP_KEEP_MS, failed = emptyList())
+    private val asking = ServerAsk(core, handler) { network }
 
     /** The network the phone is on ([NetworkKey]); null while it has none. */
     private var network: String? = null
@@ -354,9 +360,10 @@ internal class AccountRouter(
             if (again) running.again = true
             return
         }
-        val check = Check(record.timeoutMs)
+        val check = Check(id, record.timeoutMs)
         then?.let(check.waiters::add)
         check.silentLeaves = silentLeaves
+        check.again = again
         state.check = check
         state.checkedAt = SystemClock.elapsedRealtime()
         val onBackup = onBackup(account, record)
@@ -364,58 +371,34 @@ internal class AccountRouter(
         // The server the account is on is asked as its line runs now; the other one as the account is set up.
         val other = ownTransport(id) ?: current
         // The fast timeout runs from the moment the first request goes out, not while a name is looked up.
-        val started = if (record.timeoutMs > 0) {
-            {
-                if (state.check === check && check.deadline == null && check.primary == Answer.PENDING) {
-                    val deadline = Runnable {
-                        if (check.primary == Answer.PENDING) check.primary = Answer.SILENT
-                        decide(id, check)
-                    }
-                    check.deadline = deadline
-                    handler.postDelayed(deadline, record.timeoutMs.toLong())
+        val primaryStarted = {
+            check.primaryAsked = true
+            if (record.timeoutMs > 0 && state.check === check && check.deadline == null && check.primary == Answer.PENDING) {
+                val deadline = Runnable {
+                    if (check.primary == Answer.PENDING) check.primary = Answer.SILENT
+                    decide(id, check)
                 }
+                check.deadline = deadline
+                handler.postDelayed(deadline, record.timeoutMs.toLong())
             }
-        } else {
-            null
         }
+        // A server that could not even be asked in a probe's time (a name not found) has failed: the check ends in time.
+        val unasked = Runnable {
+            if (!check.primaryAsked && check.primary == Answer.PENDING) check.primary = Answer.FAILED
+            if (!check.backupAsked && check.backup == Answer.PENDING) check.backup = Answer.FAILED
+            decide(id, check)
+        }
+        check.unasked = unasked
+        handler.postDelayed(unasked, ServerChoice.PROBE_WAIT_MS)
         val primary = serverOf(account, record, backup = false)
-        ask(account, record, primary, if (onBackup) other else current, record.timeoutMs, fresh, started) { alive ->
+        asking.ask(account, record, primary, if (onBackup) other else current, record.timeoutMs, fresh, primaryStarted) { alive ->
             if (check.primary == Answer.PENDING || check.primary == Answer.SILENT) check.primary = if (alive) Answer.ANSWERED else Answer.FAILED
             decide(id, check)
         }
-        ask(account, record, record.backup, if (onBackup) current else other, timeoutMs = 0, fresh = fresh) { alive ->
+        asking.ask(account, record, record.backup, if (onBackup) current else other, timeoutMs = 0, fresh = fresh, onStart = { check.backupAsked = true }) { alive ->
             if (check.backup == Answer.PENDING) check.backup = if (alive) Answer.ANSWERED else Answer.FAILED
             decide(id, check)
         }
-    }
-
-    /** Asks whether [server] answers over [transport], for [account]; [then] on the main thread. */
-    private fun ask(
-        account: Account,
-        record: AccountRoute.Record,
-        server: String,
-        transport: SipTransport,
-        timeoutMs: Int,
-        fresh: Boolean = false,
-        onStart: (() -> Unit)? = null,
-        then: (Boolean) -> Unit,
-    ) {
-        val (host, port) = AccountRoute.split(server)
-        val lookup = needsLookup(server, record)
-        val from = fromOf(account.params.identityAddress)
-        val userAgent = core.userAgent
-        val shared = if (timeoutMs > 0) fastProbes else probes
-        // A fresh question is one of its own: it joins no question under way either.
-        val key = "$network|$server/$transport@${record.dns}|$timeoutMs" + if (fresh) "|${++freshAsks}" else ""
-        shared.ask(key, { started ->
-            val target = if (lookup) {
-                val (dnsAddress, dnsPort) = AccountRoute.dnsServer(record.dns)
-                LineNetwork.resolve(host, dnsAddress, dnsPort).firstOrNull()
-            } else {
-                host
-            }
-            target != null && LineNetwork.answers(target, port ?: AccountRoute.defaultPort(transport), transport, server, from, userAgent, timeoutMs, started)
-        }, onStart, fresh, then)
     }
 
     private fun decide(id: String, check: Check) {
@@ -437,14 +420,15 @@ internal class AccountRouter(
         val toBackup = move == Move.BACKUP
         var moves = move != Move.STAY && toBackup != onBackup
         val here = if (onBackup) check.backup else check.primary
-        if (moves && !check.silentLeaves) {
+        if (moves) {
             // Registered there on this network, and not failed since: a refresh under way counts as registered.
+            // For a call out without an answer as well: it is placed again on two silent probes, not one.
             val registeredHere = state.registeredOn != null && state.registeredOn == network
             if (!ServerChoice.leavesNow(here, registeredHere, state.strikes)) {
                 // Once silent on a server it registered on here: asked again at once before it leaves.
                 state.strikes++
                 Log.i(TAG, "Line $id: its server was silent once (${check.timeoutMs} ms): asked again")
-                check(id, fresh = true)
+                check(id, silentLeaves = check.silentLeaves, again = check.again, fresh = true)
                 val next = state.check
                 if (next != null) next.waiters.addAll(check.waiters) else check.waiters.forEach { it(false) }
                 return
@@ -454,7 +438,6 @@ internal class AccountRouter(
         state.strikes = 0
         Log.i(TAG, "Line $id: first server ${check.primary}, backup ${check.backup}${if (check.timeoutMs > 0) " (fast, ${check.timeoutMs} ms)" else ""}: $move${if (moves) "" else ", stays"}")
         if (moves) {
-            if (!toBackup) state.returning = true
             if (here == Answer.SILENT || here == Answer.FAILED) {
                 state.leftSilent = hostPortOf(account.params.serverAddress)
                 state.leftSilentAt = SystemClock.elapsedRealtime()
@@ -473,25 +456,47 @@ internal class AccountRouter(
         val check = state.check ?: return null
         state.check = null
         check.deadline?.let(handler::removeCallbacks)
+        check.unasked?.let(handler::removeCallbacks)
         check.deadline = null
+        check.unasked = null
         return check
     }
 
-    /** Stops the asking of an account: what it finds is dropped, and those who wait for it hear that it did not move. */
+    /**
+     * Stops the asking of an account: what it finds is dropped, and those who wait for it hear
+     * that it did not move. One asked for again ([Check.again]) runs once things settled.
+     */
     private fun dropCheck(state: State) {
-        finishCheck(state)?.waiters?.forEach { it(false) }
+        val check = finishCheck(state) ?: return
+        check.waiters.forEach { it(false) }
+        if (check.again) handler.post { check(check.id) }
     }
 
-    /** Puts account [id] on its other server: the backup with [toBackup], else its first one. */
+    /**
+     * Puts account [id] on its other server: the backup with [toBackup], else its first one. A
+     * return to the first server counts as one that did not hold when the account leaves it again
+     * within [ServerChoice.RETURN_HOLD_MS]: the next return waits longer ([ServerChoice.mayReturn]).
+     */
     private fun move(id: String, toBackup: Boolean) {
         val state = states.getOrPut(id, ::State)
         dropCheck(state)
+        val now = SystemClock.elapsedRealtime()
+        if (!toBackup) {
+            state.returnedAt = now
+        } else if (state.returnedAt > 0) {
+            if (ServerChoice.returnHeld(now - state.returnedAt)) {
+                state.failedReturns = 0
+            } else {
+                state.failedReturns++
+                state.failedReturnAt = now
+            }
+            state.returnedAt = 0
+        }
         state.failures = 0
         state.strikes = 0
         state.registeredOn = null
-        state.movedAt = SystemClock.elapsedRealtime()
-        route(id, toBackup)
-        afterMove(id)
+        state.movedAt = now
+        route(id, toBackup, moved = true)
     }
 
     /**
@@ -525,11 +530,12 @@ internal class AccountRouter(
             val (s, a) = silent to answers
             if (s != null && a != null) then(s && a)
         }
-        ask(account, record, server, transport, record.timeoutMs, fresh = true) { alive ->
-            silent = !alive
+        // Silent as a check judges it: no answer within the fast timeout from the first request.
+        asking.judge(account, record, server, transport, record.timeoutMs, fresh = true) { answer ->
+            silent = answer != Answer.ANSWERED
             both()
         }
-        ask(account, record, now, transportOf(account.params.serverAddress), timeoutMs = 0) { alive ->
+        asking.ask(account, record, now, transportOf(account.params.serverAddress), timeoutMs = 0) { alive ->
             answers = alive
             both()
         }
@@ -554,8 +560,9 @@ internal class AccountRouter(
                 }
                 if (backup) {
                     scheduleProbe(id, state)
-                } else {
-                    state.returning = false
+                } else if (state.returnedAt > 0 && ServerChoice.returnHeld(SystemClock.elapsedRealtime() - state.returnedAt)) {
+                    // Back on the first server long enough: the returns before it are forgotten.
+                    state.returnedAt = 0
                     state.failedReturns = 0
                 }
             }
@@ -568,19 +575,22 @@ internal class AccountRouter(
             RegistrationState.Failed -> {
                 state.registeredOn = null
                 if (!AccountRoute.isServerDown(account.errorInfo.protocolCode) || holds()) return
-                state.failures++
-                val sinceMove = SystemClock.elapsedRealtime() - state.movedAt
-                val switch = record.backup.isNotEmpty() && ServerChoice.switchesBlindly(state.failures, state.check != null, sinceMove)
-                if (switch && !backup && state.returning) {
-                    state.failedReturns++
-                    state.failedReturnAt = SystemClock.elapsedRealtime()
+                val now = SystemClock.elapsedRealtime()
+                val stale = record.dns.isNotEmpty() && now - state.lookedUpAt > RELOOKUP_MS
+                if (record.backup.isNotEmpty() && !ServerChoice.failureCounts(state.check != null, now - state.movedAt)) {
+                    // Held back: it does not count, and the servers are asked instead (not too often).
+                    if (state.check == null && now - state.checkedAt > ServerChoice.MIN_CHECK_GAP_MS) handler.post { check(id) }
+                    if (stale) handler.post { if (states[id] === state) route(id, backup) }
+                    return
                 }
-                if (switch) state.returning = false
-                val stale = record.dns.isNotEmpty() && SystemClock.elapsedRealtime() - state.lookedUpAt > RELOOKUP_MS
+                state.failures++
+                val switch = record.backup.isNotEmpty() && AccountRoute.switchesNow(state.failures)
                 if (switch) state.moving = true
                 // Not from inside this notification: the core is in the middle of the registration.
                 if (switch || stale) {
                     handler.post {
+                        // Switched off or removed in the meantime: nothing to move.
+                        if (states[id] !== state) return@post
                         state.moving = false
                         if (switch) move(id, !backup) else route(id, backup)
                     }
@@ -591,7 +601,7 @@ internal class AccountRouter(
     }
 
     /** Puts account [id] on its first or its backup server, looking its address up when the account has a DNS server. */
-    private fun route(id: String, useBackup: Boolean) {
+    private fun route(id: String, useBackup: Boolean, moved: Boolean = false) {
         val account = find(id) ?: return
         val record = record(id) ?: return
         val state = states.getOrPut(id, ::State)
@@ -600,7 +610,7 @@ internal class AccountRouter(
         cancelProbe(state)
         val server = serverOf(account, record, useBackup)
         if (!needsLookup(server, record)) {
-            apply(id, server, useBackup, pin = null)
+            apply(id, server, useBackup, pin = null, moved)
             return
         }
         state.lookedUpAt = SystemClock.elapsedRealtime()
@@ -611,11 +621,12 @@ internal class AccountRouter(
             if (current == null || current.generation != generation) return@ask
             current.dnsFailed = addresses.isEmpty()
             // Without an answer the address found last time is the best guess; without one, the system is asked.
-            apply(id, server, useBackup, addresses.firstOrNull() ?: find(id)?.let { pinOf(it, server) })
+            apply(id, server, useBackup, addresses.firstOrNull() ?: find(id)?.let { pinOf(it, server) }, moved)
         }
     }
 
-    private fun apply(id: String, server: String, useBackup: Boolean, pin: String?) {
+    /** Sets the server of account [id]; with [moved] the line doctor hears of it once it is set ([afterMove]). */
+    private fun apply(id: String, server: String, useBackup: Boolean, pin: String?, moved: Boolean = false) {
         val account = find(id) ?: return
         val record = record(id) ?: return
         val params = account.params.clone()
@@ -626,6 +637,7 @@ internal class AccountRouter(
         if (same && !record.waiting) {
             // Nothing changes, so no registration follows that would set up the next look at the first server.
             if (onBackup(account, record) && account.state == RegistrationState.Ok) states[id]?.let { scheduleProbe(id, it) }
+            if (moved) afterMove(id)
             return
         }
         params.serverAddress = address
@@ -637,6 +649,7 @@ internal class AccountRouter(
         }
         account.params = params
         onChanged(account)
+        if (moved) afterMove(id)
     }
 
     // ---------------------------------------------------------------- back to the first server
@@ -671,12 +684,12 @@ internal class AccountRouter(
         if (!onBackup(account, record) || account.state != RegistrationState.Ok) return
         val generation = state.generation
         val transport = ownTransport(id) ?: transportOf(account.params.serverAddress)
-        ask(account, record, serverOf(account, record, backup = false), transport, timeoutMs = 0) { alive ->
+        // Judged as leaving it was: with the fast timeout, a first server that answers only after it is not back.
+        asking.judge(account, record, serverOf(account, record, backup = false), transport, record.timeoutMs, fresh = true) { answer ->
             val current = states[id]
-            if (current == null || current.generation != generation) return@ask
+            if (current == null || current.generation != generation) return@judge
             // A call in progress stays where it is; the next round finds the line free.
-            if (alive && core.callsNb == 0) {
-                current.returning = true
+            if (answer == Answer.ANSWERED && core.callsNb == 0) {
                 move(id, toBackup = false)
             } else {
                 scheduleProbe(id, current)
@@ -711,12 +724,8 @@ internal class AccountRouter(
         /** Section holding, by `account|network`, the server the account registered on there last ([ServerChoice.Remembered]). */
         const val MEMORY = "siplink_account_servers"
 
-        /** Both servers of an account are asked at once, a few accounts at a time. */
-        const val WORKERS = 8
+        const val LOOKUP_WORKERS = 2
         const val LOOKUP_KEEP_MS = 10_000L
-
-        /** Accounts on the same server that ask at once share one answer; one that asks a moment later asks anew. */
-        const val PROBE_KEEP_MS = 1_000L
 
         /** A registration that keeps failing has the address of its server looked up again this often. */
         const val RELOOKUP_MS = 30_000L

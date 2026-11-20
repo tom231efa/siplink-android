@@ -68,8 +68,14 @@ class ServerChoiceTest {
 
     @Test
     fun `a late answer of the first server still counts while the account has not moved`() {
+        // Silent past the fast timeout, the backup not answered yet: nothing decided.
+        assertEquals(Move.WAIT, ServerChoice.next(onBackup = false, SILENT, PENDING, callUp = false))
         assertEquals(Move.WAIT, ServerChoice.next(onBackup = false, SILENT, FAILED, callUp = false))
+        // The same check, the first server's answer in after all: it keeps the account.
         assertEquals(Move.PRIMARY, ServerChoice.next(onBackup = false, ANSWERED, PENDING, callUp = false))
+        assertEquals(Move.PRIMARY, ServerChoice.next(onBackup = false, ANSWERED, ANSWERED, callUp = false))
+        // Once the backup answered while it was silent, the account goes.
+        assertEquals(Move.BACKUP, ServerChoice.next(onBackup = false, SILENT, ANSWERED, callUp = false))
     }
 
     @Test
@@ -133,13 +139,20 @@ class ServerChoiceTest {
     }
 
     @Test
-    fun `a failed registration switches blindly only outside a check and the quiet time after a move`() {
+    fun `a failed registration counts only outside a check and the quiet time after a move`() {
         val quiet = ServerChoice.MOVED_QUIET_MS
-        assertTrue(ServerChoice.switchesBlindly(failures = 1, checking = false, sinceMoveMs = quiet))
-        assertFalse(ServerChoice.switchesBlindly(failures = 2, checking = false, sinceMoveMs = quiet))
-        assertTrue(ServerChoice.switchesBlindly(failures = 3, checking = false, sinceMoveMs = quiet))
-        assertFalse(ServerChoice.switchesBlindly(failures = 1, checking = true, sinceMoveMs = quiet))
-        assertFalse(ServerChoice.switchesBlindly(failures = 1, checking = false, sinceMoveMs = quiet - 1))
+        assertTrue(ServerChoice.failureCounts(checking = false, sinceMoveMs = quiet))
+        assertFalse(ServerChoice.failureCounts(checking = true, sinceMoveMs = quiet))
+        assertFalse(ServerChoice.failureCounts(checking = false, sinceMoveMs = quiet - 1))
+        // A failure held back takes no slot: the first one that counts switches, as without a move.
+        assertTrue(AccountRoute.switchesNow(1))
+    }
+
+    @Test
+    fun `a return to the first server holds after ten minutes`() {
+        assertFalse(ServerChoice.returnHeld(ServerChoice.RETURN_HOLD_MS - 1))
+        assertTrue(ServerChoice.returnHeld(ServerChoice.RETURN_HOLD_MS))
+        assertEquals(10 * 60_000L, ServerChoice.RETURN_HOLD_MS)
     }
 
     @Test

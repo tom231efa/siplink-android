@@ -63,7 +63,10 @@ internal class SharedAsk<T>(
             val value = runCatching { question(started) }.getOrDefault(failed)
             handler.post {
                 // A fresh question is asked under a key of its own: its answer serves nobody later.
-                if (!fresh) answers[key] = Answer(value, SystemClock.elapsedRealtime())
+                val now = SystemClock.elapsedRealtime()
+                // What is too old to serve anyone goes, with the answers of networks left behind.
+                answers.values.removeAll { now - it.at >= keepMs }
+                if (!fresh) answers[key] = Answer(value, now)
                 if (asking[key] === running) asking.remove(key)
                 // A question that went wrong before it went out: those waiting for its start hear of it now.
                 if (!running.started) {

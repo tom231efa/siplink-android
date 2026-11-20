@@ -127,14 +127,26 @@ object ServerChoice {
         here != Answer.SILENT || !registeredHere || strikes >= 1
 
     /**
-     * Whether a registration that failed for want of a server switches the account to its other
-     * server at once: every other failure ([AccountRoute.switchesNow]), but not while both
-     * servers are being asked ([checking]), nor within [MOVED_QUIET_MS] of a move ([sinceMoveMs]):
-     * the first registration on a new network or a new server may fail before the way is up, and
-     * the check decides better.
+     * Whether a registration that failed for want of a server counts towards a switch to the
+     * other server ([AccountRoute.switchesNow]): not while both servers are being asked
+     * ([checking]), nor within [MOVED_QUIET_MS] of a move ([sinceMoveMs]). The first registration
+     * on a new network or a new server may fail before the way is up; a failure held back has
+     * both servers asked instead, so that a dead server is left on evidence.
      */
-    fun switchesBlindly(failures: Int, checking: Boolean, sinceMoveMs: Long): Boolean =
-        AccountRoute.switchesNow(failures) && !checking && sinceMoveMs >= MOVED_QUIET_MS
+    fun failureCounts(checking: Boolean, sinceMoveMs: Long): Boolean = !checking && sinceMoveMs >= MOVED_QUIET_MS
+
+    /**
+     * How long a return to the first server has to hold before it counts as one that held: a
+     * first server that takes the account back and loses it again within this time (it answers
+     * OPTIONS and refuses REGISTER, its link comes and goes) has the next return wait longer
+     * ([mayReturn]). Ten minutes are several fast-timeout checks and the 32 seconds of a REGISTER
+     * that is not answered, many times over, and short enough that one bad moment is forgotten
+     * the same morning.
+     */
+    const val RETURN_HOLD_MS = 10 * 60_000L
+
+    /** Whether a return to the first server [sinceReturnMs] ago has held ([RETURN_HOLD_MS]). */
+    fun returnHeld(sinceReturnMs: Long): Boolean = sinceReturnMs >= RETURN_HOLD_MS
 
     /**
      * Whether an account on its backup may go back to its first server now, when its last
@@ -152,8 +164,8 @@ object ServerChoice {
     const val MIN_CHECK_GAP_MS = 5_000L
 
     /**
-     * How long after a move a failed registration neither switches the account blindly
-     * ([switchesBlindly]) nor counts for the line doctor at once: the way to the new server may
+     * How long after a move a failed registration neither counts towards a switch
+     * ([failureCounts]) nor for the line doctor at once: the way to the new server may
      * not be up yet, and what failed may be the way to the server it left.
      */
     const val MOVED_QUIET_MS = 40_000L
