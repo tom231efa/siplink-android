@@ -106,7 +106,7 @@ every change and feed the document version.
 | `mail_settings` | `id` = 1 only, `host`, `port`, `security`, `username`, `password_enc`, `from_address`, `from_name` | 0007; §6.8 |
 | `regions` | `name` UNIQUE, `note` | |
 | `config_templates` | `region_id` NULL=global, `name`, `note`, `settings_json`, `codecs_json`, `ca_pems` (text, PEM bundle), `config_password_hash` (SHA-256 hex or ''), `refresh_minutes`, `revision` | UNIQUE(`region_id`,`name`) |
-| `account_profiles` | `config_template_id`, `position`, `name` (≤30, unique per template, case-insensitive), `domain`, `port` (text), `server`, `backup_server`, `dns_server`, `transport` (`UDP`/`TCP`/`TLS`), `expires`, `subscribe_mwi`, `enabled`, `is_default` | ≤100 per template |
+| `account_profiles` | `config_template_id`, `position`, `name` (≤30, unique per template, case-insensitive), `domain`, `port` (text), `server`, `backup_server`, `server_timeout_ms` (0 = off, else 200–10000; migration 0013), `dns_server`, `transport` (`UDP`/`TCP`/`TLS`), `expires`, `subscribe_mwi`, `enabled`, `is_default` | ≤100 per template |
 | `template_directories` | `config_template_id`, `position`, `kind` (`external`/`hosted`), `book_id` NULL (hosted), `external_id` NULL (external, migration 0008), `name` ('' = the directory's name), `enabled`, `password_mode` (`none`/`template`/`client`) and `password_enc` NULL (hosted bound by hand only), `line_profile_id` NULL, `ldap_account_id` NULL (hosted only, migration 0006), `lookup_incoming`, `lookup_outgoing`, `max_results` (hosted only) | ≤50 per template; the connection columns it had up to schema 7 moved to `external_directories` (migrations 0008/0009, §2.5); a trigger refuses an `external` row without `external_id` and a `hosted` row without `book_id` |
 | `external_directories` | `region_id` NULL, `name` (≤40, unique per region case-insensitive), `note`, `host`, `port`, `security` (`NONE`/`START_TLS`), `bind_dn`, `password_mode` (`none`/`template`/`client`), `password_enc` NULL, `base_dn`, `max_results`, `name_attributes`, `number_attributes`, `name_filter`, `number_filter` | 0008; `password_mode=template` = one password kept by the platform for every client (the word is historic: it was kept in the template) |
 | `key_templates` | `region_id` NULL, `name`, `note`, `revision` | UNIQUE(`region_id`,`name`) |
@@ -507,6 +507,7 @@ for (profiles without credentials are left out and flagged on the client page).
 | `port` | profile, string, `""` = default | `port` (a `String` in `AccountDraft`) |
 | `server` | profile | `server` |
 | `backupServer` | profile | `backupServer` |
+| `serverTimeoutMs` | profile `server_timeout_ms`, int ms; **absent when 0** (off) | `serverTimeoutMs` |
 | `dnsServer` | profile | `dnsServer` |
 | `transport` | profile, `UDP`/`TCP`/`TLS` | `transport` (`enum SipTransport`) |
 | `expires` | profile, 60–86400 | `expires` (`AccountRules.MIN_EXPIRES`/`MAX_EXPIRES`) |
@@ -519,6 +520,20 @@ The platform validates every account with the rules of `AccountRules.normalize` 
 `validate` (user name pattern, host[:port], port 1–65535, backup ≠ primary, DNS server
 `IP[:port]`, expires range, duplicate `user@domain`), ported to Go in
 `internal/rules/accounts.go`, with tests taken from `android/app/src/test/.../AccountRulesTest.kt`.
+
+`serverTimeoutMs` (added 2026-11-20) is the fast server timeout of a line: when the account has a
+backup server, a server that does not answer within this many milliseconds is taken as out of
+reach and the account moves to the other server at once. 0 is off, the app's default, and is
+**left out of the document** (`omitempty`), so the document of a line without it is byte for byte
+what it was, with the same `version`; otherwise it is 200–10000 (`rules.MinServerTimeoutMs`,
+`rules.MaxServerTimeoutMs`, `rules.IsValidServerTimeoutMs`). The platform refuses anything else in
+the account form (`catalog.ProfileProblems`) and in `provision.Build` ("快速超时应为 200–10000
+毫秒"); the check is the platform's own, outside the ported `ValidateAccount`. A timeout without
+a backup server is **stored and sent**, not refused: as with 自动接听时间 while 自动接听 is off or
+the STUN server while 自动适应网络 is off, a dependent value keeps its own state, and the app
+uses it only with a backup server. In the console it is the number field 快速超时（毫秒） below
+备用服务器 (empty = off, any whole number in range, so a stored value survives an edit). Golden
+case `internal/provision/testdata/server-timeout.json`; databases before migration 0013 read 0.
 
 #### 3.5.5 `directories`
 
@@ -1682,6 +1697,8 @@ docker build -t ghcr.io/tom231efa/siplink:dev .
   the limits, the triggers refusing a group of another region on insert and on a move, deletes
   (group, tag, region) and their counts, the filters (group, none, every tag), the rule of tags
   used outside a region administrator's regions, a refused bulk addition writing nothing.
+- `store` migration 0013: a line stored at schema 12 reads a fast server timeout of 0 with its
+  other fields and the template's revision unchanged, and keeps one saved afterwards.
   `BenchmarkClientList`: a page of 5,000 clients with 100 groups and 200 tags, unfiltered and
   filtered.
 

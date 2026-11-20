@@ -221,6 +221,7 @@ https://{主机}[:{端口}][/{前缀}]/p/{令牌}[?pin={指纹}]
 | `name`、`username`、`password`、`authUser`、`displayName`、`domain` | 字符串 | 同[账号字段](user-guide.md#字段) |
 | `port` | 字符串 | 空为默认 |
 | `server`、`backupServer`、`dnsServer` | 字符串 | 代理、备用代理、DNS 服务器 |
+| `serverTimeoutMs` | 整数 | 快速超时（毫秒）：0 或缺省为关闭（默认），否则 200–10000；仅在有备用代理时起作用，服务器在这段时间内没有响应即改用另一台服务器；为 0 时不出现在文档中 |
 | `transport` | `UDP` / `TCP` / `TLS` | 默认 `UDP` |
 | `expires` | 整数 | 60–86400，默认 3600 |
 | `subscribeMwi` | 布尔 | 默认 `false` |

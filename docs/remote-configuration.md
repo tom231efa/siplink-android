@@ -221,6 +221,7 @@ The do not disturb switch, theme, dynamic color, call banner position, number of
 | `name`, `username`, `password`, `authUser`, `displayName`, `domain` | String | As in the [account fields](user-guide.md#fields) |
 | `port` | String | Empty for the default |
 | `server`, `backupServer`, `dnsServer` | String | Proxy, backup proxy, DNS server |
+| `serverTimeoutMs` | Integer | Fast timeout in milliseconds: 0 or absent for off (the default), otherwise 200–10000; only with a backup proxy, where a server that does not answer within it is left for the other one at once; absent from the document when 0 |
 | `transport` | `UDP` / `TCP` / `TLS` | Default `UDP` |
 | `expires` | Integer | 60–86400, default 3600 |
 | `subscribeMwi` | Boolean | Default `false` |

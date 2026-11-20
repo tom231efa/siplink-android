@@ -254,6 +254,7 @@ Replace `data/` with the directory mounted at `/data` in the container in Compos
 - The client page shows the SipLink version, version code and User-Agent reported by the phone. The platform provisions the same configuration to all versions; older versions ignore fields they do not know.
 - Administrators must re-enter their own password before viewing a password stored for a client, and every view is recorded in the audit log.
 - The "Advanced settings" of a configuration template set the maximum participants of the conference room (2–30, default 30), whether the lines adapt to the network automatically (on by default) and a STUN server (a host name or IP address, optionally with a port; empty for none). A template that keeps the defaults provisions exactly the configuration it did before; older app versions ignore these settings.
+- An account of a configuration template can set a "Fast timeout (ms)": empty for off (the default), otherwise 200–10000 milliseconds. When the account has a backup server, a server that does not answer within this time is taken as out of reach and the account moves to the other server at once; without a backup server the value is stored and provisioned but has no effect. An account without a fast timeout provisions exactly the configuration it did before.
 
 ## Languages
 
