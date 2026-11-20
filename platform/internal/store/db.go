@@ -44,6 +44,9 @@ type Store struct {
 // FileName is the name of the database inside the data directory.
 const FileName = "siplink.db"
 
+// maxConns is the number of connections to the database, open and idle alike.
+const maxConns = 8
+
 // Open opens (and creates) the database file and applies pending migrations. box is the
 // secret box of the key file: a migration that moves sealed values to other rows needs it
 // (goSteps).
@@ -61,7 +64,10 @@ func Open(ctx context.Context, path string, box *secret.Box) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	db.SetMaxOpenConns(8)
+	// As many idle connections as open ones: with the default of 2, concurrent requests
+	// close and reopen connections (each open runs the pragmas above).
+	db.SetMaxOpenConns(maxConns)
+	db.SetMaxIdleConns(maxConns)
 	s := &Store{DB: db, Now: time.Now}
 	if err := s.Migrate(ctx, box); err != nil {
 		db.Close()

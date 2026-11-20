@@ -2,6 +2,7 @@ package store_test
 
 import (
 	"context"
+	"database/sql"
 	"path/filepath"
 	"testing"
 
@@ -33,6 +34,27 @@ func TestMigrateTwice(t *testing.T) {
 	st.DB.QueryRow(`PRAGMA journal_mode`).Scan(&mode)
 	if fk != 1 || mode != "wal" {
 		t.Errorf("foreign_keys=%d journal_mode=%s", fk, mode)
+	}
+}
+
+// TestIdleConnections: connections given back after concurrent use stay open for the
+// next requests instead of being closed down to the default of 2 idle ones.
+func TestIdleConnections(t *testing.T) {
+	ctx := context.Background()
+	st := testutil.Store(t)
+	var conns []*sql.Conn
+	for range 8 {
+		c, err := st.DB.Conn(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		conns = append(conns, c)
+	}
+	for _, c := range conns {
+		c.Close()
+	}
+	if s := st.DB.Stats(); s.MaxOpenConnections != 8 || s.Idle != 8 || s.MaxIdleClosed != 0 {
+		t.Errorf("pool after 8 concurrent connections: open limit %d, idle %d, closed as surplus %d", s.MaxOpenConnections, s.Idle, s.MaxIdleClosed)
 	}
 }
 
