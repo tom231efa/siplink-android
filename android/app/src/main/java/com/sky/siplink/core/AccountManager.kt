@@ -557,7 +557,7 @@ class AccountManager(private val core: Core, private val lock: ConfigLock) {
         val state = when {
             !enabled -> RegState.DISABLED
             waiting -> RegState.PROGRESS
-            registration == RegistrationState.Ok -> RegState.OK
+            registration == RegistrationState.Ok -> if (route?.settling == true) RegState.PROGRESS else RegState.OK
             registration == RegistrationState.Progress || registration == RegistrationState.Refreshing -> RegState.PROGRESS
             registration == RegistrationState.Failed -> RegState.FAILED
             else -> RegState.NONE

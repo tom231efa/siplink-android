@@ -133,7 +133,8 @@ internal class AccountRouter(
     class Seen(val primary: Boolean, val backup: Boolean?, val at: Long)
 
     /** How an account is routed, for showing it. */
-    class View(val record: AccountRoute.Record, val onBackup: Boolean, val dnsFailed: Boolean, val seen: Seen?)
+    /** @param settling moved, and not registered on the new server yet: a registration the core still shows is the old one */
+    class View(val record: AccountRoute.Record, val onBackup: Boolean, val dnsFailed: Boolean, val seen: Seen?, val settling: Boolean)
 
     private val states = HashMap<String, State>()
     private var generations = 0
@@ -175,7 +176,8 @@ internal class AccountRouter(
     fun view(id: String, account: Account): View? {
         val record = record(id) ?: return null
         val state = states[id]
-        return View(record, onBackup(account, record), state?.dnsFailed == true, state?.seen)
+        val settling = state != null && state.movedAt > 0 && state.registeredOn == null
+        return View(record, onBackup(account, record), state?.dnsFailed == true, state?.seen, settling)
     }
 
     /** Whether account [id] is on its backup server. */
