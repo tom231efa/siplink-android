@@ -50,3 +50,26 @@ func TestSVGMatchesBitmap(t *testing.T) {
 func fmtSscanf(s string, x, y, w *int) (int, error) {
 	return fmt.Sscanf(s, "%d %dh%d", x, y, w)
 }
+
+// TestSVGsInOrder: the codes made in parallel are those of SVG, in the order of the texts.
+func TestSVGsInOrder(t *testing.T) {
+	var texts []string
+	for i := range 40 {
+		texts = append(texts, fmt.Sprintf("https://platform.example.com/p/%043d", i))
+	}
+	got, err := SVGs(texts, "QR")
+	if err != nil || len(got) != len(texts) {
+		t.Fatalf("%d codes: %v", len(got), err)
+	}
+	for i, text := range texts {
+		if want, _ := SVG(text, "QR"); got[i] != want {
+			t.Errorf("code %d is not the one of its text", i)
+		}
+	}
+	if got, err := SVGs(nil, "QR"); err != nil || len(got) != 0 {
+		t.Errorf("no texts: %v %v", got, err)
+	}
+	if _, err := SVGs([]string{"ok", strings.Repeat("x", 4000)}, "QR"); err == nil {
+		t.Error("a text too long for a QR code: no error")
+	}
+}

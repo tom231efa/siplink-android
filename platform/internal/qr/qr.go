@@ -3,9 +3,13 @@
 package qr
 
 import (
+	"errors"
 	"fmt"
 	"html"
+	"runtime"
 	"strings"
+	"sync"
+	"sync/atomic"
 
 	qrcode "github.com/skip2/go-qrcode"
 )
@@ -37,6 +41,24 @@ func SVG(text, label string) (string, error) {
 	}
 	b.WriteString(`"/></svg>`)
 	return b.String(), nil
+}
+
+// SVGs returns the SVG images of texts in their order, made in parallel: as many at once
+// as GOMAXPROCS. The error is that of any text that failed.
+func SVGs(texts []string, label string) ([]string, error) {
+	out := make([]string, len(texts))
+	errs := make([]error, len(texts))
+	var next atomic.Int64
+	var wg sync.WaitGroup
+	for range min(runtime.GOMAXPROCS(0), len(texts)) {
+		wg.Go(func() {
+			for i := int(next.Add(1)) - 1; i < len(texts); i = int(next.Add(1)) - 1 {
+				out[i], errs[i] = SVG(texts[i], label)
+			}
+		})
+	}
+	wg.Wait()
+	return out, errors.Join(errs...)
 }
 
 // PNG returns a PNG image of size×size pixels.

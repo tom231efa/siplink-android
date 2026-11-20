@@ -139,7 +139,6 @@ type ClientFilter struct {
 	Status   string
 	Now      time.Time // the moment StatusOffline is judged at
 	Query    string    // name or SIP user name, substring
-	IDs      []int64
 	Limit    int
 	Offset   int
 }
@@ -182,10 +181,6 @@ func (f ClientFilter) where() (with, where string, args []any) {
 		args = append([]any{f.nowText()}, append(args, StatusActive)...)
 	default:
 		conds, args = append(conds, "c.status = ?"), append(args, f.Status)
-	}
-	if len(f.IDs) > 0 {
-		conds = append(conds, "c.id IN ("+placeholders(len(f.IDs))+")")
-		args = append(args, int64Args(f.IDs)...)
 	}
 	if q := strings.TrimSpace(f.Query); q != "" {
 		// The SIP user names that match are found once (IN), not once per client (EXISTS).
@@ -244,6 +239,32 @@ func (s *Store) clientWhere(ctx context.Context, cond string, args ...any) (*Cli
 // ClientByID returns one client.
 func (s *Store) ClientByID(ctx context.Context, id int64) (*Client, error) {
 	return s.clientWhere(ctx, "id = ?", id)
+}
+
+// ClientsByID returns the clients of ids that exist, by id: one query per 500 ids.
+func (s *Store) ClientsByID(ctx context.Context, ids []int64) (map[int64]*Client, error) {
+	out := make(map[int64]*Client, len(ids))
+	for len(ids) > 0 {
+		part := ids[:min(len(ids), 500)]
+		ids = ids[len(part):]
+		rows, err := s.DB.QueryContext(ctx, `SELECT `+clientCols+` FROM clients WHERE id IN (`+placeholders(len(part))+`)`, int64Args(part)...)
+		if err != nil {
+			return nil, err
+		}
+		for rows.Next() {
+			c, err := scanClient(rows)
+			if err != nil {
+				rows.Close()
+				return nil, err
+			}
+			out[c.ID] = c
+		}
+		rows.Close()
+		if err := rows.Err(); err != nil {
+			return nil, err
+		}
+	}
+	return out, nil
 }
 
 // ClientByPublicID returns the client of an LDAP uid.

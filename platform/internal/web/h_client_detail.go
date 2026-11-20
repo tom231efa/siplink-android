@@ -313,20 +313,27 @@ type printCard struct {
 	QR           template.HTML
 }
 
-// clientPrint is the print page: one card per pending client with a valid QR code.
+// clientPrint is the print page: one card per pending client with a valid QR code, in the
+// order of the ids. The clients come in one query, the QR codes are made in parallel.
 func (s *Server) clientPrint(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
 	act := actor(r)
 	names, _ := s.allRegionNames(r)
-	var cards []printCard
-	skipped := 0
+	var ids []int64
 	for _, part := range strings.Split(r.URL.Query().Get("ids"), ",") {
-		id, ok := parseInt64(part)
-		if !ok {
-			continue
+		if id, ok := parseInt64(part); ok {
+			ids = append(ids, id)
 		}
-		c, err := s.St.ClientByID(ctx, id)
-		if err != nil || !act.Can(auth.ClientManage, &c.RegionID) {
+	}
+	byID, err := s.St.ClientsByID(r.Context(), ids)
+	if err != nil {
+		s.Log.Error("clients to print not read", "err", err) // as before: none of them is printed
+	}
+	var cards []printCard
+	var urls []string
+	skipped := 0
+	for _, id := range ids {
+		c := byID[id]
+		if c == nil || !act.Can(auth.ClientManage, &c.RegionID) {
 			continue
 		}
 		u := s.enrollURL(c)
@@ -334,12 +341,15 @@ func (s *Server) clientPrint(w http.ResponseWriter, r *http.Request) {
 			skipped++
 			continue
 		}
-		svg, err := qr.SVG(u, tr(r).T("common.qr_code"))
-		if err != nil {
-			s.internal(w, r, err)
-			return
-		}
-		cards = append(cards, printCard{Name: c.Name, Region: names[c.RegionID], QR: template.HTML(svg)})
+		cards, urls = append(cards, printCard{Name: c.Name, Region: names[c.RegionID]}), append(urls, u)
+	}
+	svgs, err := qr.SVGs(urls, tr(r).T("common.qr_code"))
+	if err != nil {
+		s.internal(w, r, err)
+		return
+	}
+	for i, svg := range svgs {
+		cards[i].QR = template.HTML(svg) // our own markup, no user data inside
 	}
 	s.render(w, r, http.StatusOK, "client_print", &Page{Title: tr(r).T("clients.print.title"), Nav: "clients", Bare: true,
 		Data: map[string]any{"Cards": cards, "Skipped": skipped}})
