@@ -7,14 +7,16 @@ import java.net.DatagramSocket
 import java.net.InetSocketAddress
 import java.net.SocketAddress
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 import kotlin.random.Random
 
 /**
  * A second way to the PBX that the test can cut: a UDP relay on the device itself, at [front]. To
  * the app it is a SIP server of its own. It can pass everything, nothing ([silent]: packets are
- * dropped without a word, as on a network that does not reach an office PBX), or lose a share
- * of the packets each way ([loss]).
+ * dropped without a word, as on a network that does not reach an office PBX), lose a share
+ * of the packets each way ([loss]), or hold each packet back a while each way ([delayMs]).
  */
 class ServerRelay(private val target: InetSocketAddress, front: InetSocketAddress) : Closeable {
     private val socket = DatagramSocket(front)
@@ -28,11 +30,17 @@ class ServerRelay(private val target: InetSocketAddress, front: InetSocketAddres
     @Volatile
     var loss = 0.0
 
+    /** How long each packet is held back each way. */
+    @Volatile
+    var delayMs = 0L
+
+    private val later = Executors.newSingleThreadScheduledExecutor()
+
     init {
         pump(socket) { packet ->
             // One socket towards the PBX per sender, so that its answers find their way back.
             val back = backs.getOrPut(packet.socketAddress) { backFor(packet.socketAddress) }
-            if (passes()) back.send(DatagramPacket(packet.data, packet.length, target))
+            if (passes()) forward(back, DatagramPacket(packet.data.copyOf(packet.length), packet.length, target))
         }
     }
 
@@ -40,8 +48,18 @@ class ServerRelay(private val target: InetSocketAddress, front: InetSocketAddres
 
     private fun backFor(client: SocketAddress): DatagramSocket {
         val back = DatagramSocket()
-        pump(back) { packet -> if (passes()) socket.send(DatagramPacket(packet.data, packet.length, client)) }
+        pump(back) { packet -> if (passes()) forward(socket, DatagramPacket(packet.data.copyOf(packet.length), packet.length, client)) }
         return back
+    }
+
+    /** Sends [packet] on [socket], after [delayMs] when there is one. */
+    private fun forward(socket: DatagramSocket, packet: DatagramPacket) {
+        val delay = delayMs
+        if (delay <= 0) {
+            socket.send(packet)
+        } else {
+            later.schedule({ runCatching { socket.send(packet) } }, delay, TimeUnit.MILLISECONDS)
+        }
     }
 
     private fun pump(socket: DatagramSocket, forward: (DatagramPacket) -> Unit) {
@@ -60,6 +78,7 @@ class ServerRelay(private val target: InetSocketAddress, front: InetSocketAddres
     }
 
     override fun close() {
+        later.shutdownNow()
         socket.close()
         backs.values.forEach { it.close() }
     }

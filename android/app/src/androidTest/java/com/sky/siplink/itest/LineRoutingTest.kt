@@ -6,6 +6,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.sky.siplink.core.NetworkWatch
 import com.sky.siplink.core.TlsManager
 import com.sky.siplink.core.logic.ServerChoice
+import com.sky.siplink.core.model.AudioRoute
 import com.sky.siplink.core.model.CallPhase
 import com.sky.siplink.core.model.NetworkFacts
 import com.sky.siplink.core.model.RegState
@@ -203,10 +204,12 @@ class LineRoutingTest : PbxTestBase() {
         assertEquals(RELAY_PORT, onMain { NetworkWatch.publish(office); engine.accounts.find(account(APP)!!.id)!!.params.serverAddress!!.port })
         await("the account to register on its first server in the office", NETWORK_FAILOVER_MS) { onFirstNow() }
 
-        // At home again: on the backup at once, and then back on the first server, which answers there now.
+        // At home again, where the first server does not answer: on the backup at once, and it stays there.
+        relay!!.silent = true
         val port = onMain { NetworkWatch.publish(home); engine.accounts.find(account(APP)!!.id)!!.params.serverAddress!!.port }
         assertTrue("Not on the backup at once: port $port", port != RELAY_PORT)
-        await("the account to return to its first server, which answers", NETWORK_FAILOVER_MS) { onFirstNow() }
+        await("the account to register on its backup at home", NETWORK_FAILOVER_MS) { onBackupNow() }
+        never("the account to go back to its first server at home", QUIET_WINDOW_MS) { !onBackupNow() }
     }
 
     /** A call on the backup stays up while the first server answers again; the account returns after it. */
@@ -255,33 +258,76 @@ class LineRoutingTest : PbxTestBase() {
         never("a second entry in the history", QUIET_WINDOW_MS) { engine.history.entries.value.size > entries + 1 }
     }
 
+    /** A call out to a first server that answers but takes a while to set it up is not placed again. */
+    @Test
+    fun aCallOutToASlowServerIsNotPlacedAgain() {
+        addRoutedAccount(timeoutMs = FAST_MS)
+        relay!!.delayMs = SMALL_DELAY_MS
+        val entries = engine.history.entries.value.size
+        // Answered after two seconds, with no ringing tone before (ConferencePacingTest): past the retry's look.
+        dial("2400")
+        awaitConnected("2400")
+        awaitNoCall()
+        assertFalse("Moved to the backup over a slow call", account(APP)!!.onBackup)
+        await("one entry in the history") { engine.history.entries.value.size == entries + 1 }
+        never("a second entry in the history", QUIET_WINDOW_MS) { engine.history.entries.value.size > entries + 1 }
+    }
+
+    /** What the user set before the call rang, the microphone off and the speaker, stays across the retry. */
+    @Test
+    fun aCallPlacedAgainKeepsItsMicrophoneAndRoute() {
+        addRoutedAccount(timeoutMs = FAST_MS)
+        relay!!.silent = true
+        dial("2000") // echo
+        await("the call to be on screen") { call()?.phase == CallPhase.OUTGOING }
+        onMain {
+            engine.calls.toggleMute()
+            engine.calls.setRoute(AudioRoute.SPEAKER)
+        }
+        val connected = awaitConnected("2000")
+        assertTrue(account(APP)!!.onBackup)
+        assertTrue("The microphone is on again", connected.muted)
+        await("the sound on the speaker") { call()?.route == AudioRoute.SPEAKER }
+        onMain { engine.calls.hangUp() }
+        awaitNoCall()
+    }
+
     /**
      * How often a short fast timeout takes a first server that answers, through a path that loses
-     * packets, for out of reach. A measurement: it fails only where the account leaves a path
-     * without loss.
+     * or delays packets, for out of reach. The checks run as the registration is refreshed, on the
+     * network the account registered on: it leaves only after two silent checks in a row. One
+     * check is silent when its three requests within the 500 ms, or their answers, are all lost:
+     * q³ with q = 1 − (1 − p)² for a loss p each way; two in a row, q⁶: 1.8 % at 30 %, 0.2 % at
+     * 20 %, below 0.01 % at 10 %. Over [LOSS_ROUNDS] checks one wrong move at most is allowed
+     * (two or more at 30 %: about 1.4 %).
      */
     @Test
-    fun aShortFastTimeoutAndPacketLoss() {
+    fun aShortFastTimeoutRidesOutLossAndDelay() {
         addRoutedAccount(timeoutMs = FAST_MS)
-        var tag = 10
-        for (loss in LOSSES) {
+        val id = account(APP)!!.id
+        for ((loss, delay) in PATHS) {
+            relay!!.loss = loss
+            relay!!.delayMs = delay
             var moved = 0
             repeat(LOSS_ROUNDS) {
-                relay!!.loss = loss
-                val before = onMain { engine.accounts.servers(account(APP)!!.id)?.checkedAt }
-                moveTo(network(tag++))
-                // The check at once and the one after the network settled.
-                Thread.sleep(ServerChoice.SETTLE_MS + ServerChoice.waitMs(FAST_MS) + SLACK_MS)
-                assertTrue(onMain { engine.accounts.servers(account(APP)!!.id)?.checkedAt } != before)
+                val before = onMain { engine.accounts.servers(id)?.checkedAt }
+                Thread.sleep(ServerChoice.MIN_CHECK_GAP_MS + SLACK_MS)
+                onMain { engine.core.refreshRegisters() }
+                // The check, the second one after a silence, and the registration.
+                Thread.sleep(2 * ServerChoice.waitMs(FAST_MS) + SLACK_MS)
+                assertTrue("The servers were not asked", onMain { engine.accounts.servers(id)?.checkedAt } != before)
                 if (account(APP)?.onBackup == true) {
                     moved++
                     relay!!.loss = 0.0
-                    moveTo(network(tag++))
+                    relay!!.delayMs = 0
+                    moveTo(network(20 + moved))
                     await("the account to return to its first server", NETWORK_FAILOVER_MS) { onFirstNow() }
+                    relay!!.loss = loss
+                    relay!!.delayMs = delay
                 }
             }
-            Log.i(TAG, "Fast timeout $FAST_MS ms, ${(loss * 100).toInt()} % loss each way: $moved of $LOSS_ROUNDS changes of network took the backup")
-            if (loss == 0.0) assertEquals(0, moved)
+            Log.i(TAG, "Fast timeout $FAST_MS ms, ${(loss * 100).toInt()} % loss and $delay ms delay each way: $moved of $LOSS_ROUNDS checks took the backup")
+            assertTrue("$moved wrong moves at ${(loss * 100).toInt()} % loss, $delay ms delay", moved <= if (loss == 0.0) 0 else 1)
         }
     }
 
@@ -312,7 +358,11 @@ class LineRoutingTest : PbxTestBase() {
         /** The INVITE's two seconds, the probes, and the call over the backup. */
         const val RETRY_CONNECT_MS = 20_000L
         const val CALL_WINDOW_MS = 10_000L
-        val LOSSES = listOf(0.0, 0.05, 0.1, 0.2, 0.3)
+        /** Loss each way and delay each way of the path to the first server. */
+        val PATHS = listOf(0.0 to 0L, 0.0 to SMALL_DELAY_MS, 0.1 to 0L, 0.2 to 0L, 0.3 to 0L, 0.1 to SMALL_DELAY_MS)
         const val LOSS_ROUNDS = 10
+
+        /** 200 ms there and back: well within the 500 ms. */
+        const val SMALL_DELAY_MS = 100L
     }
 }
