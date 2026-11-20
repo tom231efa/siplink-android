@@ -223,7 +223,7 @@ class ConferenceTest : RoomTestBase("conference") {
         ok(onMain { engine.calls.openRoom() })
         awaitRoom("the room") { it.present == 1 }
         val tooMany = (1..RoomRules.LIMIT).map { "${2510 + it}" }
-        assertEquals(RoomRules.refusal(1, RoomRules.LIMIT), onMain { engine.calls.inviteToRoom(tooMany) })
+        assertEquals(zh(RoomRules.refusal(1, RoomRules.LIMIT)!!), onMain { engine.calls.inviteToRoom(tooMany) })
         never("a call placed beyond the limit", QUIET_WINDOW_MS) { appLegsUp().size > 1 }
         // Nor is a member called twice.
         assertEquals("已在会议室中", onMain { engine.calls.inviteToRoom(listOf("2501")) })

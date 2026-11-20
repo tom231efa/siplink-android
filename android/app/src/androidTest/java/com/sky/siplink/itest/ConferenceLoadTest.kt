@@ -50,7 +50,7 @@ class ConferenceLoadTest : RoomTestBase("conference-load") {
         // Halfway down the list of a full room.
         repeat(2) { scroll(forward = true) }
         picture("room-${RoomRules.LIMIT}-scrolled")
-        assertEquals(RoomRules.refusal(RoomRules.LIMIT, 1), onMain { engine.calls.inviteToRoom(listOf(member(RoomRules.LIMIT + 1))) })
+        assertEquals(zh(RoomRules.refusal(RoomRules.LIMIT, 1)!!), onMain { engine.calls.inviteToRoom(listOf(member(RoomRules.LIMIT + 1))) })
         // Ending a full room: how long the main thread is held by it, and until every call is gone.
         val start = SystemClock.uptimeMillis()
         onMain { engine.calls.hangUp() }
