@@ -169,9 +169,10 @@ private fun RowIcon(icon: ImageVector?) {
 
 @Composable
 private fun RowText(title: String, subtitle: String?, modifier: Modifier) {
-    // Names and addresses of someone else's stand here too: one line each, fading where they do not fit.
+    // Names and addresses of someone else's stand here too, fading where they do not fit. The title
+    // takes a second line: the texts of the app run longer in some languages than in others.
     Column(modifier) {
-        FadingText(title, style = MaterialTheme.typography.bodyLarge)
+        FadingText(title, style = MaterialTheme.typography.bodyLarge, maxLines = 2)
         if (subtitle != null) {
             FadingText(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }

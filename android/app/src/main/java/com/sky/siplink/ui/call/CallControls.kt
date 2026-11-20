@@ -60,6 +60,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -321,9 +323,21 @@ internal fun ControlToggle(
             Icon(icon, contentDescription = label, tint = content, modifier = Modifier.size(26.dp))
         }
         Spacer(Modifier.height(6.dp))
-        Text(label, style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.82f))
+        // As wide as four keys in a row leave each: a longer label (other languages) takes a second line.
+        Text(
+            label,
+            modifier = Modifier.widthIn(max = LabelWidth),
+            style = MaterialTheme.typography.labelMedium,
+            color = Color.White.copy(alpha = 0.82f),
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
+
+/** The widest a label under a key gets: four keys stand in a row on a phone 360 dp wide. */
+private val LabelWidth = 86.dp
 
 @Composable
 internal fun RoundAction(
