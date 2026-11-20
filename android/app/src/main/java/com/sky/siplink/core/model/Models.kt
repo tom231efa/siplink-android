@@ -374,8 +374,9 @@ data class Settings(
     /**
      * The lines adapt to the network they are on by themselves (core/LineDoctor.kt): another
      * transport where UDP does not get through, a shorter registration interval where the NAT
-     * forgets them, ICE where the sound goes one way (with [stunServer]), the way by the server
-     * and symmetric RTP for a PBX behind a NAT of its own.
+     * forgets them, ICE where the sound goes one way (with [stunServer]). A PBX that names an
+     * address of its own network as the next hop of its calls is shown by the line checks, and
+     * left as it is: nothing on the phone repairs that.
      */
     val autoNetwork: Boolean = true,
     /** The STUN server the line checks and the lines' ICE ask, `host[:port]`; empty: none. */
