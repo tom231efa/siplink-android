@@ -56,6 +56,7 @@ class LineCheck(private val context: Context, private val core: Core, private va
         val contact = account.contactAddress?.asStringUriOnly()
         val expires = params.expires
         val lastCall = accounts.lastCall(id)
+        val servers = accounts.servers(id)
         worker.execute {
             // A probe that goes wrong leaves its findings unknown; the report comes all the same.
             val probed = runCatching { probe(host, port, transport, target, asker, ipv6, sixFirst, stun) }.getOrDefault(Probed())
@@ -89,6 +90,7 @@ class LineCheck(private val context: Context, private val core: Core, private va
                 adaptedIce = adaptation?.ice == true,
                 pbxUnreachable = pbxUnreachable,
                 lastCall = lastCall,
+                servers = servers,
             )
             handler.post { onDone(report) }
         }

@@ -35,6 +35,7 @@ import com.sky.siplink.core.model.LineReport
 import com.sky.siplink.core.model.MediaFlow
 import com.sky.siplink.core.model.NatKind
 import com.sky.siplink.core.model.NetType
+import com.sky.siplink.core.model.ServerReport
 import com.sky.siplink.core.model.SipTransport
 import com.sky.siplink.engine
 import com.sky.siplink.ui.components.FadingText
@@ -43,6 +44,9 @@ import com.sky.siplink.ui.components.Personal
 import com.sky.siplink.ui.components.SectionCard
 import com.sky.siplink.ui.components.SubScreen
 import com.sky.siplink.ui.components.regStateLabel
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 /**
  * The line checks of one account: values only. It changes nothing but what the line adapted
@@ -80,6 +84,7 @@ fun LineDiagnosisScreen(accountId: String, onBack: () -> Unit) {
                     runCatching { context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) }
                 })
                 ServerCard(shown)
+                shown.servers?.let { ServersCard(it) }
                 RegistrationCard(shown)
                 shown.lastCall?.let { LastCallCard(shown) }
                 if (shown.adaptedTransport != null || shown.adaptedExpires != null || shown.adaptedIce) {
@@ -109,6 +114,8 @@ fun LineDiagnosisScreen(accountId: String, onBack: () -> Unit) {
 }
 
 private const val NONE = "—"
+
+private val CLOCK = DateTimeFormatter.ofPattern("HH:mm:ss")
 
 /** A check that was left out: a line on TLS asks nothing over UDP. */
 private const val NOT_ASKED = "未测"
@@ -194,6 +201,22 @@ private fun ServerCard(report: LineReport) {
         ValueRow("TLS", report.tlsMs?.let { "$it ms" } ?: "无法连接")
         report.algSuspected?.let { ValueRow("SIP ALG", if (it) "疑似" else "未发现", error = it) }
         if (report.pbxUnreachable) ValueRow("通话地址", "内网", error = true)
+    }
+}
+
+@Composable
+private fun ServersCard(servers: ServerReport) {
+    fun answer(found: Boolean?): String = when (found) {
+        true -> "可达"
+        false -> "无响应"
+        null -> NONE
+    }
+    SectionCard(title = "主备服务器") {
+        ValueRow("当前", if (servers.onBackup) "备用代理服务器" else "代理服务器")
+        ValueRow("代理服务器", answer(servers.primary), error = servers.primary == false)
+        ValueRow("备用代理服务器", answer(servers.backup), error = servers.backup == false)
+        ValueRow("探测时间", servers.checkedAt?.let { CLOCK.format(Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault())) } ?: NONE)
+        ValueRow("快速超时", if (servers.timeoutMs > 0) "${servers.timeoutMs} ms" else "关")
     }
 }
 

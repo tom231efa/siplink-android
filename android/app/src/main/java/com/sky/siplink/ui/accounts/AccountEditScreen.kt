@@ -56,6 +56,7 @@ private val advancedErrors = setOf(
     AccountRules.Error.SERVER_INVALID,
     AccountRules.Error.BACKUP_INVALID,
     AccountRules.Error.BACKUP_SAME,
+    AccountRules.Error.TIMEOUT_INVALID,
     AccountRules.Error.DNS_INVALID,
     AccountRules.Error.EXPIRES_OUT_OF_RANGE,
 )
@@ -96,6 +97,7 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
     var server by rememberSaveable { mutableStateOf(initial.server) }
     var backupServer by rememberSaveable { mutableStateOf(initial.backupServer) }
     var dnsServer by rememberSaveable { mutableStateOf(initial.dnsServer) }
+    var serverTimeout by rememberSaveable { mutableStateOf(initial.serverTimeoutMs.takeIf { it > 0 }?.toString().orEmpty()) }
     var expires by rememberSaveable { mutableStateOf(initial.expires.toString()) }
     var subscribeMwi by rememberSaveable { mutableStateOf(initial.subscribeMwi) }
     var enabled by rememberSaveable { mutableStateOf(initial.enabled) }
@@ -124,6 +126,8 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
             server = server,
             backupServer = backupServer,
             dnsServer = dnsServer,
+            // Empty is off; what is not a number is refused as out of range.
+            serverTimeoutMs = serverTimeout.trim().let { if (it.isEmpty()) 0 else it.toIntOrNull() ?: -1 },
             transport = transport,
             // An unparseable value becomes 0 so validation reports it as out of range.
             expires = expires.trim().toIntOrNull() ?: 0,
@@ -256,6 +260,15 @@ fun AccountEditScreen(accountId: String?, onBack: () -> Unit, onOpenTls: () -> U
                     keyboardType = KeyboardType.Uri,
                     error = error(AccountRules.Error.BACKUP_INVALID, AccountRules.Error.BACKUP_SAME),
                 )
+                AnimatedVisibility(backupServer.isNotBlank()) {
+                    FormField(
+                        value = serverTimeout,
+                        onValueChange = { serverTimeout = it },
+                        label = "快速超时（毫秒，可选）",
+                        keyboardType = KeyboardType.Number,
+                        error = error(AccountRules.Error.TIMEOUT_INVALID),
+                    )
+                }
                 FormField(
                     value = dnsServer,
                     onValueChange = { dnsServer = it },
