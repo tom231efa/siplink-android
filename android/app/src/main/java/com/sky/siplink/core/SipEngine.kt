@@ -196,8 +196,11 @@ class SipEngine(context: Context) {
         ) {
             applyMediaOptions(after)
         }
-        if (before.autoNetwork != after.autoNetwork || before.stunServer != after.stunServer) {
-            applyNetworkOptions(after)
+        if (before.autoNetwork != after.autoNetwork) accounts.autoAdapt = after.autoNetwork
+        if (before.stunServer != after.stunServer) {
+            // The lines with ICE take a new STUN server once the typing has stopped, not at every key.
+            handler.removeCallbacks(applyStunServer)
+            handler.postDelayed(applyStunServer, RE_REGISTER_DELAY_MS)
         }
         if (before.videoCalls != after.videoCalls) {
             CallVideoSupport.setEnabled(core, after.videoCalls)
@@ -216,6 +219,7 @@ class SipEngine(context: Context) {
 
     private val handler = Handler(Looper.getMainLooper())
     private val reRegister = Runnable { accounts.registerAnew() }
+    private val applyStunServer = Runnable { accounts.stunServer = settings.current.stunServer }
 
     private fun applyUserAgent(custom: String) {
         val (name, version) = UserAgent.parts(custom, core.version, BuildConfig.VERSION_NAME)
@@ -279,7 +283,7 @@ class SipEngine(context: Context) {
 
     private companion object {
         const val LOG_TAG = "SipLink"
-        /** How long a changed User-Agent waits for the next key stroke before the accounts register with it. */
+        /** How long a changed User-Agent or STUN server waits for the next key stroke before it is used. */
         const val RE_REGISTER_DELAY_MS = 1_500L
         const val CONFIG_FILE = "linphonerc"
         const val SHORTCUTS_FILE = "shortcuts.csv"
