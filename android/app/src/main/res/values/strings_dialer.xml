@@ -14,7 +14,7 @@
     </plurals>
     <string name="dialer_number_hint">Enter a number or SIP address</string>
     <string name="dialer_address_label">Number or SIP address</string>
-    <string name="dialer_address_example">For example, %1$s or %2$s</string>
+    <string name="dialer_address_example">e.g. %1$s or %2$s</string>
 
     <!-- The keys beside the call button -->
     <string name="dialer_video_call">Video call</string>

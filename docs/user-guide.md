@@ -378,7 +378,7 @@ Under remote configuration, the Recordings page and "Recordings to keep" stay wi
 | Security | TLS and CA certificates | — |
 | Battery | Stay online in background | On |
 | | Battery optimization, Show calls on lock screen (Android 14 and later) | — |
-| Appearance | Theme: Follow system / Light / Dark | Follow system |
+| Appearance | Theme: System default / Light / Dark | System default |
 | | Call banner position: Top / Bottom | Bottom |
 | | Dynamic color (Android 12 and later) | Off |
 | — | Remote configuration, About | — |

@@ -30,7 +30,7 @@
     <string name="settings_lock_screen_open_failed">Cannot open the full-screen notification settings</string>
     <string name="settings_section_appearance">Appearance</string>
     <string name="settings_theme">Theme</string>
-    <string name="settings_theme_system">Follow system</string>
+    <string name="settings_theme_system">System default</string>
     <string name="settings_theme_light">Light</string>
     <string name="settings_theme_dark">Dark</string>
     <string name="settings_banner_position">Call banner position</string>
