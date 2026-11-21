@@ -72,7 +72,9 @@ LAN_ADDRESS={本机局域网地址} LAN_NAME={解析到该地址的域名} teste
 ### 运行指定测试
 
 ```bash
-testenv/run-tests.sh                                                   # 全部测试类
+testenv/run-tests.sh                                                   # 全部测试类：真机上约一小时，发布前运行
+testenv/run-tests.sh quick                                             # 快速集：约十分钟，每轮改动后运行
+testenv/run-tests.sh quick ConferenceTest VideoCallTest                # 快速集加上改动涉及的类
 testenv/run-tests.sh com.sky.siplink.itest.BasicCallTest               # 一个类
 testenv/run-tests.sh 'com.sky.siplink.itest.BasicCallTest#outgoingCallSendsDtmf'   # 一个方法
 SKIP_INSTALL=1 testenv/run-tests.sh com.sky.siplink.itest.CodecTest    # 不重新安装

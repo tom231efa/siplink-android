@@ -3,7 +3,11 @@
 # the test environment started by ./up.sh.
 #
 #   ./run-tests.sh                                          all tests (except PbxReferTest, see there,
-#                                                           and ConferenceLoadTest, a measurement run by hand)
+#                                                           and ConferenceLoadTest, a measurement run by hand):
+#                                                           about an hour on a phone, the run before a release
+#   ./run-tests.sh quick                                    the quick set: some ten minutes, the run of a
+#                                                           round of work
+#   ./run-tests.sh quick ConferenceTest VideoCallTest       the quick set and the classes a change touches
 #   ./run-tests.sh com.sky.siplink.itest.BasicCallTest      one class
 #   ./run-tests.sh 'com.sky.siplink.itest.BasicCallTest#outgoingCallSendsDtmf'
 #   SKIP_INSTALL=1 ./run-tests.sh ...                       reuse the APKs already installed
@@ -102,21 +106,45 @@ run() {
   grep -q '^OK (' <<<"$output"
 }
 
-if [ $# -gt 0 ]; then
+# The whole suite, the run before a release. The two walks through the screens come last: they
+# are long and leave their pictures in the app's cache.
+all=(RegistrationTest BasicCallTest TransferParkTest SupervisionTest CallHandlingTest
+  CallerIdTest LineRoutingTest CodecTest DirectoryTest DirectoryTrustTest ShortcutStoreTest DirectoryCacheTest
+  VideoCallTest VideoNoCameraTest ManagedLockTest ManagedScreensTest RemoteConfigTest
+  AdvancedSettingsTest SdkDefaultsTest AccountFormTest ReleaseJsonTest UpdateCheckTest CallRecordingTest IncomingSlideTest NextCallScreenTest
+  ConferenceTest ConferencePacingTest VideoControlsTest VideoWindowTest CallConflictTest LandscapeScreensTest
+  LockScreenTest TwinEntriesTest AppLanguageTest EnglishScreensTest LanguageScreensTest)
+
+# The quick set, the run of a round of work: registering, calls in and out, transfer, the ways a
+# call is handled, the incoming slide, the forms and stores, the app's language. Each of its
+# classes takes under two minutes on a phone; the long ones (line routing under loss, video, the
+# conference, the managed screens, the walks) are left to the classes named after "quick" and to
+# the whole suite.
+quick=(RegistrationTest BasicCallTest TransferParkTest CallHandlingTest CallerIdTest CodecTest
+  DirectoryTrustTest ShortcutStoreTest DirectoryCacheTest AdvancedSettingsTest SdkDefaultsTest AccountFormTest
+  ReleaseJsonTest IncomingSlideTest CallConflictTest AppLanguageTest)
+
+if [ "${1:-}" = quick ]; then
+  shift
+  classes=("${quick[@]}")
+  for extra in "$@"; do
+    [[ " ${all[*]} " == *" $extra "* ]] || { echo "Not a class of the suite: $extra" >&2; exit 2; }
+    [[ " ${classes[*]} " == *" $extra "* ]] || classes+=("$extra")
+  done
+  passed="The quick set passed (${#classes[@]} classes); the whole suite is the run before a release."
+elif [ $# -gt 0 ]; then
   run -e class "$1"
   exit # with the result of that run
+else
+  classes=("${all[@]}")
+  passed="All test classes passed."
 fi
 
 # Every class runs in a process of its own. Some state only exists once per process (the LDAP
 # library keeps the CA certificates of its first TLS connection), and a native crash then
 # costs one class instead of the whole run.
 failed=()
-for class in RegistrationTest BasicCallTest TransferParkTest SupervisionTest CallHandlingTest \
-  CallerIdTest LineRoutingTest CodecTest DirectoryTest DirectoryTrustTest ShortcutStoreTest DirectoryCacheTest \
-  VideoCallTest VideoNoCameraTest ManagedLockTest ManagedScreensTest RemoteConfigTest \
-  AdvancedSettingsTest SdkDefaultsTest AccountFormTest ReleaseJsonTest UpdateCheckTest CallRecordingTest IncomingSlideTest NextCallScreenTest \
-  ConferenceTest ConferencePacingTest VideoControlsTest VideoWindowTest CallConflictTest LandscapeScreensTest \
-  LockScreenTest TwinEntriesTest AppLanguageTest; do
+for class in "${classes[@]}"; do
   echo "=== $class" >&2
   run -e class "com.sky.siplink.itest.$class" || failed+=("$class")
 done
@@ -124,4 +152,4 @@ if [ ${#failed[@]} -gt 0 ]; then
   echo "FAILED: ${failed[*]}" >&2
   exit 1
 fi
-echo "All test classes passed." >&2
+echo "$passed" >&2

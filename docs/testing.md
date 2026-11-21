@@ -72,7 +72,9 @@ When the address or the name changes, `up.sh` generates new certificates that co
 ### Running selected tests
 
 ```bash
-testenv/run-tests.sh                                                   # all test classes
+testenv/run-tests.sh                                                   # all test classes: about an hour on a phone, the run before a release
+testenv/run-tests.sh quick                                             # the quick set: some ten minutes, the run of a round of work
+testenv/run-tests.sh quick ConferenceTest VideoCallTest                # the quick set and the classes a change touches
 testenv/run-tests.sh com.sky.siplink.itest.BasicCallTest               # one class
 testenv/run-tests.sh 'com.sky.siplink.itest.BasicCallTest#outgoingCallSendsDtmf'   # one method
 SKIP_INSTALL=1 testenv/run-tests.sh com.sky.siplink.itest.CodecTest    # without reinstalling
