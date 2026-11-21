@@ -114,7 +114,7 @@ failed=()
 for class in RegistrationTest BasicCallTest TransferParkTest SupervisionTest CallHandlingTest \
   CallerIdTest LineRoutingTest CodecTest DirectoryTest DirectoryTrustTest ShortcutStoreTest DirectoryCacheTest \
   VideoCallTest VideoNoCameraTest ManagedLockTest ManagedScreensTest RemoteConfigTest \
-  AdvancedSettingsTest SdkDefaultsTest AccountFormTest ReleaseJsonTest UpdateCheckTest CallRecordingTest IncomingSlideTest \
+  AdvancedSettingsTest SdkDefaultsTest AccountFormTest ReleaseJsonTest UpdateCheckTest CallRecordingTest IncomingSlideTest NextCallScreenTest \
   ConferenceTest ConferencePacingTest VideoControlsTest VideoWindowTest CallConflictTest LandscapeScreensTest \
   LockScreenTest TwinEntriesTest AppLanguageTest; do
   echo "=== $class" >&2
