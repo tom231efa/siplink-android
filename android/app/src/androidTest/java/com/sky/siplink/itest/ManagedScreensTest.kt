@@ -39,16 +39,6 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
         }
     }
 
-    /**
-     * The buttons that say nothing about themselves. "Add account" is one: its caption is not
-     * part of the accessibility tree, so it can only be told by being there.
-     */
-    private fun namelessButtons(): List<AccessibilityNodeInfo> {
-        fun named(node: AccessibilityNodeInfo): Boolean =
-            node.text != null || node.contentDescription != null || (0 until node.childCount).any { index -> node.getChild(index)?.let(::named) == true }
-        return nodes().filter { it.isClickable && !it.isCheckable && !named(it) }
-    }
-
     /** Every switch of the screen is there to look at only. */
     private fun switchesAreLocked() {
         val switches = nodes().filter { it.isCheckable }
@@ -161,8 +151,7 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
         tap("SIP 账号")
         see(LINE)
         see(zh(ManagedConfig.LOCKED))
-        absent("批量导入账号")
-        assertTrue("There is a button to add an account", namelessButtons().isEmpty())
+        absent("批量导入账号", "添加账号")
         switchesAreLocked()
         picture("accounts")
         tap(LINE)
@@ -307,7 +296,7 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
         back()
         tap("SIP 账号")
         see("批量导入账号")
-        assertEquals("The button to add an account", 1, namelessButtons().size)
+        see("添加账号")
         tap(LINE)
         see("编辑账号")
         usable("用户名", "密码", "启用此账号")
