@@ -96,6 +96,7 @@ import com.sky.siplink.ui.components.FadingText
 import com.sky.siplink.ui.components.text
 import com.sky.siplink.ui.theme.Brand
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 
 internal enum class Controls { INCOMING, ACTIVE, ENDED }
 
@@ -162,6 +163,11 @@ fun CallScreen(
             presence.animateTo(1f, tween(APPEAR_MS))
         } else {
             presence.animateTo(0f, tween(DISAPPEAR_MS))
+            // What the screen collects lags the engine by a frame or more: a call that came in
+            // during the fade is the engine's already, and its start went to this screen. The
+            // screen then stays until it shows that call (this effect starts again and fades it
+            // in), or until the engine has no call again.
+            calls.call.first { it == null }
             onFinished()
         }
     }
