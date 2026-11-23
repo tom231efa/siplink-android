@@ -75,5 +75,17 @@ object CallRules {
     /** Whether ending the room for everyone is asked for again: with more than one member in it. */
     fun confirmRoomEnd(present: Int): Boolean = present > 1
 
+    /**
+     * Whether the end of a room the user ended is shown at once, while its calls still go down:
+     * not when a call waits next to the room, which takes the screen once the room is closed.
+     */
+    fun showsRoomEndAtOnce(callWaiting: Boolean): Boolean = !callWaiting
+
+    /**
+     * How long from [now] the end of a call stays on screen: [lingerMs] from the moment it was
+     * shown ([shownAt]; null: it is shown now), and no longer once that is over.
+     */
+    fun endLingerMs(shownAt: Long?, now: Long, lingerMs: Long): Long = if (shownAt == null) lingerMs else (shownAt + lingerMs - now).coerceAtLeast(0)
+
     private val SUPERVISED = R.string.call_room_supervised
 }

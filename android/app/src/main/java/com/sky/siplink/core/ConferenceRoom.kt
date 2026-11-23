@@ -37,6 +37,8 @@ import org.linphone.core.Core
  * @param limit how many members the room holds at most besides the user (a setting)
  * @param lineOn whether calls may go out on a line: it is switched on
  * @param render a text in the app's language, for the snapshot ([snapshot])
+ * @param onEnding the user ends the room, by ending it for all or by hanging up its last call;
+ *   called before the SDK takes the user's side off the sound card, which can take a second
  * @param onChanged what the call screen shows of the room changed
  */
 internal class ConferenceRoom(
@@ -46,6 +48,7 @@ internal class ConferenceRoom(
     private val limit: () -> Int,
     private val lineOn: (Account) -> Boolean,
     private val render: (Phrase) -> String,
+    private val onEnding: () -> Unit = {},
     private val onChanged: () -> Unit,
 ) {
     private class Member(val id: Long, var call: Call?, var side: SideCall) {
@@ -532,6 +535,8 @@ internal class ConferenceRoom(
      */
     private fun leaveSoundCard() {
         ending = true
+        // The user ended the room: they are told before the SDK takes its time.
+        onEnding()
         conference?.takeIf { it.isIn }?.leave()
     }
 

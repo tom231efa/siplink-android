@@ -122,7 +122,13 @@ class CallManager(
         party = ::partyOf,
     ) { publish() }
 
-    private val room = ConferenceRoom(core, roomMonitor, ::partyOf, limit = { settings.current.roomLimit }, lineOn = accounts::isSwitchedOn, render = texts::render) { publish() }
+    private val room: ConferenceRoom = ConferenceRoom(
+        core, roomMonitor, ::partyOf,
+        limit = { settings.current.roomLimit },
+        lineOn = accounts::isSwitchedOn,
+        render = texts::render,
+        onEnding = { follower.onRoomEnding() },
+    ) { publish() }
     private val transfer = CallTransfer(core, settings) { publish() }
     private val retry = CallRetry(handler, accounts, ::redial, ::retryGaveUp)
 
@@ -138,7 +144,7 @@ class CallManager(
 
         override fun describe(call: Call): CallInfo = this@CallManager.describe(call)
     }
-    private val follower = CallFollower(core, settings, texts, legs, feed, handler, CallParts(describer, room, video, recorder, transfer, retry, autoAnswer))
+    private val follower: CallFollower = CallFollower(core, settings, texts, legs, feed, handler, CallParts(describer, room, video, recorder, transfer, retry, autoAnswer))
 
     /** A call out was placed again over the other server ([CallRetry]): its entry in the history goes, by its Call-ID. */
     var onSuperseded: ((String) -> Unit)? by follower::onSuperseded
@@ -509,6 +515,8 @@ class CallManager(
 
     private fun publish(): CallInfo? {
         CoreThread.check("The calls")
+        // The end of the room is on screen already: nothing of the room comes back while it goes down.
+        if (legs.endShownAt != null) return state.value
         val previous = state.value
         val info = room.snapshot()?.let { room ->
             // The room says no reason; a call says its own ([callInfo]).

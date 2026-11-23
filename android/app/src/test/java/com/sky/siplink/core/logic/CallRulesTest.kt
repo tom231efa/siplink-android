@@ -76,4 +76,18 @@ class CallRulesTest {
         assertTrue(CallRules.confirmRoomEnd(2))
         assertTrue(CallRules.confirmRoomEnd(RoomRules.LIMIT))
     }
+
+    @Test
+    fun `the end of a room shows at once unless a call waits next to it`() {
+        assertTrue(CallRules.showsRoomEndAtOnce(callWaiting = false))
+        assertFalse("The waiting call takes the screen once the room is closed", CallRules.showsRoomEndAtOnce(callWaiting = true))
+    }
+
+    @Test
+    fun `an end counts from when it was shown`() {
+        assertEquals("Shown now: the whole time", 1400L, CallRules.endLingerMs(shownAt = null, now = 5_000, lingerMs = 1400))
+        assertEquals("Shown 400 ms ago: the rest", 1000L, CallRules.endLingerMs(shownAt = 4_600, now = 5_000, lingerMs = 1400))
+        assertEquals("Over while the calls went down: none", 0L, CallRules.endLingerMs(shownAt = 1_000, now = 5_000, lingerMs = 1400))
+        assertEquals(0L, CallRules.endLingerMs(shownAt = 3_600, now = 5_000, lingerMs = 1400))
+    }
 }

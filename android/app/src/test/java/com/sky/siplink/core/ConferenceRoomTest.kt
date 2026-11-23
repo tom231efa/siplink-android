@@ -42,6 +42,10 @@ class ConferenceRoomTest {
     private var inviteCreatesCall = true
     private var inRoomSound = true
 
+    /** How often the room said the user ends it, and whether it said so before it left the sound card. */
+    private var endings = 0
+    private var endingBeforeLeave = false
+
     /** The users whose calls the room ended, in order; and those it took out of the conference again. */
     private val terminated = ArrayList<String>()
     private val removed = ArrayList<String>()
@@ -169,6 +173,10 @@ class ConferenceRoomTest {
             limit = { limit },
             lineOn = { lineSwitchedOn },
             render = { zh(it)!! },
+            onEnding = {
+                endings++
+                endingBeforeLeave = inRoomSound
+            },
         ) {}
     }
 
@@ -366,6 +374,33 @@ class ConferenceRoomTest {
             release(it)
         }
         assertFalse(room.isOpen)
+    }
+
+    @Test
+    fun `the user ending the room is told before the room leaves the sound card`() {
+        openWith("2501", "2502")
+        room.end()
+        assertEquals(1, endings)
+        assertTrue(endingBeforeLeave)
+    }
+
+    @Test
+    fun `hanging up the last member ends the room, hanging up one of two does not`() {
+        openWith("2501", "2502")
+        room.hangUp(row("2501")!!.id)
+        assertEquals(0, endings)
+        hangUpThere(byUser("2501"))
+        room.hangUp(row("2502")!!.id)
+        assertEquals(1, endings)
+        assertTrue(endingBeforeLeave)
+    }
+
+    @Test
+    fun `a member the PBX hangs up last does not count as the user ending the room`() {
+        val (only) = openWith("2501")
+        hangUpThere(only)
+        assertFalse(room.isOpen)
+        assertEquals(0, endings)
     }
 
     @Test

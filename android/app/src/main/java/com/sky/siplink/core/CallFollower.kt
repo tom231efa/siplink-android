@@ -8,6 +8,7 @@ import com.sky.siplink.core.CallLegs.Companion.same
 import com.sky.siplink.core.CallSupport.isEnded
 import com.sky.siplink.core.CallSupport.isRinging
 import com.sky.siplink.core.logic.AutoAnswerRules
+import com.sky.siplink.core.logic.CallRules
 import com.sky.siplink.core.logic.DialTarget
 import com.sky.siplink.core.logic.IncomingPolicy
 import com.sky.siplink.core.logic.NameLookup
@@ -294,6 +295,19 @@ internal class CallFollower(
         }
     }
 
+    /**
+     * The user ends the room (for all, or by hanging up its last call): its end is shown at once,
+     * while the SDK still takes the calls down, unless a call waits next to the room
+     * ([CallRules.showsRoomEndAtOnce]). Nothing of the room comes back on screen meanwhile
+     * ([CallLegs.endShownAt]), and [finish] keeps what is shown.
+     */
+    fun onRoomEnding() {
+        if (legs.endShownAt != null || !CallRules.showsRoomEndAtOnce(callWaiting = live(legs.other) != null)) return
+        showEnded(null)
+        legs.endShownAt = SystemClock.elapsedRealtime()
+        host.onCallActivityChanged()
+    }
+
     /** The last member left the room, or the user ended it: a call that waits takes over, else the screen ends. */
     fun onRoomClosed() {
         val next = live(legs.other)
@@ -301,22 +315,37 @@ internal class CallFollower(
             finish(null)
             return
         }
+        // A call that came in while the room went down takes the screen from its end.
+        legs.endShownAt = null
         legs.current = next
         legs.other = null
         val info = feed.publish() ?: return
         if (isRinging(next)) ring(next, info)
     }
 
-    /** Last call gone: keep the "call ended" state on screen for a moment, then clear it. */
+    /**
+     * Last call gone: keep the "call ended" state on screen for a moment, then clear it. An end
+     * shown before ([onRoomEnding]) stays as it is, and its moment counts from when it was shown.
+     */
     fun finish(meta: CallMeta?) {
-        val last = feed.shown
+        val shownAt = legs.endShownAt
+        legs.endShownAt = null
+        if (shownAt == null) showEnded(meta)
         legs.current = null
         legs.other = null
         legs.referredFrom = null
+        resetScenario()
+        host.onCallActivityChanged()
+        val token = ++legs.generation
+        val linger = CallRules.endLingerMs(shownAt, SystemClock.elapsedRealtime(), END_LINGER_MS)
+        handler.postDelayed({ if (token == legs.generation && legs.current == null) feed.shown = null }, linger)
+    }
+
+    /** Shows the snapshot on screen as ended, for the reason the end of [meta]'s call, the transfer or the call before gives. */
+    private fun showEnded(meta: CallMeta?) {
         val reason = transfer.endReason() ?: meta?.endReason ?: legs.endReason ?: Phrase.of(R.string.call_ended)
         legs.endReason = reason
-        resetScenario()
-        feed.shown = last?.copy(
+        feed.shown = feed.shown?.copy(
             phase = CallPhase.ENDED,
             endReason = texts.render(reason),
             heldCall = null,
@@ -324,9 +353,6 @@ internal class CallFollower(
             consulting = false,
             room = null,
         )
-        host.onCallActivityChanged()
-        val token = ++legs.generation
-        handler.postDelayed({ if (token == legs.generation && legs.current == null) feed.shown = null }, END_LINGER_MS)
     }
 
     /** The language of the app changed: an ended call that lingers on screen says why in it. */

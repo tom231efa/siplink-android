@@ -37,6 +37,9 @@ internal class CallLegs {
     /** Why the call on screen ended, as its snapshot says it; kept to say it again in another language. */
     var endReason: Phrase? = null
 
+    /** When the end of the room the user ended was shown, before its calls were down ([CallFollower.onRoomEnding]); null otherwise. */
+    var endShownAt: Long? = null
+
     /** Counts the scenarios on screen: a lingering end only clears the screen while no new one began. */
     var generation = 0
     private val metas = HashMap<Long, CallMeta>()
