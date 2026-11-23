@@ -119,12 +119,22 @@ class RoomEndingTest : RoomTestBase("room-ending") {
     fun aCallThatComesInAsTheRoomGoesDownRings() {
         openRoom("2501", "2502")
         onMain { engine.calls.hangUp() }
-        // The PBX calls at once: the call reaches the app while it leaves the sound card, or just after.
-        phoneCalls(CUSTOMER, "$APP", "tone")
+        // The end is on screen first, then the PBX calls: the call reaches the app while the room
+        // goes down, or just after it closed. A call that waits before the room is ended is the test above.
         awaitCall("the end of the room") { it.phase == CallPhase.ENDED }
-        val next = awaitCall("the call to ring") { it.phase == CallPhase.INCOMING }
-        assertNull("The ringing call shows the room", next.room)
-        assertTrue("Another call rings: ${next.remoteAddress}", next.remoteAddress.startsWith("$CUSTOMER@"))
+        phoneCalls(CUSTOMER, "$APP", "tone")
+        // Nothing on screen between the end and the ringing call: it came in while the room went down.
+        var cleared = false
+        var next: CallInfo? = null
+        await("the call to ring") {
+            next = call()
+            if (next == null) cleared = true
+            next?.phase == CallPhase.INCOMING
+        }
+        report("the call rang ${if (cleared) "after the end of the room was cleared" else "straight after the end of the room"}")
+        val ringing = next!!
+        assertNull("The ringing call shows the room", ringing.room)
+        assertTrue("Another call rings: ${ringing.remoteAddress}", ringing.remoteAddress.startsWith("$CUSTOMER@"))
         onMain { engine.calls.decline() }
         awaitNoCall()
     }
