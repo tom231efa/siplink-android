@@ -1,6 +1,7 @@
 package com.sky.siplink.core
 
 import android.os.Handler
+import android.os.HandlerThread
 import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
@@ -23,8 +24,8 @@ import java.util.concurrent.FutureTask
  * Debug builds check that the core is used from here ([check]); release builds do not.
  */
 object CoreThread {
-    /** The looper of the core. */
-    val looper: Looper = Looper.getMainLooper()
+    /** The looper of the core: the SDK runs its own Android work and its iterations on the one of the thread that made the core. */
+    val looper: Looper = HandlerThread(NAME).apply { start() }.looper
 
     private val queue = Handler(looper)
     private val main = Handler(Looper.getMainLooper())
@@ -74,6 +75,7 @@ object CoreThread {
         main.post(block)
     }
 
+    private const val NAME = "SipCore"
     private const val TAG = "SipLinkCoreWait"
     private const val SLOW_WAIT_MS = 50L
 }
