@@ -37,8 +37,8 @@ import org.linphone.core.Reason
  *
  * The calls can become a conference room ([openRoom], see [ConferenceRoom]). While it is open the
  * room takes the place of the current call: its calls are neither the current one nor the other, and only
- * a call that comes in waits next to it. Must be used from the thread that owns the core (the
- * main thread).
+ * a call that comes in waits next to it. Used on the thread of the core
+ * ([CoreThread]); the functions the screens call take the hop themselves.
  */
 class CallManager(
     private val core: Core,

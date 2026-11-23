@@ -13,8 +13,8 @@ import java.util.concurrent.Executors
 
 /**
  * The shortcut keys (up to [ShortcutRules.MAX_SHORTCUTS]), kept in a CSV file of their own:
- * thousands of them would only slow down the SIP core configuration. Used from the main thread;
- * the file is read and written on a background thread.
+ * thousands of them would only slow down the SIP core configuration. Used on the thread of the core
+ * (the functions the screens call take the hop themselves); the file is read and written on a background thread.
  *
  * While the configuration is managed ([ConfigLock]) the keys that were handed out cannot be
  * changed here; they still run, and can be exported. Next to them the user may make up to

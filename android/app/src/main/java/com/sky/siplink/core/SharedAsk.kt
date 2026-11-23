@@ -6,7 +6,7 @@ import java.util.concurrent.ExecutorService
 
 /**
  * Asks a question that takes time on a worker thread of [pool], once for everybody who asks the
- * same at about the same time: a hundred accounts on one server need one answer. Main thread
+ * same at about the same time: a hundred accounts on one server need one answer. Core thread
  * only; the answers come on [handler].
  *
  * @param keepMs how long an answer serves those who ask later

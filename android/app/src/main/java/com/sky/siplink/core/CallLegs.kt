@@ -21,7 +21,7 @@ internal class CallParts(
 /**
  * Where the calls of [CallManager] stand, shared by the commands of the user ([CallManager]) and
  * the reports of the core ([CallFollower]): the "current" call the UI follows, the one beside it,
- * and what is known of each ([CallMeta]). Main thread only.
+ * and what is known of each ([CallMeta]). Core thread only.
  */
 internal class CallLegs {
     var current: Call? = null

@@ -14,7 +14,7 @@ import org.linphone.core.StreamType
 
 /**
  * Follows the sound of the calls with the counters of the SIP core ([CallTally]), and keeps how
- * the last call of each account went: the line checks show it. Main thread only, as the core's
+ * the last call of each account went: the line checks show it. Core thread only, as the core's
  * listeners are.
  *
  * @param idOf the id of an account

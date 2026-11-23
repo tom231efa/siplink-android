@@ -17,7 +17,7 @@ import org.linphone.core.Call
  * users by their registration, or after [REGISTRATION_WAIT_MS] at the latest; a call that rings
  * meanwhile, or that the user ends, is left alone.
  *
- * Main thread only.
+ * Core thread only.
  *
  * @param redial places [Call] again on its account, now on its other server, having ended it with
  *   the function it is given once it took what it needs of it; false when it could not

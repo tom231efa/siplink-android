@@ -16,7 +16,7 @@ import org.linphone.core.Config
  * ([showsPasswords]); without one they can be looked at like everything else.
  *
  * The state is kept in the app's section of the SIP core configuration file. [setManaged] and
- * [fromRemote] are for the loader of remote configurations ([RemoteApplier]). Main thread only,
+ * [fromRemote] are for the loader of remote configurations ([RemoteApplier]). Core thread only,
  * like the SIP core.
  */
 class ConfigLock(private val config: Config) {

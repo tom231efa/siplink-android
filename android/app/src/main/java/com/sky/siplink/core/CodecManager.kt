@@ -11,7 +11,7 @@ import org.linphone.core.PayloadType
 
 /**
  * The audio and the video codecs of the SIP core: which ones are offered and in which order of
- * preference. The core keeps both in its configuration file. Use from the main thread.
+ * preference. The core keeps both in its configuration file. Used on the thread of the core; the functions the screens call take the hop themselves.
  *
  * While the configuration is managed ([ConfigLock]) neither can be changed here.
  */

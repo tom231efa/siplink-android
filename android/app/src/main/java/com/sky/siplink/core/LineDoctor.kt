@@ -39,7 +39,7 @@ import org.linphone.core.TransportType
  *
  * What it changes it changes in the core only: the account's own settings are kept aside
  * ([own]) and shown and edited as they are. An account set to TLS sends nothing in clear: no
- * OPTIONS request with its identity. Release builds log no addresses. Main thread only.
+ * OPTIONS request with its identity. Release builds log no addresses. Core thread only.
  *
  * The choice of the server comes first ([AccountRouter]), the adaptation second, on the server
  * chosen: what is learned is kept for each server apart ([LineRecords]), and a failure while the

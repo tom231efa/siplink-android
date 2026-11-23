@@ -35,7 +35,7 @@ import java.util.concurrent.Executors
  * - An account with a DNS server of its own has the address of its server looked up there and
  *   handed to the core, which would only ask the system.
  *
- * Main thread only. The questions that take time are asked on worker threads.
+ * Core thread only. The questions that take time are asked on worker threads.
  *
  * @param find the account with an id, [idOf] the id of an account
  * @param onChanged called after the router changed an account, so that it is shown anew
@@ -508,7 +508,7 @@ internal class AccountRouter(
 
     /**
      * A call out on account [id] that went through [server] has had no answer: [then] is told on
-     * the main thread whether the account is now on its other server because [server] is silent
+     * the core's thread whether the account is now on its other server because [server] is silent
      * and the other one answers. On [server] still, both are asked, and silence is enough
      * ([ServerChoice.next]); moved already, the move counts only when a check made it for the
      * silence of [server] ([ServerChoice.movedForSilence]), else both are asked now.

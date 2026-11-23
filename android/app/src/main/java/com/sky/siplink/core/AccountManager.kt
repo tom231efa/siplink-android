@@ -25,7 +25,7 @@ import java.util.UUID
 /**
  * SIP accounts (up to [AccountRules.MAX_ACCOUNTS]). The SIP core configuration is the single
  * source of truth; this class validates input and publishes immutable snapshots for the UI.
- * Must be used from the thread that owns the core (the main thread).
+ * Used on the thread of the core ([CoreThread]); the functions the screens call take the hop themselves.
  *
  * While the configuration is managed ([ConfigLock]) the accounts cannot be changed here, which
  * each function reports in its own way; where it has a password of its own, theirs are handed
@@ -95,7 +95,7 @@ class AccountManager(private val core: Core, private val lock: ConfigLock, priva
         router.refresh()
         // Both live as long as the core, which is as long as the process. The doctor learns of the
         // network first, the router chooses the servers on it, and then the doctor puts each line on
-        // what it has for that server: one change of each account in this turn of the main thread,
+        // what it has for that server: one change of each account in this turn of the core's thread,
         // and with it one registration (the SIP core registers once the turn is over).
         NetworkWatch.listen { facts ->
             doctor.onNetwork(facts, applyNow = false)

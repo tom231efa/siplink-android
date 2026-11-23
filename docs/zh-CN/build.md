@@ -83,7 +83,7 @@ android/app/src/main/java/com/sky/siplink/
 
 ### core
 
-`SipEngine` 持有 Linphone `Core`，在主线程创建，所有 SDK 调用都在主线程进行。它创建并连接各管理器：
+`SipEngine` 持有 Linphone `Core`，在 core 自己的线程上创建（见[两个线程](#两个线程)），所有 SDK 调用都在该线程进行。它创建并连接各管理器：
 
 | 类 | 职责 |
 | --- | --- |
@@ -100,6 +100,16 @@ android/app/src/main/java/com/sky/siplink/
 | `UpdateChecker`、`GitHubReleases` | 更新检查 |
 
 规则性的逻辑（输入校验、CSV、来电策略、远程文档解析与校验、证书 pin、版本比较等）放在 `core/logic`，管理器只负责调用 SDK 和保存状态。
+
+### 两个线程
+
+SIP core 有自己的线程（`core/CoreThread`，一个 `HandlerThread`），与官方 Linphone Android 应用相同；界面留在主线程。SIP 消息、卡住的声卡或成批的注册都不会再拖住界面。
+
+- **一个 core 线程。** Application 在该线程上创建 `SipEngine`，并等它就绪。core、所有管理器及其保存的状态都属于这个线程；它们的定时器在该线程上运行（`CoreThread.handler()`），交给 IO 线程的工作也回到该线程。调试包中，若在其他线程使用 core（`SipEngine.core`）或管理器发布的状态，会立即失败（`CoreThread.check`）；发布包不做检查。
+- **界面只读取已发布的内容：** `StateFlow` 与不可变的值。`ui/`、`service/`、各 Activity 和 Application 类都不持有任何 SDK 对象；视频通话绘制用的视图交给 core（`VideoViews`）。
+- **线程切换放在管理器里。** 界面调用的、无返回值的函数投递到 core 线程后立即返回；有返回值的函数在 core 线程上执行，调用方等待（`CoreThread.post`、`CoreThread.wait`）。在 core 线程上调用时两者都就地执行，同一线程的调用按调用顺序到达。调试包会记录主线程超过 50 ms 的等待（标签 `SipLinkCoreWait`）。
+- **core 从不等待主线程**，因为主线程可能正在等它。core 要告诉应用的事（来电界面、通知、前台服务、查询与线路检查的结果）投递到主线程（`CoreThread.toMain`）；需要立即知道的（应用是否可见、相机权限）直接读取。
+- **测试：** 真机测试通过 `onCore { }` 访问引擎和 SDK，通过 `onMain { }` 访问 Activity 与视图。
 
 ### ui 与 service
 

@@ -52,7 +52,7 @@ class NetworkWatch(context: Context) {
     }
 
     init {
-        // On the main thread, which is the thread of the SIP core.
+        // On the thread of the SIP core.
         connectivity.registerDefaultNetworkCallback(callback, CoreThread.handler())
     }
 
@@ -71,11 +71,11 @@ class NetworkWatch(context: Context) {
     companion object {
         private val listeners = ArrayList<(NetworkFacts?) -> Unit>()
 
-        /** What is known of the network the phone is on now; null while it has none. Main thread only. */
+        /** What is known of the network the phone is on now; null while it has none. Core thread only. */
         var facts: NetworkFacts? = null
             private set
 
-        /** Has [listener] told of every change of [facts] from now on, on the main thread. */
+        /** Has [listener] told of every change of [facts] from now on, on the thread of the core. */
         fun listen(listener: (NetworkFacts?) -> Unit) {
             listeners += listener
         }

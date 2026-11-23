@@ -12,7 +12,7 @@ import java.util.concurrent.Executors
 /**
  * Asks the servers of the accounts whether they answer ([LineNetwork.answers]), for the router.
  * Probes with the fast timeout run on threads of their own: they never wait behind probes of
- * servers that do not answer. Main thread only; the answers come on [handler].
+ * servers that do not answer. Core thread only; the answers come on [handler].
  *
  * @param network the network the phone is on ([com.sky.siplink.core.logic.NetworkKey]); null: none
  */

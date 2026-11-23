@@ -9,7 +9,7 @@ import java.util.UUID
 /**
  * Makes a checked remote configuration the phone's, and takes it back again. Everything goes
  * through the managers as the remote side ([ConfigLock.fromRemote]); the configuration is
- * managed from the first change on. Main thread only, like the managers.
+ * managed from the first change on. Core thread only, like the managers.
  */
 internal class RemoteApplier(private val engine: SipEngine) {
     /**
@@ -35,7 +35,7 @@ internal class RemoteApplier(private val engine: SipEngine) {
      *
      * @param knownAccounts local account ids by key, as the last sync left them
      * @param knownDirectories the same for the directories
-     * @param onDone called on the main thread once everything is applied
+     * @param onDone called on the core's thread once everything is applied
      */
     fun apply(
         document: RemoteDocument,
@@ -106,7 +106,7 @@ internal class RemoteApplier(private val engine: SipEngine) {
      * The accounts go first; the CAs and settings only once they have unregistered at their
      * servers, as in [apply].
      *
-     * @param onDone called on the main thread once it is all done
+     * @param onDone called on the core's thread once it is all done
      */
     fun wipe(onDone: () -> Unit) {
         val accounts = engine.accounts

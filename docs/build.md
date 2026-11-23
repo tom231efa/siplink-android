@@ -83,7 +83,7 @@ android/app/src/main/java/com/sky/siplink/
 
 ### core
 
-`SipEngine` holds the Linphone `Core`; it is created on the main thread, and all SDK calls are made on the main thread. It creates and connects the managers:
+`SipEngine` holds the Linphone `Core`; it is created on the core's own thread (see [Two threads](#two-threads)), and all SDK calls are made there. It creates and connects the managers:
 
 | Class | Responsibility |
 | --- | --- |
@@ -100,6 +100,16 @@ android/app/src/main/java/com/sky/siplink/
 | `UpdateChecker`, `GitHubReleases` | Update checks |
 
 Rule-like logic (input validation, CSV, incoming call policy, remote document parsing and validation, certificate pins, version comparison and so on) lives in `core/logic`; the managers only call the SDK and keep state.
+
+### Two threads
+
+The SIP core has a thread of its own (`core/CoreThread`, a `HandlerThread`), as in the official Linphone Android app; the screens keep the main thread. A SIP message, a stalled sound card or a burst of registrations then never holds up a screen.
+
+- **One core thread.** The Application makes `SipEngine` on it and waits until it stands. The core, every manager and every state they keep belong to that thread; their timers run on it (`CoreThread.handler()`), and work that leaves for an IO thread comes back to it. Debug builds fail at once when the core (`SipEngine.core`) or a manager's published state is used from another thread (`CoreThread.check`); release builds do not check.
+- **The screens read what is published:** `StateFlow`s and immutable values. Nothing in `ui/`, `service/`, the activities or the app class holds an SDK object; the views a video call is drawn into are handed to the core (`VideoViews`).
+- **The hop lives in the managers.** A function the screens call that returns nothing is posted to the core thread and returns at once; one that returns a value runs there while the caller waits (`CoreThread.post`, `CoreThread.wait`). Both run in place on the core thread, and the calls of one thread arrive in the order they were made. Debug builds log a wait of the main thread longer than 50 ms (tag `SipLinkCoreWait`).
+- **The core never waits for the main thread**, which may be waiting for it. What the core tells the app (the call screen, notifications, the service, the answers of lookups and line checks) is posted to the main thread (`CoreThread.toMain`); what it must know at once (whether the app is visible, the camera permission) is read.
+- **Tests:** the phone tests reach the engine and the SDK with `onCore { }` and the activities and views with `onMain { }`.
 
 ### ui and service
 

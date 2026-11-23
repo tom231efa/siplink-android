@@ -13,7 +13,7 @@ import org.linphone.core.Core
  * The video side of [CallManager]: starting and ending video in a call, the camera, and the
  * other side's requests to add video. The camera never starts by itself: video is only set up
  * where the user asked for it, and the camera only runs while the call screen is in front.
- * Must be used from the thread that owns the core (the main thread).
+ * Core thread only.
  *
  * @param cameraPermitted whether the app holds the camera permission; without it video is only received
  * @param onChanged the state of a call changed in a way the call screen shows

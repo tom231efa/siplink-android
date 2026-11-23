@@ -7,7 +7,7 @@ import java.util.concurrent.Executors
 /**
  * Asks the network which transports get through to a server ([LineNetwork.transports]) for the
  * adaptation of the lines, on a thread of its own: once for all lines that ask the same on the
- * same network at the same time. Main thread only; the answers come on it.
+ * same network at the same time. Core thread only; the answers come on it.
  */
 internal class LineProber(private val handler: Handler) {
     private val worker = Executors.newSingleThreadExecutor()

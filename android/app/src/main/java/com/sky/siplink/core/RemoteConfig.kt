@@ -22,7 +22,7 @@ import java.util.concurrent.Executors
  * and takes it all back when the platform or the user ends it.
  *
  * A sync that fails changes nothing: the configuration in force stays, and the phone tries
- * again, sooner at first ([RemoteSync.retryDelayMs]). Used from the main thread; the requests
+ * again, sooner at first ([RemoteSync.retryDelayMs]). Used on the core's thread; the requests
  * run on a thread of their own.
  */
 class RemoteConfig internal constructor(context: Context, private val engine: SipEngine) {
@@ -182,7 +182,7 @@ class RemoteConfig internal constructor(context: Context, private val engine: Si
         val (url, key, trust) = Triple(store.syncUrl, store.deviceKey, trust())
         worker.execute {
             val result = request(url, body, key, trust)
-            // The document is read here, off the main thread; it may be large.
+            // The document is read here, off the core's thread; it may be large.
             val document = result.getOrNull()?.takeIf { it.status == 200 }?.let { RemoteDocument.parse(it.body) }
             // Busy until it is all done: applying or taking back may wait for accounts to unregister.
             handler.post {

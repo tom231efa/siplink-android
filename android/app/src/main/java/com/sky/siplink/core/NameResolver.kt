@@ -16,7 +16,7 @@ import com.sky.siplink.core.logic.NameLookup
  * number that is in no directory is not asked for again for a while, so that calls from
  * outside do not cost a server request each.
  *
- * Use from the main thread.
+ * Use on the thread of the core.
  *
  * @param directory given as a function: the directories are only set up when they are first needed
  */

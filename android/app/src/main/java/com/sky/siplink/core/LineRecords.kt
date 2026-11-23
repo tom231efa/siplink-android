@@ -9,7 +9,7 @@ import org.linphone.core.Config
  * What the adaptation of the lines keeps in the configuration of the SIP core: what was learned
  * for each account on each network ([LineAdapt.Record]), the account settings it replaced in the
  * core ([LineSteps.Own]), the next hop of a PBX that nothing reaches, and whether an account's
- * login registered anywhere. Main thread only.
+ * login registered anywhere. Core thread only.
  *
  * What was learned on a network is kept apart for the two servers of an account with a backup
  * server ([LineAdapt.slotted]): the way to one says nothing of the way to the other.

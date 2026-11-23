@@ -524,9 +524,9 @@ internal class ConferenceRoom(
 
     /**
      * Takes the user's side of the room off the sound card while a call is still up, before the
-     * user ends the last one. The SDK stops the room's sound on the main thread, and its sound
+     * user ends the last one. The SDK stops the room's sound on the core's thread, and its sound
      * card player keeps restarting itself until it is stopped: left to the SDK, after the last
-     * call ended, that held the main thread for 2 s and more on the test phone (three tries out of
+     * call ended, that held the thread for 2 s and more on the test phone (three tries out of
      * three); stopped first, for 1.2 to 1.4 s. (When the last member hangs up, the SDK gets there
      * before the app hears of it.)
      */

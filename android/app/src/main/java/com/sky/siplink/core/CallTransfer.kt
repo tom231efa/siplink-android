@@ -14,7 +14,7 @@ import org.linphone.core.Core
 /**
  * Transfer and parking for [CallManager]: blind and attended transfer, parking (a blind transfer
  * to the parking extension of the PBX), and how the calls end once the PBX has taken them.
- * Main thread only, like the SIP core.
+ * Core thread only, like the SIP core.
  *
  * @param onChanged the state of a transfer changed
  */

@@ -18,7 +18,7 @@ import org.linphone.core.CallParams
  * A conference room is not recorded: the core records no call that is part of a conference.
  * The recordings of the calls end as they go into the room.
  *
- * Main thread only, like the SIP core.
+ * Core thread only, like the SIP core.
  *
  * @param allowed whether recording is allowed ([com.sky.siplink.core.model.Settings.callRecording])
  * @param byDefault whether every call is recorded from the moment it is connected

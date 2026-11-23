@@ -31,7 +31,7 @@ internal class CallMeta(
     var chosenRoute: AudioRoute? = null,
 )
 
-/** What the call screen shows of one call ([CallInfo]), for [CallManager], in the app's language of the moment. Main thread only. */
+/** What the call screen shows of one call ([CallInfo]), for [CallManager], in the app's language of the moment. Core thread only. */
 internal class CallDescriber(
     private val core: Core,
     private val settings: SettingsStore,

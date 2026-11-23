@@ -25,7 +25,7 @@ import java.util.concurrent.TimeUnit
  * process and of its busiest thread come from /proc, the temperature from [PowerManager], the
  * memory from [ActivityManager]; the connections from the SDK's statistics of each call.
  *
- * The SDK is asked on the main thread, which owns it; /proc is read on a thread of its own.
+ * The SDK is asked on the thread of the core, which owns it; /proc is read on a thread of its own.
  * A debug build writes what was measured to the log (tag [TAG], debug level).
  */
 class RoomMonitor(context: Context) {

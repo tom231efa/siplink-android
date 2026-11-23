@@ -39,7 +39,7 @@ internal interface CallFeed {
 /**
  * Follows the reports of the SIP core on the calls of [CallManager]: places a call that came in,
  * was placed or ended into [legs], hands each report on to the parts that care, and keeps the
- * "call ended" state on screen for a moment once the last call is gone. Main thread only.
+ * "call ended" state on screen for a moment once the last call is gone. Core thread only.
  */
 internal class CallFollower(
     private val core: Core,

@@ -22,7 +22,8 @@ import java.util.concurrent.Executors
 
 /**
  * The LDAP directories: up to [LdapRules.MAX_DIRECTORIES] of them, each with its own server,
- * filters and lines. Must be used from the thread that owns the core (the main thread).
+ * filters and lines. Used on the thread of the core; the functions
+ * the screens call take the hop themselves.
  *
  * The SIP core searches every server it knows at once and does not say where an entry came
  * from. So it only ever knows one: the directory that is being asked right now. Questions wait
@@ -339,7 +340,7 @@ class DirectoryManager(private val core: Core, private val cache: DirectoryCache
      * Finds the directory entry of the number of a call: in the local copy first, which is
      * instant and needs no network, and only when it is not there on the servers (whose answer
      * then joins the copy), one directory after the other.
-     * [onResult] is called on the main thread, with null when no directory has the number.
+     * [onResult] is called on the core's thread, with null when no directory has the number.
      *
      * @param incoming the call came in, rather than being placed
      * @param line id of the account the call is on, null when that is not known
