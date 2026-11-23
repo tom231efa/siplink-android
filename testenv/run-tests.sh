@@ -113,7 +113,7 @@ all=(RegistrationTest BasicCallTest TransferParkTest SupervisionTest CallHandlin
   VideoCallTest VideoNoCameraTest ManagedLockTest ManagedScreensTest RemoteConfigTest
   AdvancedSettingsTest SdkDefaultsTest AccountFormTest ReleaseJsonTest UpdateCheckTest CallRecordingTest IncomingSlideTest NextCallScreenTest
   ConferenceTest ConferencePacingTest VideoControlsTest VideoWindowTest CallConflictTest LandscapeScreensTest
-  LockScreenTest TwinEntriesTest AppLanguageTest EnglishScreensTest LanguageScreensTest)
+  LockScreenTest TwinEntriesTest AppLanguageTest MainThreadStallTest EnglishScreensTest LanguageScreensTest)
 
 # The quick set, the run of a round of work: registering, calls in and out, transfer, the ways a
 # call is handled, the incoming slide, the forms and stores, the app's language. Each of its
