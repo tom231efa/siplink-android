@@ -1,7 +1,5 @@
 package com.sky.siplink.core
 
-import android.os.Handler
-import android.os.Looper
 import com.sky.siplink.R
 import com.sky.siplink.core.CallSupport.isEnded
 import com.sky.siplink.core.logic.VideoRules
@@ -26,7 +24,7 @@ internal class VideoController(
     private val cameraPermitted: () -> Boolean,
     private val onChanged: () -> Unit,
 ) {
-    private val handler = Handler(Looper.getMainLooper())
+    private val handler = CoreThread.handler()
 
     /** The call screen is in front: the camera may be used, and only then. */
     private var callScreenShown = false

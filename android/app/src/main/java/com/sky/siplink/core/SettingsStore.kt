@@ -1,7 +1,5 @@
 package com.sky.siplink.core
 
-import android.os.Handler
-import android.os.Looper
 import com.sky.siplink.core.logic.AutoAnswerRules
 import com.sky.siplink.core.logic.ManagedConfig
 import com.sky.siplink.core.logic.PreviewDock
@@ -21,7 +19,7 @@ class SettingsStore(private val config: Config, private val lock: ConfigLock) {
     val settings: StateFlow<Settings> = state.asStateFlow()
     val current: Settings get() = state.value
 
-    private val handler = Handler(Looper.getMainLooper())
+    private val handler = CoreThread.handler()
     private var unsaved = false
     private val writeToDisk = Runnable { flush() }
 
@@ -32,6 +30,7 @@ class SettingsStore(private val config: Config, private val lock: ConfigLock) {
      * @return false when part of the change was refused for that reason
      */
     fun update(transform: (Settings) -> Settings): Boolean {
+        CoreThread.check("The settings")
         // A frame rate that cannot be chosen is no rate of its own, here as when it is read back.
         val wanted = transform(state.value).let {
             it.copy(

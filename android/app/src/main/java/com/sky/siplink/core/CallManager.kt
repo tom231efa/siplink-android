@@ -1,7 +1,5 @@
 package com.sky.siplink.core
 
-import android.os.Handler
-import android.os.Looper
 import androidx.annotation.StringRes
 import com.sky.siplink.R
 import com.sky.siplink.core.CallLegs.Companion.live
@@ -84,7 +82,7 @@ class CallManager(
             it == CallPhase.OUTGOING || it == CallPhase.CONNECTED || it == CallPhase.HELD
         }
 
-    private val handler = Handler(Looper.getMainLooper())
+    private val handler = CoreThread.handler()
     private val describer = CallDescriber(core, settings, accounts, names, texts)
     private val legs = CallLegs()
 
@@ -488,6 +486,7 @@ class CallManager(
     private fun describe(call: Call): CallInfo = describer.describe(call, metaOf(call), state.value?.route, video, recorder)
 
     private fun publish(): CallInfo? {
+        CoreThread.check("The calls")
         val previous = state.value
         val info = room.snapshot()?.let { room ->
             // The room says no reason; a call says its own ([callInfo]).

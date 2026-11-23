@@ -5,8 +5,6 @@ import android.net.ConnectivityManager
 import android.net.LinkProperties
 import android.net.Network
 import android.net.NetworkCapabilities
-import android.os.Handler
-import android.os.Looper
 import com.sky.siplink.core.logic.NetAddress
 import com.sky.siplink.core.model.NetType
 import com.sky.siplink.core.model.NetworkFacts
@@ -55,7 +53,7 @@ class NetworkWatch(context: Context) {
 
     init {
         // On the main thread, which is the thread of the SIP core.
-        connectivity.registerDefaultNetworkCallback(callback, Handler(Looper.getMainLooper()))
+        connectivity.registerDefaultNetworkCallback(callback, CoreThread.handler())
     }
 
     private fun lookAgain() {
@@ -91,6 +89,7 @@ class NetworkWatch(context: Context) {
          * a change of network here, as Android's callbacks do; the phone's network stays as it is.
          */
         internal fun publish(next: NetworkFacts?) {
+            CoreThread.check("The network facts")
             if (next == facts) return
             facts = next
             listeners.toList().forEach { it(next) }

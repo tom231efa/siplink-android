@@ -1,7 +1,5 @@
 package com.sky.siplink.core
 
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
 import com.sky.siplink.core.logic.ShortcutLines
 import com.sky.siplink.core.logic.ShortcutRules
@@ -40,14 +38,14 @@ class ShortcutManager(private val file: File, private val lock: ConfigLock, priv
     private val ownFile = File(file.parentFile, file.nameWithoutExtension + OWN_SUFFIX + "." + file.extension)
 
     private val io = Executors.newSingleThreadExecutor { Thread(it, "shortcuts-io") }
-    private val main = Handler(Looper.getMainLooper())
+    private val handler = CoreThread.handler()
     private var nextId = 1L
 
     init {
         io.execute {
             val stored = read(file, firstId = 1)
             val own = read(ownFile, firstId = stored.size + 1L).map { it.copy(own = true) }
-            main.post {
+            handler.post {
                 val kept = if (lock.managed.value) own else emptyList()
                 state.value = ShortcutRules.ownFirst(stored + kept)
                 nextId = stored.size + own.size + 1L
@@ -199,6 +197,7 @@ class ShortcutManager(private val file: File, private val lock: ConfigLock, priv
 
     /** Makes [list] the keys, in the order of [ShortcutRules.ownFirst], and stores the file of each group that changed. */
     private fun publish(list: List<Shortcut>) {
+        CoreThread.check("The shortcut keys")
         if (!ready.value) return
         val (ownBefore, handedOutBefore) = state.value.partition { it.own }
         val ordered = ShortcutRules.ownFirst(list)

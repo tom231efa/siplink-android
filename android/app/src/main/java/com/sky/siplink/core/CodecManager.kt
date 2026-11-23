@@ -76,6 +76,7 @@ class CodecManager(private val core: Core, private val lock: ConfigLock) {
         }
 
         private fun commit(types: Array<PayloadType>) {
+            CoreThread.check("The codecs")
             set(types)
             core.config.sync()
             state.value = read()

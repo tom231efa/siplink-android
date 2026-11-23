@@ -3,8 +3,6 @@ package com.sky.siplink.core
 import android.app.ActivityManager
 import android.content.Context
 import android.os.Build
-import android.os.Handler
-import android.os.Looper
 import android.os.PowerManager
 import android.os.SystemClock
 import android.system.Os
@@ -38,7 +36,7 @@ class RoomMonitor(context: Context) {
     private val activities = context.getSystemService(ActivityManager::class.java)
     private val ticksPerSecond = Os.sysconf(OsConstants._SC_CLK_TCK)
     private val cores = Runtime.getRuntime().availableProcessors()
-    private val handler = Handler(Looper.getMainLooper())
+    private val handler = CoreThread.handler()
 
     /** One thread for /proc, which ends when nothing has been asked of it for a while. */
     private val worker = ThreadPoolExecutor(0, 1, WORKER_IDLE_S, TimeUnit.SECONDS, LinkedBlockingQueue())

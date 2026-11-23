@@ -1,7 +1,5 @@
 package com.sky.siplink.core
 
-import android.os.Handler
-import android.os.Looper
 import com.sky.siplink.R
 import com.sky.siplink.core.logic.AccountRows
 import com.sky.siplink.core.logic.AccountRules
@@ -44,7 +42,7 @@ class AccountManager(private val core: Core, private val lock: ConfigLock, priva
      */
     private class Parting(val auth: AuthInfo, val identityKey: String)
 
-    private val handler = Handler(Looper.getMainLooper())
+    private val handler = CoreThread.handler()
     private val parting = ArrayList<Parting>()
 
     /** The removed accounts that are still unregistering, by native pointer. */
@@ -110,6 +108,7 @@ class AccountManager(private val core: Core, private val lock: ConfigLock, priva
     fun onLanguageChanged() = refresh()
 
     fun refresh() {
+        CoreThread.check("The accounts")
         handler.removeCallbacks(publisher)
         changed.clear()
         val defaultId = core.defaultAccount?.let(::idOf)
@@ -223,6 +222,7 @@ class AccountManager(private val core: Core, private val lock: ConfigLock, priva
     }
 
     private fun publishChanged() {
+        CoreThread.check("The accounts")
         val accounts = changed.values.toList()
         changed.clear()
         val list = state.value.toMutableList()

@@ -131,6 +131,7 @@ class TlsManager(context: Context, private val core: Core, private val lock: Con
 
     /** @param rewrite store the user CAs and rebuild the bundle; not needed when nothing changed since they were written */
     private fun applyTrust(reconnect: Boolean, rewrite: Boolean = true) {
+        CoreThread.check("The trusted CAs")
         if (userCertificates.isEmpty()) {
             userCaFile.delete()
             bundleFile.delete()

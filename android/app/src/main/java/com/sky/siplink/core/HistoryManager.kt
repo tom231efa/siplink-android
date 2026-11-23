@@ -50,6 +50,7 @@ class HistoryManager(
 
     /** A call log was written or changed by the core: put it where it belongs, newest first. */
     fun onLogUpdated(log: CallLog) {
+        CoreThread.check("The call history")
         val entry = toEntry(log)
         val list = state.value.filterTo(ArrayList(state.value.size + 1)) { it.id != entry.id }
         val position = list.indexOfFirst { it.startedAtMs <= entry.startedAtMs }

@@ -387,6 +387,7 @@ class DirectoryManager(private val core: Core, private val cache: DirectoryCache
     // ------------------------------------------------------------------ the server
 
     private fun askNext() {
+        CoreThread.check("The directories")
         if (asking != null) return
         val question = questions.removeFirstOrNull() ?: return
         // The directory may have been changed or removed while the question waited.

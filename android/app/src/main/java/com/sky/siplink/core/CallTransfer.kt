@@ -1,7 +1,5 @@
 package com.sky.siplink.core
 
-import android.os.Handler
-import android.os.Looper
 import com.sky.siplink.R
 import com.sky.siplink.core.CallSupport.isEnded
 import com.sky.siplink.core.CallSupport.phaseOf
@@ -25,7 +23,7 @@ internal class CallTransfer(
     private val settings: SettingsStore,
     private val onChanged: () -> Unit,
 ) {
-    private val handler = Handler(Looper.getMainLooper())
+    private val handler = CoreThread.handler()
     private var attended = false
     private var parking = false
 

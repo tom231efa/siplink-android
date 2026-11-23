@@ -2,8 +2,6 @@ package com.sky.siplink.core
 
 import android.content.Context
 import android.os.Build
-import android.os.Handler
-import android.os.Looper
 import com.sky.siplink.BuildConfig
 import com.sky.siplink.R
 import com.sky.siplink.core.logic.CertificateTools
@@ -62,7 +60,7 @@ class RemoteConfig internal constructor(context: Context, private val engine: Si
     /** What the screen says went wrong in place of the stored error of the last sync: a binding that failed, a revocation. */
     private var notice: Phrase? = null
     private val applier = RemoteApplier(engine)
-    private val handler = Handler(Looper.getMainLooper())
+    private val handler = CoreThread.handler()
     private val worker = Executors.newSingleThreadExecutor { Thread(it, "remote-config") }
     private val state = MutableStateFlow(Status())
     val status: StateFlow<Status> = state.asStateFlow()
@@ -299,11 +297,13 @@ class RemoteConfig internal constructor(context: Context, private val engine: Si
 
     /** A request is on its way; [publish], [finishEnrollment] or [takeBack] end it. */
     private fun markBusy() {
+        CoreThread.check("The remote configuration")
         state.value = state.value.copy(busy = true)
     }
 
     /** Shows what the store holds; nothing is on its way any more. */
     private fun publish() {
+        CoreThread.check("The remote configuration")
         notice = null
         state.value = state.value.copy(
             busy = false,

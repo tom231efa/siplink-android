@@ -61,6 +61,7 @@ class ConfigLock(private val config: Config) {
      *   the managed state: switched off, there is none.
      */
     internal fun setManaged(on: Boolean, passwordHash: String = "") {
+        CoreThread.check("The managed state")
         val hash = if (on) passwordHash.trim() else ""
         if (state.value == on && this.passwordHash == hash) return
         val released = state.value && !on
@@ -75,6 +76,7 @@ class ConfigLock(private val config: Config) {
 
     /** Runs [changes] as the remote side: nothing they change is refused, managed or not. */
     internal fun <T> fromRemote(changes: () -> T): T {
+        CoreThread.check("The managed state")
         remoteChanges++
         try {
             return changes()

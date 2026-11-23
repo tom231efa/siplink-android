@@ -1,7 +1,5 @@
 package com.sky.siplink.core
 
-import android.os.Handler
-import android.os.Looper
 import android.os.SystemClock
 import com.sky.siplink.R
 import com.sky.siplink.core.CallSupport.isEnded
@@ -89,7 +87,7 @@ internal class ConferenceRoom(
         var endedByUser = false
     }
 
-    private val handler = Handler(Looper.getMainLooper())
+    private val handler = CoreThread.handler()
     private var conference: Conference? = null
 
     /** In the order they came in; one that left stays [RoomRules.LEFT_LINGER_MS] without its call. */
