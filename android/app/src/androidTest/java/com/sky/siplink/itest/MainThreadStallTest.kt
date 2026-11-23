@@ -11,6 +11,7 @@ import com.sky.siplink.core.logic.AccountRules
 import com.sky.siplink.core.model.CallPhase
 import com.sky.siplink.core.model.RegState
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.linphone.core.Factory
 import org.linphone.core.LogLevel
@@ -20,6 +21,12 @@ import org.linphone.core.LogLevel
  * was busy: as the user ends a conference room with members in it, as a call rings in and is
  * answered, and as a hundred accounts register at once. The numbers go to logcat (tag [TAG])
  * and to the output of the instrumentation.
+ *
+ * With the core on the main thread, ending a room held it for 1.5 to 1.7 s on the test phone;
+ * on its own thread for some 40 ms: the end of a room is held to [ROOM_END_MS]. The others are
+ * reported only: answering a call stalled the main thread for 160 to 270 ms before and 50 to 130 ms
+ * after (the call's notification and the screen are drawn there), registering 40 to 60 ms before
+ * and about 12 after, and adding the accounts waits for the core as it did.
  */
 class MainThreadStallTest : RoomTestBase("stall") {
     /**
@@ -85,10 +92,11 @@ class MainThreadStallTest : RoomTestBase("stall") {
     @Test
     fun endingARoomWithMembers() {
         openRoom("2501", "2502")
-        longestStall("ending a room of two") {
+        val stall = longestStall("ending a room of two") {
             onMain { engine.calls.hangUp() }
             awaitNoCall()
         }
+        assertTrue("Ending the room held the main thread for $stall ms", stall < ROOM_END_MS)
     }
 
     @Test
@@ -128,6 +136,7 @@ class MainThreadStallTest : RoomTestBase("stall") {
     private companion object {
         const val TAG = "SipLinkStall"
         const val TICK_MS = 5L
+        const val ROOM_END_MS = 500L
         const val SETTLE_MS = 2_000L
         const val CALLER = 2000
         const val FIRST = 1001
