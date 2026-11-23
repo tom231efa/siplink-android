@@ -95,11 +95,21 @@ class CallManager(
         names.addListener(::onNamesFound)
     }
 
+    /**
+     * The room as it was when the user ended it, while its end is on screen before its calls are
+     * down ([CallFollower.onRoomEnding]): the service and its notification follow the calls, not the screen.
+     */
+    @Volatile private var goingDown: CallInfo? = null
+
+    /** The call or room that is being set up or is established (not merely ringing in), as its notification shows it. */
+    val ongoingCall: CallInfo?
+        get() = (goingDown ?: state.value)?.takeIf {
+            it.phase == CallPhase.OUTGOING || it.phase == CallPhase.CONNECTED || it.phase == CallPhase.HELD
+        }
+
     /** True while a call is being set up or is established (not merely ringing in). */
     val hasOngoingCall: Boolean
-        get() = state.value?.phase.let {
-            it == CallPhase.OUTGOING || it == CallPhase.CONNECTED || it == CallPhase.HELD
-        }
+        get() = ongoingCall != null
 
     private val handler = CoreThread.handler()
     private val describer = CallDescriber(core, settings, accounts, names, texts)
@@ -138,6 +148,11 @@ class CallManager(
             get() = state.value
             set(value) {
                 state.value = value
+            }
+        override var goingDown: CallInfo?
+            get() = this@CallManager.goingDown
+            set(value) {
+                this@CallManager.goingDown = value
             }
 
         override fun publish(): CallInfo? = this@CallManager.publish()

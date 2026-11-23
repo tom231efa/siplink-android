@@ -87,5 +87,12 @@ object CallRules {
      */
     fun endLingerMs(shownAt: Long?, now: Long, lingerMs: Long): Long = if (shownAt == null) lingerMs else (shownAt + lingerMs - now).coerceAtLeast(0)
 
+    /**
+     * Whether the end of the room shown at [shownAt] ([showsRoomEndAtOnce]) is given up at [now]:
+     * the room is still open [giveUpMs] after, so it is shown again and can be ended again.
+     */
+    fun roomEndGivenUp(shownAt: Long?, now: Long, roomOpen: Boolean, giveUpMs: Long): Boolean =
+        shownAt != null && roomOpen && now - shownAt >= giveUpMs
+
     private val SUPERVISED = R.string.call_room_supervised
 }

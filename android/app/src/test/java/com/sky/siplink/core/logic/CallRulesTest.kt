@@ -90,4 +90,12 @@ class CallRulesTest {
         assertEquals("Over while the calls went down: none", 0L, CallRules.endLingerMs(shownAt = 1_000, now = 5_000, lingerMs = 1400))
         assertEquals(0L, CallRules.endLingerMs(shownAt = 3_600, now = 5_000, lingerMs = 1400))
     }
+
+    @Test
+    fun `an end shown ahead of a room that does not close is given up after its time`() {
+        assertFalse("Not shown ahead", CallRules.roomEndGivenUp(shownAt = null, now = 20_000, roomOpen = true, giveUpMs = 10_000))
+        assertFalse("Still within its time", CallRules.roomEndGivenUp(shownAt = 1_000, now = 10_999, roomOpen = true, giveUpMs = 10_000))
+        assertTrue("Time is up, the room still open", CallRules.roomEndGivenUp(shownAt = 1_000, now = 11_000, roomOpen = true, giveUpMs = 10_000))
+        assertFalse("The room closed", CallRules.roomEndGivenUp(shownAt = 1_000, now = 11_000, roomOpen = false, giveUpMs = 10_000))
+    }
 }

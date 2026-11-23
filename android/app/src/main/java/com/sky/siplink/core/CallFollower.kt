@@ -30,6 +30,9 @@ internal interface CallFeed {
     /** The snapshot on screen now. */
     var shown: CallInfo?
 
+    /** The room the user ended, kept for the service while its end is on screen before its calls are down; null otherwise. */
+    var goingDown: CallInfo?
+
     /** Publishes the snapshot of the calls as they are; null when there is none to show. */
     fun publish(): CallInfo?
 
@@ -299,13 +302,29 @@ internal class CallFollower(
      * The user ends the room (for all, or by hanging up its last call): its end is shown at once,
      * while the SDK still takes the calls down, unless a call waits next to the room
      * ([CallRules.showsRoomEndAtOnce]). Nothing of the room comes back on screen meanwhile
-     * ([CallLegs.endShownAt]), and [finish] keeps what is shown.
+     * ([CallLegs.endShownAt]), and [finish] keeps what is shown. The service and its notification
+     * keep the room ([CallFeed.goingDown]) until it is closed. Should the room still be open
+     * [ROOM_END_GIVE_UP_MS] later, it comes back on screen, to be ended again.
      */
     fun onRoomEnding() {
         if (legs.endShownAt != null || !CallRules.showsRoomEndAtOnce(callWaiting = live(legs.other) != null)) return
+        feed.goingDown = feed.shown
         showEnded(null)
         legs.endShownAt = SystemClock.elapsedRealtime()
-        host.onCallActivityChanged()
+        handler.postDelayed(giveUpRoomEnd, ROOM_END_GIVE_UP_MS)
+    }
+
+    private val giveUpRoomEnd = Runnable {
+        if (!CallRules.roomEndGivenUp(legs.endShownAt, SystemClock.elapsedRealtime(), room.isOpen, ROOM_END_GIVE_UP_MS)) return@Runnable
+        endShownNoMore()
+        feed.publish()
+    }
+
+    /** The end of the room is no longer shown ahead of its calls: the room is closed, or it did not close. */
+    private fun endShownNoMore() {
+        legs.endShownAt = null
+        feed.goingDown = null
+        handler.removeCallbacks(giveUpRoomEnd)
     }
 
     /** The last member left the room, or the user ended it: a call that waits takes over, else the screen ends. */
@@ -316,7 +335,7 @@ internal class CallFollower(
             return
         }
         // A call that came in while the room went down takes the screen from its end.
-        legs.endShownAt = null
+        endShownNoMore()
         legs.current = next
         legs.other = null
         val info = feed.publish() ?: return
@@ -329,7 +348,7 @@ internal class CallFollower(
      */
     fun finish(meta: CallMeta?) {
         val shownAt = legs.endShownAt
-        legs.endShownAt = null
+        endShownNoMore()
         if (shownAt == null) showEnded(meta)
         legs.current = null
         legs.other = null
@@ -370,6 +389,9 @@ internal class CallFollower(
 
     private companion object {
         const val END_LINGER_MS = 1400L
+
+        /** How long an end shown ahead of the room's calls waits for the room to close; it takes 1.3 to 1.7 s. */
+        const val ROOM_END_GIVE_UP_MS = 10_000L
 
         /** SIP status for a caller who withholds the number where that is not accepted. */
         const val ANONYMITY_DISALLOWED = 433

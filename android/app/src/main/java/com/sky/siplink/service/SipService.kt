@@ -60,7 +60,7 @@ class SipService : Service() {
 
     private fun refresh() {
         val engine = app.engine
-        val call = engine.calls.call.value?.takeIf { engine.calls.hasOngoingCall }
+        val call = engine.calls.ongoingCall
         if (call != null) {
             enterForeground(app.notifier.ongoingCall(call), inCall = true)
             return
