@@ -16,7 +16,7 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class AdvancedSettingsTest : ScreenTestBase("itest-advanced") {
     private fun openPage() {
-        onMain { engine.updateSettings { it.copy(lockScreenPromptDeclined = true) } }
+        onCore { engine.updateSettings { it.copy(lockScreenPromptDeclined = true) } }
         showApp()
         tap("设置")
         tap("高级设置")
@@ -26,27 +26,27 @@ class AdvancedSettingsTest : ScreenTestBase("itest-advanced") {
     @Test
     fun theSwitchesReachTheCore() {
         // Written at the start: the SDK's own default would have it on.
-        assertFalse("Adaptive rate control is on", onMain { engine.core.isAdaptiveRateControlEnabled })
+        assertFalse("Adaptive rate control is on", onCore { engine.core.isAdaptiveRateControlEnabled })
         openPage()
         picture("page")
 
         tap("自适应速率控制")
-        await("adaptive rate control in the core") { onMain { engine.core.isAdaptiveRateControlEnabled } }
+        await("adaptive rate control in the core") { onCore { engine.core.isAdaptiveRateControlEnabled } }
         assertTrue(engine.settings.current.adaptiveRateControl)
         tap("自适应速率控制")
-        await("adaptive rate control off in the core") { !onMain { engine.core.isAdaptiveRateControlEnabled } }
+        await("adaptive rate control off in the core") { !onCore { engine.core.isAdaptiveRateControlEnabled } }
 
         tap("回声消除")
-        await("echo cancellation off in the core") { !onMain { engine.core.isEchoCancellationEnabled } }
+        await("echo cancellation off in the core") { !onCore { engine.core.isEchoCancellationEnabled } }
         assertFalse(engine.settings.current.echoCancellation)
         tap("回声消除")
-        await("echo cancellation in the core") { onMain { engine.core.isEchoCancellationEnabled } }
+        await("echo cancellation in the core") { onCore { engine.core.isEchoCancellationEnabled } }
 
         tap("允许 IPv6")
-        await("IPv6 off in the core") { !onMain { engine.core.isIpv6Enabled } }
+        await("IPv6 off in the core") { !onCore { engine.core.isIpv6Enabled } }
         assertFalse(engine.settings.current.ipv6)
         tap("允许 IPv6")
-        await("IPv6 in the core") { onMain { engine.core.isIpv6Enabled } }
+        await("IPv6 in the core") { onCore { engine.core.isIpv6Enabled } }
     }
 
     @Test
@@ -64,13 +64,13 @@ class AdvancedSettingsTest : ScreenTestBase("itest-advanced") {
         // Without the app being started again, the PBX learns the new name with the next REGISTER.
         typeInto(FIELD, CUSTOM)
         await("the name to be kept") { engine.settings.current.userAgent == CUSTOM }
-        assertEquals(CUSTOM, onMain { engine.core.userAgent })
+        assertEquals(CUSTOM, onCore { engine.core.userAgent })
         await("the PBX to store the name as typed") { pbxUserAgent(APP) == CUSTOM }
         picture("custom")
 
         // Emptied, the default is back.
         typeInto(FIELD, "")
-        await("the default name in the core") { onMain { engine.core.userAgent } == default }
+        await("the default name in the core") { onCore { engine.core.userAgent } == default }
         await("the PBX to store the default name again") { pbxUserAgent(APP) == default }
     }
 

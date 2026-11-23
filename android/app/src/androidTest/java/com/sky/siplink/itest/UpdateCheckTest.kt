@@ -38,7 +38,7 @@ class UpdateCheckTest : ScreenTestBase("itest-update") {
 
     @After
     fun forget() {
-        onMain {
+        onCore {
             updates.feed = NO_RELEASES
             updates.forget()
         }
@@ -69,7 +69,7 @@ class UpdateCheckTest : ScreenTestBase("itest-update") {
 
     /** Starts as a new installation would, with [autoCheck] for the switch, and GitHub answering with [feed]. */
     private fun start(feed: ReleaseFeed, autoCheck: Boolean = true) {
-        onMain {
+        onCore {
             // The question about the lock screen would stand in front of the screens.
             assertTrue(engine.updateSettings { it.copy(lockScreenPromptDeclined = true, autoUpdateCheck = autoCheck) })
             updates.forget()
@@ -106,11 +106,11 @@ class UpdateCheckTest : ScreenTestBase("itest-update") {
         picture("skipped")
 
         // Asked by hand, a check that fails says so in general words, and nothing else shows...
-        onMain { updates.feed = NO_RELEASES }
+        onCore { updates.feed = NO_RELEASES }
         tap("已跳过 $NEWER")
         see("更新检查失败")
         // ...and one that works offers the skipped version again: the user asked for it.
-        onMain { updates.feed = answer("v$NEWER") }
+        onCore { updates.feed = answer("v$NEWER") }
         tap("更新检查失败")
         see("有新版本 $NEWER")
         back()
@@ -118,7 +118,7 @@ class UpdateCheckTest : ScreenTestBase("itest-update") {
         tap("关于")
 
         // A release that is not newer than the app offers nothing.
-        onMain {
+        onCore {
             updates.feed = answer("v${BuildConfig.VERSION_NAME}")
             updates.checkNow()
         }
@@ -134,7 +134,7 @@ class UpdateCheckTest : ScreenTestBase("itest-update") {
         await("the automatic check") { updates.status.value.latest?.version == NEWER }
         assertEquals(listOf<String?>(null), sent.toList())
         // GitHub answers that nothing changed: what was found stays, and the check counts as done.
-        onMain {
+        onCore {
             updates.feed = ReleaseFeed { etag ->
                 sent += etag
                 FeedAnswer(304)
@@ -167,7 +167,7 @@ class UpdateCheckTest : ScreenTestBase("itest-update") {
         see("请求过于频繁")
         picture("rate-limited")
         // Until the time GitHub named, neither the app nor the user asks again.
-        onMain {
+        onCore {
             updates.checkOnEntry()
             updates.checkNow()
         }
@@ -186,10 +186,10 @@ class UpdateCheckTest : ScreenTestBase("itest-update") {
         // Switched on, it asks the next time it comes to the front, and not again right after.
         tap("自动检查更新")
         await("the switch to be on") { engine.settings.current.autoUpdateCheck }
-        onMain { updates.checkOnEntry() }
+        onCore { updates.checkOnEntry() }
         see("有新版本 $NEWER")
         val asked = updates.status.value.lastAttempt
-        onMain {
+        onCore {
             updates.feed = answer("v$EVEN_NEWER")
             updates.checkOnEntry()
         }
@@ -199,7 +199,7 @@ class UpdateCheckTest : ScreenTestBase("itest-update") {
 
     /** Offers [NEWER] with an APK as [apk] says, its content coming from [content]. */
     private fun offer(apk: ReleaseAsset, content: () -> ByteArray): FoundRelease {
-        onMain {
+        onCore {
             updates.forget()
             updates.feed = answer("v$NEWER", apk)
             updates.assets = AssetSource { url ->
@@ -225,18 +225,18 @@ class UpdateCheckTest : ScreenTestBase("itest-update") {
 
         // Shorter than GitHub states: refused.
         var release = offer(ReleaseAsset(name, url, apk.size.toLong(), sha256(apk))) { apk.copyOf(apk.size - 1) }
-        onMain { updates.startDownload(release) }
+        onCore { updates.startDownload(release) }
         await("the short download to be refused") { updates.download.value is DownloadState.Failed }
 
         // Of the right size, but not what GitHub's digest says: refused.
         val other = apk.copyOf().also { it[it.size / 2] = (it[it.size / 2] + 1).toByte() }
         release = offer(ReleaseAsset(name, url, apk.size.toLong(), sha256(apk))) { other }
-        onMain { updates.startDownload(release) }
+        onCore { updates.startDownload(release) }
         await("the altered download to be refused") { updates.download.value is DownloadState.Failed }
 
         // As stated: ready for the installer, which only the user's tap starts.
         release = offer(ReleaseAsset(name, url, apk.size.toLong(), sha256(apk))) { apk }
-        onMain { updates.startDownload(release) }
+        onCore { updates.startDownload(release) }
         await("the download to be ready") { updates.download.value is DownloadState.Ready }
         val ready = updates.download.value as DownloadState.Ready
         assertTrue(File(ready.path).isFile)
@@ -244,7 +244,7 @@ class UpdateCheckTest : ScreenTestBase("itest-update") {
 
         // The sheet offers to install it.
         start(answer("v$NEWER", ReleaseAsset(name, url, apk.size.toLong(), sha256(apk))))
-        onMain { updates.startDownload(updates.status.value.latest ?: return@onMain) }
+        onCore { updates.startDownload(updates.status.value.latest ?: return@onCore) }
         tap("设置")
         tap("关于")
         see("已下载 $NEWER")

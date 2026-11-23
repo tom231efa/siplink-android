@@ -45,7 +45,7 @@ class VideoWindowTest : ScreenTestBase("video-window") {
         settings { it.copy(previewSide = DockSide.RIGHT, previewPlace = 0f) }
         showApp()
         register()
-        ok(onMain { engine.calls.dial("2000", null, video = true) })
+        ok(onCore { engine.calls.dial("2000", null, video = true) })
         awaitCall("both pictures") { it.phase == CallPhase.CONNECTED && it.video?.sending == true && it.video.received != null }
         instrumentation.targetContext.openCallScreen()
         callScreen()
@@ -258,7 +258,7 @@ class VideoWindowTest : ScreenTestBase("video-window") {
         readerAction("上移")
         showControls()
         assertNear("Back at the top", topShown.top, windowBounds().top)
-        assertEquals(DockSide.LEFT to 0f, onMain { engine.settings.current.let { it.previewSide to it.previewPlace } })
+        assertEquals(DockSide.LEFT to 0f, onCore { engine.settings.current.let { it.previewSide to it.previewPlace } })
     }
 
     @Test
@@ -334,7 +334,7 @@ class VideoWindowTest : ScreenTestBase("video-window") {
      */
     private fun awaitTheirPicture(how: String): Long {
         val started = SystemClock.uptimeMillis()
-        val running = settles(KEY_FRAME_WAIT_MS) { onMain { engine.core.calls.first().currentParams.receivedFramerate } > 0f }
+        val running = settles(KEY_FRAME_WAIT_MS) { onCore { engine.core.calls.first().currentParams.receivedFramerate } > 0f }
         assertTrue("No picture of the other side $how", running)
         return SystemClock.uptimeMillis() - started
     }
@@ -359,7 +359,7 @@ class VideoWindowTest : ScreenTestBase("video-window") {
         assertEquals("Views of pictures $how: $views", 2, views.size)
         assertTrue("A view has no surface $how: $views", views.all { it.second })
         assertEquals("The wrong picture is large $how: $views", ownLarge, views.maxBy { it.third }.first)
-        val sent = onMain { engine.core.calls.first().currentParams.sentFramerate }
+        val sent = onCore { engine.core.calls.first().currentParams.sentFramerate }
         assertTrue("The own camera sends nothing $how: $sent", sent > 0f)
     }
 

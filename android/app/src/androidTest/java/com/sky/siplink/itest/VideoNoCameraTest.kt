@@ -36,7 +36,7 @@ class VideoNoCameraTest : VideoTestBase() {
         awaitVideo { !it.sending && it.receiving }
         awaitAppHearsAudio()
         // The camera cannot be switched on without the permission.
-        assertNotNull(onMain { engine.calls.toggleCamera() })
+        assertNotNull(onCore { engine.calls.toggleCamera() })
         awaitVideo { !it.sending }
     }
 
@@ -45,9 +45,9 @@ class VideoNoCameraTest : VideoTestBase() {
         register()
         pbxCallsApp("upgrade")
         awaitCall("the incoming call") { it.phase == CallPhase.INCOMING }
-        onMain { engine.calls.answer() }
+        onCore { engine.calls.answer() }
         awaitCall("the request to add video") { it.phase == CallPhase.CONNECTED && it.videoOffer }
-        onMain { engine.calls.answerVideoRequest(true) }
+        onCore { engine.calls.answerVideoRequest(true) }
         awaitVideo { !it.sending && it.receiving }
         awaitAppHearsAudio()
     }
@@ -57,7 +57,7 @@ class VideoNoCameraTest : VideoTestBase() {
         register()
         pbxCallsApp("echo")
         awaitCall("the incoming video call") { it.phase == CallPhase.INCOMING && it.videoOffer }
-        onMain { engine.calls.answer(video = true) }
+        onCore { engine.calls.answer(video = true) }
         awaitVideo { !it.sending && it.receiving }
         awaitAppHearsAudio()
     }

@@ -71,7 +71,7 @@ class EnglishScreensTest : RoomTestBase("english") {
         tap(en(R.string.call_transfer))
         page("Transfer")
         back()
-        ok(onMain { engine.calls.openRoom() })
+        ok(onCore { engine.calls.openRoom() })
         awaitRoom("the room to hold its first member") { connected(it) >= 1 }
         see(en(R.string.room_add_members))
         page("Conference room")
@@ -110,7 +110,7 @@ class EnglishScreensTest : RoomTestBase("english") {
 
     /** The texts on the screen that hold Chinese once [allowed] and the data the app holds are taken out. */
     private fun chinese(allowed: List<String>): List<String> {
-        val data = allowed + onMain {
+        val data = allowed + onCore {
             engine.history.entries.value.flatMap { listOf(it.name, it.address, it.accountLabel) } +
                 engine.shortcuts.shortcuts.value.flatMap { listOf(it.label, it.number, it.category, it.line) } +
                 // The names the PBX gives the calls (the test PBX names its extensions in Chinese).

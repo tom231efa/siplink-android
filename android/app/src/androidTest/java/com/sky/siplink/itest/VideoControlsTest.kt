@@ -21,7 +21,7 @@ class VideoControlsTest : ScreenTestBase("video-controls") {
         instrumentation.uiAutomation.grantRuntimePermission(instrumentation.targetContext.packageName, Manifest.permission.CAMERA)
         showApp()
         register()
-        ok(onMain { engine.calls.dial("2000", null, video = true) })
+        ok(onCore { engine.calls.dial("2000", null, video = true) })
         awaitCall("the picture of the echo") { it.phase == CallPhase.CONNECTED && it.video?.received != null }
         instrumentation.targetContext.openCallScreen()
         callScreen()

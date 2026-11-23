@@ -20,7 +20,7 @@ import org.junit.runner.RunWith
 class RealAudioTest : PbxTestBase() {
     @Test
     fun microphoneIsCapturedOnScreenAndInTheBackground() {
-        onMain { engine.core.useFiles = false }
+        onCore { engine.core.useFiles = false }
         showApp() // a call the user places starts with the app on screen
         register()
         dial("$AGENT")
@@ -35,7 +35,7 @@ class RealAudioTest : PbxTestBase() {
 
     /** Whether the microphone level of the call rises above digital silence within a few seconds. */
     private fun capturesSound(): Boolean = settles(LISTEN_MS) {
-        onMain { engine.core.currentCall?.recordVolume ?: SILENCE_DB } > SILENCE_DB + AUDIBLE_MARGIN_DB
+        onCore { engine.core.currentCall?.recordVolume ?: SILENCE_DB } > SILENCE_DB + AUDIBLE_MARGIN_DB
     }
 
     private companion object {

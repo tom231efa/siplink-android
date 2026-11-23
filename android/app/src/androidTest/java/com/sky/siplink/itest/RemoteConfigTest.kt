@@ -39,7 +39,7 @@ class RemoteConfigTest : ScreenTestBase(PICTURES) {
         platform = PlatformDouble()
         await("the shortcut keys to be read") { engine.shortcuts.loaded.value }
         // The question about the lock screen would stand in front of the screens.
-        onMain { engine.updateSettings { it.copy(lockScreenPromptDeclined = true) } }
+        onCore { engine.updateSettings { it.copy(lockScreenPromptDeclined = true) } }
     }
 
     @After
@@ -49,12 +49,12 @@ class RemoteConfigTest : ScreenTestBase(PICTURES) {
             if (engine.remote.status.value.enrolled) {
                 await("the last request to end") { !engine.remote.status.value.busy }
                 platform.answer = { PlatformDouble.Response(204) }
-                onMain { engine.remote.delete {} }
+                onCore { engine.remote.delete {} }
                 await("the remote configuration to be gone") { !engine.remote.status.value.enrolled }
             }
             platform.close()
         }
-        onMain { engine.updateSettings { it.copy(themeMode = ThemeMode.SYSTEM) } }
+        onCore { engine.updateSettings { it.copy(themeMode = ThemeMode.SYSTEM) } }
     }
 
     // ------------------------------------------------------------------ what the platform hands out
@@ -189,7 +189,7 @@ class RemoteConfigTest : ScreenTestBase(PICTURES) {
         assertEquals(account.id, engine.accounts.accounts.value.single().id)
 
         // A key of the user's own next to the handed-out ones.
-        onMain { assertTrue(engine.shortcuts.add(Shortcut(0, OWN_KEY, "$AGENT")).isEmpty()) }
+        onCore { assertTrue(engine.shortcuts.add(Shortcut(0, OWN_KEY, "$AGENT")).isEmpty()) }
         assertTrue(engine.shortcuts.shortcuts.value.single { it.label == OWN_KEY }.own)
 
         // Changed on the platform: the same account, renamed; the same directory; another key; another forwarding.
@@ -245,12 +245,12 @@ class RemoteConfigTest : ScreenTestBase(PICTURES) {
     fun deletingByHandTellsThePlatformAndTakesEverythingBack() {
         // Over TLS, trusted only through the handed-out CA: the account has to unregister before that CA goes.
         platformAnswers(SipTransport.TLS)
-        onMain {
+        onCore {
             val parsed = engine.remote.parse(enrollUrl) as RemoteAddress.Parsed.Ok
             engine.remote.enroll(parsed.enrollment) {}
         }
         await("the configuration to be applied") { engine.lock.managed.value && engine.accounts.accounts.value.isNotEmpty() }
-        onMain { assertTrue(engine.shortcuts.add(Shortcut(0, OWN_KEY, "$AGENT")).isEmpty()) }
+        onCore { assertTrue(engine.shortcuts.add(Shortcut(0, OWN_KEY, "$AGENT")).isEmpty()) }
         awaitRegistered(APP)
         await("the PBX to know the contact of $APP") { pbxHasContact(APP) }
         assertTrue("The PBX contact is not a TLS one", "transport=tls" in pbx.command("pjsip show aor $APP").lowercase())

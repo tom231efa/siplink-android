@@ -36,12 +36,12 @@ abstract class RoomTestBase(pictures: String) : ScreenTestBase(pictures) {
 
     /** Registers, calls [first], and shows the call screen, the microphone muted; the sound card plays the room. */
     protected fun callFirstMember(first: String = "2501") {
-        onMain { engine.core.useFiles = false }
+        onCore { engine.core.useFiles = false }
         showApp()
         register()
         dial(first)
         awaitConnected(first)
-        onMain { engine.calls.toggleMute() }
+        onCore { engine.calls.toggleMute() }
         context.openCallScreen()
         callScreen()
     }
@@ -75,8 +75,8 @@ abstract class RoomTestBase(pictures: String) : ScreenTestBase(pictures) {
     /** A room with [first] and [others] in it, on screen. */
     protected fun openRoom(first: String, vararg others: String, connectedAtLeast: Int = 1 + others.size) {
         callFirstMember(first)
-        ok(onMain { engine.calls.openRoom() })
-        if (others.isNotEmpty()) ok(onMain { engine.calls.inviteToRoom(others.toList()) })
+        ok(onCore { engine.calls.openRoom() })
+        if (others.isNotEmpty()) ok(onCore { engine.calls.inviteToRoom(others.toList()) })
         awaitRoom("$connectedAtLeast members connected") { connected(it) >= connectedAtLeast }
     }
 

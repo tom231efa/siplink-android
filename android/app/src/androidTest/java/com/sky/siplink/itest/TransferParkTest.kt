@@ -18,7 +18,7 @@ class TransferParkTest : PbxTestBase() {
         dial("$AGENT")
         awaitConnected("$AGENT")
 
-        ok(onMain { engine.calls.blindTransfer("$CUSTOMER") })
+        ok(onCore { engine.calls.blindTransfer("$CUSTOMER") })
         assertEquals("转接成功", awaitEnded().endReason)
         awaitBridged(AGENT, CUSTOMER)
         await("the app's leg to be released") { pbxChannel(pbxLeg(APP)) == null }
@@ -31,7 +31,7 @@ class TransferParkTest : PbxTestBase() {
         dial("$AGENT")
         awaitConnected("$AGENT")
 
-        ok(onMain { engine.calls.blindTransfer("9999") }) // no such extension
+        ok(onCore { engine.calls.blindTransfer("9999") }) // no such extension
         awaitCall("the transfer to be reported as failed") { it.transfer == TransferStatus.FAILED }
         assertEquals(CallPhase.CONNECTED, call()!!.phase)
         assertTrue("The original call was lost", bridged(pbxLeg(APP), pbxLeg(AGENT)))
@@ -42,17 +42,17 @@ class TransferParkTest : PbxTestBase() {
         register()
         phoneCalls(AGENT, "$APP")
         awaitCall("the incoming call") { it.phase == CallPhase.INCOMING }
-        onMain { engine.calls.answer() }
+        onCore { engine.calls.answer() }
         awaitConnected("$AGENT")
 
         // Consult 1003 first: the caller is put on hold meanwhile.
-        ok(onMain { engine.calls.startConsultation("$CUSTOMER") })
+        ok(onCore { engine.calls.startConsultation("$CUSTOMER") })
         val consulting = awaitCall("the consultation call") {
             it.phase == CallPhase.CONNECTED && it.remoteAddress.startsWith("$CUSTOMER@") && it.consulting
         }
         assertTrue("Held party: ${consulting.heldCall}", consulting.heldCall?.address.orEmpty().startsWith("$AGENT@"))
 
-        ok(onMain { engine.calls.completeTransfer() })
+        ok(onCore { engine.calls.completeTransfer() })
         awaitBridged(AGENT, CUSTOMER)
         awaitNoCall()
         await("both of the app's legs to be released") { pbxChannel(pbxLeg(APP)) == null }
@@ -65,7 +65,7 @@ class TransferParkTest : PbxTestBase() {
         awaitConnected("$AGENT")
 
         val mark = pbx.mark()
-        ok(onMain { engine.calls.park() })
+        ok(onCore { engine.calls.park() })
         val parked = pbx.awaitEvent("ParkedCall", mark) { it["ParkeeChannel"].orEmpty().startsWith(pbxLeg(AGENT)) }
         val slot = parked["ParkingSpace"]!!
         // The PBX announces the slot to the app and then hangs up; the app must wait for that.
@@ -86,22 +86,22 @@ class TransferParkTest : PbxTestBase() {
         // With file audio the SDK does not connect the calls to its mixer at all, so this one
         // uses the sound card. The microphone is muted before anything is checked, which keeps
         // whatever it would pick up out of the result.
-        onMain { engine.core.useFiles = false }
+        onCore { engine.core.useFiles = false }
         showApp()
         register()
         dial("$AGENT")
         awaitConnected("$AGENT")
-        ok(onMain { engine.calls.startConsultation("$CUSTOMER") })
+        ok(onCore { engine.calls.startConsultation("$CUSTOMER") })
         awaitCall("the second call") { it.phase == CallPhase.CONNECTED && it.remoteAddress.startsWith("$CUSTOMER@") }
 
         // Muted while talking to the second party: that stays so in the three-way call.
-        onMain { engine.calls.toggleMute() }
-        ok(onMain { engine.calls.openRoom() })
+        onCore { engine.calls.toggleMute() }
+        ok(onCore { engine.calls.openRoom() })
         assertTrue(awaitCall("the room of three") { it.room?.present == 2 }.muted)
         // Muting inside the three-way call must leave the mix alone as well.
         awaitBridgedWithApp()
-        onMain { engine.calls.toggleMute() }
-        onMain { engine.calls.toggleMute() }
+        onCore { engine.calls.toggleMute() }
+        onCore { engine.calls.toggleMute() }
         assertTrue(call()!!.muted)
         Thread.sleep(PHONES_NOTICE_SILENCE_MS)
 
@@ -113,10 +113,10 @@ class TransferParkTest : PbxTestBase() {
         mark = phones.mark()
         phoneTalks(CUSTOMER)
         awaitPhoneHears(AGENT, mark)
-        onMain { engine.calls.toggleMute() }
+        onCore { engine.calls.toggleMute() }
         assertTrue(!call()!!.muted)
 
-        onMain { engine.calls.hangUp() }
+        onCore { engine.calls.hangUp() }
         awaitNoCall()
         await("both calls to be released") { pbxChannels().isEmpty() }
     }

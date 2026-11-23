@@ -25,14 +25,14 @@ class NatMediaTest : NatLabTestBase() {
         dial(TONE)
         await("the call to connect") { call()?.phase == CallPhase.CONNECTED }
         await("the line about missing sound", NO_SOUND_TIMEOUT_MS) { call()?.noSound == true }
-        onMain { engine.calls.hangUp() }
+        onCore { engine.calls.hangUp() }
         await("the call to be gone") { call() == null || call()?.phase == CallPhase.ENDED }
 
         // A call with sound both ways says nothing, until the sound stops on the way.
         addAccount(NAT_ACCOUNT)
         awaitRegistered(NAT_ACCOUNT)
         val id = account(NAT_ACCOUNT)!!.id
-        val error = onMain { engine.calls.dial(ECHO, id) }
+        val error = onCore { engine.calls.dial(ECHO, id) }
         assertTrue("The app refused to dial: $error", error == null)
         await("the call to connect") { call()?.phase == CallPhase.CONNECTED }
         await("the app to hear its echo") { playVolume() > AUDIBLE_DB }
@@ -45,8 +45,8 @@ class NatMediaTest : NatLabTestBase() {
             call()?.takeIf { it.phase == CallPhase.ENDED }?.let { ended = it.endReason }
             ended != null || call() == null
         }
-        await("the last call to be known") { onMain { engine.accounts.lastCall(id) } != null }
-        val last = onMain { engine.accounts.lastCall(id) }
+        await("the last call to be known") { onCore { engine.accounts.lastCall(id) } != null }
+        val last = onCore { engine.accounts.lastCall(id) }
         println("natlab evidence: no sound, ended '$ended', last call $last")
         assertEquals(CallSupport.NO_SOUND, ended)
         assertEquals(true, last?.mediaLost)
@@ -60,17 +60,17 @@ class NatMediaTest : NatLabTestBase() {
         dial(ECHO)
         await("the call to connect") { call()?.phase == CallPhase.CONNECTED }
         Thread.sleep(QUIET_WINDOW_MS)
-        onMain { engine.calls.hangUp() }
-        await("the finding") { onMain { engine.accounts.pbxUnreachable(id) } }
+        onCore { engine.calls.hangUp() }
+        await("the finding") { onCore { engine.accounts.pbxUnreachable(id) } }
         // The BYE went to the PBX's own address as well: the PBX ends the call itself.
         await("the PBX to have no channel", NO_ACK_WINDOW_MS + BYE_TIMEOUT_MS) { pbx.list("CoreShowChannels").isEmpty() }
         val report = check(BEHIND_ACCOUNT)
         println("natlab evidence: PBX behind a NAT of its own $report")
         assertTrue(report.pbxUnreachable)
         // Nothing on the phone repairs it, and nothing is changed.
-        assertNull(onMain { engine.accounts.adaptation(id) })
-        assertEquals(false, onMain { engine.accounts.find(id)!!.params.isOutboundProxyEnabled })
-        assertEquals(0, onMain { engine.core.config.getInt("rtp", "symmetric", 0) })
+        assertNull(onCore { engine.accounts.adaptation(id) })
+        assertEquals(false, onCore { engine.accounts.find(id)!!.params.isOutboundProxyEnabled })
+        assertEquals(0, onCore { engine.core.config.getInt("rtp", "symmetric", 0) })
     }
 
     @Test
@@ -81,25 +81,25 @@ class NatMediaTest : NatLabTestBase() {
         // Without sound the SIP core ends a call after its 30 seconds (nortp_timeout, counted
         // from the start when nothing ever came): off here, so that the call shows whether its
         // ACK reached the PBX.
-        val noRtpTimeout = onMain { engine.core.nortpTimeout }
-        onMain { engine.core.nortpTimeout = 0 }
+        val noRtpTimeout = onCore { engine.core.nortpTimeout }
+        onCore { engine.core.nortpTimeout = 0 }
         try {
             dial(ECHO)
             await("the call to connect") { call()?.phase == CallPhase.CONNECTED }
             // The ACK reaches the PBX: the call outlasts the half minute the PBX waits for it.
             never("the call to end", NO_ACK_WINDOW_MS) { call()?.phase != CallPhase.CONNECTED }
-            onMain { engine.calls.hangUp() }
+            onCore { engine.calls.hangUp() }
             await("the PBX to have no channel", BYE_TIMEOUT_MS) { pbx.list("CoreShowChannels").isEmpty() }
         } finally {
-            onMain { engine.core.nortpTimeout = noRtpTimeout }
+            onCore { engine.core.nortpTimeout = noRtpTimeout }
         }
         val report = check(SIGNALLING_ACCOUNT)
         println("natlab evidence: PBX with its own media address $report")
         assertFalse(report.pbxUnreachable)
         // Its sound goes to the phone's own address, the phone's to the PBX's: nothing comes in.
         assertTrue("${report.lastCall}", report.lastCall?.flow in setOf(MediaFlow.SEND_ONLY, MediaFlow.NONE))
-        assertNull(onMain { engine.accounts.adaptation(id) })
-        assertEquals(0, onMain { engine.core.config.getInt("rtp", "symmetric", 0) })
+        assertNull(onCore { engine.accounts.adaptation(id) })
+        assertEquals(0, onCore { engine.core.config.getInt("rtp", "symmetric", 0) })
     }
 
     private companion object {

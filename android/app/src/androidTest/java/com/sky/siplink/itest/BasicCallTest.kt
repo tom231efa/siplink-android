@@ -22,7 +22,7 @@ class BasicCallTest : PbxTestBase() {
         dial("2010") // reports the digits it receives
         awaitConnected("2010")
         "1234".forEach { digit ->
-            onMain { engine.calls.sendDtmf(digit) }
+            onCore { engine.calls.sendDtmf(digit) }
             Thread.sleep(600)
         }
         val event = pbx.awaitEvent("UserEvent", mark) { it["UserEvent"] == "SipLinkDtmf" }
@@ -34,13 +34,13 @@ class BasicCallTest : PbxTestBase() {
     fun dtmfCanBeSentAsSipInfo() {
         // With events in the audio stream switched off, what the PBX gets came as INFO requests.
         settings { it.copy(dtmfMode = DtmfMode.SIP_INFO) }
-        assertFalse(onMain { engine.core.useRfc2833ForDtmf })
+        assertFalse(onCore { engine.core.useRfc2833ForDtmf })
         register()
         val mark = pbx.mark()
         dial("2010") // reports the digits it receives
         awaitConnected("2010")
         "5678".forEach { digit ->
-            onMain { engine.calls.sendDtmf(digit) }
+            onCore { engine.calls.sendDtmf(digit) }
             Thread.sleep(600)
         }
         val event = pbx.awaitEvent("UserEvent", mark) { it["UserEvent"] == "SipLinkDtmf" }
@@ -56,16 +56,16 @@ class BasicCallTest : PbxTestBase() {
         awaitAppHearsAudio() // our own tone comes back: media flows in both directions
 
         var mark = pbx.mark()
-        onMain { engine.calls.toggleHold() }
+        onCore { engine.calls.toggleHold() }
         awaitCall("the call to be on hold") { it.phase == CallPhase.HELD }
         pbx.awaitEvent("Hold", mark) { it["Channel"].orEmpty().startsWith(pbxLeg(APP)) }
 
         mark = pbx.mark()
-        onMain { engine.calls.toggleHold() }
+        onCore { engine.calls.toggleHold() }
         awaitConnected("2000")
         pbx.awaitEvent("Unhold", mark) { it["Channel"].orEmpty().startsWith(pbxLeg(APP)) }
 
-        onMain { engine.calls.hangUp() }
+        onCore { engine.calls.hangUp() }
         awaitNoCall()
         await("the PBX to release the call") { pbxChannel(pbxLeg(APP)) == null }
     }
@@ -80,7 +80,7 @@ class BasicCallTest : PbxTestBase() {
         assertTrue("Unexpected caller ${ringing.remoteAddress}", ringing.remoteAddress.startsWith("$AGENT@"))
         assertEquals("Ext $AGENT", ringing.remoteName)
 
-        onMain { engine.calls.answer() }
+        onCore { engine.calls.answer() }
         awaitConnected("$AGENT")
         awaitPhoneHears(AGENT, mark) // the caller hears the app
         awaitBridged(APP, AGENT)
@@ -94,7 +94,7 @@ class BasicCallTest : PbxTestBase() {
         register()
         phoneCalls(AGENT, "$APP")
         awaitCall("the incoming call") { it.phase == CallPhase.INCOMING }
-        onMain { engine.calls.decline() }
+        onCore { engine.calls.decline() }
         awaitNoCall()
         await("the caller to be released") { !phoneHasCall(AGENT) }
     }
@@ -110,7 +110,7 @@ class BasicCallTest : PbxTestBase() {
             it.phase == CallPhase.CONNECTED && (it.remoteAddress.startsWith("$ECHO_PHONE@") || it.remoteAddress.startsWith("*80$ECHO_PHONE@"))
         }
         awaitAppHearsAudio()
-        onMain { engine.calls.hangUp() }
+        onCore { engine.calls.hangUp() }
         awaitNoCall()
     }
 
@@ -122,7 +122,7 @@ class BasicCallTest : PbxTestBase() {
         val ringing = awaitCall("the intercom call to ring") { it.phase == CallPhase.INCOMING }
         assertTrue("Not recognised as intercom", ringing.intercom)
         never("auto answered although the option is off", 4_000) { call()?.phase == CallPhase.CONNECTED }
-        onMain { engine.calls.decline() }
+        onCore { engine.calls.decline() }
         awaitNoCall()
         await("the caller to be released") { !phoneHasCall(AGENT) }
 
@@ -138,12 +138,12 @@ class BasicCallTest : PbxTestBase() {
 
     @Test
     fun srtpCallOverTls() {
-        onMain { engine.tls.import(env.caPem) }
+        onCore { engine.tls.import(env.caPem) }
         settings { it.copy(mediaSecurity = MediaSecurity.SRTP_MANDATORY) }
         register(APP, SipTransport.TLS)
         dial("2000")
         awaitConnected("2000")
-        assertEquals(MediaEncryption.SRTP, onMain { engine.core.currentCall?.currentParams?.mediaEncryption })
+        assertEquals(MediaEncryption.SRTP, onCore { engine.core.currentCall?.currentParams?.mediaEncryption })
         awaitAppHearsAudio() // encrypted media is understood in both directions
         assertFalse(call()!!.incoming)
     }

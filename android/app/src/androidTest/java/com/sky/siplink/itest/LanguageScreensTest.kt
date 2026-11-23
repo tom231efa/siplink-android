@@ -29,7 +29,7 @@ class LanguageScreensTest : LanguageWalkBase() {
         // Two calls in the history, as the caller ID tests present them: one with a name, one bare number.
         for (caller in listOf("\"O'Brien, Bob\" <1002>", "<02155512345>")) {
             ringing(caller)
-            onMain { engine.calls.decline() }
+            onCore { engine.calls.decline() }
             awaitNoCall()
         }
         await("the calls to be in the history") { engine.history.entries.value.size >= 2 }
@@ -116,7 +116,7 @@ class LanguageScreensTest : LanguageWalkBase() {
             await("the call screen to be upright") { screen.resources.displayMetrics.let { it.widthPixels < it.heightPixels } }
         }
 
-        ok(onMain { engine.calls.openRoom() })
+        ok(onCore { engine.calls.openRoom() })
         awaitRoom("the room to hold its first member") { connected(it) >= 1 }
         for (language in Language.entries) {
             pinLanguage(language)
@@ -127,7 +127,7 @@ class LanguageScreensTest : LanguageWalkBase() {
             stop(language, "room-add")
             back()
         }
-        onMain { engine.calls.hangUp() }
+        onCore { engine.calls.hangUp() }
         awaitNoCall()
 
         phoneCalls(AGENT, "$APP")
@@ -147,7 +147,7 @@ class LanguageScreensTest : LanguageWalkBase() {
             assertTrue("The slide did not answer to the right in Arabic", settles(ANSWER_TIMEOUT_MS) { call()?.phase == CallPhase.CONNECTED })
         } finally {
             phones.command("channel request hangup all")
-            onMain { engine.calls.hangUp() }
+            onCore { engine.calls.hangUp() }
             awaitNoCall()
             await("the caller to be released") { !phoneHasCall(AGENT) }
         }

@@ -53,10 +53,10 @@ class ManagedLockTest : PbxTestBase() {
     @Before
     fun handOut() {
         await("the shortcut keys to be read") { engine.shortcuts.loaded.value }
-        onMain { engine.shortcuts.remove(shortcuts.map { it.id }) }
+        onCore { engine.shortcuts.remove(shortcuts.map { it.id }) }
         addAccount(draft(APP).copy(name = MAIN_LINE))
         addAccount(SECOND)
-        onMain {
+        onCore {
             val errors = engine.directory.save(
                 LdapDirectory(
                     name = "总部",
@@ -82,17 +82,17 @@ class ManagedLockTest : PbxTestBase() {
 
     @After
     fun takeBack() {
-        onMain {
+        onCore {
             engine.lock.setManaged(false)
             engine.shortcuts.remove(shortcuts.map { it.id })
             engine.codecs.restoreDefaults()
         }
     }
 
-    private fun manage(on: Boolean) = onMain { engine.lock.setManaged(on) }
+    private fun manage(on: Boolean) = onCore { engine.lock.setManaged(on) }
 
     /** Everything that is configured, without what the registrations are doing at the moment. */
-    private fun configuration(): List<Any> = onMain {
+    private fun configuration(): List<Any> = onCore {
         listOf(
             engine.settings.current,
             engine.accounts.accounts.value.map { it.copy(state = RegState.NONE, error = null, onBackup = false) },
@@ -109,7 +109,7 @@ class ManagedLockTest : PbxTestBase() {
         val before = configuration()
         manage(true)
         assertTrue(engine.lock.managed.value)
-        onMain {
+        onCore {
             lockedSettings.forEachIndexed { index, change -> assertFalse("Settings change $index was taken", engine.updateSettings(change)) }
 
             val accounts = engine.accounts
@@ -179,18 +179,18 @@ class ManagedLockTest : PbxTestBase() {
         // Calls go on as ever, and their history is the user's to delete.
         dial("2000")
         awaitConnected("2000")
-        onMain { engine.calls.hangUp() }
+        onCore { engine.calls.hangUp() }
         awaitNoCall()
         await("the call in the history") { engine.history.entries.value.any { it.address.startsWith("2000") } }
         val entry = engine.history.entries.value.first { it.address.startsWith("2000") }
-        onMain { engine.history.remove(entry.id) }
+        onCore { engine.history.remove(entry.id) }
         assertTrue(engine.history.entries.value.none { it.id == entry.id })
-        onMain { engine.history.clear() }
+        onCore { engine.history.clear() }
         assertTrue(engine.history.entries.value.isEmpty())
 
         // The local copy of the directories can be emptied, the keys exported.
-        onMain { engine.directory.clearCache() }
-        assertTrue(key.label in onMain { engine.shortcuts.export() })
+        onCore { engine.directory.clearCache() }
+        assertTrue(key.label in onCore { engine.shortcuts.export() })
     }
 
     @Test
@@ -231,7 +231,7 @@ class ManagedLockTest : PbxTestBase() {
         manage(true)
         manage(false)
         assertFalse(engine.lock.managed.value)
-        onMain {
+        onCore {
             assertTrue(engine.updateSettings { it.copy(callWaiting = false, forwardAlways = "$CUSTOMER", dtmfMode = DtmfMode.SIP_INFO) })
 
             val accounts = engine.accounts
@@ -280,7 +280,7 @@ class ManagedLockTest : PbxTestBase() {
     fun theRemoteSideChangesAManagedConfiguration() {
         manage(true)
         val removed = first.id
-        onMain {
+        onCore {
             engine.lock.fromRemote {
                 assertTrue(engine.updateSettings { it.copy(forwardAlways = "$CUSTOMER", mediaSecurity = MediaSecurity.SRTP_OPTIONAL) })
                 assertTrue(engine.accounts.add(draft(THIRD)).isEmpty())
@@ -303,9 +303,9 @@ class ManagedLockTest : PbxTestBase() {
         assertEquals(listOf("前台" to "", "呼叫前转" to ""), shortcuts.map { it.label to it.line })
 
         // Once the remote side is done the phone is refused again, also after a change that failed half-way.
-        assertFalse(onMain { engine.accounts.remove(second.id) })
-        assertTrue(runCatching { onMain { engine.lock.fromRemote { error("the remote change failed") } } }.isFailure)
-        assertEquals(listOf(AccountRules.Error.MANAGED), onMain { engine.accounts.add(draft(FOURTH)) })
+        assertFalse(onCore { engine.accounts.remove(second.id) })
+        assertTrue(runCatching { onCore { engine.lock.fromRemote { error("the remote change failed") } } }.isFailure)
+        assertEquals(listOf(AccountRules.Error.MANAGED), onCore { engine.accounts.add(draft(FOURTH)) })
         assertFalse(settings { it.copy(forwardAlways = "") })
     }
 
@@ -315,7 +315,7 @@ class ManagedLockTest : PbxTestBase() {
         val files = InstrumentationRegistry.getInstrumentation().targetContext.filesDir
         val ownFile = File(files, OWN_SHORTCUTS_FILE)
         manage(true)
-        onMain {
+        onCore {
             // As many as the limit allows, each of them the user's own.
             repeat(ShortcutRules.MAX_OWN) { index ->
                 assertTrue(keys.add(Shortcut(0, "自建$index", "${3000 + index}", category = OWN_CATEGORY)).isEmpty())
@@ -325,7 +325,7 @@ class ManagedLockTest : PbxTestBase() {
         val own = shortcuts.filter { it.own }
         assertEquals(ShortcutRules.MAX_OWN, own.size)
         assertEquals("What was handed out changed", listOf(key), shortcuts.filterNot { it.own })
-        onMain {
+        onCore {
             // They are the user's to change and to remove; what was handed out still is not.
             assertTrue(keys.update(own[0].copy(label = CHANGED_KEY, number = "$CUSTOMER")).isEmpty())
             val changed = shortcuts.first { it.id == own[0].id }
@@ -359,7 +359,7 @@ class ManagedLockTest : PbxTestBase() {
             ownFile.isFile && CHANGED_KEY in ownFile.readText() && "自用" in ownFile.readText() && REMOTE_KEY in mainFile.readText()
         }
         assertFalse("A key of the user's own is in the file of those handed out", CHANGED_KEY in mainFile.readText())
-        val restarted = onMain { ShortcutManager(mainFile, engine.lock, engine.texts) }
+        val restarted = onCore { ShortcutManager(mainFile, engine.lock, engine.texts) }
         await("the keys to be read again") { restarted.loaded.value }
         fun List<Shortcut>.withoutIds() = map { it.copy(id = 0) }.toSet()
         assertEquals(shortcuts.withoutIds(), restarted.shortcuts.value.withoutIds())
@@ -370,12 +370,12 @@ class ManagedLockTest : PbxTestBase() {
         assertEquals(setOf(key.label, REMOTE_KEY), shortcuts.map { it.label }.toSet())
         assertTrue(shortcuts.none { it.own })
         await("the file of the user's own keys to be gone") { !ownFile.exists() }
-        onMain { assertTrue(keys.add(Shortcut(0, "仓库", "$RINGING_PHONE")).isEmpty()) }
+        onCore { assertTrue(keys.add(Shortcut(0, "仓库", "$RINGING_PHONE")).isEmpty()) }
         assertFalse("A key made without a managed configuration counts as one made next to it", shortcuts.first { it.label == "仓库" }.own)
 
         // Keys of the user's own that are found without a managed configuration, left behind by one, are not taken up.
         ownFile.writeText("遗留,$AGENT,speed")
-        val later = onMain { ShortcutManager(mainFile, engine.lock, engine.texts) }
+        val later = onCore { ShortcutManager(mainFile, engine.lock, engine.texts) }
         await("the keys to be read once more") { later.loaded.value }
         assertTrue(later.shortcuts.value.none { it.label == "遗留" || it.own })
         await("the file that was left behind to be gone") { !ownFile.exists() }
@@ -388,13 +388,13 @@ class ManagedLockTest : PbxTestBase() {
         fun labels() = shortcuts.map { it.label }
         fun labelsIn(file: File) = file.readLines().filter { it.isNotBlank() }.map { it.substringBefore(',') }
         manage(true)
-        onMain {
+        onCore {
             assertTrue(keys.add(Shortcut(0, "自建甲", "$AGENT")).isEmpty())
             assertTrue(keys.add(Shortcut(0, "自建乙", "$CUSTOMER")).isEmpty())
         }
         assertEquals(listOf("自建甲", "自建乙", key.label), labels())
         val (ownA, ownB) = shortcuts.take(2)
-        onMain {
+        onCore {
             // The user's own keys move among themselves.
             assertTrue(keys.move(ownB.id, ownA.id))
             assertEquals(listOf("自建乙", "自建甲", key.label), labels())
@@ -417,7 +417,7 @@ class ManagedLockTest : PbxTestBase() {
         await("the keys to be written in their order") {
             ownFile.isFile && labelsIn(ownFile) == listOf("自建乙", "自建甲", "自建丙") && labelsIn(mainFile) == listOf(REMOTE_KEY, key.label)
         }
-        val restarted = onMain { ShortcutManager(mainFile, engine.lock, engine.texts) }
+        val restarted = onCore { ShortcutManager(mainFile, engine.lock, engine.texts) }
         await("the keys to be read again") { restarted.loaded.value }
         assertEquals(labels(), restarted.shortcuts.value.map { it.label })
     }
@@ -425,9 +425,9 @@ class ManagedLockTest : PbxTestBase() {
     @Test
     fun aPasswordOfTheConfigurationKeepsTheStoredOnesBack() {
         val lock = engine.lock
-        onMain { lock.setManaged(true, sha256(CONFIG_PASSWORD)) }
+        onCore { lock.setManaged(true, sha256(CONFIG_PASSWORD)) }
         assertTrue(lock.passwordsProtected.value)
-        onMain {
+        onCore {
             val accounts = engine.accounts
             val directories = engine.directory
             assertFalse(lock.showsPasswords())
@@ -453,14 +453,14 @@ class ManagedLockTest : PbxTestBase() {
         // Handed out again without one, the configuration keeps nothing back.
         manage(true)
         assertFalse(lock.passwordsProtected.value)
-        assertEquals(env.sipPassword, onMain { engine.accounts.passwordOf(first.id) })
+        assertEquals(env.sipPassword, onCore { engine.accounts.passwordOf(first.id) })
 
         // Switched off, the password goes with the state: it is not asked for by what is handed out next.
-        onMain { lock.setManaged(true, sha256(CONFIG_PASSWORD)) }
+        onCore { lock.setManaged(true, sha256(CONFIG_PASSWORD)) }
         assertTrue(lock.passwordsProtected.value)
         manage(false)
         assertFalse(lock.passwordsProtected.value)
-        assertEquals(env.sipPassword, onMain { engine.accounts.passwordOf(first.id) })
+        assertEquals(env.sipPassword, onCore { engine.accounts.passwordOf(first.id) })
         manage(true)
         assertFalse("The password of an earlier configuration is still asked for", lock.passwordsProtected.value)
     }
@@ -469,7 +469,7 @@ class ManagedLockTest : PbxTestBase() {
     fun theStateIsKeptInTheConfigurationFile() {
         val file = File(InstrumentationRegistry.getInstrumentation().targetContext.filesDir, CONFIG_FILE)
         /** What the app finds at its next start. */
-        fun stored(): Boolean = onMain { ConfigLock(engine.core.config).managed.value }
+        fun stored(): Boolean = onCore { ConfigLock(engine.core.config).managed.value }
 
         assertFalse(stored())
         manage(true)
@@ -481,10 +481,10 @@ class ManagedLockTest : PbxTestBase() {
 
         // The password of the configuration is kept as the hash that was handed out, and found again at the next start.
         val hash = sha256(CONFIG_PASSWORD)
-        onMain { engine.lock.setManaged(true, hash) }
+        onCore { engine.lock.setManaged(true, hash) }
         assertTrue("The hash is not in the file", hash in file.readText())
         assertFalse("The password itself is in the file", CONFIG_PASSWORD in file.readText())
-        onMain {
+        onCore {
             val next = ConfigLock(engine.core.config)
             assertTrue(next.managed.value)
             assertTrue(next.passwordsProtected.value)
@@ -493,7 +493,7 @@ class ManagedLockTest : PbxTestBase() {
         }
         manage(false)
         assertFalse("The hash is still in the file", hash in file.readText())
-        assertFalse(onMain { ConfigLock(engine.core.config).passwordsProtected.value })
+        assertFalse(onCore { ConfigLock(engine.core.config).passwordsProtected.value })
     }
 
     private fun sha256(text: String): String =

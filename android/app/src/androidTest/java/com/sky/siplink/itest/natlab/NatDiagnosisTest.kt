@@ -36,9 +36,9 @@ class NatDiagnosisTest : NatLabTestBase() {
         dial(ECHO)
         await("the call to connect") { call()?.phase == CallPhase.CONNECTED }
         await("the app to hear its echo") { playVolume() > AUDIBLE_DB }
-        onMain { engine.calls.hangUp() }
-        await("the last call to be known") { onMain { engine.accounts.lastCall(account(NAT_ACCOUNT)!!.id) } != null }
-        assertEquals(MediaFlow.BOTH, onMain { engine.accounts.lastCall(account(NAT_ACCOUNT)!!.id) }?.flow)
+        onCore { engine.calls.hangUp() }
+        await("the last call to be known") { onCore { engine.accounts.lastCall(account(NAT_ACCOUNT)!!.id) } != null }
+        assertEquals(MediaFlow.BOTH, onCore { engine.accounts.lastCall(account(NAT_ACCOUNT)!!.id) }?.flow)
     }
 
     @Test
@@ -70,10 +70,10 @@ class NatDiagnosisTest : NatLabTestBase() {
         dial(TONE)
         await("the call to connect") { call()?.phase == CallPhase.CONNECTED }
         never("the app hearing the PBX", DEAF_WINDOW_MS) { playVolume() > AUDIBLE_DB }
-        onMain { engine.calls.hangUp() }
+        onCore { engine.calls.hangUp() }
         val id = account(PLAIN_ACCOUNT)!!.id
-        await("the last call to be known") { onMain { engine.accounts.lastCall(id) } != null }
-        val last = onMain { engine.accounts.lastCall(id) }
+        await("the last call to be known") { onCore { engine.accounts.lastCall(id) } != null }
+        val last = onCore { engine.accounts.lastCall(id) }
         println("natlab evidence: PBX without NAT handling, last call $last")
         assertEquals(MediaFlow.SEND_ONLY, last?.flow)
     }
@@ -92,12 +92,12 @@ class NatDiagnosisTest : NatLabTestBase() {
         awaitRegistered(NAT_ACCOUNT)
         val id = account(NAT_ACCOUNT)!!.id
         // Without probing the network on every look: only what the doctor holds.
-        await("a shorter registration interval", BINDING_TIMEOUT_MS) { onMain { engine.accounts.adaptation(id) }?.expires != null }
+        await("a shorter registration interval", BINDING_TIMEOUT_MS) { onCore { engine.accounts.adaptation(id) }?.expires != null }
         val report = check(NAT_ACCOUNT)
         println("natlab evidence: forgetting NAT $report")
         assertEquals(300, report.adaptedExpires)
         assertEquals(LONG_EXPIRES, account(NAT_ACCOUNT)?.expires)
-        assertTrue(onMain { engine.accounts.adaptedTransports.value[id] } == null)
+        assertTrue(onCore { engine.accounts.adaptedTransports.value[id] } == null)
 
         await("the line on TCP", SHORT_BINDING_TIMEOUT_MS) { adapted(NAT_ACCOUNT) == SipTransport.TCP && account(NAT_ACCOUNT)?.state == RegState.OK }
         val onTcp = check(NAT_ACCOUNT)

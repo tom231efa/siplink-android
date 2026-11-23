@@ -35,17 +35,17 @@ class NatIceTest : NatLabTestBase() {
         await("the app to hear the tone") { playVolume() > AUDIBLE_DB }
         hangUp()
         await("ICE to be kept") { ice(id) == Ice.ON }
-        val out = onMain { engine.accounts.lastCall(id) }
+        val out = onCore { engine.accounts.lastCall(id) }
         println("natlab evidence: ICE towards a PBX without it, last call $out")
         assertEquals(MediaFlow.BOTH, out?.flow)
 
         // A call in from the PBX offers no ICE: it goes without, and the line keeps ICE.
         val iceState = callFromPbx(PLAIN_ACCOUNT)
-        val incoming = onMain { engine.accounts.lastCall(id) }
+        val incoming = onCore { engine.accounts.lastCall(id) }
         println("natlab evidence: a call in without ICE on a line with ICE: $iceState, last call $incoming")
         assertEquals(IceState.NotActivated, iceState)
         assertEquals(Ice.ON, ice(id))
-        assertEquals(true, onMain { engine.accounts.adaptation(id) }?.ice)
+        assertEquals(true, onCore { engine.accounts.adaptation(id) }?.ice)
     }
 
     @Test
@@ -63,7 +63,7 @@ class NatIceTest : NatLabTestBase() {
         Thread.sleep(QUIET_WINDOW_MS)
         hangUp()
         await("ICE to be kept") { ice(id) == Ice.ON }
-        val last = onMain { engine.accounts.lastCall(id) }
+        val last = onCore { engine.accounts.lastCall(id) }
         println("natlab evidence: ICE with a PBX that does ICE, last call $last")
         assertTrue("ICE state: ${last?.ice}", CONNECTED.any { it.name == last?.ice })
     }
@@ -86,7 +86,7 @@ class NatIceTest : NatLabTestBase() {
         await("ICE to be kept") { ice(id) == Ice.ON }
 
         val iceState = callFromPbx(NAT_ACCOUNT, hears = true)
-        val incoming = onMain { engine.accounts.lastCall(id) }
+        val incoming = onCore { engine.accounts.lastCall(id) }
         println("natlab evidence: a call in without ICE at a PBX with NAT handling: $iceState, last call $incoming")
         assertEquals(IceState.NotActivated, iceState)
         assertEquals(MediaFlow.BOTH, incoming?.flow)
@@ -105,7 +105,7 @@ class NatIceTest : NatLabTestBase() {
         dial(TONE)
         await("the call to fail", CALL_FAIL_MS) { call() == null || call()?.phase == CallPhase.ENDED }
         await("ICE to be given up") { ice(id) == Ice.REFUSED }
-        await("ICE out of the core") { onMain { engine.accounts.adaptation(id) }?.ice != true }
+        await("ICE out of the core") { onCore { engine.accounts.adaptation(id) }?.ice != true }
         println("natlab evidence: ICE trial, INVITE in fragments dropped: ${call()?.endReason}, line on ${adapted(PLAIN_ACCOUNT)}")
     }
 
@@ -115,16 +115,16 @@ class NatIceTest : NatLabTestBase() {
         await("the call to connect") { call()?.phase == CallPhase.CONNECTED }
         await("the line about missing sound", NO_SOUND_TIMEOUT_MS) { call()?.noSound == true }
         hangUp()
-        println("natlab evidence: one way, last call ${onMain { engine.accounts.lastCall(id) }}")
+        println("natlab evidence: one way, last call ${onCore { engine.accounts.lastCall(id) }}")
         await("ICE on trial") { ice(id) == Ice.TRIAL }
-        await("ICE in the core") { onMain { engine.accounts.adaptation(id) }?.ice == true }
+        await("ICE in the core") { onCore { engine.accounts.adaptation(id) }?.ice == true }
     }
 
     /** Has the PBX call the app's [extension] and answers; [hears]: the PBX's tone comes in. Returns the call's ICE state. */
     private fun callFromPbx(extension: Int, hears: Boolean = false): IceState? {
         pbxCallsApp(extension)
         await("the incoming call") { call()?.phase == CallPhase.INCOMING }
-        onMain { engine.calls.answer() }
+        onCore { engine.calls.answer() }
         await("the call to connect") { call()?.phase == CallPhase.CONNECTED }
         if (hears) await("the app to hear the PBX") { playVolume() > AUDIBLE_DB } else Thread.sleep(QUIET_WINDOW_MS)
         val state = iceState()
@@ -134,15 +134,15 @@ class NatIceTest : NatLabTestBase() {
     }
 
     private fun hangUp() {
-        onMain { engine.calls.hangUp() }
+        onCore { engine.calls.hangUp() }
         await("the call to be gone") { call() == null || call()?.phase == CallPhase.ENDED }
         await("the PBX to have no channel") { pbx.list("CoreShowChannels").isEmpty() }
     }
 
-    private fun iceState(): IceState? = onMain { engine.core.currentCall?.audioStats?.iceState }
+    private fun iceState(): IceState? = onCore { engine.core.currentCall?.audioStats?.iceState }
 
     /** Where the line [id] stands with ICE on this network; null: nothing remembered for it. */
-    private fun ice(id: String): Ice? = onMain {
+    private fun ice(id: String): Ice? = onCore {
         val config = engine.core.config
         config.getKeysNamesList(ADAPT_SECTION).filter { LineAdapt.accountOf(it) == id }
             .firstNotNullOfOrNull { LineAdapt.decode(config.getString(ADAPT_SECTION, it, null)) }?.ice

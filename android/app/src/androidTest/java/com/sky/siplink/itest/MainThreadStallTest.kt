@@ -109,7 +109,7 @@ class MainThreadStallTest : RoomTestBase("stall") {
     fun aHundredAccountsRegister() {
         // As RegistrationTest: the debug build's log of every SIP message is turned down for the burst.
         val logging = Factory.instance().loggingService
-        onMain { logging.setLogLevel(LogLevel.Warning) }
+        onCore { logging.setLogLevel(LogLevel.Warning) }
         try {
             val drafts = (FIRST until FIRST + AccountRules.MAX_ACCOUNTS).map { draft(it) }
             longestStall("adding ${drafts.size} accounts") {
@@ -121,7 +121,7 @@ class MainThreadStallTest : RoomTestBase("stall") {
                 }
             }
         } finally {
-            onMain { logging.setLogLevel(LogLevel.Message) }
+            onCore { logging.setLogLevel(LogLevel.Message) }
         }
     }
 

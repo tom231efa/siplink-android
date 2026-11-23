@@ -14,19 +14,19 @@ import org.junit.runner.RunWith
 class CodecTest : PbxTestBase() {
     @After
     fun restoreCodecs() {
-        onMain { engine.codecs.restoreDefaults() }
+        onCore { engine.codecs.restoreDefaults() }
     }
 
     private fun keyOf(mime: String): String = engine.codecs.codecs.value.first { it.mime == mime && it.clockRate == NARROWBAND }.key
 
-    private fun usedCodec(): String? = onMain { engine.core.currentCall?.currentParams?.usedAudioPayloadType?.mimeType }
+    private fun usedCodec(): String? = onCore { engine.core.currentCall?.currentParams?.usedAudioPayloadType?.mimeType }
 
     private fun callAndReadCodec(): String? {
         dial("2000") // echo
         awaitConnected("2000")
         awaitAppHearsAudio()
         val codec = usedCodec()
-        onMain { engine.calls.hangUp() }
+        onCore { engine.calls.hangUp() }
         awaitNoCall()
         await("the PBX to release the call") { pbxChannel(pbxLeg(APP)) == null }
         return codec
@@ -37,7 +37,7 @@ class CodecTest : PbxTestBase() {
         register()
         // The PBX accepts G.711 in both flavours, so the order of the app decides.
         for (mime in listOf("PCMA", "PCMU")) {
-            onMain {
+            onCore {
                 val position = engine.codecs.codecs.value.indexOfFirst { it.key == keyOf(mime) }
                 engine.codecs.move(keyOf(mime), -position)
             }
@@ -49,7 +49,7 @@ class CodecTest : PbxTestBase() {
     @Test
     fun aCodecThatIsSwitchedOffIsNotUsed() {
         register()
-        onMain {
+        onCore {
             val position = engine.codecs.codecs.value.indexOfFirst { it.key == keyOf("PCMU") }
             engine.codecs.move(keyOf("PCMU"), -position)
             assertTrue(engine.codecs.setEnabled(keyOf("PCMU"), false))
@@ -60,7 +60,7 @@ class CodecTest : PbxTestBase() {
     @Test
     fun theLastCodecStaysOnAndTheDefaultsComeBack() {
         val initial = engine.codecs.codecs.value
-        onMain {
+        onCore {
             val codecs = engine.codecs
             codecs.codecs.value.drop(1).forEach { assertTrue(codecs.setEnabled(it.key, false)) }
             assertFalse("The only codec left was switched off", codecs.setEnabled(codecs.codecs.value.first().key, false))
@@ -79,15 +79,15 @@ class CodecTest : PbxTestBase() {
         val h264 = codecs.videoCodecs.value.first { it.mime == "H264" }.key
         assertTrue(codecs.videoCodecs.value.indexOfFirst { it.mime == "H264" } < codecs.videoCodecs.value.indexOfFirst { it.mime == "VP8" })
         assertEquals("H264", callAndReadVideoCodec())
-        onMain { assertTrue(codecs.setEnabled(h264, false)) }
+        onCore { assertTrue(codecs.setEnabled(h264, false)) }
         assertEquals("VP8", callAndReadVideoCodec())
     }
 
     private fun callAndReadVideoCodec(): String? {
-        ok(onMain { engine.calls.dial("2000", null, video = true) })
+        ok(onCore { engine.calls.dial("2000", null, video = true) })
         awaitCall("a video call") { it.video != null && it.phase == CallPhase.CONNECTED }
-        val codec = onMain { engine.core.currentCall?.currentParams?.usedVideoPayloadType?.mimeType }
-        onMain { engine.calls.hangUp() }
+        val codec = onCore { engine.core.currentCall?.currentParams?.usedVideoPayloadType?.mimeType }
+        onCore { engine.calls.hangUp() }
         awaitNoCall()
         await("the PBX to release the call") { pbxChannel(pbxLeg(APP)) == null }
         return codec

@@ -2,6 +2,7 @@ package com.sky.siplink.itest
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.sky.siplink.core.CoreThread
 import com.sky.siplink.core.model.Settings
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -27,8 +28,8 @@ class SdkDefaultsTest {
         val file = File(context.cacheDir, "itest-fresh-linphonerc").apply { delete() }
         var started = -1
         var found: List<Boolean> = emptyList()
-        // On the main thread, like the app's own core; nothing is asserted there.
-        instrumentation.runOnMainSync {
+        // On the thread of the app's own core; nothing is asserted there.
+        CoreThread.wait("test") {
             val core = Factory.instance().createCore(file.absolutePath, null, context)
             started = core.start()
             found = listOf(core.isEchoCancellationEnabled, core.isIpv6Enabled, core.isAdaptiveRateControlEnabled)

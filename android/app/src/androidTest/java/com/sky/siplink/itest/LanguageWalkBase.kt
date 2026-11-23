@@ -45,7 +45,7 @@ abstract class LanguageWalkBase : RoomTestBase("shots") {
     protected fun stop(language: Language, name: String) {
         picture("${language.tag}/$name")
         val texts = known.getOrPut(language) { LanguageTexts(textsIn(language.tag)) }
-        val result = onMain { cuts.find(texts) }
+        val result = onCore { cuts.find(texts) }
         if (result.seen == 0) found += "${language.tag} $name: the check saw nothing (no text of the app on a screen it can read)"
         result.cut.forEach { found += "${language.tag} $name: $it" }
     }
@@ -86,7 +86,7 @@ abstract class LanguageWalkBase : RoomTestBase("shots") {
             password = env.ldapPassword,
             baseDn = "ou=$PEOPLE,${env.ldapBaseDn}",
         )
-        val errors = onMain { engine.directory.save(staff) }
+        val errors = onCore { engine.directory.save(staff) }
         assertTrue("LDAP directory rejected: $errors", errors.isEmpty())
     }
 

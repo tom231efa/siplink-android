@@ -13,6 +13,7 @@ import com.sky.siplink.CallActivity
 import com.sky.siplink.MainActivity
 import com.sky.siplink.R
 import com.sky.siplink.SipLinkApp
+import com.sky.siplink.core.CoreThread
 import com.sky.siplink.core.ReleaseFeed
 import com.sky.siplink.core.SipEngine
 import com.sky.siplink.core.model.AccountDraft
@@ -71,7 +72,7 @@ abstract class PbxTestBase {
         // Start from an idle, unconfigured state, whatever an earlier test left behind.
         await("the app to have no call") { call() == null }
         val tone = ToneFile.of(instrumentation.targetContext)
-        onMain {
+        onCore {
             engine.updateSettings { Settings() }
             // The tests do not ask GitHub: a check the app makes by itself when it is shown fails, quietly.
             engine.updates.feed = NO_RELEASES
@@ -121,7 +122,7 @@ abstract class PbxTestBase {
 
     /** Ends every call and removes every account of the app. */
     private fun release() {
-        onMain {
+        onCore {
             // A configuration that a test left managed would refuse to be cleared.
             engine.lock.setManaged(false)
             engine.core.terminateAllCalls()
@@ -173,6 +174,10 @@ abstract class PbxTestBase {
 
     // ------------------------------------------------------------------ generic helpers
 
+    /** Runs [block] on the thread of the SIP core and waits for it; what it threw is thrown here. */
+    protected fun <T> onCore(block: () -> T): T = CoreThread.wait("test", block)
+
+    /** Runs [block] on the main thread, for what touches the activities and their views. */
     protected fun <T> onMain(block: () -> T): T {
         var result: Result<T>? = null
         instrumentation.runOnMainSync { result = runCatching(block) }
@@ -194,11 +199,11 @@ abstract class PbxTestBase {
      * are in it. The phone's language stays as it is.
      */
     protected fun pinLanguage(language: Language?) {
-        if (onMain { engine.language.chosen != language || (language == null) != engine.language.followsSystem }) {
+        if (onCore { engine.language.chosen != language || (language == null) != engine.language.followsSystem }) {
             onMain { engine.language.choose(language) }
         }
         val expected = textsIn(language?.tag ?: systemLanguages()).getString(R.string.call_ended)
-        await("the app to speak ${language?.tag ?: "the system's language"}") { onMain { engine.texts.get(R.string.call_ended) } == expected }
+        await("the app to speak ${language?.tag ?: "the system's language"}") { onCore { engine.texts.get(R.string.call_ended) } == expected }
     }
 
     /** Like [await], but reports a timeout as false instead of failing. */
@@ -274,13 +279,13 @@ abstract class PbxTestBase {
         transport: SipTransport = SipTransport.UDP,
         domain: String = env.pbxHost,
     ) {
-        val errors = onMain { engine.accounts.add(draft(extension, transport, domain)) }
+        val errors = onCore { engine.accounts.add(draft(extension, transport, domain)) }
         assertTrue("Account rejected: $errors", errors.isEmpty())
     }
 
     /** Adds an account from a draft of the test, for what [addAccount] has no parameter for. */
     protected fun addAccount(draft: AccountDraft) {
-        val errors = onMain { engine.accounts.add(draft) }
+        val errors = onCore { engine.accounts.add(draft) }
         assertTrue("Account rejected: $errors", errors.isEmpty())
     }
 
@@ -300,12 +305,12 @@ abstract class PbxTestBase {
     }
 
     protected fun dial(target: String, supervision: SupervisionMode? = null) =
-        ok(onMain { engine.calls.dial(target, null, supervision) })
+        ok(onCore { engine.calls.dial(target, null, supervision) })
 
-    protected fun settings(change: (Settings) -> Settings) = onMain { engine.updateSettings(change) }
+    protected fun settings(change: (Settings) -> Settings) = onCore { engine.updateSettings(change) }
 
     /** Level of the audio the app currently receives, in dBm0 (about -120 for silence). */
-    protected fun playVolume(): Float = onMain { engine.core.currentCall?.playVolume ?: SILENCE_DB }
+    protected fun playVolume(): Float = onCore { engine.core.currentCall?.playVolume ?: SILENCE_DB }
 
     protected fun awaitAppHearsAudio() = await("the app to receive audio") { playVolume() > AUDIBLE_DB }
 

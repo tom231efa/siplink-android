@@ -34,7 +34,7 @@ abstract class DirectoryTestBase : PbxTestBase() {
 
     /** Saves [directory] and returns it as it is stored, with its id. */
     protected fun save(directory: LdapDirectory): LdapDirectory {
-        val errors = onMain { engine.directory.save(directory) }
+        val errors = onCore { engine.directory.save(directory) }
         assertTrue("LDAP directory rejected: $errors", errors.isEmpty())
         val stored = engine.directory.directories.value
         return if (directory.id.isEmpty()) stored.last() else stored.first { it.id == directory.id }
@@ -49,7 +49,7 @@ abstract class DirectoryTestBase : PbxTestBase() {
             showApp()
             shown = true
         }
-        onMain { engine.directory.search(directory.id, query) }
+        onCore { engine.directory.search(directory.id, query) }
         await("the LDAP search for '$query' to finish") {
             val state = engine.directory.state.value
             state.directory == directory.id && state.query == query && !state.searching
@@ -69,7 +69,7 @@ abstract class DirectoryTestBase : PbxTestBase() {
      * over TLS yet. testenv/run-tests.sh runs every test class in a process of its own.
      */
     protected fun assumeFreshLdapTls() =
-        assumeFalse("LDAP was already used over TLS in this process", onMain { engine.directory.tlsUsed })
+        assumeFalse("LDAP was already used over TLS in this process", onCore { engine.directory.tlsUsed })
 
     /** StartTLS only works with a host name (see LdapRules), which not every device can resolve. */
     protected fun ldapName(): String {
@@ -92,7 +92,7 @@ class DirectoryTest : DirectoryTestBase() {
     fun searchesOverStartTlsAndCallsAResult() {
         assumeFreshLdapTls()
         val ldapName = ldapName()
-        onMain { engine.tls.import(env.caPem) }
+        onCore { engine.tls.import(env.caPem) }
         register()
         val staff = configure(ldapName, startTls = true)
 
@@ -126,10 +126,10 @@ class DirectoryTest : DirectoryTestBase() {
         val staff = save(directory(env.ldapHost).copy(nameFilter = "(cn=%)", numberFilter = "(mobile=%)"))
         assertEquals(setOf("Alice Smith"), search(staff, "Ali").map { it.name }.toSet())
         // The local copy is searched for anything that contains the text; here the server is to answer alone.
-        onMain { engine.directory.clearCache() }
+        onCore { engine.directory.clearCache() }
         assertTrue("A name was found by its middle", search(staff, "lice").isEmpty())
         assertEquals(setOf("Alice Smith"), search(staff, "1380000100").filter { it.number == "1006" }.map { it.name }.toSet())
-        onMain { engine.directory.clearCache() }
+        onCore { engine.directory.clearCache() }
         assertTrue("An extension was found although only mobiles are searched", search(staff, "1006").isEmpty())
     }
 
@@ -137,15 +137,15 @@ class DirectoryTest : DirectoryTestBase() {
     fun keepsALocalCopyThatAnswersBeforeTheServer() {
         register()
         val staff = configure(env.ldapHost)
-        onMain { engine.directory.clearCache() }
+        onCore { engine.directory.clearCache() }
         assertFindsTheStaff(search(staff, "100"))
-        onMain { engine.directory.refreshCacheStats() }
+        onCore { engine.directory.refreshCacheStats() }
         await("the local copy to hold the staff") { engine.directory.cacheStats.value.entries >= 7 }
 
         // Make the server slow to be asked (the delay does not touch the local copy): the entries
         // found before are on screen long before it answers, marked as coming from the copy.
-        onMain { engine.directory.serverDelayMs = SLOW_SERVER_MS }
-        onMain { engine.directory.search(staff.id, "Alice") }
+        onCore { engine.directory.serverDelayMs = SLOW_SERVER_MS }
+        onCore { engine.directory.search(staff.id, "Alice") }
         await("the local copy to answer first", SLOW_SERVER_MS.toLong()) {
             val state = engine.directory.state.value
             state.query == "Alice" && state.searching && state.fromCache && state.contacts.any { it.number == "1006" }
@@ -156,7 +156,7 @@ class DirectoryTest : DirectoryTestBase() {
         }
 
         // Emptying the copy leaves the server's results alone and reports an empty copy.
-        onMain { engine.directory.clearCache() }
+        onCore { engine.directory.clearCache() }
         await("the local copy to be empty") { engine.directory.cacheStats.value.entries == 0L }
     }
 
@@ -164,14 +164,14 @@ class DirectoryTest : DirectoryTestBase() {
     fun namesCallersAndCalleesFromTheDirectory() {
         register()
         val staff = configure(env.ldapHost)
-        onMain { engine.directory.clearCache() }
+        onCore { engine.directory.clearCache() }
         val echoName = search(staff, "$ECHO_PHONE").first { it.number == "$ECHO_PHONE" }.name
 
         // Incoming: whatever name the PBX sends along, the directory knows 1002 as 王芳. Her entry
         // is not in the local copy yet, so this one is answered by the server.
         phoneCalls(AGENT, "$APP")
         awaitCall("the caller to be named by the directory") { it.phase == CallPhase.INCOMING && it.remoteName == "王芳" }
-        onMain { engine.calls.decline() }
+        onCore { engine.calls.decline() }
         awaitNoCall()
         await("the caller to be released") { !phoneHasCall(AGENT) }
         await("the call history to use the name") { engine.history.entries.value.firstOrNull()?.name == "王芳" }
@@ -179,20 +179,20 @@ class DirectoryTest : DirectoryTestBase() {
         // Outgoing: the name of the number that was dialled.
         dial("$ECHO_PHONE")
         awaitCall("the callee to be named by the directory") { it.phase == CallPhase.CONNECTED && it.remoteName == echoName }
-        onMain { engine.calls.hangUp() }
+        onCore { engine.calls.hangUp() }
         awaitNoCall()
         await("the PBX to release the call") { pbxChannel(pbxLeg(APP)) == null }
 
         // From now on the local copy answers. With a server that is only asked after seconds
         // (saving the directory also makes the app forget the names it had in memory), the name
         // is there long before the server could have said anything.
-        onMain { engine.directory.serverDelayMs = SLOW_SERVER_MS }
+        onCore { engine.directory.serverDelayMs = SLOW_SERVER_MS }
         save(staff.copy(maxResults = staff.maxResults + 1))
         phoneCalls(AGENT, "$APP")
         awaitCall("the caller to be named from the local copy", SLOW_SERVER_MS - 1_000L) {
             it.phase == CallPhase.INCOMING && it.remoteName == "王芳"
         }
-        onMain { engine.calls.decline() }
+        onCore { engine.calls.decline() }
         awaitNoCall()
         await("the caller to be released") { !phoneHasCall(AGENT) }
     }
@@ -214,13 +214,13 @@ class DirectoryTest : DirectoryTestBase() {
         assertEquals(setOf("1002", "02155550001"), search(partners, "合作").map { it.number }.toSet())
         assertEquals(setOf(PARTNER), search(partners, "0215555").map { it.name }.toSet())
         assertEquals(listOf("3001"), search(partners, "Partner").map { it.number })
-        onMain { engine.directory.clearCache() }
+        onCore { engine.directory.clearCache() }
         assertTrue("A number was found in an attribute that is not one for numbers", search(partners, "1390000").isEmpty())
 
         // A directory that is switched off or removed answers nothing; the other one goes on.
         save(partners.copy(enabled = false))
         assertTrue(search(partners, "100").isEmpty())
-        onMain { engine.directory.remove(partners.id) }
+        onCore { engine.directory.remove(partners.id) }
         assertEquals(listOf(staff.id), engine.directory.directories.value.map { it.id })
         assertFindsTheStaff(search(staff, "100"))
     }
@@ -237,7 +237,7 @@ class DirectoryTest : DirectoryTestBase() {
         fun callerIsNamed(phone: Int, name: String) {
             phoneCalls(phone, "$APP")
             awaitCall("the caller $phone to be named $name") { it.phase == CallPhase.INCOMING && it.remoteName == name }
-            onMain { engine.calls.decline() }
+            onCore { engine.calls.decline() }
             awaitNoCall()
             await("the caller to be released") { !phoneHasCall(phone) }
         }
@@ -245,7 +245,7 @@ class DirectoryTest : DirectoryTestBase() {
         fun calleeIsNamed(name: String) {
             dial("$AGENT")
             awaitCall("the callee to be named $name") { it.remoteName == name }
-            onMain { engine.calls.hangUp() }
+            onCore { engine.calls.hangUp() }
             awaitNoCall()
             await("the PBX to release the call") { pbxChannel(pbxLeg(APP)) == null && !phoneHasCall(AGENT) }
         }
@@ -261,7 +261,7 @@ class DirectoryTest : DirectoryTestBase() {
         calleeIsNamed(PARTNER)
 
         // As the directory of another line it has no say about the calls of this one.
-        val other = onMain {
+        val other = onCore {
             assertTrue(engine.accounts.add(draft(SECOND_LINE)).isEmpty())
             account(SECOND_LINE)!!
         }
@@ -270,7 +270,7 @@ class DirectoryTest : DirectoryTestBase() {
         calleeIsNamed("王芳")
 
         // Without that account it is a directory for every line again.
-        onMain { engine.accounts.remove(other.id) }
+        onCore { engine.accounts.remove(other.id) }
         assertEquals(listOf("", ""), engine.directory.directories.value.map { it.line })
     }
 
@@ -279,12 +279,12 @@ class DirectoryTest : DirectoryTestBase() {
         val first = save(directory("ldap1.example.com", name = "目录 1"))
         (2..LdapRules.MAX_DIRECTORIES).forEach { save(directory("ldap$it.example.com", name = "目录 $it")) }
         assertEquals(LdapRules.MAX_DIRECTORIES, engine.directory.directories.value.size)
-        assertEquals(listOf(LdapRules.Error.LIMIT_REACHED), onMain { engine.directory.save(directory("ldap51.example.com")) })
+        assertEquals(listOf(LdapRules.Error.LIMIT_REACHED), onCore { engine.directory.save(directory("ldap51.example.com")) })
 
         // A name that is taken is refused, for a new directory as for a renamed one.
-        assertEquals(listOf(LdapRules.Error.NAME_TAKEN), onMain { engine.directory.save(first.copy(name = "目录 2")) })
-        onMain { engine.directory.remove(engine.directory.directories.value.last().id) }
-        assertEquals(listOf(LdapRules.Error.NAME_TAKEN), onMain { engine.directory.save(directory("ldap51.example.com", name = "目录 1")) })
+        assertEquals(listOf(LdapRules.Error.NAME_TAKEN), onCore { engine.directory.save(first.copy(name = "目录 2")) })
+        onCore { engine.directory.remove(engine.directory.directories.value.last().id) }
+        assertEquals(listOf(LdapRules.Error.NAME_TAKEN), onCore { engine.directory.save(directory("ldap51.example.com", name = "目录 1")) })
         save(first.copy(name = "总部"))
 
         // What is kept is what another start of the app finds: all of them, in their order,
@@ -299,7 +299,7 @@ class DirectoryTest : DirectoryTestBase() {
     @Test
     fun theDirectoryOfAnEarlierVersionIsTakenOver() {
         // Before there could be several, the one directory was kept by the SIP core itself.
-        onMain {
+        onCore {
             val params = engine.core.createLdapParams()
             params.enabled = true
             params.isTlsEnabled = false
@@ -333,7 +333,7 @@ class DirectoryTest : DirectoryTestBase() {
         // Once the last directory is removed, nothing is left to be taken over again. (The
         // manager of the running app has not seen the take-over, so it replaces what is stored.)
         val last = save(directory("ldap.example.com"))
-        onMain { engine.directory.remove(last.id) }
+        onCore { engine.directory.remove(last.id) }
         assertTrue(afterARestart { it.directories.value }.isEmpty())
     }
 
@@ -342,7 +342,7 @@ class DirectoryTest : DirectoryTestBase() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val cache = DirectoryCache(context, fileName = OTHER_CACHE)
         try {
-            return onMain { look(DirectoryManager(engine.core, cache, engine.lock)) }
+            return onCore { look(DirectoryManager(engine.core, cache, engine.lock)) }
         } finally {
             cache.close()
             context.deleteDatabase(OTHER_CACHE)
@@ -352,7 +352,7 @@ class DirectoryTest : DirectoryTestBase() {
     @Test
     fun startTlsToAnAddressIsRejected() {
         // The LDAP library needs a host name for the TLS handshake, so this is refused up front.
-        val errors = onMain { engine.directory.save(directory(env.ldapHost, startTls = true)) }
+        val errors = onCore { engine.directory.save(directory(env.ldapHost, startTls = true)) }
         assertEquals(listOf(LdapRules.Error.STARTTLS_NEEDS_HOST_NAME), errors)
     }
 
@@ -374,8 +374,8 @@ class DirectoryTrustTest : DirectoryTestBase() {
 
         // The library has now loaded its CA set for this process: the app has to say that the
         // CA imported afterwards needs a restart to reach the directory.
-        onMain { engine.tls.import(env.caPem) }
-        assertTrue(onMain { engine.directory.tlsChangeNeedsRestart })
+        onCore { engine.tls.import(env.caPem) }
+        assertTrue(onCore { engine.directory.tlsChangeNeedsRestart })
     }
 }
 

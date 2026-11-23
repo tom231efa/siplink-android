@@ -13,13 +13,13 @@ abstract class VideoTestBase : PbxTestBase() {
     protected fun grant(permission: String) =
         instrumentation.uiAutomation.grantRuntimePermission(instrumentation.targetContext.packageName, permission)
 
-    protected fun dialVideo(target: String) = ok(onMain { engine.calls.dial(target, null, video = true) })
+    protected fun dialVideo(target: String) = ok(onCore { engine.calls.dial(target, null, video = true) })
 
     protected fun awaitVideo(what: (CallVideo) -> Boolean): CallVideo =
         awaitCall("the video of the call to match") { it.video?.let(what) == true }.video!!
 
     /** Video RTP packets of the current call, received and sent. */
-    private fun videoPackets(): Pair<Long, Long> = onMain {
+    private fun videoPackets(): Pair<Long, Long> = onCore {
         engine.core.currentCall?.videoStats?.let { it.rtpPacketRecv to it.rtpPacketSent } ?: (0L to 0L)
     }
 
@@ -37,18 +37,18 @@ abstract class VideoTestBase : PbxTestBase() {
     }
 
     /** What the app sends its video with right now: the longer and the shorter side of the picture, and the frames per second. */
-    protected fun videoSent(): Triple<Int, Int, Float>? = onMain {
-        val params = engine.core.currentCall?.currentParams ?: return@onMain null
-        val size = params.sentVideoDefinition ?: return@onMain null
+    protected fun videoSent(): Triple<Int, Int, Float>? = onCore {
+        val params = engine.core.currentCall?.currentParams ?: return@onCore null
+        val size = params.sentVideoDefinition ?: return@onCore null
         Triple(maxOf(size.width, size.height), minOf(size.width, size.height), params.sentFramerate)
     }
 
     /** The bit rate the app sends its video with right now, in kbit/s. */
-    protected fun videoUpload(): Float = onMain { engine.core.currentCall?.videoStats?.uploadBandwidth ?: 0f }
+    protected fun videoUpload(): Float = onCore { engine.core.currentCall?.videoStats?.uploadBandwidth ?: 0f }
 
     /** The longer and the shorter side of the picture the app receives right now; number 2000 of the PBX sends back what it gets. */
-    protected fun videoReceived(): Pair<Int, Int>? = onMain {
-        val size = engine.core.currentCall?.currentParams?.receivedVideoDefinition ?: return@onMain null
+    protected fun videoReceived(): Pair<Int, Int>? = onCore {
+        val size = engine.core.currentCall?.currentParams?.receivedVideoDefinition ?: return@onCore null
         maxOf(size.width, size.height) to minOf(size.width, size.height)
     }
 

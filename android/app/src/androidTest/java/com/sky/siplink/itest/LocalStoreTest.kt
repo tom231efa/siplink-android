@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.sky.siplink.SipLinkApp
+import com.sky.siplink.core.CoreThread
 import com.sky.siplink.core.DirectoryCache
 import com.sky.siplink.core.ShortcutManager
 import com.sky.siplink.core.logic.ShortcutRules
@@ -23,11 +24,8 @@ import java.io.File
 private val instrumentation get() = InstrumentationRegistry.getInstrumentation()
 private val context: Context get() = instrumentation.targetContext
 
-private fun <T> onMain(block: () -> T): T {
-    var result: Result<T>? = null
-    instrumentation.runOnMainSync { result = runCatching(block) }
-    return result!!.getOrThrow()
-}
+/** Runs [block] on the thread of the SIP core and waits for it; what it threw is thrown here. */
+private fun <T> onCore(block: () -> T): T = CoreThread.wait("test", block)
 
 private fun await(what: String, condition: () -> Boolean) {
     val deadline = System.currentTimeMillis() + 20_000
@@ -50,7 +48,7 @@ class ShortcutStoreTest {
 
     /** A manager on the test file, as the app creates one at start. */
     private fun open(): ShortcutManager {
-        val manager = onMain { ShortcutManager(file, (context.applicationContext as SipLinkApp).engine.lock, (context.applicationContext as SipLinkApp).engine.texts) }
+        val manager = onCore { ShortcutManager(file, (context.applicationContext as SipLinkApp).engine.lock, (context.applicationContext as SipLinkApp).engine.texts) }
         await("the shortcut keys to be read") { manager.loaded.value }
         return manager
     }
@@ -63,10 +61,10 @@ class ShortcutStoreTest {
     @Test
     fun keysSurviveARestart() {
         val first = open()
-        assertTrue(onMain { first.add(Shortcut(0, "前台", "1001", category = "常用")) }.isEmpty())
-        assertTrue(onMain { first.add(Shortcut(0, "对讲, 仓库", "*801005", category = "对讲", line = "总机")) }.isEmpty())
-        assertTrue(onMain { first.add(Shortcut(0, "开门", "#9", ShortcutAction.DTMF, "门禁", icon = ShortcutIcon.DOOR)) }.isEmpty())
-        assertEquals(listOf(ShortcutRules.Error.NUMBER_EMPTY), onMain { first.add(Shortcut(0, "没有号码", "")) })
+        assertTrue(onCore { first.add(Shortcut(0, "前台", "1001", category = "常用")) }.isEmpty())
+        assertTrue(onCore { first.add(Shortcut(0, "对讲, 仓库", "*801005", category = "对讲", line = "总机")) }.isEmpty())
+        assertTrue(onCore { first.add(Shortcut(0, "开门", "#9", ShortcutAction.DTMF, "门禁", icon = ShortcutIcon.DOOR)) }.isEmpty())
+        assertEquals(listOf(ShortcutRules.Error.NUMBER_EMPTY), onCore { first.add(Shortcut(0, "没有号码", "")) })
         assertEquals(3, first.shortcuts.value.map { it.id }.toSet().size)
         awaitStored(3)
 
@@ -75,9 +73,9 @@ class ShortcutStoreTest {
 
         // Changing, regrouping and removing are stored as well.
         val door = second.shortcuts.value.first { it.action == ShortcutAction.DTMF }
-        assertTrue(onMain { second.update(door.copy(number = "#99")) }.isEmpty())
-        onMain { second.renameCategory("常用", "总机") }
-        onMain { second.remove(listOf(second.shortcuts.value.first { it.category == "对讲" }.id)) }
+        assertTrue(onCore { second.update(door.copy(number = "#99")) }.isEmpty())
+        onCore { second.renameCategory("常用", "总机") }
+        onCore { second.remove(listOf(second.shortcuts.value.first { it.category == "对讲" }.id)) }
         awaitStored(2)
         await("the changed keys in the file") { "#99" in file.readText() && "总机" in file.readText() }
 
@@ -94,12 +92,12 @@ class ShortcutStoreTest {
     @Test
     fun keysKeepTheOrderTheyWereMovedInto() {
         val first = open()
-        onMain { listOf("一", "二", "三", "四").forEachIndexed { index, label -> assertTrue(first.add(Shortcut(0, label, "${1001 + index}")).isEmpty()) } }
+        onCore { listOf("一", "二", "三", "四").forEachIndexed { index, label -> assertTrue(first.add(Shortcut(0, label, "${1001 + index}")).isEmpty()) } }
         fun labels(manager: ShortcutManager) = manager.shortcuts.value.map { it.label }
         val ids = first.shortcuts.value.map { it.id }
-        assertTrue(onMain { first.move(ids[3], ids[0]) })
-        assertTrue(onMain { first.move(ids[1], ids[2]) })
-        assertFalse(onMain { first.move(ids[2], ids[2]) })
+        assertTrue(onCore { first.move(ids[3], ids[0]) })
+        assertTrue(onCore { first.move(ids[1], ids[2]) })
+        assertFalse(onCore { first.move(ids[2], ids[2]) })
         assertEquals(listOf("四", "一", "三", "二"), labels(first))
         await("the new order in the file") { file.isFile && file.readLines().map { it.substringBefore(',') } == listOf("四", "一", "三", "二") }
 
@@ -111,10 +109,10 @@ class ShortcutStoreTest {
     fun neverHoldsMoreThanTwoThousandKeys() {
         val manager = open()
         val text = (1..ShortcutRules.MAX_SHORTCUTS + 5).joinToString("\n") { "键$it,${10_000 + it},speed,组${it % 20}" }
-        val parsed = onMain { manager.import(text) }!!
+        val parsed = onCore { manager.import(text) }!!
         assertEquals(ShortcutRules.MAX_SHORTCUTS, parsed.shortcuts.size)
         assertEquals(5, parsed.skippedForLimit)
-        assertEquals(listOf(ShortcutRules.Error.LIMIT_REACHED), onMain { manager.add(Shortcut(0, "多一个", "1")) })
+        assertEquals(listOf(ShortcutRules.Error.LIMIT_REACHED), onCore { manager.add(Shortcut(0, "多一个", "1")) })
         assertEquals(ShortcutRules.MAX_SHORTCUTS, manager.shortcuts.value.size)
 
         // Searching and grouping the full board.

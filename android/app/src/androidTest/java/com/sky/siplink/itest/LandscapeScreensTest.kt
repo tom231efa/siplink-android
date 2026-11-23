@@ -45,7 +45,7 @@ class LandscapeScreensTest : RoomTestBase("landscape") {
         for (activity in listOfNotNull(resumed<CallActivity>(), resumed<MainActivity>())) {
             runCatching { onMain { activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT } }
         }
-        onMain {
+        onCore {
             engine.updates.feed = NO_RELEASES
             engine.updates.forget()
         }
@@ -119,7 +119,7 @@ class LandscapeScreensTest : RoomTestBase("landscape") {
     }
 
     private fun voiceCall() {
-        onMain { engine.core.useFiles = false }
+        onCore { engine.core.useFiles = false }
         showApp()
         register()
         dial("2000")
@@ -148,7 +148,7 @@ class LandscapeScreensTest : RoomTestBase("landscape") {
         InstrumentationRegistry.getInstrumentation().uiAutomation.grantRuntimePermission(context.packageName, Manifest.permission.CAMERA)
         showApp()
         register()
-        ok(onMain { engine.calls.dial("2000", null, video = true) })
+        ok(onCore { engine.calls.dial("2000", null, video = true) })
         awaitCall("the picture of the echo") { it.phase == CallPhase.CONNECTED && it.video?.received != null }
         context.openCallScreen()
         turn()
@@ -400,7 +400,7 @@ class LandscapeScreensTest : RoomTestBase("landscape") {
 
     /** GitHub answers that a version newer than any release of the app is out: the settings tab gets its dot. */
     private fun offerNewerVersion() {
-        onMain {
+        onCore {
             engine.updates.forget()
             engine.updates.feed = ReleaseFeed { FeedAnswer(200, body = """{"tag_name": "v$NEWER"}""") }
             engine.updates.checkNow()

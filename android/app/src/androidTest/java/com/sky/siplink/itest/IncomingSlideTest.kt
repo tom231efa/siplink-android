@@ -42,7 +42,7 @@ class IncomingSlideTest : ScreenTestBase("slide") {
             // The orientation goes back to the system; the screen may be gone by now.
             runCatching { onMain { screen.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED } }
             phones.command("channel request hangup all")
-            onMain { engine.calls.hangUp() }
+            onCore { engine.calls.hangUp() }
             awaitNoCall()
             await("the caller to be released") { !phoneHasCall(AGENT) }
         }

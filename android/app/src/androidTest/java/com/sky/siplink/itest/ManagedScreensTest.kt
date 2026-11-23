@@ -32,7 +32,7 @@ import java.security.MessageDigest
 class ManagedScreensTest : ScreenTestBase(PICTURES) {
     @After
     fun takeBack() {
-        onMain {
+        onCore {
             engine.lock.setManaged(false)
             engine.shortcuts.remove(engine.shortcuts.shortcuts.value.map { it.id })
             engine.history.clear()
@@ -83,11 +83,11 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
         repeat(2) {
             dial("2000")
             awaitConnected("2000")
-            onMain { engine.calls.hangUp() }
+            onCore { engine.calls.hangUp() }
             awaitNoCall()
         }
         await("both calls in the history") { engine.history.entries.value.size >= 2 }
-        onMain {
+        onCore {
             // The question about the lock screen would stand in front of the screens.
             // Auto answer on, so that its time is shown as well.
             assertTrue(engine.updateSettings { it.copy(lockScreenPromptDeclined = true, forwardBusy = "$CUSTOMER", autoAnswer = true) })
@@ -103,7 +103,7 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
     @Test
     fun aManagedConfigurationIsShownAndTakesNoInput() {
         handOut()
-        onMain { engine.lock.setManaged(true) }
+        onCore { engine.lock.setManaged(true) }
         showApp()
 
         // Settings: the locked switches are there to look at, the user's own ones work.
@@ -206,7 +206,7 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
         // The directories: none to add, the one there is opens to be read. It is searched as ever,
         // and the local copy of what it answered is the user's to empty.
         val directory = engine.directory.directories.value.single()
-        onMain { engine.directory.search(directory.id, "100") }
+        onCore { engine.directory.search(directory.id, "100") }
         await("the answer of the directory in the local copy") { engine.directory.cacheStats.value.entries > 0 }
         tap("LDAP 通讯录")
         see(zh(ManagedConfig.LOCKED))
@@ -282,7 +282,7 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
         // was left out is back: none of it was missing above for being called something else.
         tap("设置")
         see(zh(ManagedConfig.LOCKED))
-        onMain { engine.lock.setManaged(false) }
+        onCore { engine.lock.setManaged(false) }
         await("the lock to go") { shown(zh(ManagedConfig.LOCKED)).isEmpty() }
         usable("视频通话", "后台保持在线")
         tap("录音")
@@ -339,7 +339,7 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
     @Test
     fun theStoredPasswordsAreShownAsTheConfigurationHasIt() {
         addAccount(draft(APP).copy(name = LINE))
-        onMain {
+        onCore {
             assertTrue(engine.updateSettings { it.copy(lockScreenPromptDeclined = true) })
             val directory = LdapDirectory(name = DIRECTORY, host = env.ldapHost, bindDn = env.ldapBindDn, password = env.ldapPassword, baseDn = env.ldapBaseDn)
             assertTrue(engine.directory.save(directory).isEmpty())
@@ -386,7 +386,7 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
         back()
 
         // Without a password of its own they are there to be looked at like the rest: the eye just shows them.
-        onMain { engine.lock.setManaged(true) }
+        onCore { engine.lock.setManaged(true) }
         tap("SIP 账号")
         tap(LINE)
         see("账号详情")
@@ -402,7 +402,7 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
     @Test
     fun keysOfTheUsersOwnAreDraggedIntoOrderAboveThoseHandedOut() {
         await("the shortcut keys to be read") { engine.shortcuts.loaded.value }
-        onMain {
+        onCore {
             assertTrue(engine.updateSettings { it.copy(lockScreenPromptDeclined = true) })
             engine.shortcuts.remove(engine.shortcuts.shortcuts.value.map { it.id })
             assertTrue(engine.shortcuts.add(Shortcut(0, SPEED_KEY, "$AGENT")).isEmpty())
@@ -436,7 +436,7 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
     @Test
     fun anEmptyManagedConfigurationOffersOnlyKeysOfTheUsersOwnToAdd() {
         await("the shortcut keys to be read") { engine.shortcuts.loaded.value }
-        onMain {
+        onCore {
             assertTrue(engine.updateSettings { it.copy(lockScreenPromptDeclined = true) })
             engine.shortcuts.remove(engine.shortcuts.shortcuts.value.map { it.id })
             engine.lock.setManaged(true)
@@ -476,7 +476,7 @@ class ManagedScreensTest : ScreenTestBase(PICTURES) {
         absent("导入 CA 证书")
 
         // Switched off, each of them offers again what it left out.
-        onMain { engine.lock.setManaged(false) }
+        onCore { engine.lock.setManaged(false) }
         see("导入 CA 证书")
         back()
         tap("LDAP 通讯录")

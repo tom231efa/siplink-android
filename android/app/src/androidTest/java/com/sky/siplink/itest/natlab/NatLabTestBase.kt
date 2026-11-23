@@ -4,7 +4,7 @@ import android.Manifest
 import android.util.Base64
 import androidx.test.platform.app.InstrumentationRegistry
 import com.sky.siplink.SipLinkApp
-import com.sky.siplink.core.LineCheck
+import com.sky.siplink.core.CoreThread
 import com.sky.siplink.core.SipEngine
 import com.sky.siplink.core.model.AccountDraft
 import com.sky.siplink.core.model.CallInfo
@@ -80,7 +80,7 @@ abstract class NatLabTestBase {
         pbx = Ami(lab.host, lab.amiUser, lab.amiSecret, lab.amiPort)
         release()
         val tone = ToneFile.of(instrumentation.targetContext)
-        onMain {
+        onCore {
             engine.updateSettings { Settings() }
             engine.core.useFiles = true
             engine.core.playFile = tone.absolutePath
@@ -97,12 +97,12 @@ abstract class NatLabTestBase {
         }
         if (::lab.isInitialized) {
             runCatching { box("reset") }
-            onMain { engine.updateSettings { Settings() } }
+            onCore { engine.updateSettings { Settings() } }
         }
     }
 
     private fun release() {
-        onMain {
+        onCore {
             engine.core.terminateAllCalls()
             engine.accounts.accounts.value.forEach { engine.accounts.remove(it.id) }
         }
@@ -125,11 +125,8 @@ abstract class NatLabTestBase {
 
     // ------------------------------------------------------------------ the app
 
-    protected fun <T> onMain(block: () -> T): T {
-        var result: Result<T>? = null
-        instrumentation.runOnMainSync { result = runCatching(block) }
-        return result!!.getOrThrow()
-    }
+    /** Runs [block] on the thread of the SIP core and waits for it; what it threw is thrown here. */
+    protected fun <T> onCore(block: () -> T): T = CoreThread.wait("test", block)
 
     protected fun await(what: String, timeoutMs: Long = TIMEOUT_MS, condition: () -> Boolean) {
         val deadline = System.currentTimeMillis() + timeoutMs
@@ -162,7 +159,7 @@ abstract class NatLabTestBase {
 
     /** Adds the account of [extension] ([draft]). */
     protected fun addAccount(extension: Int, transport: SipTransport = SipTransport.UDP, expires: Int = 3600, port: Int = lab.sipPort) {
-        val errors = onMain { engine.accounts.add(draft(extension, transport, expires, port)) }
+        val errors = onCore { engine.accounts.add(draft(extension, transport, expires, port)) }
         assertTrue("Account rejected: $errors", errors.isEmpty())
     }
 
@@ -176,32 +173,29 @@ abstract class NatLabTestBase {
 
     /** Dials [target]; with [video] the offer carries video as well, which makes the INVITE larger than one packet. */
     protected fun dial(target: String, video: Boolean = false) {
-        val error = onMain { engine.calls.dial(target, null, video = video) }
+        val error = onCore { engine.calls.dial(target, null, video = video) }
         assertTrue("The app refused to dial: $error", error == null)
     }
 
     /** Has the lines use the lab's STUN server; the app takes a new one once the typing has stopped. */
     protected fun useStunServer() {
-        onMain { engine.updateSettings { it.copy(stunServer = lab.stunServer) } }
-        await("the STUN server in use") { onMain { engine.accounts.stunServer } == lab.stunServer }
+        onCore { engine.updateSettings { it.copy(stunServer = lab.stunServer) } }
+        await("the STUN server in use") { onCore { engine.accounts.stunServer } == lab.stunServer }
     }
 
     /** Level of the audio the app receives, in dBm0 (about -120 for silence). */
-    protected fun playVolume(): Float = onMain { engine.core.currentCall?.playVolume ?: SILENCE_DB }
+    protected fun playVolume(): Float = onCore { engine.core.currentCall?.playVolume ?: SILENCE_DB }
 
     /** What the line checks find for the account of [extension]. */
     protected fun check(extension: Int): LineReport {
         val id = account(extension)!!.id
-        val context = instrumentation.targetContext
         val done = CountDownLatch(1)
         var report: LineReport? = null
-        val check = onMain { LineCheck(context, engine.core, engine.accounts) }
+        val check = engine.lineCheck()
         try {
-            onMain {
-                check.run(id) {
-                    report = it
-                    done.countDown()
-                }
+            check.run(id) {
+                report = it
+                done.countDown()
             }
             assertTrue("The line checks did not finish", done.await(CHECK_TIMEOUT_MS, TimeUnit.MILLISECONDS))
         } finally {

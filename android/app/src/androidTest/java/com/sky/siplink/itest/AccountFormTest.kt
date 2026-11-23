@@ -26,7 +26,7 @@ class AccountFormTest : ScreenTestBase("itest-forms") {
     @Test
     fun theDomainFieldKeepsItsHeightWhenItHasTheFocus() {
         // The question about the lock screen would stand in front of the form.
-        onMain { assertTrue(engine.updateSettings { it.copy(lockScreenPromptDeclined = true) }) }
+        onCore { assertTrue(engine.updateSettings { it.copy(lockScreenPromptDeclined = true) }) }
         showApp()
         // Without an account the dial pad leads to the form for one.
         tap("添加 SIP 账号")

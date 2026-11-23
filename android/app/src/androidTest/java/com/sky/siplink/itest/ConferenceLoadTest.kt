@@ -50,12 +50,12 @@ class ConferenceLoadTest : RoomTestBase("conference-load") {
         // Halfway down the list of a full room.
         repeat(2) { scroll(forward = true) }
         picture("room-${RoomRules.LIMIT}-scrolled")
-        assertEquals(zh(RoomRules.refusal(RoomRules.LIMIT, 1)!!), onMain { engine.calls.inviteToRoom(listOf(member(RoomRules.LIMIT + 1))) })
+        assertEquals(zh(RoomRules.refusal(RoomRules.LIMIT, 1)!!), onCore { engine.calls.inviteToRoom(listOf(member(RoomRules.LIMIT + 1))) })
         // Ending a full room: how long the main thread is held by it, and until every call is gone.
         val start = SystemClock.uptimeMillis()
-        onMain { engine.calls.hangUp() }
+        onCore { engine.calls.hangUp() }
         val held = SystemClock.uptimeMillis() - start
-        onMain { }
+        onCore { }
         val busy = SystemClock.uptimeMillis() - start
         awaitNoCall(LONG_TIMEOUT_MS)
         Log.i(TAG, "end size=${RoomRules.LIMIT} hangUp.ms=$held mainFree.ms=$busy allGone.ms=${SystemClock.uptimeMillis() - start}")
@@ -64,7 +64,7 @@ class ConferenceLoadTest : RoomTestBase("conference-load") {
     @Test
     fun aPoorConnectionIsShown() {
         openRoom()
-        ok(onMain { engine.calls.inviteToRoom((2..WARNING_ROOM).map(::member)) })
+        ok(onCore { engine.calls.inviteToRoom((2..WARNING_ROOM).map(::member)) })
         await("the warning of a poor connection (is there packet loss on the way to the PBX?)", WARNING_TIMEOUT_MS) {
             room()?.warnings?.contains(RoomWarning.NETWORK) == true
         }
@@ -73,7 +73,7 @@ class ConferenceLoadTest : RoomTestBase("conference-load") {
         tap("网络质量差")
         see("处理器")
         picture("readings")
-        onMain { engine.calls.hangUp() }
+        onCore { engine.calls.hangUp() }
         awaitNoCall(LONG_TIMEOUT_MS)
     }
 
@@ -81,7 +81,7 @@ class ConferenceLoadTest : RoomTestBase("conference-load") {
     fun aDeskPhoneWithDirectMediaStaysInTheRoom() {
         openRoom()
         val heard = phones.mark()
-        ok(onMain { engine.calls.inviteToRoom(listOf("$AGENT")) })
+        ok(onCore { engine.calls.inviteToRoom(listOf("$AGENT")) })
         awaitRoom("the desk phone in the room") { connected(it) == 2 }
         val legs = appLegsUp().toSet()
         // Time for the PBX to move the sound (re-INVITE both ways) and for the app to follow.
@@ -100,7 +100,7 @@ class ConferenceLoadTest : RoomTestBase("conference-load") {
         Log.i(TAG, "direct media phoneHearsRoom=$phoneHears memberHearsPhone=$memberHears")
         assertTrue("The desk phone hears the room", phoneHears)
         assertTrue("The member hears the desk phone", memberHears)
-        onMain { engine.calls.hangUp() }
+        onCore { engine.calls.hangUp() }
         awaitNoCall(LONG_TIMEOUT_MS)
     }
 
@@ -112,7 +112,7 @@ class ConferenceLoadTest : RoomTestBase("conference-load") {
             val present = room()!!.present
             val batch = (present + 1..minOf(size, present + BATCH)).map(::member)
             val start = SystemClock.uptimeMillis()
-            ok(onMain { engine.calls.inviteToRoom(batch) })
+            ok(onCore { engine.calls.inviteToRoom(batch) })
             Log.i(TAG, "invite from=${present + 1} count=${batch.size} main.ms=${SystemClock.uptimeMillis() - start}")
             await("${present + batch.size} members connected", LONG_TIMEOUT_MS) {
                 room()!!.members.count { it.state == MemberState.CONNECTED } >= present + batch.size
@@ -141,7 +141,7 @@ class ConferenceLoadTest : RoomTestBase("conference-load") {
         while (System.currentTimeMillis() < deadline) {
             Thread.sleep(SAMPLE_MS)
             val asked = SystemClock.uptimeMillis()
-            onMain { }
+            onCore { }
             mainLag += SystemClock.uptimeMillis() - asked
             val room = room() ?: break
             engine.calls.roomReadings.value?.device?.let {
@@ -154,7 +154,7 @@ class ConferenceLoadTest : RoomTestBase("conference-load") {
             assertEquals("A member left the room", size, room.members.count { it.state == MemberState.CONNECTED })
         }
         val after = rtpStats()
-        val codec = onMain { engine.core.calls.firstOrNull()?.currentParams?.usedAudioPayloadType?.let { "${it.mimeType}/${it.clockRate}" } }
+        val codec = onCore { engine.core.calls.firstOrNull()?.currentParams?.usedAudioPayloadType?.let { "${it.mimeType}/${it.clockRate}" } }
         // A leg whose last word since it joined is silence has lost the room's sound.
         val silent = legs.filter { leg ->
             pbx.events("ChannelTalkingStart", joined) { it["Channel"] == leg }.isEmpty() ||

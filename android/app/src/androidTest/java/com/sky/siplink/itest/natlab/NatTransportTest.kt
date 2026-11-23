@@ -20,7 +20,7 @@ import org.junit.runner.RunWith
 class NatTransportTest : NatLabTestBase() {
     @Test
     fun withoutAdaptationBlockedUdpLeavesTheLineUnregistered() {
-        onMain { engine.updateSettings { it.copy(autoNetwork = false) } }
+        onCore { engine.updateSettings { it.copy(autoNetwork = false) } }
         box("udp-sip off")
         addAccount(NAT_ACCOUNT)
         never("a registration over blocked UDP", BLOCKED_WINDOW_MS) { account(NAT_ACCOUNT)?.state == RegState.OK }
@@ -42,21 +42,21 @@ class NatTransportTest : NatLabTestBase() {
 
         pbxCallsApp(NAT_ACCOUNT)
         await("the incoming call") { call()?.phase == CallPhase.INCOMING }
-        onMain { engine.calls.answer() }
+        onCore { engine.calls.answer() }
         await("the call to connect") { call()?.phase == CallPhase.CONNECTED }
         await("the app to hear the PBX") { playVolume() > AUDIBLE_DB }
-        onMain { engine.calls.hangUp() }
+        onCore { engine.calls.hangUp() }
         await("the call to be gone") { call() == null || call()?.phase == CallPhase.ENDED }
 
         // Switched off, the line goes back to its own transport, where it does not get through.
-        onMain { engine.updateSettings { it.copy(autoNetwork = false) } }
+        onCore { engine.updateSettings { it.copy(autoNetwork = false) } }
         await("the line back on UDP") { adapted(NAT_ACCOUNT) == null }
         await("the registration over blocked UDP to fail", CALL_FAIL_MS) { account(NAT_ACCOUNT)?.state == RegState.FAILED }
     }
 
     @Test
     fun withoutAdaptationDroppedFragmentsLoseTheCall() {
-        onMain { engine.updateSettings { it.copy(autoNetwork = false) } }
+        onCore { engine.updateSettings { it.copy(autoNetwork = false) } }
         addAccount(NAT_ACCOUNT)
         awaitRegistered(NAT_ACCOUNT)
         box("fragments off")
@@ -91,7 +91,7 @@ class NatTransportTest : NatLabTestBase() {
         // The PBX takes this account over UDP only, whatever it sends over TCP.
         box("tcp-alias on")
         box("udp-sip off")
-        onMain { engine.accounts.registerAnew() }
+        onCore { engine.accounts.registerAnew() }
         await("the line on TCP for a test", ADAPT_TIMEOUT_MS) { adapted(NO_TCP_ACCOUNT) == SipTransport.TCP }
         await("the line back on its own transport", ADAPT_TIMEOUT_MS) { adapted(NO_TCP_ACCOUNT) == null }
         println("natlab evidence: refused over TCP: ${account(NO_TCP_ACCOUNT)?.error}, PBX contacts ${pbxContacts(NO_TCP_ACCOUNT)}")
@@ -101,7 +101,7 @@ class NatTransportTest : NatLabTestBase() {
 
         // Once UDP gets through, it registers there.
         box("udp-sip on")
-        onMain { engine.accounts.registerAnew() }
+        onCore { engine.accounts.registerAnew() }
         await("the registration over UDP", CALL_FAIL_MS) { account(NO_TCP_ACCOUNT)?.state == RegState.OK }
         assertEquals(null, adapted(NO_TCP_ACCOUNT))
     }
@@ -110,7 +110,7 @@ class NatTransportTest : NatLabTestBase() {
     fun aWrongPasswordOnTestShowsAsSuchAndTheLineStays() {
         box("udp-sip off")
         // A new account whose login never registered: the 401 over TCP is the login's, not TCP's.
-        val wrong = onMain { engine.accounts.add(draft(NAT_ACCOUNT).copy(password = "${lab.sipPassword}-wrong")) }
+        val wrong = onCore { engine.accounts.add(draft(NAT_ACCOUNT).copy(password = "${lab.sipPassword}-wrong")) }
         assertTrue("Account rejected: $wrong", wrong.isEmpty())
         await("the line on TCP for a test", ADAPT_TIMEOUT_MS) { adapted(NAT_ACCOUNT) == SipTransport.TCP }
         await("the refusal of the login", CALL_FAIL_MS) { account(NAT_ACCOUNT)?.error?.startsWith("401") == true }
@@ -129,14 +129,14 @@ class NatTransportTest : NatLabTestBase() {
         }
         // The password on the PBX changed and the app has the old one: the account is refused, not TCP.
         val id = account(NAT_ACCOUNT)!!.id
-        val wrong = onMain { engine.accounts.update(id, draft(NAT_ACCOUNT).copy(password = "${lab.sipPassword}-old")) }
+        val wrong = onCore { engine.accounts.update(id, draft(NAT_ACCOUNT).copy(password = "${lab.sipPassword}-old")) }
         assertTrue("Change rejected: $wrong", wrong.isEmpty())
         await("the refusal over TCP", CALL_FAIL_MS) { account(NAT_ACCOUNT)?.state == RegState.FAILED }
         println("natlab evidence: settled on TCP, refused: ${account(NAT_ACCOUNT)?.error}")
         never("the line to leave TCP", SETTLED_WINDOW_MS) { adapted(NAT_ACCOUNT) != SipTransport.TCP }
 
         // The right password again: it registers where it was.
-        val right = onMain { engine.accounts.update(id, draft(NAT_ACCOUNT)) }
+        val right = onCore { engine.accounts.update(id, draft(NAT_ACCOUNT)) }
         assertTrue("Change rejected: $right", right.isEmpty())
         await("the registration over TCP", CALL_FAIL_MS) {
             account(NAT_ACCOUNT)?.state == RegState.OK && adapted(NAT_ACCOUNT) == SipTransport.TCP

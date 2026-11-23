@@ -32,7 +32,7 @@ class ConferencePacingTest : RoomTestBase("pacing") {
     fun membersAreCalledAFewAtATime() {
         openRoom("2501")
         val numbers = (1..9).map { "27%02d".format(it) }
-        ok(onMain { engine.calls.inviteToRoom(numbers) })
+        ok(onCore { engine.calls.inviteToRoom(numbers) })
         see("等待呼叫")
         // The rows fade in.
         Thread.sleep(ROWS_SHOWN_MS)
@@ -42,7 +42,7 @@ class ConferencePacingTest : RoomTestBase("pacing") {
         var inCore = 0
         await("every member connected", LONG_TIMEOUT_MS) {
             atPbx = maxOf(atPbx, pbxChannels().count { it["Exten"].orEmpty().startsWith("27") && it["ChannelStateDesc"] != "Up" })
-            inCore = maxOf(inCore, onMain { engine.core.calls.count { it.state in SETTING_UP } })
+            inCore = maxOf(inCore, onCore { engine.core.calls.count { it.state in SETTING_UP } })
             connected(room()!!) == 1 + numbers.size
         }
         Log.i(TAG, "set-ups at once: pbx=$atPbx core=$inCore")
@@ -50,8 +50,8 @@ class ConferencePacingTest : RoomTestBase("pacing") {
         assertTrue("$inCore set-ups at once in the core", inCore <= RoomPacing.AT_ONCE)
         assertTrue("The set-ups never overlapped: $atPbx", atPbx >= 2)
         // Called one by one, they joined the room the user is in.
-        assertTrue(onMain { engine.core.calls.any { it.conference?.isIn == true } })
-        onMain { engine.calls.hangUp() }
+        assertTrue(onCore { engine.core.calls.any { it.conference?.isIn == true } })
+        onCore { engine.calls.hangUp() }
         awaitNoCall()
     }
 
@@ -60,7 +60,7 @@ class ConferencePacingTest : RoomTestBase("pacing") {
         openRoom("2501")
         val mark = pbx.mark()
         val numbers = (1..6).map { "28%02d".format(it) }
-        ok(onMain { engine.calls.inviteToRoom(numbers) })
+        ok(onCore { engine.calls.inviteToRoom(numbers) })
         awaitRoom("every member held back") { heldBack(it, "线路已满").size == numbers.size }
         see("线路已满")
         picture("held-back")
@@ -78,7 +78,7 @@ class ConferencePacingTest : RoomTestBase("pacing") {
         awaitRoom("the member held back again") { heldBack(it, "线路已满").size == numbers.size }
         tapRow("移除 2802")
         awaitRoom("the member off the list") { room -> room.members.none { it.name == "2802" } }
-        onMain { engine.calls.hangUp() }
+        onCore { engine.calls.hangUp() }
         awaitNoCall()
     }
 
@@ -87,7 +87,7 @@ class ConferencePacingTest : RoomTestBase("pacing") {
         openRoom("2501")
         val mark = pbx.mark()
         val numbers = (1..8).map { "29%02d".format(it) }
-        ok(onMain { engine.calls.inviteToRoom(numbers) })
+        ok(onCore { engine.calls.inviteToRoom(numbers) })
         val room = awaitRoom("the calling to stop") { room -> room.members.none { it.state in WAITING } }
         val busy = heldBack(room, "忙")
         val full = heldBack(room, "线路已满")
@@ -97,7 +97,7 @@ class ConferencePacingTest : RoomTestBase("pacing") {
         assertTrue("$placed calls placed", placed in RoomPacing.FAILURES_TO_STOP until numbers.size)
         assertEquals(numbers.size - placed, full.size)
         never("a member called again by itself", QUIET_WINDOW_MS) { callsTo("29", mark) > placed }
-        onMain { engine.calls.hangUp() }
+        onCore { engine.calls.hangUp() }
         awaitNoCall()
     }
 
@@ -106,7 +106,7 @@ class ConferencePacingTest : RoomTestBase("pacing") {
         openRoom("2501")
         val mark = pbx.mark()
         val numbers = (1..9).map { "24%02d".format(it) }
-        ok(onMain { engine.calls.inviteToRoom(numbers) })
+        ok(onCore { engine.calls.inviteToRoom(numbers) })
         awaitRoom("every member held back") { heldBack(it, "线路已满").size == numbers.size }
         val placed = callsTo("24", mark)
         Log.i(TAG, "calls placed before the announcements stopped the calling: $placed")
@@ -114,7 +114,7 @@ class ConferencePacingTest : RoomTestBase("pacing") {
         never("a member called again by itself", QUIET_WINDOW_MS) { callsTo("24", mark) > placed }
         assertEquals(1, connected(room()!!))
         picture("announcement")
-        onMain { engine.calls.hangUp() }
+        onCore { engine.calls.hangUp() }
         awaitNoCall()
     }
 
@@ -123,11 +123,11 @@ class ConferencePacingTest : RoomTestBase("pacing") {
         settings { it.copy(roomLimit = 3) }
         openRoom("2501")
         see(RoomRules.count(1, 3))
-        assertEquals("最多还可添加 2 方", onMain { engine.calls.inviteToRoom(listOf("2502", "2503", "2504")) })
-        ok(onMain { engine.calls.inviteToRoom(listOf("2502", "2503")) })
+        assertEquals("最多还可添加 2 方", onCore { engine.calls.inviteToRoom(listOf("2502", "2503", "2504")) })
+        ok(onCore { engine.calls.inviteToRoom(listOf("2502", "2503")) })
         awaitRoom("three members") { connected(it) == 3 }
-        assertEquals("会议室已满（最多 3 方）", onMain { engine.calls.inviteToRoom(listOf("2504")) })
-        onMain { engine.calls.hangUp() }
+        assertEquals("会议室已满（最多 3 方）", onCore { engine.calls.inviteToRoom(listOf("2504")) })
+        onCore { engine.calls.hangUp() }
         awaitNoCall()
     }
 

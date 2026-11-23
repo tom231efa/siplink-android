@@ -16,12 +16,12 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class CallerIdTest : PbxTestBase() {
     private fun decline() {
-        onMain { engine.calls.decline() }
+        onCore { engine.calls.decline() }
         awaitNoCall()
     }
 
     private fun hangUp() {
-        onMain { engine.calls.hangUp() }
+        onCore { engine.calls.hangUp() }
         awaitNoCall()
     }
 
@@ -130,7 +130,7 @@ class CallerIdTest : PbxTestBase() {
     @Test
     fun theNameThePbxGaveACallOutStaysWhenTheUserHangsUp() {
         callNamedByThePbx()
-        onMain { engine.calls.hangUp() }
+        onCore { engine.calls.hangUp() }
         assertEquals(NAMED_AS, awaitEnded().remoteName)
         awaitNoCall()
     }

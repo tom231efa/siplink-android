@@ -25,6 +25,6 @@ class PbxReferTest : PbxTestBase() {
         awaitConnected("2030")
         awaitConnected("2000")
         awaitAppHearsAudio() // 2000 echoes our tone
-        await("the original call to be released") { onMain { engine.core.callsNb } == 1 }
+        await("the original call to be released") { onCore { engine.core.callsNb } == 1 }
     }
 }

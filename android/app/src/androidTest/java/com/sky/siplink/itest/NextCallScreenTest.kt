@@ -27,7 +27,7 @@ class NextCallScreenTest : PbxTestBase() {
      * looks only every few hundred milliseconds, which would smear the moments the sweep rings at.
      */
     private fun declineAndWait(): Long {
-        onMain { engine.calls.decline() }
+        onCore { engine.calls.decline() }
         val deadline = System.currentTimeMillis() + TIMEOUT_MS
         while (call() != null) {
             assertTrue("The declined call did not go", System.currentTimeMillis() < deadline)

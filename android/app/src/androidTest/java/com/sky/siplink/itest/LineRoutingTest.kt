@@ -37,7 +37,7 @@ class LineRoutingTest : PbxTestBase() {
     @After
     fun closeRelay() {
         relay?.close()
-        realNetwork?.let { real -> onMain { NetworkWatch.publish(real) } }
+        realNetwork?.let { real -> onCore { NetworkWatch.publish(real) } }
     }
 
     /**
@@ -47,12 +47,12 @@ class LineRoutingTest : PbxTestBase() {
      * not show what a real change does to sockets, routes and the SIP core's connections.
      */
     private fun network(tag: Int): NetworkFacts {
-        val real = realNetwork ?: onMain { NetworkWatch.facts }.also { realNetwork = it }
+        val real = realNetwork ?: onCore { NetworkWatch.facts }.also { realNetwork = it }
         assumeTrue("The app does not know the network the phone is on", real != null)
         return real!!.copy(dns = real.dns + "192.0.2.$tag")
     }
 
-    private fun moveTo(facts: NetworkFacts) = onMain { NetworkWatch.publish(facts) }
+    private fun moveTo(facts: NetworkFacts) = onCore { NetworkWatch.publish(facts) }
 
     private fun onBackupNow(): Boolean = account(APP)?.let { it.state == RegState.OK && it.onBackup } == true
 
@@ -82,7 +82,7 @@ class LineRoutingTest : PbxTestBase() {
 
         // The first server goes away. The next registration finds that out.
         relay?.close()
-        onMain { engine.core.refreshRegisters() }
+        onCore { engine.core.refreshRegisters() }
         await("the account to move to its backup server") { account(APP)?.let { it.state == RegState.OK && it.onBackup } == true }
         assertEquals("$HOST:$RELAY_PORT", account(APP)?.server)
 
@@ -90,7 +90,7 @@ class LineRoutingTest : PbxTestBase() {
         dial("2000") // echo
         awaitConnected("2000")
         awaitAppHearsAudio()
-        onMain { engine.calls.hangUp() }
+        onCore { engine.calls.hangUp() }
         awaitNoCall()
 
         // The first server is back: the account returns to it by itself.
@@ -100,7 +100,7 @@ class LineRoutingTest : PbxTestBase() {
         }
         dial("2000")
         awaitConnected("2000")
-        onMain { engine.calls.hangUp() }
+        onCore { engine.calls.hangUp() }
         awaitNoCall()
     }
 
@@ -118,7 +118,7 @@ class LineRoutingTest : PbxTestBase() {
             // The device itself does not know the name.
             addAccount(APP, domain = env.dnsName)
             await("the registration to fail without a DNS server that knows the name") { account(APP)?.state == RegState.FAILED }
-            onMain { engine.accounts.remove(account(APP)!!.id) }
+            onCore { engine.accounts.remove(account(APP)!!.id) }
         }
 
         addAccount(draft(APP, domain = env.dnsName).copy(dnsServer = env.dnsServer))
@@ -131,13 +131,13 @@ class LineRoutingTest : PbxTestBase() {
         dial("2000") // echo
         awaitConnected("2000")
         awaitAppHearsAudio()
-        onMain { engine.calls.hangUp() }
+        onCore { engine.calls.hangUp() }
         awaitNoCall()
     }
 
     @Test
     fun tlsStillChecksTheNameOfAServerFoundThroughTheLineDns() {
-        assertEquals(TlsManager.ImportResult.Added(1), onMain { engine.tls.import(env.caPem) })
+        assertEquals(TlsManager.ImportResult.Added(1), onCore { engine.tls.import(env.caPem) })
         addAccount(draft(APP, SipTransport.TLS, env.dnsName).copy(dnsServer = env.dnsServer))
         awaitRegistered()
         val aor = pbx.command("pjsip show aor $APP").lowercase()
@@ -159,7 +159,7 @@ class LineRoutingTest : PbxTestBase() {
         addRoutedAccount(timeoutMs = FAST_MS)
         relay!!.silent = true
         val start = SystemClock.elapsedRealtime()
-        onMain { engine.core.refreshRegisters() }
+        onCore { engine.core.refreshRegisters() }
         await("the account to move to its backup server", FAST_FAILOVER_MS) { onBackupNow() }
         report("Fast timeout $FAST_MS ms: registered on the backup after the first server fell silent", SystemClock.elapsedRealtime() - start)
     }
@@ -170,7 +170,7 @@ class LineRoutingTest : PbxTestBase() {
         addRoutedAccount(timeoutMs = 0)
         relay!!.silent = true
         val start = SystemClock.elapsedRealtime()
-        onMain { engine.core.refreshRegisters() }
+        onCore { engine.core.refreshRegisters() }
         await("the account to move to its backup server", SIP_FAILOVER_MS) { onBackupNow() }
         report("No fast timeout: registered on the backup after the first server fell silent", SystemClock.elapsedRealtime() - start)
     }
@@ -206,12 +206,12 @@ class LineRoutingTest : PbxTestBase() {
 
         relay!!.silent = false
         // Back in the office: on its first server as soon as the network is known, before any answer.
-        assertEquals(RELAY_PORT, onMain { NetworkWatch.publish(office); engine.accounts.find(account(APP)!!.id)!!.params.serverAddress!!.port })
+        assertEquals(RELAY_PORT, onCore { NetworkWatch.publish(office); engine.accounts.find(account(APP)!!.id)!!.params.serverAddress!!.port })
         await("the account to register on its first server in the office", NETWORK_FAILOVER_MS) { onFirstNow() }
 
         // At home again, where the first server does not answer: on the backup at once, and it stays there.
         relay!!.silent = true
-        val port = onMain { NetworkWatch.publish(home); engine.accounts.find(account(APP)!!.id)!!.params.serverAddress!!.port }
+        val port = onCore { NetworkWatch.publish(home); engine.accounts.find(account(APP)!!.id)!!.params.serverAddress!!.port }
         assertTrue("Not on the backup at once: port $port", port != RELAY_PORT)
         await("the account to register on its backup at home", NETWORK_FAILOVER_MS) { onBackupNow() }
         never("the account to go back to its first server at home", QUIET_WINDOW_MS) { !onBackupNow() }
@@ -247,7 +247,7 @@ class LineRoutingTest : PbxTestBase() {
         never("the account to leave the backup during the call", CALL_WINDOW_MS) { !onBackupNow() }
         assertEquals(CallPhase.CONNECTED, call()?.phase)
         awaitAppHearsAudio()
-        onMain { engine.calls.hangUp() }
+        onCore { engine.calls.hangUp() }
         awaitNoCall()
 
         moveTo(network(3))
@@ -260,7 +260,7 @@ class LineRoutingTest : PbxTestBase() {
         addRoutedAccount(timeoutMs = FAST_MS)
         val entries = engine.history.entries.value.size
         // What the core itself reports: the second call goes out once the backup has the account registered.
-        val identity = onMain { engine.accounts.find(account(APP)!!.id)!!.params.identityAddress!!.asStringUriOnly() }
+        val identity = onCore { engine.accounts.find(account(APP)!!.id)!!.params.identityAddress!!.asStringUriOnly() }
         val placedAt = ArrayList<Long>()
         val registeredOnBackupAt = ArrayList<Long>()
         val listener = object : CoreListenerStub() {
@@ -273,7 +273,7 @@ class LineRoutingTest : PbxTestBase() {
                 if (ours && state == RegistrationState.Ok && account.params.serverAddress?.port != RELAY_PORT) registeredOnBackupAt += SystemClock.elapsedRealtime()
             }
         }
-        onMain { engine.core.addListener(listener) }
+        onCore { engine.core.addListener(listener) }
         relay!!.silent = true
         val phases = ArrayList<CallPhase?>()
         val start = SystemClock.elapsedRealtime()
@@ -284,17 +284,17 @@ class LineRoutingTest : PbxTestBase() {
                 call()?.phase == CallPhase.CONNECTED
             }
         } finally {
-            onMain { engine.core.removeListener(listener) }
+            onCore { engine.core.removeListener(listener) }
         }
         report("Call out placed again over the backup: connected", SystemClock.elapsedRealtime() - start)
-        val (placed, registered) = onMain { placedAt.toList() to registeredOnBackupAt.toList() }
+        val (placed, registered) = onCore { placedAt.toList() to registeredOnBackupAt.toList() }
         assertEquals("Calls placed: $placed", 2, placed.size)
         assertTrue("Placed again before the registration on the backup: $placed, $registered", registered.isNotEmpty() && registered.first() <= placed[1])
         report("Call out placed again: after the registration on the backup", placed[1] - registered.first())
         assertTrue("The call screen ended or went away in between: $phases", phases.none { it == null || it == CallPhase.ENDED })
         assertTrue(account(APP)!!.onBackup)
         awaitAppHearsAudio()
-        onMain { engine.calls.hangUp() }
+        onCore { engine.calls.hangUp() }
         awaitNoCall()
         await("one entry in the history") { engine.history.entries.value.size == entries + 1 }
         never("a second entry in the history", QUIET_WINDOW_MS) { engine.history.entries.value.size > entries + 1 }
@@ -320,12 +320,12 @@ class LineRoutingTest : PbxTestBase() {
     fun aCallPlacedAgainKeepsItsMicrophoneAndRoute() {
         // With file audio the SDK reports no output device: the real ones, with a party that stays
         // silent (2002), so that nothing comes out of the loudspeaker (VideoCallTest).
-        onMain { engine.core.useFiles = false }
+        onCore { engine.core.useFiles = false }
         addRoutedAccount(timeoutMs = FAST_MS)
         relay!!.silent = true
         dial("2002")
         await("the call to be on screen") { call()?.phase == CallPhase.OUTGOING }
-        onMain {
+        onCore {
             engine.calls.toggleMute()
             engine.calls.setRoute(AudioRoute.SPEAKER)
         }
@@ -333,7 +333,7 @@ class LineRoutingTest : PbxTestBase() {
         assertTrue(account(APP)!!.onBackup)
         assertTrue("The microphone is on again", connected.muted)
         await("the sound on the speaker") { call()?.route == AudioRoute.SPEAKER }
-        onMain { engine.calls.hangUp() }
+        onCore { engine.calls.hangUp() }
         awaitNoCall()
     }
 
@@ -355,14 +355,14 @@ class LineRoutingTest : PbxTestBase() {
             relay!!.delayMs = delay
             var moved = 0
             repeat(LOSS_ROUNDS) {
-                val before = onMain { engine.accounts.servers(id)?.checkedAt }
+                val before = onCore { engine.accounts.servers(id)?.checkedAt }
                 Thread.sleep(ServerChoice.MIN_CHECK_GAP_MS + SLACK_MS)
                 // A refresh still sending its REGISTER again over the lossy path starts no new one: asked again.
                 var asked = false
                 repeat(REFRESH_TRIES) {
                     if (!asked) {
-                        onMain { engine.core.refreshRegisters() }
-                        asked = settles(REFRESH_WAIT_MS) { onMain { engine.accounts.servers(id)?.checkedAt } != before }
+                        onCore { engine.core.refreshRegisters() }
+                        asked = settles(REFRESH_WAIT_MS) { onCore { engine.accounts.servers(id)?.checkedAt } != before }
                     }
                 }
                 assertTrue("The servers were not asked", asked)

@@ -31,10 +31,10 @@ class CallRecordingTest : PbxTestBase() {
     private val recordings: List<Recording> get() = store.recordings.value
 
     @Before
-    fun startEmpty() = onMain { store.remove(recordings) }
+    fun startEmpty() = onCore { store.remove(recordings) }
 
     @After
-    fun removeRecordings() = onMain {
+    fun removeRecordings() = onCore {
         engine.lock.setManaged(false)
         store.remove(recordings)
     }
@@ -78,18 +78,18 @@ class CallRecordingTest : PbxTestBase() {
         assertTrue("The call cannot be recorded", info.recordable)
         assertEquals(null, info.recordingSince)
 
-        onMain { engine.calls.toggleRecording() }
+        onCore { engine.calls.toggleRecording() }
         awaitCall("the recording to run") { it.recordingSince != null }
         Thread.sleep(4_000)
-        onMain { engine.calls.toggleHold() }
+        onCore { engine.calls.toggleHold() }
         awaitCall("the call to be on hold") { it.phase == CallPhase.HELD }
         Thread.sleep(1_000)
-        onMain { engine.calls.toggleHold() }
+        onCore { engine.calls.toggleHold() }
         info = awaitConnected("2000")
         assertTrue("Hold stopped the recording", info.recordingSince != null)
-        assertTrue(onMain { engine.core.currentCall?.isRecording == true })
+        assertTrue(onCore { engine.core.currentCall?.isRecording == true })
         Thread.sleep(3_000)
-        onMain { engine.calls.hangUp() }
+        onCore { engine.calls.hangUp() }
         awaitNoCall()
 
         val recording = awaitRecording()
@@ -107,13 +107,13 @@ class CallRecordingTest : PbxTestBase() {
         awaitConnected("2000")
         awaitCall("the recording to start by itself") { it.recordingSince != null }
         Thread.sleep(3_000)
-        onMain { engine.calls.toggleRecording() }
+        onCore { engine.calls.toggleRecording() }
         awaitCall("the recording to stop") { it.recordingSince == null }
         Thread.sleep(3_000)
-        onMain { engine.calls.toggleRecording() }
+        onCore { engine.calls.toggleRecording() }
         awaitCall("the recording to go on") { it.recordingSince != null }
         Thread.sleep(3_000)
-        onMain { engine.calls.hangUp() }
+        onCore { engine.calls.hangUp() }
         awaitNoCall()
         // Both parts in one file, the break left out.
         assertPlausible(awaitRecording(), 5L..9L)
@@ -126,9 +126,9 @@ class CallRecordingTest : PbxTestBase() {
         dial("2000")
         val info = awaitConnected("2000")
         assertFalse(info.recordable)
-        onMain { engine.calls.toggleRecording() }
+        onCore { engine.calls.toggleRecording() }
         never("a recording", QUIET_WINDOW_MS) { call()?.recordingSince != null }
-        onMain { engine.calls.hangUp() }
+        onCore { engine.calls.hangUp() }
         awaitNoCall()
         never("a recording to be listed", QUIET_WINDOW_MS) { recordings.isNotEmpty() }
     }
@@ -138,22 +138,22 @@ class CallRecordingTest : PbxTestBase() {
         register()
         dial("2000")
         awaitConnected("2000")
-        onMain { engine.calls.toggleRecording() }
+        onCore { engine.calls.toggleRecording() }
         awaitCall("the recording to run") { it.recordingSince != null }
         Thread.sleep(3_000)
 
         // A sync brings a configuration without recording, as the platform sends it.
         val document = (RemoteDocument.parse("""{"schema": 1, "version": "v1", "settings": {"callRecording": false}}""") as RemoteDocument.Parsed.Ok).document
-        onMain {
+        onCore {
             engine.lock.setManaged(true)
             engine.lock.fromRemote { engine.updateSettings { RemotePlan.settings(document.settings, it) } }
         }
         awaitCall("the recording to end") { it.recordingSince == null && !it.recordable }
         // The user cannot switch it on again.
-        assertFalse(onMain { engine.updateSettings { it.copy(callRecording = true) } })
-        onMain { engine.calls.toggleRecording() }
+        assertFalse(onCore { engine.updateSettings { it.copy(callRecording = true) } })
+        onCore { engine.calls.toggleRecording() }
         never("a recording", QUIET_WINDOW_MS) { call()?.recordingSince != null }
-        onMain { engine.calls.hangUp() }
+        onCore { engine.calls.hangUp() }
         awaitNoCall()
         assertPlausible(awaitRecording(), 2L..6L)
     }

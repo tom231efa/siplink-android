@@ -96,8 +96,8 @@ class ConferenceTest : RoomTestBase("conference") {
     @Test
     fun hangingUpOneMemberLeavesTheOthersAlone() {
         callFirstMember()
-        ok(onMain { engine.calls.openRoom() })
-        ok(onMain { engine.calls.inviteToRoom(listOf("2502", "2503")) })
+        ok(onCore { engine.calls.openRoom() })
+        ok(onCore { engine.calls.inviteToRoom(listOf("2502", "2503")) })
         awaitRoom("three members") { connected(it) == 3 }
         val gone = legOf("2502")!!
         val stay = appLegsUp() - gone
@@ -116,8 +116,8 @@ class ConferenceTest : RoomTestBase("conference") {
     @Test
     fun theRoomEndsWithItsLastMember() {
         callFirstMember()
-        ok(onMain { engine.calls.openRoom() })
-        ok(onMain { engine.calls.inviteToRoom(listOf("2502")) })
+        ok(onCore { engine.calls.openRoom() })
+        ok(onCore { engine.calls.inviteToRoom(listOf("2502")) })
         awaitRoom("two members") { connected(it) == 2 }
 
         // The PBX hangs up one member after the other: the room stays with one, and goes with the last.
@@ -132,8 +132,8 @@ class ConferenceTest : RoomTestBase("conference") {
     @Test
     fun endingTheRoomEndsEveryCallOfIt() {
         callFirstMember()
-        ok(onMain { engine.calls.openRoom() })
-        ok(onMain { engine.calls.inviteToRoom(listOf("2502", "2601")) })
+        ok(onCore { engine.calls.openRoom() })
+        ok(onCore { engine.calls.inviteToRoom(listOf("2502", "2601")) })
         awaitRoom("a member connected and one ringing") { room -> room.members.any { it.state == MemberState.RINGING } }
         // Ending it for everyone is asked for again; a no leaves the room alone.
         tap("结束会议")
@@ -152,7 +152,7 @@ class ConferenceTest : RoomTestBase("conference") {
         callFirstMember()
         // Neither answering by itself nor the intercom switch takes a call into the room.
         settings { it.copy(autoAnswer = true, autoAnswerSeconds = 0, intercomAutoAnswer = true) }
-        ok(onMain { engine.calls.openRoom() })
+        ok(onCore { engine.calls.openRoom() })
         awaitRoom("the room") { it.present == 1 }
 
         phoneCalls(AGENT, "*80$APP")
@@ -178,13 +178,13 @@ class ConferenceTest : RoomTestBase("conference") {
     @Test
     fun theRoomHasNoVideo() {
         InstrumentationRegistry.getInstrumentation().uiAutomation.grantRuntimePermission(context.packageName, Manifest.permission.CAMERA)
-        onMain { engine.core.useFiles = false }
+        onCore { engine.core.useFiles = false }
         showApp()
         register()
         // A video call becomes a room: its video ends.
-        ok(onMain { engine.calls.dial("2000", null, video = true) })
+        ok(onCore { engine.calls.dial("2000", null, video = true) })
         awaitCall("the video call") { it.phase == CallPhase.CONNECTED && it.video != null }
-        onMain { engine.calls.toggleMute() }
+        onCore { engine.calls.toggleMute() }
         context.openCallScreen()
         callScreen()
         tap("会议室")
@@ -193,10 +193,10 @@ class ConferenceTest : RoomTestBase("conference") {
         awaitRoom("the room") { it.present == 1 }
         await("the video of the call to end") { !anyVideo() }
         // The app asked for the change: what the PBX answered is the description of the other side.
-        await("the PBX to close the video stream") { onMain { engine.core.calls.none { it.remoteParams?.isVideoEnabled == true } } }
+        await("the PBX to close the video stream") { onCore { engine.core.calls.none { it.remoteParams?.isVideoEnabled == true } } }
         // The video key of the room takes no tap.
         locked("视频")
-        assertEquals("会议室不支持视频", onMain { engine.calls.toggleVideo() })
+        assertEquals("会议室不支持视频", onCore { engine.calls.toggleVideo() })
 
         // A member that asks to add video stays without it.
         pbx.send(
@@ -210,7 +210,7 @@ class ConferenceTest : RoomTestBase("conference") {
             "Async" to "true",
         )
         awaitCall("the video call to wait") { it.waitingCall != null }
-        ok(onMain { engine.calls.joinRoom() })
+        ok(onCore { engine.calls.joinRoom() })
         awaitRoom("two members") { connected(it) == 2 }
         // The PBX asks for video three seconds after the answer.
         never("video in the room", QUIET_WINDOW_MS * 2) { anyVideo() }
@@ -220,13 +220,13 @@ class ConferenceTest : RoomTestBase("conference") {
     @Test
     fun noMoreMembersThanTheRoomHolds() {
         callFirstMember()
-        ok(onMain { engine.calls.openRoom() })
+        ok(onCore { engine.calls.openRoom() })
         awaitRoom("the room") { it.present == 1 }
         val tooMany = (1..RoomRules.LIMIT).map { "${2510 + it}" }
-        assertEquals(zh(RoomRules.refusal(1, RoomRules.LIMIT)!!), onMain { engine.calls.inviteToRoom(tooMany) })
+        assertEquals(zh(RoomRules.refusal(1, RoomRules.LIMIT)!!), onCore { engine.calls.inviteToRoom(tooMany) })
         never("a call placed beyond the limit", QUIET_WINDOW_MS) { appLegsUp().size > 1 }
         // Nor is a member called twice.
-        assertEquals("已在会议室中", onMain { engine.calls.inviteToRoom(listOf("2501")) })
+        assertEquals("已在会议室中", onCore { engine.calls.inviteToRoom(listOf("2501")) })
     }
 
     @Test
@@ -257,9 +257,9 @@ class ConferenceTest : RoomTestBase("conference") {
     fun theNotificationShowsTheRoomAndItsHangUpAsksFirst() {
         callFirstMember()
         await("the notification of the call") { ongoingTitle() != null }
-        ok(onMain { engine.calls.openRoom() })
+        ok(onCore { engine.calls.openRoom() })
         await("the notification to show the room") { ongoingTitle() == "会议室" && ongoingHangUp()?.isBroadcast == true }
-        ok(onMain { engine.calls.inviteToRoom(listOf("2502")) })
+        ok(onCore { engine.calls.inviteToRoom(listOf("2502")) })
         awaitRoom("two members") { connected(it) == 2 }
         // With more than one member its hang up key opens the call screen, which asks first (CallRules, rule 6).
         await("the hang up key of the notification to ask first") { ongoingHangUp()?.isActivity == true }
@@ -267,7 +267,7 @@ class ConferenceTest : RoomTestBase("conference") {
         see("结束会议？")
         tap("取消")
         never("the room ended without a yes", QUIET_WINDOW_MS) { room() == null }
-        onMain { engine.calls.hangUp() }
+        onCore { engine.calls.hangUp() }
         awaitNoCall()
     }
 
@@ -286,7 +286,7 @@ class ConferenceTest : RoomTestBase("conference") {
         }
         assertTrue("Its row never showed that it left: $seen", seen.any { it.endsWith("/${MemberState.LEFT}") })
         assertTrue("It was named otherwise on its way out: $seen", seen.all { it.startsWith("$name/") })
-        onMain { engine.calls.hangUp() }
+        onCore { engine.calls.hangUp() }
         awaitNoCall()
     }
 
@@ -355,22 +355,22 @@ class ConferenceTest : RoomTestBase("conference") {
     @Test
     fun aRoomThatCannotOpenGivesItsCallBackUnended() {
         callFirstMember()
-        val first = onMain { engine.core.currentCall!! }
+        val first = onCore { engine.core.currentCall!! }
         // A room past the call manager, asked to take the same call twice: the SDK takes it once only.
-        val other = onMain { ConferenceRoom(engine.core, RoomMonitor(context), { CallSupport.side(it.remoteAddress) }, { RoomRules.LIMIT }, { true }, engine.texts::render) {} }
-        assertEquals("无法创建会议室", onMain { other.open(listOf(first, first), muted = true) }?.let(::zh))
-        assertEquals(RoomRules.MAX_CALLS_WITHOUT_ROOM, onMain { engine.core.maxCalls })
+        val other = onCore { ConferenceRoom(engine.core, RoomMonitor(context), { CallSupport.side(it.remoteAddress) }, { RoomRules.LIMIT }, { true }, engine.texts::render) {} }
+        assertEquals("无法创建会议室", onCore { other.open(listOf(first, first), muted = true) }?.let(::zh))
+        assertEquals(RoomRules.MAX_CALLS_WITHOUT_ROOM, onCore { engine.core.maxCalls })
         // Taken out of the conference again, the call goes on, on hold; no conference is left.
-        await("the call to be out of the conference") { onMain { first.conference == null } }
-        never("the call ended", QUIET_WINDOW_MS) { onMain { CallSupport.isEnded(first) } }
-        Log.i(TAG, "after the undo: state=${onMain { first.state }}")
+        await("the call to be out of the conference") { onCore { first.conference == null } }
+        never("the call ended", QUIET_WINDOW_MS) { onCore { CallSupport.isEnded(first) } }
+        Log.i(TAG, "after the undo: state=${onCore { first.state }}")
         // With no call left in it, the user is in no conference either (only the core itself can tell).
         @Suppress("DEPRECATION")
-        assertFalse(onMain { engine.core.isInConference })
+        assertFalse(onCore { engine.core.isInConference })
         // The user takes it off hold and talks on.
-        if (onMain { first.state } == Call.State.Paused) onMain { engine.calls.toggleHold() }
-        await("the call to run again") { onMain { first.state } == Call.State.StreamsRunning }
-        onMain { engine.calls.hangUp() }
+        if (onCore { first.state } == Call.State.Paused) onCore { engine.calls.toggleHold() }
+        await("the call to run again") { onCore { first.state } == Call.State.StreamsRunning }
+        onCore { engine.calls.hangUp() }
         awaitNoCall()
     }
 
@@ -386,7 +386,7 @@ class ConferenceTest : RoomTestBase("conference") {
      * Whether a call of the app carries video, as the app and the PBX last agreed on it. (The PBX's
      * own view of the channel, its NativeFormats, keeps the video codec after the stream was closed.)
      */
-    private fun anyVideo(): Boolean = onMain { engine.core.calls.any { it.currentParams.isVideoEnabled } }
+    private fun anyVideo(): Boolean = onCore { engine.core.calls.any { it.currentParams.isVideoEnabled } }
 
     private companion object {
         /** A member beeps every 3 s; the PBX reports sound once a beep of another member came through. */

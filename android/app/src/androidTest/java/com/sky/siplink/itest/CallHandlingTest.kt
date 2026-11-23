@@ -28,21 +28,21 @@ class CallHandlingTest : PbxTestBase() {
         assertEquals("The running call was disturbed", CallPhase.CONNECTED, waiting.phase)
 
         // Answering the new call holds the first one.
-        onMain { engine.calls.answer() }
+        onCore { engine.calls.answer() }
         val second = awaitCall("the second call to be active") {
             it.phase == CallPhase.CONNECTED && it.remoteAddress.startsWith("$CUSTOMER@") && it.heldCall != null
         }
         assertTrue(second.heldCall!!.address.startsWith("$AGENT@"))
         assertNull(second.waitingCall)
 
-        onMain { engine.calls.swap() }
+        onCore { engine.calls.swap() }
         awaitCall("the calls to be swapped") {
             it.phase == CallPhase.CONNECTED && it.remoteAddress.startsWith("$AGENT@") &&
                 it.heldCall?.address.orEmpty().startsWith("$CUSTOMER@")
         }
 
         // Hanging up the active call brings the held one back.
-        onMain { engine.calls.hangUp() }
+        onCore { engine.calls.hangUp() }
         awaitCall("the held call to take over") {
             it.phase == CallPhase.CONNECTED && it.remoteAddress.startsWith("$CUSTOMER@") && it.heldCall == null
         }
@@ -83,7 +83,7 @@ class CallHandlingTest : PbxTestBase() {
             // The switch alone refuses nothing here: what the PBX still sends is meant to ring.
             phoneCalls(AGENT, "$APP")
             awaitCall("the call to ring although the switch is on") { it.phase == CallPhase.INCOMING }
-            onMain { engine.calls.decline() }
+            onCore { engine.calls.decline() }
             awaitNoCall()
 
             // Told by its feature code, the PBX turns the callers away itself.
@@ -161,7 +161,7 @@ class CallHandlingTest : PbxTestBase() {
         phoneCalls(AGENT, "$APP")
         awaitCall("the call to ring") { it.phase == CallPhase.INCOMING }
         never("answered although auto answer is off", QUIET_WINDOW_MS) { call()?.phase == CallPhase.CONNECTED }
-        onMain { engine.calls.decline() }
+        onCore { engine.calls.decline() }
         awaitNoCall()
     }
 
@@ -174,7 +174,7 @@ class CallHandlingTest : PbxTestBase() {
         val ringing = awaitCall("the intercom call to ring") { it.phase == CallPhase.INCOMING }
         assertTrue("Not recognised as intercom", ringing.intercom)
         never("an intercom call answered by the switch of regular calls", QUIET_WINDOW_MS) { call()?.phase == CallPhase.CONNECTED }
-        onMain { engine.calls.decline() }
+        onCore { engine.calls.decline() }
         awaitNoCall()
     }
 
@@ -191,7 +191,7 @@ class CallHandlingTest : PbxTestBase() {
         never("the waiting call answered by itself", QUIET_WINDOW_MS) { call()?.remoteAddress.orEmpty().startsWith("$CUSTOMER@") }
 
         // Nor once it is left alone: it came during a call.
-        onMain { engine.calls.hangUp() }
+        onCore { engine.calls.hangUp() }
         awaitCall("the waiting call to ring on its own") { it.phase == CallPhase.INCOMING && it.remoteAddress.startsWith("$CUSTOMER@") }
         never("the call that came during another one answered by itself", QUIET_WINDOW_MS) { call()?.phase == CallPhase.CONNECTED }
     }
@@ -228,7 +228,7 @@ class CallHandlingTest : PbxTestBase() {
         awaitCall("the voicemail box to answer") { it.phase == CallPhase.CONNECTED }
         // The PBX answers first and starts the mailbox a moment later.
         await("the PBX to open the mailbox") { pbxChannel(pbxLeg(APP))?.get("Application") == "VoiceMailMain" }
-        onMain { engine.calls.hangUp() }
+        onCore { engine.calls.hangUp() }
         awaitNoCall()
 
         // Once the messages are gone from the mailbox, so is the announcement.
@@ -244,7 +244,7 @@ class CallHandlingTest : PbxTestBase() {
         leaveMessage()
         await("the new message to be announced to the app (MWI)") { engine.voicemail.value > 0 }
         try {
-            onMain { engine.accounts.remove(account(APP)!!.id) }
+            onCore { engine.accounts.remove(account(APP)!!.id) }
             assertEquals("The count outlived its account", 0, engine.voicemail.value)
         } finally {
             for (id in MESSAGE_ID.findAll(pbx.command("voicemail show mailbox $APP default")).map { it.value }.toList()) {

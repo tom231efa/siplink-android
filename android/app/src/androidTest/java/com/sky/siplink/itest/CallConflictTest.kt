@@ -24,11 +24,11 @@ class CallConflictTest : RoomTestBase("conflicts") {
     /** Nothing is left of the calls: no call, no room, no call notification, the sound out of its call mode. */
     private fun assertAllClear() {
         awaitNoCall()
-        assertEquals(0, onMain { engine.core.callsNb })
+        assertEquals(0, onCore { engine.core.callsNb })
         // Left no room behind, the user in it: with no call left, only the core itself can tell.
         @Suppress("DEPRECATION")
-        assertFalse(onMain { engine.core.isInConference })
-        assertFalse(onMain { engine.calls.hasOngoingCall })
+        assertFalse(onCore { engine.core.isInConference })
+        assertFalse(onCore { engine.calls.hasOngoingCall })
         await("the sound to leave its call mode") { context.getSystemService(AudioManager::class.java).mode == AudioManager.MODE_NORMAL }
         await("the call notification to go") {
             context.getSystemService(NotificationManager::class.java).activeNotifications
@@ -40,7 +40,7 @@ class CallConflictTest : RoomTestBase("conflicts") {
     private fun aCallStillWorks() {
         dial("2501")
         awaitConnected("2501")
-        onMain { engine.calls.hangUp() }
+        onCore { engine.calls.hangUp() }
         awaitNoCall()
     }
 
@@ -66,16 +66,16 @@ class CallConflictTest : RoomTestBase("conflicts") {
         openRoom("2501", "2502")
         val legs = appLegs().toSet()
         // What the system tells the SDK when the phone loses its network for a moment.
-        onMain { engine.core.setNetworkReachable(false) }
+        onCore { engine.core.setNetworkReachable(false) }
         Thread.sleep(NETWORK_GONE_MS)
         assertEquals("A member left while the network was gone", 2, connected(room()!!))
         val mark = pbx.mark()
-        onMain { engine.core.setNetworkReachable(true) }
+        onCore { engine.core.setNetworkReachable(true) }
         // The SDK renews every leg (re-INVITE); the same legs go on, and the members hear each other again.
         for (leg in legs) pbx.awaitEvent("ChannelTalkingStart", mark, NETWORK_SETTLE_MS) { it["Channel"] == leg }
         assertEquals(legs, appLegs().toSet())
         assertEquals(2, connected(room()!!))
-        onMain { engine.calls.hangUp() }
+        onCore { engine.calls.hangUp() }
         assertAllClear()
     }
 
@@ -100,8 +100,8 @@ class CallConflictTest : RoomTestBase("conflicts") {
         }
         tap("返回会议室")
         awaitRoom("the user back in the room") { !it.away }
-        assertTrue(onMain { engine.core.calls.any { it.conference?.isIn == true } })
-        onMain { engine.calls.hangUp() }
+        assertTrue(onCore { engine.core.calls.any { it.conference?.isIn == true } })
+        onCore { engine.calls.hangUp() }
         assertAllClear()
     }
 
@@ -112,7 +112,7 @@ class CallConflictTest : RoomTestBase("conflicts") {
         register()
         dial("2501")
         awaitConnected("2501")
-        onMain { engine.calls.toggleHold() }
+        onCore { engine.calls.toggleHold() }
         awaitCall("the call on hold") { it.phase == CallPhase.HELD }
 
         phoneCalls(AGENT, "*80$APP")
@@ -120,10 +120,10 @@ class CallConflictTest : RoomTestBase("conflicts") {
         never("the intercom call answered by itself", QUIET_WINDOW_MS) { call()?.waitingCall == null }
         assertEquals("The held call was replaced", CallPhase.HELD, call()!!.phase)
         // The held call ends: the intercom call, which waited next to it, rings on and is left to the user.
-        onMain { engine.calls.hangUp() }
+        onCore { engine.calls.hangUp() }
         awaitCall("the intercom call to ring on its own") { it.phase == CallPhase.INCOMING && it.intercom }
         never("the intercom call answered by itself once alone", QUIET_WINDOW_MS) { call()?.phase == CallPhase.CONNECTED }
-        onMain { engine.calls.decline() }
+        onCore { engine.calls.decline() }
         await("the intercom call to be turned away") { !phoneHasCall(AGENT) }
         assertAllClear()
     }
@@ -135,10 +135,10 @@ class CallConflictTest : RoomTestBase("conflicts") {
         phoneCalls(AGENT, "*80$APP")
         awaitCall("the intercom call to wait") { it.waitingCall != null && it.room != null }
         // The room ends: the intercom call takes the screen, ringing, and is left to the user.
-        onMain { engine.calls.hangUp() }
+        onCore { engine.calls.hangUp() }
         awaitCall("the intercom call to ring on its own") { it.room == null && it.phase == CallPhase.INCOMING && it.intercom }
         never("the intercom call answered by itself once the room was gone", QUIET_WINDOW_MS) { call()?.phase == CallPhase.CONNECTED }
-        onMain { engine.calls.decline() }
+        onCore { engine.calls.decline() }
         await("the intercom call to be turned away") { !phoneHasCall(AGENT) }
         assertAllClear()
     }

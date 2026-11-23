@@ -19,7 +19,7 @@ class TwinEntriesTest : RoomTestBase("twins") {
     @Test
     fun twoSpeedDialKeysAlikeAreBothOfferedForTheRoom() {
         await("the speed dial keys to be loaded") { engine.shortcuts.loaded.value }
-        repeat(2) { onMain { assertTrue(engine.shortcuts.add(Shortcut(0, TWIN, TWIN_NUMBER)).isEmpty()) } }
+        repeat(2) { onCore { assertTrue(engine.shortcuts.add(Shortcut(0, TWIN, TWIN_NUMBER)).isEmpty()) } }
         assertEquals(2, engine.shortcuts.shortcuts.value.count { it.label == TWIN })
         openRoom("2501")
         tap("添加成员")
@@ -43,7 +43,7 @@ class TwinEntriesTest : RoomTestBase("twins") {
             password = env.ldapPassword,
             baseDn = "ou=desks,${env.ldapBaseDn}",
         )
-        assertTrue(onMain { engine.directory.save(desks) }.isEmpty())
+        assertTrue(onCore { engine.directory.save(desks) }.isEmpty())
         showApp()
         tap("通讯录")
         // Nothing typed: the directory lists what the server answered. The SIP core reads no

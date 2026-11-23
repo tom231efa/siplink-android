@@ -64,19 +64,19 @@ class SupervisionTest : PbxTestBase() {
 
         // Whisper: only the agent hears the supervisor.
         mark = phones.mark()
-        onMain { engine.calls.setSupervisionMode(SupervisionMode.WHISPER) }
+        onCore { engine.calls.setSupervisionMode(SupervisionMode.WHISPER) }
         assertEquals(SupervisionMode.WHISPER, call()!!.supervision)
         awaitPhoneHears(AGENT, mark)
         assertFalse("Whispering, but the customer hears the supervisor", phoneHearsWithin(CUSTOMER, mark))
 
         // Barge: the customer hears the supervisor as well.
         mark = phones.mark()
-        onMain { engine.calls.setSupervisionMode(SupervisionMode.BARGE) }
+        onCore { engine.calls.setSupervisionMode(SupervisionMode.BARGE) }
         awaitPhoneHears(CUSTOMER, mark)
 
         // Back to listening: both stop hearing the supervisor.
         mark = phones.mark()
-        onMain { engine.calls.setSupervisionMode(SupervisionMode.LISTEN) }
+        onCore { engine.calls.setSupervisionMode(SupervisionMode.LISTEN) }
         awaitPhoneHearsSilence(AGENT, mark)
         awaitPhoneHearsSilence(CUSTOMER, mark)
         assertEquals(CallPhase.CONNECTED, call()!!.phase)
@@ -123,7 +123,7 @@ class SupervisionTest : PbxTestBase() {
         awaitConnected("$CUSTOMER")
         // Mute the app so that the customer hears nothing before the barge.
         var mark = phones.mark()
-        onMain { engine.calls.toggleMute() }
+        onCore { engine.calls.toggleMute() }
         awaitPhoneHearsSilence(CUSTOMER, mark)
 
         // The agent barges into the app's call, talking (a tone).
@@ -161,12 +161,12 @@ class SupervisionTest : PbxTestBase() {
         supervise(FeatureDial.Action.WHISPER)
         awaitConnected()
         awaitSpying(pbxMark)
-        assertEquals("监听通话不能加入会议室", onMain { engine.calls.openRoom() })
+        assertEquals("监听通话不能加入会议室", onCore { engine.calls.openRoom() })
         assertNull(call()!!.room)
 
         // A mode key typed on the keypad: the PBX barges in, and the app shows it.
         val mark = phones.mark()
-        onMain { engine.calls.sendDtmf(SupervisionMode.BARGE.dtmf) }
+        onCore { engine.calls.sendDtmf(SupervisionMode.BARGE.dtmf) }
         assertEquals(SupervisionMode.BARGE, call()!!.supervision)
         awaitPhoneHears(CUSTOMER, mark)
     }
