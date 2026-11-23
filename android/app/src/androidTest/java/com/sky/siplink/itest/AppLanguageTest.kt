@@ -40,7 +40,7 @@ class AppLanguageTest : RoomTestBase("languages") {
     private val chinese get() = textsIn("zh-Hans")
 
     /** The text the core renders when a call ends, in the language the app speaks now. */
-    private fun spoken(): String = onCore { engine.texts.get(R.string.call_ended) }
+    private fun spoken(): String = onMain { engine.texts.get(R.string.call_ended) }
 
     @After
     fun backToChinese() = pinLanguage(Language.CHINESE_SIMPLIFIED)
@@ -76,15 +76,15 @@ class AppLanguageTest : RoomTestBase("languages") {
             if (title != shown) absent(shown)
             shown = title
             await("the core to speak ${language.tag}") { spoken() == texts.getString(R.string.call_ended) }
-            assertEquals(language, onCore { engine.language.chosen })
+            assertEquals(language, onMain { engine.language.chosen })
         }
     }
 
     @Test
     fun followingTheSystemGivesEnglishHere() {
         pinLanguage(null)
-        assertTrue(onCore { engine.language.followsSystem })
-        assertNull(onCore { engine.language.chosen })
+        assertTrue(onMain { engine.language.followsSystem })
+        assertNull(onMain { engine.language.chosen })
         assertEquals(english.getString(R.string.call_ended), spoken())
         showApp()
         tap(english.getString(R.string.main_tab_settings))
@@ -102,11 +102,11 @@ class AppLanguageTest : RoomTestBase("languages") {
         try {
             // What a fresh installation has: no language of its own.
             manager.applicationLocales = LocaleList.getEmptyLocaleList()
-            await("the app to follow the system") { onCore { engine.language.followsSystem } }
+            await("the app to follow the system") { onMain { engine.language.followsSystem } }
             manager.applicationLocales = LocaleList.forLanguageTags("de")
             await("German to fall back to English") { spoken() == english.getString(R.string.call_ended) }
-            assertNull(onCore { engine.language.chosen })
-            assertFalse(onCore { engine.language.followsSystem })
+            assertNull(onMain { engine.language.chosen })
+            assertFalse(onMain { engine.language.followsSystem })
             // The next language of the list that the app has is taken.
             manager.applicationLocales = LocaleList.forLanguageTags("de,zh-CN")
             await("German, then Chinese, to give Chinese") { spoken() == chinese.getString(R.string.call_ended) }

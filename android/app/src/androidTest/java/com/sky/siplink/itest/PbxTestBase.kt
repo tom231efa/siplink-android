@@ -135,7 +135,7 @@ abstract class PbxTestBase {
     /**
      * Brings the app to the foreground, like a user who has it open. Only the tests about
      * behaviour that depends on being visible do this: without hardware acceleration, drawing
-     * the UI keeps the main thread (which also runs the SIP stack) busy for seconds at a time.
+     * the UI keeps the main thread busy for seconds at a time.
      */
     protected fun showApp() {
         // A real device may have switched its screen off: wake it and keep it on while shown.
@@ -199,11 +199,11 @@ abstract class PbxTestBase {
      * are in it. The phone's language stays as it is.
      */
     protected fun pinLanguage(language: Language?) {
-        if (onCore { engine.language.chosen != language || (language == null) != engine.language.followsSystem }) {
+        if (onMain { engine.language.chosen != language || (language == null) != engine.language.followsSystem }) {
             onMain { engine.language.choose(language) }
         }
         val expected = textsIn(language?.tag ?: systemLanguages()).getString(R.string.call_ended)
-        await("the app to speak ${language?.tag ?: "the system's language"}") { onCore { engine.texts.get(R.string.call_ended) } == expected }
+        await("the app to speak ${language?.tag ?: "the system's language"}") { onMain { engine.texts.get(R.string.call_ended) } == expected }
     }
 
     /** Like [await], but reports a timeout as false instead of failing. */
