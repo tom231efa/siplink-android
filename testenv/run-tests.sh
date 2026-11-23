@@ -112,7 +112,7 @@ all=(RegistrationTest BasicCallTest TransferParkTest SupervisionTest CallHandlin
   CallerIdTest LineRoutingTest CodecTest DirectoryTest DirectoryTrustTest ShortcutStoreTest DirectoryCacheTest
   VideoCallTest VideoNoCameraTest ManagedLockTest ManagedScreensTest RemoteConfigTest
   AdvancedSettingsTest SdkDefaultsTest AccountFormTest ReleaseJsonTest UpdateCheckTest CallRecordingTest IncomingSlideTest NextCallScreenTest
-  ConferenceTest ConferencePacingTest VideoControlsTest VideoWindowTest CallConflictTest LandscapeScreensTest
+  ConferenceTest RoomEndingTest ConferencePacingTest VideoControlsTest VideoWindowTest CallConflictTest LandscapeScreensTest
   LockScreenTest TwinEntriesTest AppLanguageTest MainThreadStallTest EnglishScreensTest LanguageScreensTest)
 
 # The quick set, the run of a round of work: registering, calls in and out, transfer, the ways a
