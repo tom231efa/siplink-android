@@ -56,7 +56,9 @@ class TlsManager(context: Context, private val core: Core, private val lock: Con
     }
 
     /** Parses PEM / DER / PKCS#7 data and trusts every certificate found in it. */
-    fun import(data: ByteArray): ImportResult {
+    fun import(data: ByteArray): ImportResult = CoreThread.wait("TlsManager.import") { trust(data) }
+
+    private fun trust(data: ByteArray): ImportResult {
         if (lock.refuses) return ImportResult.Managed
         val parsed = try {
             CertificateTools.parse(data)
@@ -76,11 +78,11 @@ class TlsManager(context: Context, private val core: Core, private val lock: Con
     }
 
     /** @return false when the configuration is managed: nothing was removed */
-    fun remove(fingerprint: String): Boolean {
-        if (lock.refuses) return false
+    fun remove(fingerprint: String): Boolean = CoreThread.wait("TlsManager.remove") {
+        if (lock.refuses) return@wait false
         userCertificates = userCertificates.filterNot { CertificateTools.fingerprint(it) == fingerprint }
         applyTrust(reconnect = true)
-        return true
+        true
     }
 
     /**

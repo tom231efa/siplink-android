@@ -66,30 +66,30 @@ class ShortcutManager(private val file: File, private val lock: ConfigLock, priv
      * Adds a key; returns what is wrong with it, or nothing when it was added. While the
      * configuration is managed the key becomes one of the user's own, of which there is a limit.
      */
-    fun add(draft: Shortcut): List<ShortcutRules.Error> {
+    fun add(draft: Shortcut): List<ShortcutRules.Error> = CoreThread.wait("ShortcutManager.add") {
         val own = lock.refuses
-        if (!ready.value) return emptyList()
-        if (own && !ShortcutRules.canAddOwn(state.value)) return listOf(ShortcutRules.Error.OWN_LIMIT_REACHED)
-        if (!ShortcutRules.canAdd(state.value.size)) return listOf(ShortcutRules.Error.LIMIT_REACHED)
+        if (!ready.value) return@wait emptyList()
+        if (own && !ShortcutRules.canAddOwn(state.value)) return@wait listOf(ShortcutRules.Error.OWN_LIMIT_REACHED)
+        if (!ShortcutRules.canAdd(state.value.size)) return@wait listOf(ShortcutRules.Error.LIMIT_REACHED)
         val shortcut = ShortcutRules.normalize(draft).copy(id = nextId, own = own)
         val errors = ShortcutRules.validate(shortcut, reservedCategories())
-        if (errors.isNotEmpty()) return errors
+        if (errors.isNotEmpty()) return@wait errors
         nextId++
         publish(state.value + ShortcutRules.joinCategories(listOf(shortcut), state.value))
-        return emptyList()
+        emptyList()
     }
 
     /** Replaces the key with the same id. While the configuration is managed that has to be one of the user's own. */
-    fun update(changed: Shortcut): List<ShortcutRules.Error> {
+    fun update(changed: Shortcut): List<ShortcutRules.Error> = CoreThread.wait("ShortcutManager.update") {
         val stored = state.value.firstOrNull { it.id == changed.id }
-        if (lock.refuses && stored?.own != true) return listOf(ShortcutRules.Error.MANAGED)
+        if (lock.refuses && stored?.own != true) return@wait listOf(ShortcutRules.Error.MANAGED)
         // Whose key it is does not change with it.
         val normalized = ShortcutRules.normalize(changed).copy(own = stored?.own == true)
         val errors = ShortcutRules.validate(normalized, reservedCategories())
-        if (errors.isNotEmpty()) return errors
+        if (errors.isNotEmpty()) return@wait errors
         val shortcut = ShortcutRules.joinCategories(listOf(normalized), state.value.filter { it.id != normalized.id }).single()
         publish(state.value.map { if (it.id == shortcut.id) shortcut else it })
-        return emptyList()
+        emptyList()
     }
 
     /**
@@ -98,14 +98,14 @@ class ShortcutManager(private val file: File, private val lock: ConfigLock, priv
      *
      * @return false when no key was removed
      */
-    fun remove(ids: Collection<Long>): Boolean {
-        if (!ready.value || ids.isEmpty()) return false
+    fun remove(ids: Collection<Long>): Boolean = CoreThread.wait("ShortcutManager.remove") {
+        if (!ready.value || ids.isEmpty()) return@wait false
         val gone = ids.toHashSet()
         val ownOnly = lock.refuses
         val kept = state.value.filterNot { it.id in gone && (it.own || !ownOnly) }
-        if (kept.size == state.value.size) return false
+        if (kept.size == state.value.size) return@wait false
         publish(kept)
-        return true
+        true
     }
 
     /**
@@ -114,11 +114,11 @@ class ShortcutManager(private val file: File, private val lock: ConfigLock, priv
      *
      * @return false when nothing moved
      */
-    fun move(movedId: Long, targetId: Long): Boolean {
-        if (!ready.value) return false
-        val moved = ShortcutRules.move(state.value, movedId, targetId, ownOnly = lock.refuses) ?: return false
+    fun move(movedId: Long, targetId: Long): Boolean = CoreThread.wait("ShortcutManager.move") {
+        if (!ready.value) return@wait false
+        val moved = ShortcutRules.move(state.value, movedId, targetId, ownOnly = lock.refuses) ?: return@wait false
         publish(moved)
-        return true
+        true
     }
 
     /**
@@ -127,13 +127,13 @@ class ShortcutManager(private val file: File, private val lock: ConfigLock, priv
      *
      * @return false when nothing was changed: that is its name already, or the category is not the user's to rename
      */
-    fun renameCategory(category: String, renamed: String): Boolean {
-        if (!ready.value) return false
-        if (lock.refuses && !ShortcutRules.ownsCategory(state.value, category)) return false
+    fun renameCategory(category: String, renamed: String): Boolean = CoreThread.wait("ShortcutManager.renameCategory") {
+        if (!ready.value) return@wait false
+        if (lock.refuses && !ShortcutRules.ownsCategory(state.value, category)) return@wait false
         val target = renamed.trim().take(ShortcutRules.MAX_CATEGORY_LENGTH)
-        if (target == category) return false
+        if (target == category) return@wait false
         publish(state.value.map { if (it.category == category) it.copy(category = target) else it })
-        return true
+        true
     }
 
     /**
@@ -178,15 +178,15 @@ class ShortcutManager(private val file: File, private val lock: ConfigLock, priv
      *
      * @return what was read and added; null when the configuration is managed, and nothing was
      */
-    fun import(text: String): ShortcutRules.Parsed? {
-        if (lock.refuses) return null
-        if (!ready.value) return ShortcutRules.Parsed(emptyList(), emptyList(), 0)
+    fun import(text: String): ShortcutRules.Parsed? = CoreThread.wait("ShortcutManager.import") {
+        if (lock.refuses) return@wait null
+        if (!ready.value) return@wait ShortcutRules.Parsed(emptyList(), emptyList(), 0)
         val parsed = ShortcutRules.decode(text, ShortcutRules.MAX_SHORTCUTS - state.value.size, nextId, reservedCategories())
         if (parsed.shortcuts.isNotEmpty()) {
             nextId += parsed.shortcuts.size
             publish(state.value + ShortcutRules.joinCategories(parsed.shortcuts, state.value))
         }
-        return parsed
+        parsed
     }
 
     /** The names a category may not have: those of the category lists, in the language of the moment. */

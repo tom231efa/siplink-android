@@ -10,6 +10,7 @@ import android.content.res.Configuration
 import android.os.Bundle
 import androidx.core.content.ContextCompat
 import com.sky.siplink.core.CallManager
+import com.sky.siplink.core.CoreThread
 import com.sky.siplink.core.SipEngine
 import com.sky.siplink.core.model.CallInfo
 import com.sky.siplink.service.CallNotifier
@@ -21,6 +22,8 @@ class SipLinkApp : Application(), CallManager.Host {
     lateinit var notifier: CallNotifier
         private set
 
+    /** Counted on the main thread; read by the core from its own ([isAppVisible]). */
+    @Volatile
     private var startedActivities = 0
 
     /** The activities that exist, to be made anew in another language before Android 13 ([onLanguageChanged]). */
@@ -33,12 +36,17 @@ class SipLinkApp : Application(), CallManager.Host {
 
     override fun onCreate() {
         super.onCreate()
-        engine = SipEngine(this)
+        // Made on its thread, and with its hooks in place before the core gets to run: a call
+        // that comes in at once finds them. They are called on this thread, after onCreate.
+        engine = CoreThread.wait("SipEngine") {
+            SipEngine(this).also {
+                it.calls.host = this
+                it.onMissedCall = { name, number -> notifier.showMissedCall(name, number) }
+                it.onKeepAliveChanged = { SipService.sync(this) }
+            }
+        }
         notifier = CallNotifier(this, engine.language)
         engine.language.onChanged = ::onLanguageChanged
-        engine.calls.host = this
-        engine.onMissedCall = notifier::showMissedCall
-        engine.onKeepAliveChanged = { SipService.sync(this) }
 
         registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
             override fun onActivityStarted(activity: Activity) {

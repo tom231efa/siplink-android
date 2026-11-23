@@ -23,6 +23,9 @@ import com.sky.siplink.core.model.Language
  * The texts rendered outside the activities ([localized]) are rendered in the languages read
  * from that setting, not in the configuration of the process: a process without an activity was
  * seen to fall back to the system's languages while the app had its own (Android 16).
+ *
+ * The language is chosen and read anew on the main thread; the core renders its texts in it
+ * from its own thread ([localized], [chosen] and [followsSystem] can be read anywhere).
  */
 class AppLanguage(private val app: Context) {
     /**
@@ -33,11 +36,18 @@ class AppLanguage(private val app: Context) {
     var onChanged: ((recreate: Boolean) -> Unit)? = null
 
     /** The app's own language list, as the setting has it; empty: the system's languages. Read at the start, on a choice and by [refresh]. */
+    @Volatile
     private var own: LocaleList = stored()
 
     /** The languages the texts are rendered in: the app's own, or the system's. */
+    @Volatile
     private var current: LocaleList = effective()
-    private var localizedContext: Context? = null
+
+    /** A context in the languages it was made for ([localized]). */
+    private class Localized(val locales: LocaleList, val context: Context)
+
+    @Volatile
+    private var localized: Localized? = null
 
     init {
         if (!SYSTEM_KEEPS_IT) LocaleList.setDefault(current)
@@ -82,7 +92,6 @@ class AppLanguage(private val app: Context) {
         val now = effective()
         if (now == current) return
         current = now
-        localizedContext = null
         if (!SYSTEM_KEEPS_IT) LocaleList.setDefault(now)
         onChanged?.invoke(recreate)
     }
@@ -92,7 +101,11 @@ class AppLanguage(private val app: Context) {
      * the activities. It overrides the languages only (and with them the layout direction), so
      * that the rest follows the configuration of the moment.
      */
-    fun localized(): Context = localizedContext ?: app.createConfigurationContext(Configuration().apply { setLocales(current) }).also { localizedContext = it }
+    fun localized(): Context {
+        val locales = current
+        localized?.takeIf { it.locales == locales }?.let { return it.context }
+        return app.createConfigurationContext(Configuration().apply { setLocales(locales) }).also { localized = Localized(locales, it) }
+    }
 
     companion object {
         /** Android 13 and later keep the language of an app themselves. */

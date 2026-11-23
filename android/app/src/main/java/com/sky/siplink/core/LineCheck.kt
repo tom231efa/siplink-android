@@ -1,8 +1,6 @@
 package com.sky.siplink.core
 
 import android.content.Context
-import android.os.Handler
-import android.os.Looper
 import android.os.PowerManager
 import com.sky.siplink.core.logic.AccountRoute
 import com.sky.siplink.core.logic.LineAdapt
@@ -18,11 +16,10 @@ import java.util.concurrent.Executors
 
 /**
  * The line checks of one account: what the network, the way to the server and the
- * registration look like from here. Only asks, changes nothing. Main thread only; the probes
- * run on a thread of their own.
+ * registration look like from here. Only asks, changes nothing. Made by [SipEngine.lineCheck];
+ * it looks on the thread of the core, and the probes run on a thread of their own.
  */
-class LineCheck(private val context: Context, private val core: Core, private val accounts: AccountManager) {
-    private val handler = Handler(Looper.getMainLooper())
+class LineCheck internal constructor(private val context: Context, private val core: Core, private val accounts: AccountManager) {
     private val worker = Executors.newSingleThreadExecutor()
 
     /**
@@ -30,7 +27,9 @@ class LineCheck(private val context: Context, private val core: Core, private va
      *
      * @return false when there is no such account
      */
-    fun run(id: String, onDone: (LineReport) -> Unit): Boolean {
+    fun run(id: String, onDone: (LineReport) -> Unit): Boolean = CoreThread.wait("LineCheck.run") { start(id, onDone) }
+
+    private fun start(id: String, onDone: (LineReport) -> Unit): Boolean {
         val account = accounts.find(id) ?: return false
         val shown = accounts.accounts.value.firstOrNull { it.id == id } ?: return false
         val params = account.params
@@ -92,7 +91,7 @@ class LineCheck(private val context: Context, private val core: Core, private va
                 lastCall = lastCall,
                 servers = servers,
             )
-            handler.post { onDone(report) }
+            CoreThread.toMain { onDone(report) }
         }
         return true
     }

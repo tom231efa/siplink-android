@@ -35,7 +35,7 @@ class HistoryManager(
      * Asks the local copy of the directory for the names of the numbers in the history. Called
      * when the history is looked at, so that starting the app does not wait for the directory.
      */
-    fun resolveNames() = names.preload(state.value.map { it.address })
+    fun resolveNames() = CoreThread.post { names.preload(state.value.map { it.address }) }
 
     /** Names were found: entries of those numbers are called by them from now on. */
     private fun rename() {
@@ -58,14 +58,14 @@ class HistoryManager(
         state.value = if (list.size > MAX_ENTRIES) list.subList(0, MAX_ENTRIES).toList() else list
     }
 
-    fun remove(id: String) {
+    fun remove(id: String) = CoreThread.post {
         // By its Call-ID, which the core looks up by itself; an entry without one by going through the log.
         val log = core.findCallLogFromCallId(id)?.takeIf { idOf(it) == id } ?: core.callLogs.firstOrNull { idOf(it) == id }
         log?.let(core::removeCallLog)
         state.value = state.value.filterNot { it.id == id }
     }
 
-    fun clear() {
+    fun clear() = CoreThread.post {
         core.clearCallLogs()
         state.value = emptyList()
     }

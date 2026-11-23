@@ -163,9 +163,9 @@ class SettingsStore(private val config: Config, private val lock: ConfigLock) {
     }
 
     /** Writes pending changes to disk now, e.g. when the app leaves the screen. */
-    fun flush() {
+    fun flush(): Unit = CoreThread.post {
         handler.removeCallbacks(writeToDisk)
-        if (!unsaved) return
+        if (!unsaved) return@post
         unsaved = false
         config.sync()
     }

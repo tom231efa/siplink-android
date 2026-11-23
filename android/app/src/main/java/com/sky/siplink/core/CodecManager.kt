@@ -100,25 +100,25 @@ class CodecManager(private val core: Core, private val lock: ConfigLock) {
      *
      * @return whether it was done: not for that last codec, nor while the configuration is managed
      */
-    fun setEnabled(key: String, enabled: Boolean): Boolean = !lock.refuses && kindOf(key).setEnabled(key, enabled)
+    fun setEnabled(key: String, enabled: Boolean): Boolean = CoreThread.wait("CodecManager.setEnabled") { !lock.refuses && kindOf(key).setEnabled(key, enabled) }
 
     /**
      * Moves a codec [offset] places in the order of preference of its kind (negative: more preferred).
      *
      * @return whether it moved: not past either end of the list, nor while the configuration is managed
      */
-    fun move(key: String, offset: Int): Boolean = !lock.refuses && kindOf(key).move(key, offset)
+    fun move(key: String, offset: Int): Boolean = CoreThread.wait("CodecManager.move") { !lock.refuses && kindOf(key).move(key, offset) }
 
     /**
      * Back to the order and the selection the SDK came with, for audio and video.
      *
      * @return false when the configuration is managed: nothing was changed
      */
-    fun restoreDefaults(): Boolean {
-        if (lock.refuses) return false
+    fun restoreDefaults(): Boolean = CoreThread.wait("CodecManager.restoreDefaults") {
+        if (lock.refuses) return@wait false
         audio.restoreDefaults()
         video.restoreDefaults()
-        return true
+        true
     }
 
     /**

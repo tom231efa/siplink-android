@@ -23,7 +23,8 @@ import org.linphone.core.Reason
 
 /** What [CallFollower] needs of the screen [CallManager] keeps: the call it shows, and the app's hooks. */
 internal interface CallFeed {
-    val host: CallManager.Host?
+    /** The app's hooks, called on the main thread. */
+    val host: CallManager.Host
 
     /** The snapshot on screen now. */
     var shown: CallInfo?
@@ -84,7 +85,7 @@ internal class CallFollower(
             Call.State.Connected, Call.State.StreamsRunning -> {
                 val meta = legs.metaOf(call)
                 if (meta.connectedAt == null) meta.connectedAt = SystemClock.elapsedRealtime()
-                if (same(call, legs.current) || same(call, legs.other)) host?.dismissIncomingCall()
+                if (same(call, legs.current) || same(call, legs.other)) host.dismissIncomingCall()
                 if (callState == Call.State.StreamsRunning) {
                     video.onStreaming(call)
                     recorder.onStreaming(call, inRoom = room.isMember(call))
@@ -98,7 +99,7 @@ internal class CallFollower(
                 val meta = legs.metaOf(call)
                 meta.endReason = CallSupport.endReason(call, callState, meta.connectedAt != null, message)
                 room.onEnded(call, meta.endReason)
-                if (same(call, legs.current) || same(call, legs.other)) host?.dismissIncomingCall()
+                if (same(call, legs.current) || same(call, legs.other)) host.dismissIncomingCall()
                 feed.publish()
             }
 
@@ -147,7 +148,7 @@ internal class CallFollower(
                 legs.metaOf(call).waited = true
                 feed.publish()
                 // Without a visible call screen the user would not notice the second call.
-                if (host?.isAppVisible != true) host?.showIncomingCall(feed.describe(call))
+                if (!host.isAppVisible) host.showIncomingCall(feed.describe(call))
             }
 
             is IncomingPolicy.Decision.Ring -> {
@@ -172,7 +173,7 @@ internal class CallFollower(
     private fun ring(call: Call, info: CallInfo) {
         val meta = legs.metaOf(call)
         autoAnswer.start(call, meta.intercom, AutoAnswerRules.delayMs(settings.current, meta.intercom, cameDuringCall = meta.waited))
-        host?.showIncomingCall(info)
+        host.showIncomingCall(info)
     }
 
     private fun forward(call: Call, target: String) {
@@ -262,7 +263,7 @@ internal class CallFollower(
         recorder.onReleased(call)
         when {
             same(call, legs.current) -> {
-                host?.dismissIncomingCall()
+                host.dismissIncomingCall()
                 autoAnswer.cancel()
                 val next = live(legs.other) ?: live(legs.referredFrom)
                 if (next != null) {
@@ -323,7 +324,7 @@ internal class CallFollower(
             consulting = false,
             room = null,
         )
-        host?.onCallActivityChanged()
+        host.onCallActivityChanged()
         val token = ++legs.generation
         handler.postDelayed({ if (token == legs.generation && legs.current == null) feed.shown = null }, END_LINGER_MS)
     }

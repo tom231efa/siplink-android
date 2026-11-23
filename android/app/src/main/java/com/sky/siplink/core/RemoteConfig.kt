@@ -73,13 +73,13 @@ class RemoteConfig internal constructor(context: Context, private val engine: Si
     val allowsHttp: Boolean get() = BuildConfig.DEBUG
 
     /** At app start: shows what is kept, and syncs. */
-    fun start() {
+    fun start() = CoreThread.post {
         publish()
         if (store.enrolled) sync()
     }
 
     /** The app came to the front: syncs, unless that was done a moment ago. */
-    fun onForeground() {
+    fun onForeground() = CoreThread.post {
         if (store.enrolled && RemoteSync.dueOnFront(System.currentTimeMillis(), store.lastAttemptMs)) sync()
     }
 
@@ -89,7 +89,7 @@ class RemoteConfig internal constructor(context: Context, private val engine: Si
     }
 
     /** The user asked for a sync. */
-    fun syncNow() = sync()
+    fun syncNow() = CoreThread.post { sync() }
 
     fun parse(text: String): RemoteAddress.Parsed = RemoteAddress.parse(text, allowsHttp)
 
@@ -99,17 +99,17 @@ class RemoteConfig internal constructor(context: Context, private val engine: Si
     }
 
     /** The user saw that the app has to restart for LDAP; it is not asked again for this change. */
-    fun restartHandled() {
+    fun restartHandled() = CoreThread.post {
         state.value = state.value.copy(restartNeeded = false)
     }
 
     /**
      * Binds the phone to the platform of [enrollment] and applies what it hands out.
      *
-     * @param onDone what to tell the user about it
+     * @param onDone what to tell the user about it; called on the main thread
      */
-    fun enroll(enrollment: RemoteAddress.Enrollment, onDone: (String) -> Unit) {
-        if (state.value.busy || store.enrolled) return
+    fun enroll(enrollment: RemoteAddress.Enrollment, onDone: (String) -> Unit) = CoreThread.post {
+        if (state.value.busy || store.enrolled) return@post
         markBusy()
         // Coming to the front right after the binding need not sync again.
         store.attempted(System.currentTimeMillis())
@@ -139,22 +139,24 @@ class RemoteConfig internal constructor(context: Context, private val engine: Si
         store.enroll(deviceKey, enrollment.syncUrl, answer.pinned?.let(CertificateTools::toPem).orEmpty())
         received(document) { error ->
             finished(error)
-            onDone(texts.render(error ?: Phrase.of(R.string.remote_loaded)))
+            val said = texts.render(error ?: Phrase.of(R.string.remote_loaded))
+            CoreThread.toMain { onDone(said) }
         }
     }
 
     private fun finishEnrollment(error: Phrase, onDone: (String) -> Unit) {
         notice = error
-        state.value = state.value.copy(busy = false, lastError = texts.render(error))
-        onDone(texts.render(error))
+        val said = texts.render(error)
+        state.value = state.value.copy(busy = false, lastError = said)
+        CoreThread.toMain { onDone(said) }
     }
 
     /**
      * Unbinds the phone: tells the platform (as far as it can be reached) and takes back
-     * everything that was handed out.
+     * everything that was handed out. [onDone] is called on the main thread with what to tell the user.
      */
-    fun delete(onDone: (String) -> Unit) {
-        if (state.value.busy || !store.enrolled) return
+    fun delete(onDone: (String) -> Unit) = CoreThread.post {
+        if (state.value.busy || !store.enrolled) return@post
         markBusy()
         handler.removeCallbacks(timer)
         val url = RemoteAddress.leaveUrl(store.syncUrl)
@@ -162,7 +164,10 @@ class RemoteConfig internal constructor(context: Context, private val engine: Si
         worker.execute {
             val told = request(url, RemoteSync.LEAVE_BODY, key, trust).getOrNull()?.status?.let { it in 200..299 || it == 401 || it == 410 } == true
             handler.post {
-                takeBack(null) { onDone(texts.get(if (told) R.string.remote_removed else R.string.remote_removed_untold)) }
+                takeBack(null) {
+                    val said = texts.get(if (told) R.string.remote_removed else R.string.remote_removed_untold)
+                    CoreThread.toMain { onDone(said) }
+                }
             }
         }
     }

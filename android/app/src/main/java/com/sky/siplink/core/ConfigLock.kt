@@ -47,8 +47,9 @@ class ConfigLock(private val config: Config) {
      * with a password of its own, which [typed] then has to be (null: nobody typed one). The
      * remote side is handed them in any case.
      */
-    fun showsPasswords(typed: String? = null): Boolean =
+    fun showsPasswords(typed: String? = null): Boolean = CoreThread.wait("ConfigLock.showsPasswords") {
         passwordHash.isEmpty() || remoteChanges > 0 || (typed != null && ManagedConfig.isPassword(passwordHash, typed))
+    }
 
     /**
      * Makes the configuration managed, or the phone's own again. Neither changes what was

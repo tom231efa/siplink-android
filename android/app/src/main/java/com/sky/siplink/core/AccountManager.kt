@@ -213,7 +213,7 @@ class AccountManager(private val core: Core, private val lock: ConfigLock, priva
     internal fun serverTimeoutMs(id: String): Int = router.record(id)?.takeIf { it.backup.isNotEmpty() }?.timeoutMs ?: 0
 
     /** Puts the line of account [id] back on its own settings, everywhere, and forgets what was learned for it. */
-    fun resetAdaptation(id: String) = doctor.forget(id)
+    fun resetAdaptation(id: String) = CoreThread.post { doctor.forget(id) }
 
     /** Has [account] shown anew with the next list that is published. */
     private fun noteChanged(account: Account) {
@@ -258,8 +258,9 @@ class AccountManager(private val core: Core, private val lock: ConfigLock, priva
      * well where a managed configuration keeps its passwords from being shown and [typed] is not
      * its password ([ConfigLock.showsPasswords]).
      */
-    fun passwordOf(id: String, typed: String? = null): String =
+    fun passwordOf(id: String, typed: String? = null): String = CoreThread.wait("AccountManager.passwordOf") {
         if (lock.showsPasswords(typed)) find(id)?.findAuthInfo()?.password.orEmpty() else ""
+    }
 
     /**
      * Whether calls may go out on [account]: it is switched on. That includes the moment in
@@ -268,9 +269,8 @@ class AccountManager(private val core: Core, private val lock: ConfigLock, priva
     fun isSwitchedOn(account: Account): Boolean =
         account.params.isRegisterEnabled || router.record(idOf(account))?.waiting == true
 
-    fun add(input: AccountDraft): List<AccountRules.Error> {
-        if (lock.refuses) return listOf(AccountRules.Error.MANAGED)
-        return addAs(UUID.randomUUID().toString(), input)
+    fun add(input: AccountDraft): List<AccountRules.Error> = CoreThread.wait("AccountManager.add") {
+        if (lock.refuses) listOf(AccountRules.Error.MANAGED) else addAs(UUID.randomUUID().toString(), input)
     }
 
     /**
@@ -283,7 +283,7 @@ class AccountManager(private val core: Core, private val lock: ConfigLock, priva
         val current = state.value.firstOrNull { it.id == id } ?: return addAs(id, input)
         val stored = current.toDraft().copy(password = find(id)?.findAuthInfo()?.password.orEmpty())
         if (AccountRules.normalize(stored) == AccountRules.normalize(input)) return emptyList()
-        return update(id, input)
+        return changeAccount(id, input)
     }
 
     private fun addAs(id: String, input: AccountDraft): List<AccountRules.Error> {
@@ -296,18 +296,20 @@ class AccountManager(private val core: Core, private val lock: ConfigLock, priva
     }
 
     /** Adds already validated drafts (bulk import); returns how many were really created (none while the configuration is managed). */
-    fun addAll(drafts: List<AccountDraft>): Int {
-        if (lock.refuses) return 0
+    fun addAll(drafts: List<AccountDraft>): Int = CoreThread.wait("AccountManager.addAll") {
+        if (lock.refuses) return@wait 0
         var created = 0
         for (input in drafts) {
             val draft = AccountRules.normalize(input)
             if (AccountRules.validate(draft, existingKeys()).isEmpty() && create(draft, UUID.randomUUID().toString()) != null) created++
         }
         refresh()
-        return created
+        created
     }
 
-    fun update(id: String, input: AccountDraft): List<AccountRules.Error> {
+    fun update(id: String, input: AccountDraft): List<AccountRules.Error> = CoreThread.wait("AccountManager.update") { changeAccount(id, input) }
+
+    private fun changeAccount(id: String, input: AccountDraft): List<AccountRules.Error> {
         if (lock.refuses) return listOf(AccountRules.Error.MANAGED)
         val account = find(id) ?: return listOf(AccountRules.Error.NOT_FOUND)
         val accountsBefore = state.value
@@ -370,7 +372,9 @@ class AccountManager(private val core: Core, private val lock: ConfigLock, priva
     }
 
     /** @return whether the account was removed: not when there is none with this id, nor while the configuration is managed */
-    fun remove(id: String): Boolean {
+    fun remove(id: String): Boolean = CoreThread.wait("AccountManager.remove") { removeAccount(id) }
+
+    private fun removeAccount(id: String): Boolean {
         if (lock.refuses) return false
         val account = find(id) ?: return false
         val accountsBefore = state.value
@@ -431,7 +435,9 @@ class AccountManager(private val core: Core, private val lock: ConfigLock, priva
         AccountRules.identityKey(identity?.username.orEmpty(), hostPortOf(identity))
 
     /** @return whether the account was switched: not when there is none with this id, nor while the configuration is managed */
-    fun setEnabled(id: String, enabled: Boolean): Boolean {
+    fun setEnabled(id: String, enabled: Boolean): Boolean = CoreThread.wait("AccountManager.setEnabled") { switchAccount(id, enabled) }
+
+    private fun switchAccount(id: String, enabled: Boolean): Boolean {
         if (lock.refuses) return false
         val account = find(id) ?: return false
         val accountsBefore = state.value
@@ -469,12 +475,12 @@ class AccountManager(private val core: Core, private val lock: ConfigLock, priva
     }
 
     /** @return whether the account is the default one now: not when there is none with this id, nor while the configuration is managed */
-    fun setDefault(id: String): Boolean {
-        if (lock.refuses) return false
-        val account = find(id) ?: return false
+    fun setDefault(id: String): Boolean = CoreThread.wait("AccountManager.setDefault") {
+        if (lock.refuses) return@wait false
+        val account = find(id) ?: return@wait false
         core.defaultAccount = account
         refreshAfter(id, account)
-        return true
+        true
     }
 
     private fun existingKeys(): List<String> =

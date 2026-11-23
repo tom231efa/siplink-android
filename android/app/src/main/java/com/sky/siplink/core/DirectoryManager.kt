@@ -1,8 +1,6 @@
 package com.sky.siplink.core
 
 import android.database.sqlite.SQLiteException
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
 import com.sky.siplink.core.logic.LdapRules
 import com.sky.siplink.core.logic.NameLookup
@@ -55,20 +53,22 @@ class DirectoryManager(private val core: Core, private val cache: DirectoryCache
     /** Size of the local copy; brought up to date by [refreshCacheStats] and after every change. */
     val cacheStats: StateFlow<DirectoryCache.Stats> = cacheState.asStateFlow()
 
-    val isAvailable: Boolean get() = core.ldapAvailable()
+    /** Whether the SDK was built with LDAP. */
+    val isAvailable: Boolean = core.ldapAvailable()
 
-    private val handler = Handler(Looper.getMainLooper())
+    private val handler = CoreThread.handler()
 
     /** The local copy is a file: it is only touched from this thread. */
     private val cacheWorker = Executors.newSingleThreadExecutor()
     private var searchToken = 0
 
+    private val tlsState = MutableStateFlow(false)
+
     /**
      * True once a StartTLS search ran. The LDAP library loads the CA certificates once per
      * process, at its first TLS connection, and keeps them from then on.
      */
-    var tlsUsed = false
-        private set
+    val tlsUsed: Boolean get() = tlsState.value
 
     /** Whether a change of the trusted CAs only reaches the directories after an app restart. */
     val tlsChangeNeedsRestart: Boolean
@@ -120,7 +120,9 @@ class DirectoryManager(private val core: Core, private val cache: DirectoryCache
      * @return validation errors, empty when the directory was saved; [LdapRules.Error.MANAGED]
      *   while the configuration is managed
      */
-    fun save(input: LdapDirectory): List<LdapRules.Error> {
+    fun save(input: LdapDirectory): List<LdapRules.Error> = CoreThread.wait("DirectoryManager.save") { saveDirectory(input) }
+
+    private fun saveDirectory(input: LdapDirectory): List<LdapRules.Error> {
         if (lock.refuses) return listOf(LdapRules.Error.MANAGED)
         val directory = LdapRules.normalize(input)
         val list = listState.value
@@ -182,10 +184,14 @@ class DirectoryManager(private val core: Core, private val cache: DirectoryCache
      * configuration keeps its passwords from being shown and [typed] is not its password
      * ([ConfigLock.showsPasswords]).
      */
-    fun passwordOf(id: String, typed: String? = null): String = if (lock.showsPasswords(typed)) store.passwordOf(id) else ""
+    fun passwordOf(id: String, typed: String? = null): String = CoreThread.wait("DirectoryManager.passwordOf") {
+        if (lock.showsPasswords(typed)) store.passwordOf(id) else ""
+    }
 
     /** @return whether the directory was removed: not when there is none with this id, nor while the configuration is managed */
-    fun remove(id: String): Boolean {
+    fun remove(id: String): Boolean = CoreThread.wait("DirectoryManager.remove") { removeDirectory(id) }
+
+    private fun removeDirectory(id: String): Boolean {
         if (lock.refuses) return false
         val list = listState.value
         if (list.none { it.id == id }) return false
@@ -245,7 +251,7 @@ class DirectoryManager(private val core: Core, private val cache: DirectoryCache
     // ------------------------------------------------------------------ the local copy
 
     /** Empties the local copy of the directories. */
-    fun clearCache() {
+    fun clearCache() = CoreThread.post {
         searchState.value = searchState.value.let { if (it.fromCache) it.copy(contacts = emptyList(), fromCache = false) else it }
         onCache {
             clear()
@@ -254,7 +260,7 @@ class DirectoryManager(private val core: Core, private val cache: DirectoryCache
         onChanged?.invoke()
     }
 
-    fun refreshCacheStats() = onCache { publishCacheStats() }
+    fun refreshCacheStats() = CoreThread.post { onCache { publishCacheStats() } }
 
     private fun dropCopy(directory: String) = onCache {
         clear(directory)
@@ -283,14 +289,14 @@ class DirectoryManager(private val core: Core, private val cache: DirectoryCache
      * Searches the directory with the id [directoryId] for [query]: among the numbers when it
      * looks like one, else among the names. The result arrives in [state].
      */
-    fun search(directoryId: String, query: String) {
+    fun search(directoryId: String, query: String) = CoreThread.post {
         val text = query.trim()
         val directory = listState.value.firstOrNull { it.id == directoryId && it.enabled }
         val token = ++searchToken
         questions.removeAll { it.forScreen }
         if (directory == null) {
             searchState.value = DirectoryState(directory = directoryId, query = text)
-            return
+            return@post
         }
         // What is on screen stays there until something better arrives, but it is not this
         // query's answer - and nothing of another directory stays.
@@ -398,7 +404,7 @@ class DirectoryManager(private val core: Core, private val cache: DirectoryCache
             return
         }
         pointServerAt(directory, question.byNumber)
-        if (directory.security == LdapSecurity.START_TLS) tlsUsed = true
+        if (directory.security == LdapSecurity.START_TLS) tlsState.value = true
 
         // A search object of its own for every question: an answer that comes after its time
         // then cannot be taken for the answer to the next one.

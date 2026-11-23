@@ -78,10 +78,12 @@ class SipEngine(context: Context) {
 
     private val mailboxes = HashMap<String, Mailbox>()
 
-    /** Invoked with (name, address) when an incoming call was missed. */
+    /** Invoked on the main thread with (name, address) when an incoming call was missed. */
+    @Volatile
     var onMissedCall: ((String, String) -> Unit)? = null
 
-    /** Invoked when the "stay connected in background" preference changes. */
+    /** Invoked on the main thread when the "stay connected in background" preference changes. */
+    @Volatile
     var onKeepAliveChanged: (() -> Unit)? = null
 
     private val listener = object : CoreListenerStub() {
@@ -124,7 +126,8 @@ class SipEngine(context: Context) {
             if (history.isMissed(callLog)) {
                 val remote = callLog.remoteAddress
                 val number = remote.username.orEmpty()
-                onMissedCall?.invoke(names.known(number) ?: remote.displayName?.takeIf { it.isNotBlank() } ?: number, number)
+                val name = names.known(number) ?: remote.displayName?.takeIf { it.isNotBlank() } ?: number
+                CoreThread.toMain { onMissedCall?.invoke(name, number) }
             }
         }
     }
@@ -170,7 +173,7 @@ class SipEngine(context: Context) {
      * The language of the app changed: what the managers published, rendered in the language
      * before, is published again. The notifications follow through the app ([com.sky.siplink.SipLinkApp]).
      */
-    fun onLanguageChanged() {
+    fun onLanguageChanged() = CoreThread.post {
         accounts.onLanguageChanged()
         calls.onLanguageChanged()
         history.onLanguageChanged()
@@ -192,7 +195,9 @@ class SipEngine(context: Context) {
      * @return false when part of the change was refused because the configuration is managed
      *   ([SettingsStore.update])
      */
-    fun updateSettings(transform: (Settings) -> Settings): Boolean {
+    fun updateSettings(transform: (Settings) -> Settings): Boolean = CoreThread.wait("SipEngine.updateSettings") { changeSettings(transform) }
+
+    private fun changeSettings(transform: (Settings) -> Settings): Boolean {
         val before = settings.current
         val taken = settings.update(transform)
         val after = settings.current
@@ -202,7 +207,7 @@ class SipEngine(context: Context) {
             before.verifyTlsHostname != after.verifyTlsHostname
         if (verificationChanged || before.mediaSecurity != after.mediaSecurity) tls.applySettings(after)
         if (verificationChanged) tls.reconnect()
-        if (before.keepAlive != after.keepAlive) onKeepAliveChanged?.invoke()
+        if (before.keepAlive != after.keepAlive) CoreThread.toMain { onKeepAliveChanged?.invoke() }
         if (before.dtmfMode != after.dtmfMode) applyDtmfMode(after.dtmfMode)
         if (before.userAgent != after.userAgent) {
             applyUserAgent(after.userAgent)
