@@ -31,7 +31,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.sky.siplink.R
 import com.sky.siplink.core.CallSupport
-import com.sky.siplink.core.LineCheck
 import com.sky.siplink.core.LineNetwork
 import com.sky.siplink.core.logic.LineAdapt
 import com.sky.siplink.core.model.LineReport
@@ -65,7 +64,7 @@ fun LineDiagnosisScreen(accountId: String, onBack: () -> Unit) {
     val context = LocalContext.current
     val engine = context.engine
     val messenger = LocalMessenger.current
-    val check = remember { LineCheck(context, engine.core, engine.accounts) }
+    val check = remember { engine.lineCheck() }
     DisposableEffect(check) { onDispose { check.close() } }
     var report by remember { mutableStateOf<LineReport?>(null) }
     var busy by remember { mutableStateOf(false) }

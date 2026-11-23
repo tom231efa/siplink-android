@@ -1,8 +1,6 @@
 package com.sky.siplink.core
 
 import android.content.Context
-import android.os.Handler
-import android.os.Looper
 import com.sky.siplink.BuildConfig
 import com.sky.siplink.core.logic.RoomRules
 import com.sky.siplink.core.logic.UserAgent
@@ -28,11 +26,18 @@ import java.io.File
 
 /**
  * Owns the Linphone SIP core and the managers built on top of it. Created once by the
- * Application on the main thread, which then is the thread every core call must be made from.
+ * Application, on the thread of the core ([CoreThread]): the core and the managers belong to it.
  */
 class SipEngine(context: Context) {
     private val appContext: Context = context.applicationContext
+    private val sdk: Core
+
+    /** The SIP core; on its thread only ([CoreThread.check]). */
     val core: Core
+        get() {
+            CoreThread.check("The SIP core")
+            return sdk
+        }
 
     /** The language of the app ([AppLanguage]), and the texts of the core in it. */
     val language = AppLanguage(appContext)
@@ -45,25 +50,31 @@ class SipEngine(context: Context) {
     val accounts: AccountManager
     val calls: CallManager
     val history: HistoryManager
-    val directory: DirectoryManager by lazy {
+    val directory: DirectoryManager by coreLazy("directory") {
         DirectoryManager(core, DirectoryCache(appContext), lock).also { it.onChanged = names::clear }
     }
 
     /** Directory names for the numbers of calls; sets the directory up when the first call needs it. */
     val names = NameResolver { directory }
-    val codecs: CodecManager by lazy { CodecManager(core, lock) }
+    val codecs: CodecManager by coreLazy("codecs") { CodecManager(core, lock) }
     val shortcuts: ShortcutManager
 
     /** The call recordings, kept in the app's private files. */
     val recordings: RecordingStore
 
     /** The configuration a management platform hands out; started by the Application ([RemoteConfig.start]). */
-    val remote: RemoteConfig by lazy { RemoteConfig(appContext, this) }
+    val remote: RemoteConfig by coreLazy("remote") { RemoteConfig(appContext, this) }
 
     /** Whether a newer version of the app has been released; asks only when the main screen or the user calls for it. */
-    val updates: UpdateChecker by lazy { UpdateChecker(appContext, autoCheck = { settings.current.autoUpdateCheck }) }
+    val updates: UpdateChecker by coreLazy("updates") { UpdateChecker(appContext, autoCheck = { settings.current.autoUpdateCheck }) }
 
-    val sdkVersion: String get() = core.version
+    val sdkVersion: String
+
+    /** The name the app sends when none of the user's own is set ([UserAgent.default]). */
+    val defaultUserAgent: String
+
+    /** The views of the call screen the core draws the pictures of a video call into. */
+    val videoViews: VideoViews
 
     /** Lives as long as the engine, which is as long as the process. */
     private val networkWatch: NetworkWatch
@@ -138,7 +149,10 @@ class SipEngine(context: Context) {
         factory.enableLogcatLogs(true)
         factory.loggingService.setLogLevel(if (BuildConfig.DEBUG) LogLevel.Message else LogLevel.Warning)
 
-        core = factory.createCore(File(appContext.filesDir, CONFIG_FILE).absolutePath, null, appContext)
+        sdk = factory.createCore(File(appContext.filesDir, CONFIG_FILE).absolutePath, null, appContext)
+        sdkVersion = sdk.version
+        defaultUserAgent = UserAgent.default(sdkVersion, BuildConfig.VERSION_NAME)
+        videoViews = VideoViews(sdk)
         configure()
 
         lock = ConfigLock(core.config)
@@ -179,6 +193,15 @@ class SipEngine(context: Context) {
         history.onLanguageChanged()
         remote.onLanguageChanged()
     }
+
+    /** Writes the configuration file now; then the main thread runs [then] (the app restarting, say). */
+    fun saveThen(then: () -> Unit) = CoreThread.post {
+        core.config.sync()
+        CoreThread.toMain(then)
+    }
+
+    /** Line checks of the accounts, for one screen; [LineCheck.close] once it is gone. */
+    fun lineCheck(): LineCheck = LineCheck(appContext, sdk, accounts)
 
     /** What refers to an account follows after the user changed, switched off or removed one. */
     private fun onAccountsEdited(before: List<SipAccount>, after: List<SipAccount>) {
@@ -238,10 +261,7 @@ class SipEngine(context: Context) {
         return taken
     }
 
-    /** The name the app sends when none of the user's own is set ([UserAgent.default]). */
-    val defaultUserAgent: String get() = UserAgent.default(core.version, BuildConfig.VERSION_NAME)
-
-    private val handler = Handler(Looper.getMainLooper())
+    private val handler = CoreThread.handler()
     private val reRegister = Runnable { accounts.registerAnew() }
     private val applyStunServer = Runnable { accounts.stunServer = settings.current.stunServer }
 

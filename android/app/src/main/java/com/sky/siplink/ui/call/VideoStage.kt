@@ -58,6 +58,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sky.siplink.R
+import com.sky.siplink.core.VideoViews
 import com.sky.siplink.core.logic.PreviewDock
 import com.sky.siplink.core.logic.VideoRules
 import com.sky.siplink.core.model.CallVideo
@@ -79,8 +80,8 @@ import org.linphone.mediastream.video.capture.CaptureTextureView
  * picture, large, is always shown whole.
  *
  * The two pictures keep their views when they swap: only the places of the views change, so
- * the SIP core goes on drawing into the same ones (core.nativeVideoWindowId and
- * core.nativePreviewWindowId are set once, as the views come and go).
+ * the SIP core goes on drawing into the same ones (they are handed to it once, as they come and
+ * go: [VideoViews]).
  */
 @Composable
 internal fun VideoStage(video: CallVideo, stage: VideoStageState, chrome: Boolean) {
@@ -228,55 +229,35 @@ private fun LocalPreview(modifier: Modifier) {
 
 /*
  * The two views give themselves to the SIP core when they come into a window, and take
- * themselves back before they leave it. Not later: a view that leaves loses its surface, and the
- * SDK, while that view is still the one it has, then sets itself a task to forget "its view".
- * The task runs after the next call screen has handed over its own views (a call screen started
- * anew because the system changed its theme or its font size), and it is those the SDK forgets:
- * the camera, which waits for its view, never starts.
+ * themselves back before they leave it, not later ([VideoViews]): the camera, which waits for
+ * its view, would otherwise not start on a call screen started anew.
  */
 
 private class RemoteVideoView(context: Context) : TextureView(context) {
-    private val core = context.engine.core
+    private val views = context.engine.videoViews
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        current = this
-        core.nativeVideoWindowId = this
+        views.give(VideoViews.Kind.REMOTE, this)
     }
 
     override fun onDetachedFromWindow() {
-        if (current === this) {
-            current = null
-            core.nativeVideoWindowId = null
-        }
+        views.takeBack(VideoViews.Kind.REMOTE, this)
         super.onDetachedFromWindow()
-    }
-
-    private companion object {
-        /** The view the SIP core has; what the core gives back for it is not always the view itself. */
-        var current: RemoteVideoView? = null
     }
 }
 
 private class PreviewView(context: Context) : CaptureTextureView(context) {
-    private val core = context.engine.core
+    private val views = context.engine.videoViews
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        current = this
-        core.nativePreviewWindowId = this
+        views.give(VideoViews.Kind.PREVIEW, this)
     }
 
     override fun onDetachedFromWindow() {
-        if (current === this) {
-            current = null
-            core.nativePreviewWindowId = null
-        }
+        views.takeBack(VideoViews.Kind.PREVIEW, this)
         super.onDetachedFromWindow()
-    }
-
-    private companion object {
-        var current: PreviewView? = null
     }
 }
 
