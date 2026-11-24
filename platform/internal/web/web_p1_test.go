@@ -185,6 +185,12 @@ func TestTrustedProxy(t *testing.T) {
 	if !h.srv.isSecure(r) || h.srv.clientIP(r) != "203.0.113.9" {
 		t.Errorf("trusted proxy: secure=%v ip=%s", h.srv.isSecure(r), h.srv.clientIP(r))
 	}
+	// A proxy that adds its own line: the client's forged first line is not believed.
+	r.Header.Set("X-Forwarded-For", "198.51.100.66")
+	r.Header.Add("X-Forwarded-For", "203.0.113.9")
+	if ip := h.srv.clientIP(r); ip != "203.0.113.9" {
+		t.Errorf("two header lines: %s", ip)
+	}
 }
 
 func TestLogHasNoSecrets(t *testing.T) {

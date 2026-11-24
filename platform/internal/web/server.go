@@ -337,7 +337,8 @@ func peerAddr(r *http.Request) (netip.Addr, bool) {
 }
 
 // clientIP is the remote address, or the last untrusted hop of X-Forwarded-For when
-// the peer is a trusted proxy (design §6.5).
+// the peer is a trusted proxy (design §6.5). The header's lines are read in order as one
+// list: a proxy may add its own line instead of extending the client's.
 func (s *Server) clientIP(r *http.Request) string {
 	peer, ok := peerAddr(r)
 	if !ok {
@@ -346,7 +347,7 @@ func (s *Server) clientIP(r *http.Request) string {
 	if !s.Cfg.IsTrustedProxy(peer) {
 		return peer.String()
 	}
-	hops := strings.Split(r.Header.Get("X-Forwarded-For"), ",")
+	hops := strings.Split(strings.Join(r.Header.Values("X-Forwarded-For"), ","), ",")
 	for i := len(hops) - 1; i >= 0; i-- {
 		a, err := netip.ParseAddr(strings.TrimSpace(hops[i]))
 		if err != nil {

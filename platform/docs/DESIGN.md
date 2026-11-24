@@ -1188,7 +1188,8 @@ own password (valid 5 minutes) and writes an audit entry `secret.view`.
   lock: refuse at the limit, else count) and gives it back on success (`Release`), so parallel
   requests cannot check more than the limit allows. The login lockout does the same.
 Client IP = remote address, or `X-Forwarded-For` only when the peer is in
-`SIPLINK_TRUSTED_PROXIES`.
+`SIPLINK_TRUSTED_PROXIES`: all its header lines joined in order, read from the right, the
+first address that is not a trusted proxy.
 
 ### 6.6 Logging, audit, backups
 
