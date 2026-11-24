@@ -760,7 +760,9 @@ certificate, §4.8), `vendorName`.
 `ldapKey` is a 32-byte key in the key file (§6.1). Rotating a client's LDAP password = bump
 `ldap_generation` (button "重置 LDAP 凭据"), which also changes the document version so the phone
 gets the new one at its next sync. A deleted or unbound client cannot bind any more (lookup by
-public_id fails or the client is not `active`).
+public_id fails or the client is not `active`); an unbind (new QR code, or the phone leaving)
+also bumps `ldap_generation`, so the old phone's password stays invalid once a new phone has
+enrolled.
 
 A search whose base is outside the permitted books returns `noSuchObject` (32) — not
 `insufficientAccessRights` — so DNs of other books do not leak. A base of `ou=books` or the

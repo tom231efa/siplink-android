@@ -41,7 +41,8 @@ func revoke(ctx context.Context, tx *sql.Tx, c *Client, reason, now string) erro
 }
 
 // Unbind revokes the client's device key (reason unbound), sets it back to pending and
-// gives it a new enrollment token ("重新生成二维码", and leave from the phone).
+// gives it a new enrollment token ("重新生成二维码", and leave from the phone). It bumps
+// the LDAP generation, so the old phone's LDAP password never works again (§4.3).
 func (s *Store) Unbind(ctx context.Context, c *Client, token string, expires time.Time, box Sealer) error {
 	now := s.NowText()
 	return s.Tx(ctx, func(tx *sql.Tx) error {
@@ -49,10 +50,11 @@ func (s *Store) Unbind(ctx context.Context, c *Client, token string, expires tim
 			return err
 		}
 		if _, err := tx.ExecContext(ctx, `UPDATE clients SET status = 'pending', device_key_hash = NULL, bound_at = NULL,
-			install_id = '', revision = revision + 1, updated_at = ? WHERE id = ?`, now, c.ID); err != nil {
+			install_id = '', ldap_generation = ldap_generation + 1, revision = revision + 1, updated_at = ? WHERE id = ?`, now, c.ID); err != nil {
 			return err
 		}
 		c.Status, c.DeviceKeyHash, c.BoundAt, c.InstallID = StatusPending, "", "", ""
+		c.LDAPGeneration++
 		c.EnrollExpiresAt = expires.UTC().Format(TimeFormat)
 		if _, err := tx.ExecContext(ctx, `DELETE FROM client_reports WHERE client_id = ?`, c.ID); err != nil {
 			return err
