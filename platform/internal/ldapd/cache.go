@@ -8,12 +8,12 @@ import (
 	"siplink/internal/store"
 )
 
-// snapshot is the in-memory copy of one book at one revision (design §4.6).
+// snapshot is the in-memory copy of one book at one version (design §4.6).
 type snapshot struct {
-	bookID   int64
-	revision int64
-	nodes    []*node         // in sort_key order
-	byID     map[int64]*node // entry id -> node
+	bookID  int64
+	version store.BookVersion
+	nodes   []*node         // in sort_key order
+	byID    map[int64]*node // entry id -> node
 }
 
 // cache keeps snapshots of the most recently used books, bounded by the total
@@ -35,12 +35,13 @@ func newCache(st *store.Store, d *dit, maxNodes int) *cache {
 		loads: map[int64]*sync.Mutex{}}
 }
 
-// lookup returns a cached snapshot of the book at its current revision, or nil.
+// lookup returns a cached snapshot of the book at its current version, or nil: a
+// snapshot of a deleted book whose id the book reuses has another slug or creation time.
 func (c *cache) lookup(b *store.Book) *snapshot {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if el := c.items[b.ID]; el != nil {
-		if s := el.Value.(*snapshot); s.revision == b.Revision {
+		if s := el.Value.(*snapshot); s.version == b.Version() {
 			c.lru.MoveToFront(el)
 			return s
 		}
@@ -60,7 +61,7 @@ func (c *cache) loader(id int64) *sync.Mutex {
 }
 
 // get returns the snapshot of a book, loading it from the database when the cached
-// one is missing or older than the book's revision.
+// one is missing or of another version of the book.
 func (c *cache) get(ctx context.Context, b *store.Book) (*snapshot, error) {
 	if s := c.lookup(b); s != nil {
 		return s, nil
@@ -71,13 +72,13 @@ func (c *cache) get(ctx context.Context, b *store.Book) (*snapshot, error) {
 	if s := c.lookup(b); s != nil {
 		return s, nil // loaded by another search meanwhile
 	}
-	entries, rev, err := c.st.AllEntries(ctx, b.ID)
+	entries, v, err := c.st.BookEntries(ctx, b.ID)
 	if err != nil {
 		return nil, err
 	}
-	s := &snapshot{bookID: b.ID, revision: rev, nodes: make([]*node, len(entries)), byID: make(map[int64]*node, len(entries))}
+	s := &snapshot{bookID: b.ID, version: v, nodes: make([]*node, len(entries)), byID: make(map[int64]*node, len(entries))}
 	for i, e := range entries {
-		n := c.dit.entryNode(e, b.Slug)
+		n := c.dit.entryNode(e, v.Slug)
 		s.nodes[i] = n
 		s.byID[e.ID] = n
 	}

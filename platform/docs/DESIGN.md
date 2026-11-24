@@ -819,8 +819,9 @@ order (the name, so lists look sorted on the phone).
 SQLite is the source of truth; searches run against an in-memory snapshot per book:
 - Snapshot = slice of entries with pre-folded strings (case-folded names, digit-only numbers),
   built on first access from one indexed query (`book_id`, ordered by `sort_key`), tagged with the
-  book's `revision`. A write bumps the revision; the next search builds a new snapshot and swaps
-  it atomically (searches in flight keep the old one).
+  book's `revision`, slug and creation time (a new book may reuse a deleted book's id and reach the
+  same revision, never with both of the others). A write bumps the revision; the next search
+  builds a new snapshot and swaps it atomically (searches in flight keep the old one).
 - Evaluation is a linear scan of the book with the compiled filter. A 10,000-entry book is a few
   hundred kilobytes to a few megabytes; a scan with substring tests takes well under a
   millisecond. Target, measured by a benchmark in P4: p99 < 5 ms for a substring search over a

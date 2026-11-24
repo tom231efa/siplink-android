@@ -299,26 +299,46 @@ func (s *Store) SearchEntries(ctx context.Context, bookID int64, text string, li
 	return out, total, rows.Err()
 }
 
+// BookVersion is one state of one book. A book that reuses a deleted book's id (no
+// AUTOINCREMENT) may reach the same revision, but not with the same slug and creation time.
+type BookVersion struct {
+	Revision  int64
+	Slug      string
+	CreatedAt string
+}
+
+// Version returns the state of the book as read.
+func (b *Book) Version() BookVersion {
+	return BookVersion{Revision: b.Revision, Slug: b.Slug, CreatedAt: b.CreatedAt}
+}
+
 // AllEntries returns every entry of a book in name order and the revision they
 // belong to, read in one statement so both are consistent.
 func (s *Store) AllEntries(ctx context.Context, bookID int64) ([]*Entry, int64, error) {
-	rows, err := s.DB.QueryContext(ctx, `SELECT b.revision, e.id, e.book_id, e.name, e.surname, e.given_name, e.phones,
+	entries, v, err := s.BookEntries(ctx, bookID)
+	return entries, v.Revision, err
+}
+
+// BookEntries returns every entry of a book in name order and the version of the
+// book they belong to, read in one statement so both are consistent.
+func (s *Store) BookEntries(ctx context.Context, bookID int64) ([]*Entry, BookVersion, error) {
+	rows, err := s.DB.QueryContext(ctx, `SELECT b.revision, b.slug, b.created_at, e.id, e.book_id, e.name, e.surname, e.given_name, e.phones,
 		e.mobiles, e.organization, e.department, e.title, e.email, e.updated_at
 		FROM address_books b LEFT JOIN book_entries e ON e.book_id = b.id
 		WHERE b.id = ? ORDER BY e.sort_key, e.id`, bookID)
 	if err != nil {
-		return nil, 0, err
+		return nil, BookVersion{}, err
 	}
 	defer rows.Close()
 	var out []*Entry
-	var rev int64
+	var v BookVersion
 	found := false
 	for rows.Next() {
 		found = true
 		var id, book sql.NullInt64
 		var name, surname, given, phones, mobiles, org, dept, title, email, updated sql.NullString
-		if err := rows.Scan(&rev, &id, &book, &name, &surname, &given, &phones, &mobiles, &org, &dept, &title, &email, &updated); err != nil {
-			return nil, 0, err
+		if err := rows.Scan(&v.Revision, &v.Slug, &v.CreatedAt, &id, &book, &name, &surname, &given, &phones, &mobiles, &org, &dept, &title, &email, &updated); err != nil {
+			return nil, BookVersion{}, err
 		}
 		if !id.Valid {
 			continue // a book without entries
@@ -328,12 +348,12 @@ func (s *Store) AllEntries(ctx context.Context, bookID int64) ([]*Entry, int64, 
 			Organization: org.String, Department: dept.String, Title: title.String, Email: email.String, UpdatedAt: updated.String})
 	}
 	if err := rows.Err(); err != nil {
-		return nil, 0, err
+		return nil, BookVersion{}, err
 	}
 	if !found {
-		return nil, 0, ErrNotFound
+		return nil, BookVersion{}, ErrNotFound
 	}
-	return out, rev, nil
+	return out, v, nil
 }
 
 // bookUsers lists what refers to a book.
