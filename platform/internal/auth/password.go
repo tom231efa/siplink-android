@@ -3,6 +3,7 @@
 package auth
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/base64"
@@ -39,21 +40,45 @@ const MinPasswordLength = 10
 // ErrBadHash is returned for a stored hash that is not an argon2id PHC string.
 var ErrBadHash = errors.New("auth: malformed password hash")
 
-// HashPassword returns an argon2id PHC string.
+// MaxHashing is how many argon2id computations run at once in the process; each holds
+// the memory its parameters name (64 MiB for new hashes).
+const MaxHashing = 4
+
+// ErrBusy is returned when no hashing slot became free before the context ended.
+var ErrBusy = errors.New("auth: password hashing busy")
+
+var (
+	hashSlots = make(chan struct{}, MaxHashing)
+	idKey     = argon2.IDKey // tests count the computations through it
+)
+
+// derive runs argon2id in one of the MaxHashing slots, waiting for one until ctx ends.
+func derive(ctx context.Context, password string, salt []byte, p Argon2Params, n uint32) ([]byte, error) {
+	select {
+	case hashSlots <- struct{}{}:
+	case <-ctx.Done():
+		return nil, ErrBusy
+	}
+	defer func() { <-hashSlots }()
+	return idKey([]byte(password), salt, p.Time, p.Memory, p.Threads, n), nil
+}
+
+// HashPassword returns an argon2id PHC string. It waits for a hashing slot.
 func HashPassword(password string) (string, error) {
 	salt := make([]byte, saltLen)
 	if _, err := rand.Read(salt); err != nil {
 		return "", err
 	}
 	p := HashParams
-	key := argon2.IDKey([]byte(password), salt, p.Time, p.Memory, p.Threads, keyLen)
+	key, _ := derive(context.Background(), password, salt, p, keyLen)
 	b64 := base64.RawStdEncoding
 	return fmt.Sprintf("$argon2id$v=%d$m=%d,t=%d,p=%d$%s$%s", argon2.Version, p.Memory, p.Time, p.Threads,
 		b64.EncodeToString(salt), b64.EncodeToString(key)), nil
 }
 
-// VerifyPassword checks password against a PHC string in constant time.
-func VerifyPassword(hash, password string) (bool, error) {
+// VerifyPassword checks password against a PHC string in constant time. It waits for a
+// hashing slot until ctx ends, then gives up with ErrBusy.
+func VerifyPassword(ctx context.Context, hash, password string) (bool, error) {
 	parts := strings.Split(hash, "$")
 	if len(parts) != 6 || parts[1] != "argon2id" {
 		return false, ErrBadHash
@@ -75,7 +100,10 @@ func VerifyPassword(hash, password string) (bool, error) {
 	if err1 != nil || err2 != nil || len(want) == 0 {
 		return false, ErrBadHash
 	}
-	got := argon2.IDKey([]byte(password), salt, p.Time, p.Memory, p.Threads, uint32(len(want)))
+	got, err := derive(ctx, password, salt, p, uint32(len(want)))
+	if err != nil {
+		return false, err
+	}
 	return subtle.ConstantTimeCompare(got, want) == 1, nil
 }
 
@@ -85,10 +113,12 @@ var (
 	dummyHash string
 )
 
-// VerifyDummy spends the same time as a real verification.
-func VerifyDummy(password string) {
+// VerifyDummy spends the same time as a real verification and waits for a slot like
+// it; it returns ErrBusy when VerifyPassword would.
+func VerifyDummy(ctx context.Context, password string) error {
 	dummyOnce.Do(func() { dummyHash, _ = HashPassword("siplink-dummy-password") })
-	_, _ = VerifyPassword(dummyHash, password)
+	_, err := VerifyPassword(ctx, dummyHash, password)
+	return err
 }
 
 // PasswordProblem says why a new administrator password is not acceptable, nil when

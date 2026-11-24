@@ -75,7 +75,7 @@ func (s *Server) tryStep(a *store.Admin, check func() (bool, error)) (ok, limite
 // stored passwords) under the same limit. It returns a message in the request's
 // language, "" when it is right.
 func (s *Server) recheckPassword(r *http.Request, a *store.Admin, password string) string {
-	ok, limited, _ := s.tryStep(a, func() (bool, error) { return auth.VerifyPassword(a.PasswordHash, password) })
+	ok, limited, _ := s.tryStep(a, func() (bool, error) { return auth.VerifyPassword(r.Context(), a.PasswordHash, password) })
 	switch {
 	case limited:
 		return tr(r).T("login.too_many")

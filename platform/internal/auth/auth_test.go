@@ -21,14 +21,14 @@ func TestPasswordDefaultParams(t *testing.T) {
 	if !strings.HasPrefix(h, "$argon2id$v=19$m=65536,t=3,p=2$") {
 		t.Errorf("PHC prefix: %s", h)
 	}
-	if ok, err := VerifyPassword(h, "correct horse battery"); !ok || err != nil {
+	if ok, err := VerifyPassword(context.Background(), h, "correct horse battery"); !ok || err != nil {
 		t.Error("right password refused")
 	}
-	if ok, _ := VerifyPassword(h, "correct horse batterY"); ok {
+	if ok, _ := VerifyPassword(context.Background(), h, "correct horse batterY"); ok {
 		t.Error("wrong password accepted")
 	}
 	for _, bad := range []string{"", "$argon2i$v=19$m=1,t=1,p=1$AA$AA", "$argon2id$v=19$m=x$AA$AA", "plain"} {
-		if _, err := VerifyPassword(bad, "x"); err == nil {
+		if _, err := VerifyPassword(context.Background(), bad, "x"); err == nil {
 			t.Errorf("malformed %q accepted", bad)
 		}
 	}

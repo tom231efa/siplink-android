@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/url"
@@ -52,6 +53,10 @@ func (s *Server) loginForm(w http.ResponseWriter, r *http.Request) {
 	s.ok(w, r, "login", &Page{Title: tr(r).T("login.title"), Data: loginData{Next: safeNext(r.URL.Query().Get("next"))}})
 }
 
+// loginHashWait is how long a login waits for a password hashing slot before it is
+// answered as too many attempts.
+const loginHashWait = 3 * time.Second
+
 func (s *Server) loginSubmit(w http.ResponseWriter, r *http.Request) {
 	username := strings.TrimSpace(r.FormValue("username"))
 	password := r.FormValue("password")
@@ -60,9 +65,12 @@ func (s *Server) loginSubmit(w http.ResponseWriter, r *http.Request) {
 	key := strings.ToLower(username)
 	data := loginData{Username: username, Next: next}
 
-	if !s.Logins.Attempt(key, ip) {
+	tooMany := func() {
 		data.Error = tr(r).T("login.too_many")
 		s.render(w, r, http.StatusTooManyRequests, "login", &Page{Title: tr(r).T("login.title"), Data: data})
+	}
+	if !s.Logins.Attempt(key, ip) {
+		tooMany()
 		return
 	}
 	// A name no administrator can have is not looked up; it fails like an unknown one.
@@ -71,18 +79,26 @@ func (s *Server) loginSubmit(w http.ResponseWriter, r *http.Request) {
 	if auth.ValidUsername(username) {
 		admin, err = s.St.AdminByUsername(r.Context(), username)
 	}
+	// A login waits only a few seconds for a hashing slot (auth.MaxHashing).
+	ctx, cancel := context.WithTimeout(r.Context(), loginHashWait)
+	defer cancel()
 	okPassword := false
 	switch {
 	case errors.Is(err, store.ErrNotFound):
-		auth.VerifyDummy(password)
+		err = auth.VerifyDummy(ctx, password)
 	case err != nil:
 		s.internal(w, r, err)
 		return
 	default:
-		okPassword, err = auth.VerifyPassword(admin.PasswordHash, password)
-		if err != nil {
+		okPassword, err = auth.VerifyPassword(ctx, admin.PasswordHash, password)
+		if err != nil && !errors.Is(err, auth.ErrBusy) {
 			s.Log.Error("stored password hash unreadable", "admin", admin.ID)
 		}
+	}
+	if errors.Is(err, auth.ErrBusy) {
+		s.Logins.Release(key, ip)
+		tooMany()
+		return
 	}
 	if !okPassword || admin.Disabled {
 		e := &store.AuditEntry{Action: "login.failure", ObjectType: "admin", ObjectName: truncate(username, 64), IP: ip}

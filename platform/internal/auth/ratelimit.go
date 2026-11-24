@@ -147,6 +147,13 @@ func (l *LoginLimiter) Attempt(username, ip string) bool {
 	return !ValidUsername(username) || l.failures.Take(loginKey(username, ip))
 }
 
+// Release gives back the failure an attempt counted when it was not checked after all.
+func (l *LoginLimiter) Release(username, ip string) {
+	if ValidUsername(username) {
+		l.failures.Release(loginKey(username, ip))
+	}
+}
+
 // Succeeded clears the failures of that name and address.
 func (l *LoginLimiter) Succeeded(username, ip string) {
 	if ValidUsername(username) {

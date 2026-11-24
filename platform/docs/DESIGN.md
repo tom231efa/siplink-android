@@ -1116,7 +1116,7 @@ container: `docker compose exec -e LANG=zh_CN.UTF-8 siplink siplink admin create
 
 | Secret | Stored as | Why |
 |---|---|---|
-| Admin passwords | argon2id (`golang.org/x/crypto/argon2`, m=64 MiB, t=3, p=2, 16-byte salt, PHC string) | only verified |
+| Admin passwords | argon2id (`golang.org/x/crypto/argon2`, m=64 MiB, t=3, p=2, 16-byte salt, PHC string); at most 4 computations at once in the process (`auth.MaxHashing`), a login waits at most 3 s for one and otherwise gets the too-many-attempts page (`429`), other callers wait | only verified |
 | Session tokens | SHA-256 | only looked up |
 | Enrollment token | SHA-256 (lookup) + AES-GCM (to show the QR again) | single-use, expires |
 | Device key | SHA-256 | only looked up |
