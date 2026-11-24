@@ -1165,7 +1165,14 @@ own password (valid 5 minutes) and writes an audit entry `secret.view`.
 ### 6.5 Rate limits (in memory, per process)
 
 - Login: 5 failures per user name per 15 min, then 15 min lockout of that name for that IP;
-  30 attempts per IP per minute overall.
+  30 attempts per IP per minute overall. A name no administrator can have (`auth.ValidUsername`: 2–32
+  of `A–Z a–z 0–9 . _ -`) counts only per IP and is not kept.
+- Request bodies: every route caps its body when it is matched — 64 KiB without a complete
+  session (login, language, second step) and for the device API, 1 MiB for signed-in pages, the
+  upload routes their own limit (directory CSV 10 MiB, client CSV 4 MiB, key CSV 2 MiB, CA
+  certificates 1 MiB, own certificate 2 × 64 KiB, each plus the form). A larger body is refused
+  (`413`, or the upload's own message) before anything changes. Forms are parsed with the whole
+  cap in memory, so no multipart part goes to a temporary file.
 - Enrollment: 10 failed tokens per IP per 10 min → `429`; device sync: 120 requests per device
   key per hour, 600 per IP per minute (NAT of a whole office).
 - LDAP: §4.5.

@@ -16,7 +16,7 @@ import (
 
 // stepPage registers a route of the second step.
 func (s *Server) stepPage(pattern string, h http.HandlerFunc) {
-	s.handle(pattern, s.requireSecure(s.csrfCheck(s.requirePending(h))))
+	s.handle(pattern, maxOpenBody, s.requireSecure(s.csrfCheck(s.requirePending(s.readForm(maxOpenBody, h)))))
 }
 
 type stepData struct {

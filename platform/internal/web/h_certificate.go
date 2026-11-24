@@ -15,14 +15,18 @@ import (
 // The operator's own certificate on the system page (design §6.7).
 
 func (s *Server) routesCertificate() {
-	s.page("POST /system/certificate", s.requireSuper(s.certUpload))
+	s.upload("POST /system/certificate", maxCertUpload, s.requireSuper(s.certUpload))
 	s.page("POST /system/certificate/confirm", s.requireSuper(s.certConfirm))
 	s.page("POST /system/certificate/remove", s.requireSuper(s.certRemove))
 	s.page("POST /system/certificate/reminder", s.requireSuper(s.certReminder))
 }
 
-// maxCertFile is the size limit of each uploaded file (chain, key).
-const maxCertFile = 64 << 10
+// maxCertFile is the size limit of each uploaded file (chain, key); maxCertUpload is
+// the body limit of the form with both.
+const (
+	maxCertFile   = 64 << 10
+	maxCertUpload = 2*maxCertFile + 16<<10
+)
 
 // certCard is the certificate card of the system page.
 type certCard struct {
@@ -143,13 +147,11 @@ func (s *Server) ownInfo(t *i18n.Tr, title string, o *pki.Own, uses string) ownI
 // certUpload checks an uploaded chain and key. Without warnings it is used at once;
 // with warnings it waits in memory for a confirmation (certConfirm).
 func (s *Server) certUpload(w http.ResponseWriter, r *http.Request) {
-	r.Body = http.MaxBytesReader(w, r.Body, 2*maxCertFile+16<<10)
 	// Everything stays in memory: the private key never reaches a temporary file.
-	if err := r.ParseMultipartForm(4 * maxCertFile); err != nil {
+	if err := r.ParseMultipartForm(maxCertUpload); err != nil {
 		s.certRefused(w, r, tr(r).T("system.cert.upload_too_big", "max", maxCertFile>>10))
 		return
 	}
-	defer r.MultipartForm.RemoveAll()
 	a, err := s.assessUpload(r)
 	var refusal *pki.Refusal
 	switch {

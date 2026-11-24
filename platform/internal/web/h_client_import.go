@@ -22,8 +22,12 @@ import (
 // {profile}显示名, and per directory with per-client passwords {directory}LDAP密码. The
 // English names are an alternative (name, region, client_template, note, group, tags,
 // "{profile} username", …, in any case); one file uses one language. Extra columns are
-// ignored. Several tags in one cell are separated by ";" or "；".
-const maxClientCSV = 4 << 20
+// ignored. Several tags in one cell are separated by ";" or "；". maxClientUpload is the
+// body limit of the dry run: the file, or the pasted text, and the form around it.
+const (
+	maxClientCSV    = 4 << 20
+	maxClientUpload = maxClientCSV + 64<<10
+)
 
 // csvColumn is a column of the client CSV by its Chinese and its English name; the
 // per-account and per-directory ones follow the name of the profile or directory.
@@ -180,7 +184,7 @@ func clientCSVFormat(r *http.Request) []string {
 
 func (s *Server) routesClientImport() {
 	s.page("GET /clients/import", s.clientImportForm)
-	s.page("POST /clients/import", s.clientImportDryRun)
+	s.upload("POST /clients/import", maxClientUpload, s.clientImportDryRun)
 	s.page("POST /clients/import/confirm", s.clientImportConfirm)
 	s.page("GET /clients/import/template.csv", s.clientImportTemplate)
 }
@@ -265,8 +269,7 @@ func (s *Server) clientImportDryRun(w http.ResponseWriter, r *http.Request) {
 		d.Error = msg
 		s.render(w, r, http.StatusBadRequest, "client_import", &Page{Title: tr(r).T("clients.import.title"), Nav: "clients", Data: d})
 	}
-	r.Body = http.MaxBytesReader(w, r.Body, maxClientCSV+64<<10)
-	if err := r.ParseMultipartForm(1 << 20); err != nil && !errors.Is(err, http.ErrNotMultipart) {
+	if err := r.ParseMultipartForm(maxClientUpload); err != nil && !errors.Is(err, http.ErrNotMultipart) {
 		fail(tr(r).T("clients.import.unreadable", "mb", maxClientCSV>>20))
 		return
 	}

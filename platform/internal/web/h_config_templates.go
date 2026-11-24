@@ -26,7 +26,7 @@ func (s *Server) routesTemplates() {
 	s.page("GET /config-templates/{id}", s.configShow)
 	s.page("POST /config-templates/{id}/meta", s.configMeta)
 	s.page("POST /config-templates/{id}/settings", s.configSettings)
-	s.page("POST /config-templates/{id}/cas", s.configCAAdd)
+	s.upload("POST /config-templates/{id}/cas", maxCAUpload, s.configCAAdd)
 	s.page("POST /config-templates/{id}/cas/remove", s.configCARemove)
 	s.page("POST /config-templates/{id}/delete", s.configDelete)
 	s.page("GET /config-templates/{id}/profiles/new", s.profileForm)
@@ -620,19 +620,21 @@ func formAt(r *http.Request, name string, i int) string {
 	return ""
 }
 
+// maxCAUpload is the body limit of the CA certificates added to a template.
+const maxCAUpload = 1 << 20
+
 func (s *Server) configCAAdd(w http.ResponseWriter, r *http.Request) {
 	t := s.loadConfig(w, r, true)
 	if t == nil {
 		return
 	}
-	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
-	if err := r.ParseMultipartForm(1 << 20); err != nil && !errors.Is(err, http.ErrNotMultipart) {
+	if err := r.ParseMultipartForm(maxCAUpload); err != nil && !errors.Is(err, http.ErrNotMultipart) {
 		s.renderConfig(w, r, http.StatusBadRequest, t, "security", tr(r).T("config.ca.too_large"))
 		return
 	}
 	text := r.FormValue("pem")
 	if f, _, err := r.FormFile("file"); err == nil {
-		b, _ := io.ReadAll(io.LimitReader(f, 1<<20))
+		b, _ := io.ReadAll(io.LimitReader(f, maxCAUpload))
 		f.Close()
 		text += "\n" + string(b)
 	}

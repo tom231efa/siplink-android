@@ -120,7 +120,8 @@ func (w *Window) Reset(key string) {
 
 // LoginLimiter applies the login rules of §6.5: 5 failures for one user name from
 // one address lock that name for that address for 15 minutes; 30 attempts per
-// address per minute overall.
+// address per minute overall. A name that fails ValidUsername belongs to no
+// administrator and is counted only per address, so it keeps nothing in memory.
 type LoginLimiter struct {
 	failures *Window
 	perIP    *Window
@@ -140,8 +141,15 @@ func loginKey(username, ip string) string { return ip + "\x00" + username }
 // of that name and address until Succeeded clears them, so parallel guesses cannot pass
 // the lock before their failures are recorded.
 func (l *LoginLimiter) Attempt(username, ip string) bool {
-	return l.perIP.Allow(ip) && l.failures.Take(loginKey(username, ip))
+	if !l.perIP.Allow(ip) {
+		return false
+	}
+	return !ValidUsername(username) || l.failures.Take(loginKey(username, ip))
 }
 
 // Succeeded clears the failures of that name and address.
-func (l *LoginLimiter) Succeeded(username, ip string) { l.failures.Reset(loginKey(username, ip)) }
+func (l *LoginLimiter) Succeeded(username, ip string) {
+	if ValidUsername(username) {
+		l.failures.Reset(loginKey(username, ip))
+	}
+}

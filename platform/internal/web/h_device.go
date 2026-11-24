@@ -30,10 +30,10 @@ func newDeviceLimits(now func() time.Time) deviceLimits {
 }
 
 func (s *Server) routesDevice() {
-	s.handle("GET /p/{token}", s.enrollInfo)
-	s.handle("POST /p/{token}", s.device(s.enroll))
-	s.handle("POST /api/device/v1/sync", s.device(s.sync))
-	s.handle("POST /api/device/v1/leave", s.device(s.leave))
+	s.handle("GET /p/{token}", maxOpenBody, s.enrollInfo)
+	s.handle("POST /p/{token}", maxOpenBody, s.device(s.enroll))
+	s.handle("POST /api/device/v1/sync", maxOpenBody, s.device(s.sync))
+	s.handle("POST /api/device/v1/leave", maxOpenBody, s.device(s.leave))
 }
 
 // device wraps the device API: HTTPS (as the admin UI), the per-IP limit, no CSRF
@@ -104,7 +104,7 @@ type deviceRequest struct {
 
 func readDeviceRequest(w http.ResponseWriter, r *http.Request) (*deviceRequest, bool) {
 	var req deviceRequest
-	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 64<<10))
+	body, err := io.ReadAll(r.Body) // the route caps it (maxOpenBody)
 	if err == nil && len(strings.TrimSpace(string(body))) > 0 {
 		err = json.Unmarshal(body, &req)
 	}

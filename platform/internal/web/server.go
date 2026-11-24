@@ -4,6 +4,7 @@ package web
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net"
 	"net/http"
@@ -110,12 +111,21 @@ func (s *Server) Handler() http.Handler {
 	return s.logRequests(s.recoverPanics(s.language(s.headers(s.mux))))
 }
 
-// handle registers a route. Every route records its pattern for the log.
-func (s *Server) handle(pattern string, h http.HandlerFunc) {
+// Body limits of the routes (§6.5). Every route caps its body when it is matched, before
+// any middleware or handler code can read it; an upload route names its own limit.
+const (
+	maxOpenBody = 64 << 10 // routes without a complete session, and the device API
+	maxPageBody = 1 << 20  // signed-in pages
+)
+
+// handle registers a route whose body may hold at most limit bytes. Every route records
+// its pattern for the log.
+func (s *Server) handle(pattern string, limit int64, h http.HandlerFunc) {
 	s.mux.Handle(pattern, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if info := logInfoFrom(r.Context()); info != nil {
 			info.pattern = r.Pattern
 		}
+		r.Body = http.MaxBytesReader(w, r.Body, limit)
 		h(w, r)
 	}))
 }
@@ -123,17 +133,62 @@ func (s *Server) handle(pattern string, h http.HandlerFunc) {
 // page registers an admin route: HTTPS required, CSRF protection on unsafe methods,
 // a valid session, and the forced password change.
 func (s *Server) page(pattern string, h http.HandlerFunc) {
-	s.handle(pattern, s.requireSecure(s.csrfCheck(s.requireLogin(h))))
+	s.handle(pattern, maxPageBody, s.requireSecure(s.csrfCheck(s.requireLogin(s.readForm(maxPageBody, h)))))
+}
+
+// upload registers an admin route that takes a file of up to limit bytes. Its handler
+// parses the body itself, with at least limit in memory, and says what was too large.
+func (s *Server) upload(pattern string, limit int64, h http.HandlerFunc) {
+	s.handle(pattern, limit, s.requireSecure(s.csrfCheck(s.requireLogin(dropFiles(h)))))
 }
 
 // publicPage registers a route without a session (login).
 func (s *Server) publicPage(pattern string, h http.HandlerFunc) {
-	s.handle(pattern, s.requireSecure(s.csrfCheck(h)))
+	s.handle(pattern, maxOpenBody, s.requireSecure(s.csrfCheck(s.readForm(maxOpenBody, h))))
+}
+
+// readForm parses the form of a POST before h runs, with the whole capped body in
+// memory, so that no multipart file reaches the disk; a body over the limit, or one
+// that cannot be read, is refused and h does not run.
+func (s *Server) readForm(limit int64, h http.HandlerFunc) http.HandlerFunc {
+	return dropFiles(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			err := r.ParseForm() // ParseMultipartForm would hide its error behind ErrNotMultipart
+			if err == nil {
+				if err = r.ParseMultipartForm(limit); errors.Is(err, http.ErrNotMultipart) {
+					err = nil
+				}
+			}
+			if err != nil {
+				status := http.StatusBadRequest
+				if errors.As(err, new(*http.MaxBytesError)) {
+					status = http.StatusRequestEntityTooLarge
+				}
+				s.fail(w, r, status, tr(r).T("flash.failed"))
+				return
+			}
+		}
+		h(w, r)
+	})
+}
+
+// dropFiles removes the multipart files of the request h parsed once it returns:
+// net/http removes only those of the request it made, and the middleware hands the
+// handlers copies of it.
+func dropFiles(h http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if r.MultipartForm != nil {
+				r.MultipartForm.RemoveAll()
+			}
+		}()
+		h(w, r)
+	}
 }
 
 func (s *Server) routes() {
-	s.handle("GET /static/", s.static)
-	s.handle("GET /healthz", s.healthz)
+	s.handle("GET /static/", maxOpenBody, s.static)
+	s.handle("GET /healthz", maxOpenBody, s.healthz)
 
 	s.publicPage("GET /login", s.loginForm)
 	s.publicPage("POST /login", s.loginSubmit)
@@ -142,7 +197,7 @@ func (s *Server) routes() {
 	s.page("POST /filter", s.setFilter)
 	s.page("POST /theme", s.setTheme)
 	s.publicPage("POST /language", s.setLanguage)
-	s.handle("GET /", s.requireSecure(s.unknownPath))
+	s.handle("GET /", maxOpenBody, s.requireSecure(s.unknownPath))
 	s.routesP2()
 	s.routesBooks()
 	s.routesLDAPAccounts()

@@ -94,6 +94,9 @@ func (s *Server) importForm(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// maxBookUpload is the body limit of a directory import: the file and the form around it.
+const maxBookUpload = books.MaxCSVBytes + 64<<10
+
 // importDryRun reads the uploaded file and shows what an import would do. Nothing is
 // written; the parsed rows wait in memory for the confirmation.
 func (s *Server) importDryRun(w http.ResponseWriter, r *http.Request) {
@@ -106,12 +109,10 @@ func (s *Server) importDryRun(w http.ResponseWriter, r *http.Request) {
 		d.Error = msg
 		s.render(w, r, http.StatusBadRequest, "book_import", &Page{Title: tr(r).T("dirs.import.title"), Nav: "books", Data: d})
 	}
-	r.Body = http.MaxBytesReader(w, r.Body, books.MaxCSVBytes+64<<10)
-	if err := r.ParseMultipartForm(1 << 20); err != nil {
+	if err := r.ParseMultipartForm(maxBookUpload); err != nil {
 		fail(tr(r).T("dirs.import.unreadable_max", "max", books.MaxCSVBytes>>20))
 		return
 	}
-	defer r.MultipartForm.RemoveAll()
 	d.Replace = r.FormValue("mode") == "replace"
 	f, _, err := r.FormFile("file")
 	if err != nil {

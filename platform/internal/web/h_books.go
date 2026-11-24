@@ -26,7 +26,7 @@ func (s *Server) routesBooks() {
 	s.page("POST /books/{id}/entries/{eid}", s.entryUpdate)
 	s.page("POST /books/{id}/entries/{eid}/delete", s.entryDelete)
 	s.page("GET /books/{id}/import", s.importForm)
-	s.page("POST /books/{id}/import", s.importDryRun)
+	s.upload("POST /books/{id}/import", maxBookUpload, s.importDryRun)
 	s.page("POST /books/{id}/import/confirm", s.importConfirm)
 	s.page("GET /books/{id}/export.csv", s.exportCSV)
 	s.page("GET /books/{id}/export.ldif", s.exportLDIF)

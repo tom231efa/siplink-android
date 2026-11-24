@@ -65,10 +65,15 @@ func (s *Server) loginSubmit(w http.ResponseWriter, r *http.Request) {
 		s.render(w, r, http.StatusTooManyRequests, "login", &Page{Title: tr(r).T("login.title"), Data: data})
 		return
 	}
-	admin, err := s.St.AdminByUsername(r.Context(), username)
+	// A name no administrator can have is not looked up; it fails like an unknown one.
+	var admin *store.Admin
+	err := store.ErrNotFound
+	if auth.ValidUsername(username) {
+		admin, err = s.St.AdminByUsername(r.Context(), username)
+	}
 	okPassword := false
 	switch {
-	case errors.Is(err, store.ErrNotFound) || username == "":
+	case errors.Is(err, store.ErrNotFound):
 		auth.VerifyDummy(password)
 	case err != nil:
 		s.internal(w, r, err)

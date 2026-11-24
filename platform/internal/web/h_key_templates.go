@@ -25,7 +25,7 @@ func (s *Server) routesKeyTemplates() {
 	s.page("POST /key-templates/{id}/keys/{kid}", s.keySave)
 	s.page("POST /key-templates/{id}/keys/order", s.keyOrder)
 	s.page("POST /key-templates/{id}/keys/{kid}/delete", s.keyRemove)
-	s.page("POST /key-templates/{id}/import", s.keyImport)
+	s.upload("POST /key-templates/{id}/import", maxKeyUpload, s.keyImport)
 	s.page("GET /key-templates/{id}/export.csv", s.keyExport)
 }
 
@@ -264,6 +264,9 @@ func (s *Server) keyOrder(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// maxKeyUpload is the body limit of a key import.
+const maxKeyUpload = 2 << 20
+
 // keyImport reads keys in the app's CSV format (ShortcutRules.decode). Nothing is
 // written when a line has an error.
 func (s *Server) keyImport(w http.ResponseWriter, r *http.Request) {
@@ -271,14 +274,13 @@ func (s *Server) keyImport(w http.ResponseWriter, r *http.Request) {
 	if t == nil {
 		return
 	}
-	r.Body = http.MaxBytesReader(w, r.Body, 2<<20)
-	if err := r.ParseMultipartForm(2 << 20); err != nil && !errors.Is(err, http.ErrNotMultipart) {
+	if err := r.ParseMultipartForm(maxKeyUpload); err != nil && !errors.Is(err, http.ErrNotMultipart) {
 		s.renderKeys(w, r, http.StatusBadRequest, t, keyData{Error: tr(r).T("keys.import.too_large")})
 		return
 	}
 	text := r.FormValue("csv")
 	if f, _, err := r.FormFile("file"); err == nil {
-		b, _ := io.ReadAll(io.LimitReader(f, 2<<20))
+		b, _ := io.ReadAll(io.LimitReader(f, maxKeyUpload))
 		f.Close()
 		text = string(b)
 	}
