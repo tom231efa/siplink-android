@@ -134,6 +134,7 @@
   "clients.print.skipped": "Пропущено (привязаны или QR-код истёк): {n}",
   "clients.print.cards": "Карточки: {n}",
   "clients.print.empty": "Нет QR-кодов для печати",
+  "clients.print.too_many": "За один раз можно напечатать не более {max} клиентов.",
   "clients.import.title": "Импорт клиентов",
   "clients.import.title_results": "Импорт клиентов: результаты проверки",
   "clients.import.download_header": "Скачать заголовок CSV",

@@ -134,6 +134,7 @@
   "clients.print.skipped": "已跳过 {n} 个已绑定或二维码已过期的客户端",
   "clients.print.cards": "{n} 张",
   "clients.print.empty": "暂无可打印的二维码",
+  "clients.print.too_many": "一次最多打印 {max} 个客户端。",
   "clients.import.title": "批量导入客户端",
   "clients.import.title_results": "批量导入客户端：校验结果",
   "clients.import.download_header": "下载 CSV 表头",

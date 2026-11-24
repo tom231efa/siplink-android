@@ -134,6 +134,7 @@
   "clients.print.skipped": "Ignorés (associés ou code QR expiré) : {n}",
   "clients.print.cards": "Cartes : {n}",
   "clients.print.empty": "Aucun code QR à imprimer",
+  "clients.print.too_many": "{max} clients au maximum peuvent être imprimés à la fois.",
   "clients.import.title": "Importer des clients",
   "clients.import.title_results": "Importer des clients : résultats de la vérification",
   "clients.import.download_header": "Télécharger l'en-tête CSV",

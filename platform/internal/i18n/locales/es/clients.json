@@ -134,6 +134,7 @@
   "clients.print.skipped": "Omitidos (vinculados o con el código QR vencido): {n}",
   "clients.print.cards": "Tarjetas: {n}",
   "clients.print.empty": "No hay códigos QR para imprimir",
+  "clients.print.too_many": "Se pueden imprimir como máximo {max} clientes a la vez.",
   "clients.import.title": "Importar clientes",
   "clients.import.title_results": "Importar clientes: resultados de la comprobación",
   "clients.import.download_header": "Descargar encabezado CSV",

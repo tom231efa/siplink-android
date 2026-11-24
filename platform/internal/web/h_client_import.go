@@ -493,5 +493,9 @@ func (s *Server) clientImportConfirm(w http.ResponseWriter, r *http.Request) {
 		s.audit(r, "client.create", "client", ic.C.ID, ic.C.Name, &ic.C.RegionID, detail)
 	}
 	s.audit(r, "client.import", "client", 0, "", nil, map[string]any{"count": len(ids)})
-	s.redirect(w, r, "/clients/print?ids="+strings.Join(ids, ","), "ok", tr(r).T("clients.import.done", "n", len(ids)))
+	to := "/clients/print?ids=" + strings.Join(ids, ",")
+	if len(ids) > maxPrint { // more than one print page takes: the list instead
+		to = "/clients"
+	}
+	s.redirect(w, r, to, "ok", tr(r).T("clients.import.done", "n", len(ids)))
 }

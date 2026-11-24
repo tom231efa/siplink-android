@@ -134,6 +134,7 @@
   "clients.print.skipped": "تم التخطي (مرتبط أو انتهت صلاحية رمز QR): {n}",
   "clients.print.cards": "البطاقات: {n}",
   "clients.print.empty": "لا توجد رموز QR للطباعة",
+  "clients.print.too_many": "يمكن طباعة {max} عميل كحد أقصى في المرة الواحدة.",
   "clients.import.title": "استيراد العملاء",
   "clients.import.title_results": "استيراد العملاء: نتائج التحقق",
   "clients.import.download_header": "تنزيل ترويسة CSV",

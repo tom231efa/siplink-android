@@ -14,7 +14,7 @@ import (
 var printCardHTML = regexp.MustCompile(`(?s)<div class="print-card">\s*<div class="qr">(<svg.*?</svg>)</div>\s*<strong dir="auto">([^<]*)</strong>`)
 
 // TestPrintOrder: the print page has one card per printable client in the order of the
-// ids, a client named twice twice; a bound client counts as skipped, unknown ids and
+// ids, a client named twice once; a bound client counts as skipped, unknown ids and
 // clients of other regions are left out without a word; each card's code is the code of
 // its client's enrollment link (§5.4).
 func TestPrintOrder(t *testing.T) {
@@ -45,10 +45,38 @@ func TestPrintOrder(t *testing.T) {
 			t.Errorf("card %s: not the code of its enrollment link", c[2])
 		}
 	}
-	if strings.Join(names, ",") != "C,A,C,B" {
+	if strings.Join(names, ",") != "C,A,B" {
 		t.Errorf("cards: %v", names)
 	}
 	if !strings.Contains(body, zhText("clients.print.skipped", "n", 1)) {
 		t.Error("the bound client is not counted as skipped")
+	}
+}
+
+// TestPrintLimit: the print page takes at most 500 distinct clients; ids named more than
+// once count once.
+func TestPrintLimit(t *testing.T) {
+	h := newHarness(t)
+	east := h.region("华东")
+	f := h.fixture("标准", nil)
+	root, _ := h.loggedIn("root", store.RoleSuper)
+	id, _ := newClient(t, root, f, "A", east, "1001")
+	ids := func(n int, first string) string {
+		list := []string{first}
+		for i := 1; i < n; i++ {
+			list = append(list, itoa(int64(1000000+i)))
+		}
+		return strings.Join(list, ",")
+	}
+	if r := root.get("/clients/print?ids=" + ids(maxPrint+1, itoa(id))); r.code != http.StatusBadRequest ||
+		!strings.Contains(r.body, zhText("clients.print.too_many", "max", maxPrint)) {
+		t.Errorf("%d clients: %d", maxPrint+1, r.code)
+	}
+	if r := root.get("/clients/print?ids=" + ids(maxPrint, itoa(id))); r.code != http.StatusOK || len(printCardHTML.FindAllString(r.body, -1)) != 1 {
+		t.Errorf("%d clients: %d", maxPrint, r.code)
+	}
+	same := strings.TrimSuffix(strings.Repeat(itoa(id)+",", 3*maxPrint), ",")
+	if r := root.get("/clients/print?ids=" + same); r.code != http.StatusOK || len(printCardHTML.FindAllString(r.body, -1)) != 1 {
+		t.Errorf("one client named %d times: %d", 3*maxPrint, r.code)
 	}
 }

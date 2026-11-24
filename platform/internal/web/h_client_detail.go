@@ -314,17 +314,27 @@ type printCard struct {
 	QR           template.HTML
 }
 
+// maxPrint is the most clients one print page takes.
+const maxPrint = 500
+
 // clientPrint is the print page: one card per pending client with a valid QR code, in the
-// order of the ids. The clients come in one query, the QR codes are made in parallel.
+// order of the ids, each client once. The clients come in one query, the QR codes are made
+// in parallel.
 func (s *Server) clientPrint(w http.ResponseWriter, r *http.Request) {
 	act := actor(r)
-	names, _ := s.allRegionNames(r)
 	var ids []int64
+	seen := map[int64]bool{}
 	for _, part := range strings.Split(r.URL.Query().Get("ids"), ",") {
-		if id, ok := parseInt64(part); ok {
+		if id, ok := parseInt64(part); ok && !seen[id] {
+			seen[id] = true
 			ids = append(ids, id)
 		}
 	}
+	if len(ids) > maxPrint {
+		s.fail(w, r, http.StatusBadRequest, tr(r).T("clients.print.too_many", "max", maxPrint))
+		return
+	}
+	names, _ := s.allRegionNames(r)
 	byID, err := s.St.ClientsByID(r.Context(), ids)
 	if err != nil {
 		s.Log.Error("clients to print not read", "err", err) // as before: none of them is printed

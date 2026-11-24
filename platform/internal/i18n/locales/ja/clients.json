@@ -134,6 +134,7 @@
   "clients.print.skipped": "紐付け済み、または QR コードの有効期限が切れたクライアント {n} 件をスキップしました",
   "clients.print.cards": "{n} 枚",
   "clients.print.empty": "印刷できる QR コードはありません",
+  "clients.print.too_many": "一度に印刷できるクライアントは最大 {max} 件です。",
   "clients.import.title": "クライアントの一括インポート",
   "clients.import.title_results": "クライアントの一括インポート：検証結果",
   "clients.import.download_header": "CSV ヘッダーをダウンロード",

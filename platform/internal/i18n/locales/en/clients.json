@@ -134,6 +134,7 @@
   "clients.print.skipped": "Skipped (bound or QR code expired): {n}",
   "clients.print.cards": "Cards: {n}",
   "clients.print.empty": "No QR codes to print",
+  "clients.print.too_many": "At most {max} clients can be printed at once.",
   "clients.import.title": "Import clients",
   "clients.import.title_results": "Import clients: check results",
   "clients.import.download_header": "Download CSV header",

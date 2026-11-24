@@ -134,6 +134,7 @@
   "clients.print.skipped": "已略過 {n} 個已綁定或 QR 碼已過期的用戶端",
   "clients.print.cards": "{n} 張",
   "clients.print.empty": "沒有可列印的 QR 碼",
+  "clients.print.too_many": "一次最多列印 {max} 個用戶端。",
   "clients.import.title": "批次匯入用戶端",
   "clients.import.title_results": "批次匯入用戶端：檢查結果",
   "clients.import.download_header": "下載 CSV 標頭",
