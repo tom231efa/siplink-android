@@ -230,7 +230,7 @@ age -d -o {backup-name}.db {backup-name}.db.age
 Replace `{backup-name}` with the downloaded file name (without the extension); the command asks for the encryption passphrase. Without age, the same program can run in the official Go image:
 
 ```sh
-docker run --rm -it -v "$PWD":/w -w /w golang:1.27.3-trixie go run filippo.io/age/cmd/age@v1.3.2 -d -o {backup-name}.db {backup-name}.db.age
+docker run --rm -it -v "$PWD":/w -w /w golang:1.27.4-trixie go run filippo.io/age/cmd/age@v1.3.2 -d -o {backup-name}.db {backup-name}.db.age
 ```
 
 To restore from a downloaded backup:

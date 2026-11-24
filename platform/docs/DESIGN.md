@@ -1520,8 +1520,8 @@ Audit `mail.update` (field names, password as "已修改") and `mail.test`.
 
 ### 7.1 Stack
 
-Go 1.27 (local images `golang:1.27.3-alpine3.24` and `golang:1.27.3-trixie`; go.dev lists 1.27.4
-as current — use the newest 1.27.x image available at build time), `CGO_ENABLED=0`, one static
+Go 1.27.4 (images `golang:1.27.4-alpine3.24` and `golang:1.27.4-trixie`; 1.27.4 fixes GO-2026-6859
+in `net/http` — use the newest 1.27.x image available at build time), `CGO_ENABLED=0`, one static
 binary. Standard library for HTTP (`net/http` with method+pattern `ServeMux`), templates
 (`html/template`), embedding, logging (`log/slog`), crypto (AES-GCM, HMAC, SHA-256), TLS, CSRF
 (`http.CrossOriginProtection`). Migrations are numbered `.sql` files embedded and applied in
@@ -1621,7 +1621,7 @@ First administrator: `docker compose exec siplink siplink admin create --super
 ### 7.5 Docker
 
 ```dockerfile
-FROM golang:1.27.3-alpine3.24 AS build
+FROM golang:1.27.4-alpine3.24 AS build
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
@@ -1647,9 +1647,9 @@ project, `restart: unless-stopped`, `read_only: true` root filesystem with `/dat
 ### 7.6 Build and test commands (no local Go)
 
 ```
-docker run --rm -v "$PWD":/src -w /src -v siplink-gomod:/go/pkg/mod golang:1.27.3-trixie go test ./...
-docker run --rm -v "$PWD":/src -w /src -v siplink-gomod:/go/pkg/mod golang:1.27.3-trixie go vet ./...
-docker run --rm ... golang:1.27.3-trixie sh -c 'apt-get update && apt-get install -y ldap-utils && go test -tags interop ./internal/ldapd/...'
+docker run --rm -v "$PWD":/src -w /src -v siplink-gomod:/go/pkg/mod golang:1.27.4-trixie go test ./...
+docker run --rm -v "$PWD":/src -w /src -v siplink-gomod:/go/pkg/mod golang:1.27.4-trixie go vet ./...
+docker run --rm ... golang:1.27.4-trixie sh -c 'apt-get update && apt-get install -y ldap-utils && go test -tags interop ./internal/ldapd/...'
 docker build -t ghcr.io/tom231efa/siplink:dev .
 ```
 `gofmt -l` must be empty; `staticcheck` only if the owner agrees to fetching it (`honnef.co/go/tools`, official).

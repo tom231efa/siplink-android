@@ -1,7 +1,7 @@
 # SipLink management platform: one static binary on Alpine (design §7.5).
 # The build stage runs on the builder's own architecture and compiles for the image's: the
 # binary is pure Go, so an image for another architecture needs no emulated compiler.
-FROM --platform=$BUILDPLATFORM golang:1.27.3-alpine3.24 AS build
+FROM --platform=$BUILDPLATFORM golang:1.27.4-alpine3.24 AS build
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download

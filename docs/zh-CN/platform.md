@@ -230,7 +230,7 @@ age -d -o {备份文件名}.db {备份文件名}.db.age
 `{备份文件名}` 替换为下载的文件名（不含扩展名），命令会提示输入加密口令。没有 age 时，也可以用官方 Go 镜像运行同一程序：
 
 ```sh
-docker run --rm -it -v "$PWD":/w -w /w golang:1.27.3-trixie go run filippo.io/age/cmd/age@v1.3.2 -d -o {备份文件名}.db {备份文件名}.db.age
+docker run --rm -it -v "$PWD":/w -w /w golang:1.27.4-trixie go run filippo.io/age/cmd/age@v1.3.2 -d -o {备份文件名}.db {备份文件名}.db.age
 ```
 
 从下载的备份恢复：
