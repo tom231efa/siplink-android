@@ -630,8 +630,11 @@ The words are those of the app's CSV format (`ShortcutRules.FORMAT_HINT`
 `名称,号码[,类型[,分类[,线路[,图标]]]]`), so a key template can be imported from and exported to
 the same CSV the app reads; the platform reuses the rules of `ShortcutRules.normalize` /
 `validate`. `own` is never sent: handed-out keys are never the user's own. `line` must name one
-of the template's account profiles (checked when the client template is saved, re-checked when
-a profile is renamed).
+of the template's account profiles (checked when the client template is saved). A profile
+rename is followed in the keys of the key templates paired with the configuration template
+only where the administrator may edit the key template (one `key_template.update` audit entry
+each); in a key template they may not edit, such as a global one paired by a region
+administrator, the keys keep the old name until someone who may edit it changes them.
 
 #### 3.5.8 Merge order
 

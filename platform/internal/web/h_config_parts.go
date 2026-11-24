@@ -116,7 +116,9 @@ func (s *Server) profileSave(w http.ResponseWriter, r *http.Request) {
 }
 
 // renameLines follows a profile rename in the keys of the key templates used together
-// with this configuration template, so their line keeps naming a profile (§3.5.7).
+// with this configuration template, so their line keeps naming a profile (§3.5.7). It
+// changes only key templates the administrator may edit, each with an audit entry; a
+// global one a region administrator paired with their template stays as it is.
 func (s *Server) renameLines(r *http.Request, configID int64, from, to string) {
 	cts, _ := s.St.ListClientTemplates(r.Context(), store.BookScope{All: true})
 	done := map[int64]bool{}
@@ -125,12 +127,22 @@ func (s *Server) renameLines(r *http.Request, configID int64, from, to string) {
 			continue
 		}
 		done[*ct.KeyTemplateID] = true
-		keys, _ := s.St.Keys(r.Context(), *ct.KeyTemplateID)
+		kt, err := s.St.KeyTemplateByID(r.Context(), *ct.KeyTemplateID)
+		if err != nil || !actor(r).Can(auth.TemplateEdit, kt.RegionID) {
+			continue
+		}
+		keys, _ := s.St.Keys(r.Context(), kt.ID)
+		n := 0
 		for _, k := range keys {
 			if strings.EqualFold(k.Line, from) {
 				k.Line = to
-				_ = s.St.SaveKey(r.Context(), *ct.KeyTemplateID, k, rules.MaxShortcuts)
+				if s.St.SaveKey(r.Context(), kt.ID, k, rules.MaxShortcuts) == nil {
+					n++
+				}
 			}
+		}
+		if n > 0 {
+			s.audit(r, "key_template.update", "key_template", kt.ID, kt.Name, kt.RegionID, map[string]any{"profile": to, "count": n})
 		}
 	}
 }
