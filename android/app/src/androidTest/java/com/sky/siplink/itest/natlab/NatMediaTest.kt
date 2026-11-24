@@ -48,7 +48,8 @@ class NatMediaTest : NatLabTestBase() {
         await("the last call to be known") { onCore { engine.accounts.lastCall(id) } != null }
         val last = onCore { engine.accounts.lastCall(id) }
         println("natlab evidence: no sound, ended '$ended', last call $last")
-        assertEquals(CallSupport.NO_SOUND, ended)
+        // The app renders its end in its own language, from any thread (AppLanguage).
+        assertEquals(engine.texts.render(CallSupport.NO_SOUND), ended)
         assertEquals(true, last?.mediaLost)
     }
 
