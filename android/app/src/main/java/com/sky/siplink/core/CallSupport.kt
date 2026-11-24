@@ -152,7 +152,7 @@ internal object CallSupport {
         return output to input
     }
 
-    /** What the call screen says while no sound comes in, and after the SIP core ended a call for it. */
+    /** Why a call ended that the SIP core gave up because no sound arrived any more ([CallMediaWatch.mediaLost]). */
     val NO_SOUND: Phrase = Phrase.of(R.string.call_no_sound)
 
     /** Why a call out ended that its server gave no answer, and that could not go over the other server. */

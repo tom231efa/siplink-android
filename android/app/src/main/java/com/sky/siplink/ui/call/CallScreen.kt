@@ -84,7 +84,6 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sky.siplink.R
 import com.sky.siplink.core.CallManager
-import com.sky.siplink.core.CallSupport
 import com.sky.siplink.core.logic.CallRules
 import com.sky.siplink.core.logic.Formatters
 import com.sky.siplink.core.model.CallInfo
@@ -645,7 +644,7 @@ private fun ColumnScope.CallHead(
     }
     Spacer(Modifier.height(10.dp))
     StatusLine(info)
-    NoticeLine(notice ?: transferLabel(info) ?: noSoundLabel(info))
+    NoticeLine(notice ?: transferLabel(info))
 }
 
 /** With the phone on its side: the width of the controls, and what the own picture needs of the far corner. */
@@ -665,9 +664,6 @@ private fun transferLabel(info: CallInfo): String? = when (info.transfer) {
     TransferStatus.FAILED -> R.string.call_transfer_failed
     null -> null
 }?.let { stringResource(it) }
-
-@Composable
-private fun noSoundLabel(info: CallInfo): String? = CallSupport.NO_SOUND.text().takeIf { info.noSound && info.phase == CallPhase.CONNECTED }
 
 @Composable
 internal fun NoticeLine(text: String?) {

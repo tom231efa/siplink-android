@@ -113,7 +113,8 @@ class NatIceTest : NatLabTestBase() {
     private fun oneWayCall(id: String, target: String) {
         dial(target)
         await("the call to connect") { call()?.phase == CallPhase.CONNECTED }
-        await("the line about missing sound", NO_SOUND_TIMEOUT_MS) { call()?.noSound == true }
+        // Nothing comes in, for longer than the call needs to be told one way (LineVerdict.SILENT_AFTER_MS).
+        never("the app to hear $target", QUIET_WINDOW_MS) { playVolume() > AUDIBLE_DB }
         hangUp()
         println("natlab evidence: one way, last call ${onCore { engine.accounts.lastCall(id) }}")
         await("ICE on trial") { ice(id) == Ice.TRIAL }

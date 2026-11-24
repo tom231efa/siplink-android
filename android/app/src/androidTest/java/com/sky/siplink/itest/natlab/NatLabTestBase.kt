@@ -256,11 +256,5 @@ abstract class NatLabTestBase {
 
         /** How long a call runs to show that something does not happen. */
         const val QUIET_WINDOW_MS = 8_000L
-
-        /**
-         * Fifteen seconds without sound after some came (five while none came at all), and the
-         * time the statistics take to come; the SIP core ends the call only after 30.
-         */
-        const val NO_SOUND_TIMEOUT_MS = 25_000L
     }
 }

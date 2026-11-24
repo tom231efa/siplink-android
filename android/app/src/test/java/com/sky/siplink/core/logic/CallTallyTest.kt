@@ -3,9 +3,7 @@ package com.sky.siplink.core.logic
 import com.sky.siplink.core.logic.LineVerdict.FarReports
 import com.sky.siplink.core.model.MediaFlow
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CallTallyTest {
@@ -15,45 +13,11 @@ class CallTallyTest {
         CallTally.Sample(sent, received, 0f, lossUp, 1f, 20f, farRtcp, aboutUs, ice)
 
     @Test
-    fun `nothing at all since the start is told after five seconds`() {
-        val tally = CallTally(start, judged = true)
-        tally.take(sample(100, 0), start + 2_000)
-        assertFalse(tally.hearsNothing(start + LineVerdict.SILENT_AFTER_MS - 1))
-        assertTrue(tally.hearsNothing(start + LineVerdict.SILENT_AFTER_MS))
-    }
-
-    @Test
-    fun `a pause after sound came in is told only when it lasts`() {
-        val tally = CallTally(start, judged = true)
-        tally.take(sample(100, 90), start + 1_000)
-        // A far end that suppresses its silence sends nothing while it is quiet.
-        tally.take(sample(400, 90), start + 9_000)
-        assertFalse(tally.hearsNothing(start + 1_000 + CallTally.GAP_AFTER_MS - 1))
-        assertTrue(tally.hearsNothing(start + 1_000 + CallTally.GAP_AFTER_MS))
-        // Sound again: quiet at once.
-        tally.take(sample(900, 95), start + 17_000)
-        assertFalse(tally.hearsNothing(start + 17_000))
-    }
-
-    @Test
-    fun `after a hold the silence counts anew`() {
-        val tally = CallTally(start, judged = true)
-        tally.take(sample(100, 90), start + 1_000)
-        tally.restart(start + 30_000)
-        assertFalse(tally.hearsNothing(start + 34_999))
-        assertTrue(tally.hearsNothing(start + 35_000))
-    }
-
-    @Test
-    fun `an intercom or paging call, or one where the phone does not send, says nothing`() {
+    fun `an intercom or paging call still shows its flow`() {
         val intercom = CallTally(start, judged = false)
         intercom.take(sample(100, 0), start + 2_000)
-        assertFalse(intercom.hearsNothing(start + 60_000))
-        // Its flow is still shown, and teaches nothing ([CallTally.judged]).
+        // It teaches nothing ([CallTally.judged]).
         assertEquals(MediaFlow.SEND_ONLY, intercom.flow(start + 10_000))
-        val mute = CallTally(start, judged = true)
-        mute.take(sample(0, 0), start + 2_000)
-        assertFalse(mute.hearsNothing(start + 60_000))
     }
 
     @Test

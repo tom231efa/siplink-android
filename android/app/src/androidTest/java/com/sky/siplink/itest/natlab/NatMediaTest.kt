@@ -12,23 +12,14 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * The sound of the calls: what the call screen says while none comes in; a PBX that names an
+ * The sound of the calls: a call whose sound stops ends for want of it; a PBX that names an
  * address of its own network for its calls, and one that does so for its sound only.
  */
 @RunWith(AndroidJUnit4::class)
 class NatMediaTest : NatLabTestBase() {
     @Test
-    fun withoutSoundTheCallSaysSoAndEndsWithIt() {
-        // The PBX without NAT handling sends its sound where nothing arrives.
-        addAccount(PLAIN_ACCOUNT)
-        awaitRegistered(PLAIN_ACCOUNT)
-        dial(TONE)
-        await("the call to connect") { call()?.phase == CallPhase.CONNECTED }
-        await("the line about missing sound", NO_SOUND_TIMEOUT_MS) { call()?.noSound == true }
-        onCore { engine.calls.hangUp() }
-        await("the call to be gone") { call() == null || call()?.phase == CallPhase.ENDED }
-
-        // A call with sound both ways says nothing, until the sound stops on the way.
+    fun aCallWhoseSoundStopsEndsForWantOfIt() {
+        // A call with sound both ways runs, until the sound stops on the way.
         addAccount(NAT_ACCOUNT)
         awaitRegistered(NAT_ACCOUNT)
         val id = account(NAT_ACCOUNT)!!.id
@@ -36,9 +27,8 @@ class NatMediaTest : NatLabTestBase() {
         assertTrue("The app refused to dial: $error", error == null)
         await("the call to connect") { call()?.phase == CallPhase.CONNECTED }
         await("the app to hear its echo") { playVolume() > AUDIBLE_DB }
-        never("the line about missing sound", QUIET_WINDOW_MS) { call()?.noSound == true }
+        never("the call to end", QUIET_WINDOW_MS) { call()?.phase != CallPhase.CONNECTED }
         box("rtp off")
-        await("the line about missing sound", NO_SOUND_TIMEOUT_MS) { call()?.noSound == true }
         // The SIP core gives up after its 30 seconds without sound.
         var ended: String? = null
         await("the call to end for want of sound", MEDIA_LOST_TIMEOUT_MS) {

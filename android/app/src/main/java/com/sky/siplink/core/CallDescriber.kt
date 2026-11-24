@@ -90,7 +90,6 @@ internal class CallDescriber(
             videoAllowed = videoAllowed,
             recordable = recorder.recordable(call),
             recordingSince = recorder.startedAt(call),
-            noSound = accounts.media.hearsNothing(call),
         )
     }
 

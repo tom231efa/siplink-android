@@ -131,11 +131,8 @@ internal class CallMediaWatch(
     private fun started(call: Call) {
         val now = SystemClock.elapsedRealtime()
         val pointer = call.nativePointer
-        // Back from a hold, or after a re-INVITE: the silence counts from now.
-        running[pointer]?.let {
-            it.tally.restart(now)
-            return
-        }
+        // Back from a hold, or after a re-INVITE: the call keeps its tally.
+        if (pointer in running) return
         val judged = !isIntercom(call) && call.currentParams.audioDirection == MediaDirection.SendRecv
         running[pointer] = Running(
             CallTally(now, judged),
@@ -153,10 +150,6 @@ internal class CallMediaWatch(
     fun forget(id: String) {
         last.remove(id)
     }
-
-    /** No sound comes in on [call] while it runs and the phone sends ([CallTally.hearsNothing]). */
-    fun hearsNothing(call: Call): Boolean =
-        call.state == Call.State.StreamsRunning && running[call.nativePointer]?.tally?.hearsNothing(SystemClock.elapsedRealtime()) == true
 
     private fun finish(call: Call, state: Call.State) {
         val pointer = call.nativePointer
