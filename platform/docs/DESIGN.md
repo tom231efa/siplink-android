@@ -805,6 +805,13 @@ order (the name, so lists look sorted on the phone).
 - Max message size 256 KiB; max connections 2,000 in total and 64 per IP; idle timeout 5 min;
   per-operation deadline 5 s; one goroutine per connection, requests on one connection processed
   in order (the SDK sends one search at a time).
+- Before a message is decoded its TLV headers are walked without allocating: more than 4,096
+  elements, more than 64 levels, an indefinite length anywhere or an element running past its
+  parent close the connection. The BER library is set to the same size and depth at start.
+  A filter nests at most 32 deep and has at most 256 terms; beyond that the search answers
+  `protocolError` (2).
+- A panic while serving a connection closes that connection and is logged without request data;
+  the process goes on.
 - Failed binds: 20 per IP per minute, then every bind from that IP is delayed 2 s and answered
   `invalidCredentials` until the window passes.
 - `SIPLINK_LDAP_REQUIRE_TLS` (default `true`): before TLS is established on a connection only
@@ -1206,7 +1213,8 @@ Logging (`log/slog`, JSON to stdout): method, route **pattern** (e.g. `/p/{token
 actual path of `/p/…`), status, duration, client IP, admin id. Never logged: request or response
 bodies of the device API, `Authorization` headers, cookies, tokens, passwords, LDAP bind
 passwords, LDAP filters and results (they contain names and numbers; only at `debug` level, and
-then with values masked), CSV contents. Panics are recovered and logged without request data.
+then with values masked), CSV contents. Panics are recovered and logged without request data (in
+the LDAP service: the connection is closed, §4.5).
 
 Audit trail (`audit_log`): every create/update/delete of every object, logins (success/failure),
 password resets, secret views, QR regeneration, unbinds, device enroll/leave, imports (counts),

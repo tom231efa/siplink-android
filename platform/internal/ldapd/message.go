@@ -60,42 +60,33 @@ const MaxMessageSize = 256 << 10
 var errTooLarge = errors.New("ldap message too large")
 
 // readMessage reads one BER-encoded LDAPMessage, refusing messages over the limit
-// and indefinite lengths before reading the body.
+// and indefinite lengths before reading the body, and messages of a hostile shape
+// (checkShape) before decoding it.
 func readMessage(r *bufio.Reader) (*ber.Packet, error) {
-	tag, err := r.ReadByte()
+	head, err := r.Peek(2)
 	if err != nil {
 		return nil, err
 	}
-	if tag != 0x30 {
-		return nil, fmt.Errorf("unexpected tag 0x%02x", tag)
+	if head[0] != 0x30 {
+		return nil, fmt.Errorf("unexpected tag 0x%02x", head[0])
 	}
-	first, err := r.ReadByte()
+	if n := int(head[1] & 0x7f); head[1]&0x80 != 0 && n <= maxLengthOctets {
+		if head, err = r.Peek(2 + n); err != nil {
+			return nil, err
+		}
+	}
+	length, n, err := tlvLength(head[1:])
 	if err != nil {
 		return nil, err
-	}
-	header := []byte{tag, first}
-	length := int(first)
-	if first&0x80 != 0 {
-		n := int(first & 0x7f)
-		if n == 0 || n > 4 {
-			return nil, errors.New("unsupported length form")
-		}
-		length = 0
-		for i := 0; i < n; i++ {
-			b, err := r.ReadByte()
-			if err != nil {
-				return nil, err
-			}
-			header = append(header, b)
-			length = length<<8 | int(b)
-		}
 	}
 	if length > MaxMessageSize {
 		return nil, errTooLarge
 	}
-	buf := make([]byte, len(header)+length)
-	copy(buf, header)
-	if _, err := io.ReadFull(r, buf[len(header):]); err != nil {
+	buf := make([]byte, 1+n+int(length))
+	if _, err := io.ReadFull(r, buf); err != nil {
+		return nil, err
+	}
+	if err := checkShape(buf); err != nil {
 		return nil, err
 	}
 	return ber.DecodePacketErr(buf)

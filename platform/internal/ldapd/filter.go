@@ -41,7 +41,10 @@ type filter struct {
 	final    string
 }
 
-const maxFilterDepth = 32
+const (
+	maxFilterDepth = 32
+	maxFilterTerms = 256 // and, or, not and assertions together
+)
 
 var errFilter = errors.New("malformed filter")
 
@@ -56,10 +59,13 @@ func raw(p *ber.Packet) []byte {
 	return nil
 }
 
-func compileFilter(p *ber.Packet) (*filter, error) { return compile(p, 0) }
+func compileFilter(p *ber.Packet) (*filter, error) {
+	terms := 0
+	return compile(p, 0, &terms)
+}
 
-func compile(p *ber.Packet, depth int) (*filter, error) {
-	if depth > maxFilterDepth || p.ClassType != ber.ClassContext {
+func compile(p *ber.Packet, depth int, terms *int) (*filter, error) {
+	if *terms++; *terms > maxFilterTerms || depth > maxFilterDepth || p.ClassType != ber.ClassContext {
 		return nil, errFilter
 	}
 	f := &filter{op: int(p.Tag), attr: -1}
@@ -69,7 +75,7 @@ func compile(p *ber.Packet, depth int) (*filter, error) {
 			return nil, errFilter
 		}
 		for _, c := range p.Children {
-			cf, err := compile(c, depth+1)
+			cf, err := compile(c, depth+1, terms)
 			if err != nil {
 				return nil, err
 			}
@@ -79,7 +85,7 @@ func compile(p *ber.Packet, depth int) (*filter, error) {
 		if len(p.Children) != 1 {
 			return nil, errFilter
 		}
-		cf, err := compile(p.Children[0], depth+1)
+		cf, err := compile(p.Children[0], depth+1, terms)
 		if err != nil {
 			return nil, err
 		}

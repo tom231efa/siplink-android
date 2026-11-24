@@ -85,6 +85,7 @@ type Server struct {
 // New makes a server.
 func New(cfg Config, st *store.Store, log *slog.Logger) *Server {
 	cfg.defaults()
+	setBERLimits()
 	d := newDIT(cfg.Suffix)
 	return &Server{
 		cfg: cfg, st: st, log: log, dit: d,
@@ -120,8 +121,17 @@ func (s *Server) Serve(ln net.Listener, implicitTLS bool) error {
 		go func() {
 			defer s.wg.Done()
 			defer s.release(c, ip)
+			defer s.recoverPanic()
 			s.handle(c, implicitTLS, ip)
 		}()
+	}
+}
+
+// recoverPanic ends a connection whose handling panicked, not the process (design
+// §6.6). No request data in the log: only the fact.
+func (s *Server) recoverPanic() {
+	if v := recover(); v != nil {
+		s.log.Error("panic in ldap connection")
 	}
 }
 
