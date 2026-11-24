@@ -125,7 +125,7 @@ func (s *Server) importDryRun(w http.ResponseWriter, r *http.Request) {
 		fail(tr(r).T("dirs.import.unreadable"))
 		return
 	}
-	p, err := books.ParseCSV(buf.Bytes())
+	p, err := books.ParseCSV(buf.Bytes(), s.Cfg.MaxBookEntries)
 	if err != nil {
 		fail(errText(r, err))
 		return

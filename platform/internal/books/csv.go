@@ -11,6 +11,7 @@ import (
 	"golang.org/x/text/encoding/simplifiedchinese"
 
 	"siplink/internal/i18n"
+	"siplink/internal/rules"
 	"siplink/internal/store"
 )
 
@@ -53,13 +54,32 @@ type LineError struct {
 	Problems []i18n.Msg
 }
 
-// Parsed is the result of reading a CSV file.
+// Parsed is the result of reading a CSV file. Errors and Warnings keep the first
+// rules.MaxShownLineErrors; MoreErrors and MoreWarnings count the others.
 type Parsed struct {
-	Entries  []*store.Entry
-	Lines    []int // file line of each entry
-	Errors   []LineError
-	Warnings []i18n.Msg
-	Encoding string // "UTF-8" or "GB18030"
+	Entries      []*store.Entry
+	Lines        []int // file line of each entry
+	Errors       []LineError
+	Warnings     []i18n.Msg
+	MoreErrors   int
+	MoreWarnings int
+	Encoding     string // "UTF-8" or "GB18030"
+}
+
+func (p *Parsed) addError(e LineError) {
+	if len(p.Errors) < rules.MaxShownLineErrors {
+		p.Errors = append(p.Errors, e)
+	} else {
+		p.MoreErrors++
+	}
+}
+
+func (p *Parsed) addWarning(m i18n.Msg) {
+	if len(p.Warnings) < rules.MaxShownLineErrors {
+		p.Warnings = append(p.Warnings, m)
+	} else {
+		p.MoreWarnings++
+	}
 }
 
 // ErrNoName is returned when the header has no name column.
@@ -78,8 +98,9 @@ func Decode(data []byte) (string, string, error) {
 	return string(out), "GB18030", nil
 }
 
-// ParseCSV reads people from a CSV file with a header line.
-func ParseCSV(data []byte) (*Parsed, error) {
+// ParseCSV reads people from a CSV file with a header line. A file with more than
+// maxEntries lines of people (good or bad) is refused once that line is read.
+func ParseCSV(data []byte, maxEntries int) (*Parsed, error) {
 	if len(data) > MaxCSVBytes {
 		return nil, i18n.E("books.csv.too_big", "max", MaxCSVBytes>>20)
 	}
@@ -111,7 +132,7 @@ func ParseCSV(data []byte) (*Parsed, error) {
 		switch {
 		case key == "":
 			if h != "" {
-				p.Warnings = append(p.Warnings, i18n.M("books.csv.unknown_column", "name", h))
+				p.addWarning(i18n.M("books.csv.unknown_column", "name", h))
 			}
 		case index[key] != 0:
 			return nil, i18n.E("books.csv.duplicate_column", "name", h)
@@ -122,10 +143,16 @@ func ParseCSV(data []byte) (*Parsed, error) {
 	if index["name"] == 0 {
 		return nil, ErrNoName
 	}
-	for {
+	for lines := 0; ; {
 		record, err := r.Read()
 		if errors.Is(err, io.EOF) {
 			break
+		}
+		if err == nil && strings.TrimSpace(strings.Join(record, "")) == "" {
+			continue // blank line
+		}
+		if lines++; lines > maxEntries {
+			return nil, i18n.E("dirs.import.too_many", "max", maxEntries)
 		}
 		if err != nil {
 			line := 0
@@ -133,7 +160,7 @@ func ParseCSV(data []byte) (*Parsed, error) {
 			if errors.As(err, &pe) {
 				line = pe.StartLine
 			}
-			p.Errors = append(p.Errors, LineError{line, []i18n.Msg{i18n.M("books.csv.bad_line")}})
+			p.addError(LineError{line, []i18n.Msg{i18n.M("books.csv.bad_line")}})
 			continue
 		}
 		line, _ := r.FieldPos(0)
@@ -143,9 +170,6 @@ func ParseCSV(data []byte) (*Parsed, error) {
 			}
 			return ""
 		}
-		if strings.TrimSpace(strings.Join(record, "")) == "" {
-			continue // blank line
-		}
 		e := &store.Entry{
 			Name: unescapeCell(get("name")), Phones: SplitNumbers(get("phone")), Mobiles: SplitNumbers(get("mobile")),
 			Organization: unescapeCell(get("organization")), Department: unescapeCell(get("department")),
@@ -154,7 +178,7 @@ func ParseCSV(data []byte) (*Parsed, error) {
 		}
 		Normalize(e)
 		if problems := Validate(e); len(problems) > 0 {
-			p.Errors = append(p.Errors, LineError{line, problems})
+			p.addError(LineError{line, problems})
 			continue
 		}
 		p.Entries = append(p.Entries, e)

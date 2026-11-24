@@ -354,7 +354,7 @@ func (sd *seeder) hostedBook(t *store.ConfigTemplate, sb *seedBook, rid *int64) 
 		if err != nil {
 			return err
 		}
-		parsed, err := books.ParseCSV(data)
+		parsed, err := books.ParseCSV(data, sd.e.cfg.MaxBookEntries)
 		if err != nil {
 			return err
 		}

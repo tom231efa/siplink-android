@@ -19,7 +19,7 @@ func TestParseUTF8AndBOM(t *testing.T) {
 		"\n" +
 		"\"李, 娜\",1002,,,,,,,\n"
 	for _, data := range [][]byte{[]byte(body), append([]byte("\xef\xbb\xbf"), body...)} {
-		p, err := ParseCSV(data)
+		p, err := ParseCSV(data, 10000)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -43,7 +43,7 @@ func TestParseGB18030AndEnglishHeader(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p, err := ParseCSV(gb)
+	p, err := ParseCSV(gb, 10000)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,13 +56,13 @@ func TestParseGB18030AndEnglishHeader(t *testing.T) {
 }
 
 func TestParseErrors(t *testing.T) {
-	if _, err := ParseCSV([]byte("电话\n123\n")); err != ErrNoName {
+	if _, err := ParseCSV([]byte("电话\n123\n"), 10000); err != ErrNoName {
 		t.Errorf("no name column: %v", err)
 	}
-	if _, err := ParseCSV(nil); err == nil {
+	if _, err := ParseCSV(nil, 10000); err == nil {
 		t.Error("empty file accepted")
 	}
-	if _, err := ParseCSV(bytes.Repeat([]byte("x"), MaxCSVBytes+1)); err == nil {
+	if _, err := ParseCSV(bytes.Repeat([]byte("x"), MaxCSVBytes+1), 10000); err == nil {
 		t.Error("oversized file accepted")
 	}
 	body := "姓名,办公电话,手机\n" +
@@ -72,7 +72,7 @@ func TestParseErrors(t *testing.T) {
 		"丙,," + strings.Repeat("1", 33) + "\n" + // 5: too long
 		strings.Repeat("丁", 65) + ",,\n" + // 6: name too long
 		"戊,1001,13800001001\n" // 7: fine
-	p, err := ParseCSV([]byte(body))
+	p, err := ParseCSV([]byte(body), 10000)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +84,7 @@ func TestParseErrors(t *testing.T) {
 			t.Errorf("error %d at line %d, want %d (%s)", i, p.Errors[i].Line, line, p.Errors[i].Problems)
 		}
 	}
-	p, _ = ParseCSV([]byte("姓名\n\"broken\n"))
+	p, _ = ParseCSV([]byte("姓名\n\"broken\n"), 10000)
 	if len(p.Errors) != 1 || len(p.Entries) != 0 {
 		t.Errorf("broken quote: %+v", p)
 	}
@@ -96,7 +96,7 @@ func TestParseManyLines(t *testing.T) {
 	for i := 0; i < 10001; i++ {
 		fmt.Fprintf(&b, "人员%05d,1380000%04d\n", i, i%10000)
 	}
-	p, err := ParseCSV([]byte(b.String()))
+	p, err := ParseCSV([]byte(b.String()), 10001)
 	if err != nil || len(p.Entries) != 10001 || len(p.Errors) != 0 {
 		t.Fatalf("10,001 lines: %d entries, %v", len(p.Entries), err)
 	}
@@ -118,7 +118,7 @@ func TestCSVRoundTrip(t *testing.T) {
 	if !strings.Contains(buf.String(), "'=SUM(A1)") {
 		t.Error("formula cell not protected")
 	}
-	p, err := ParseCSV(buf.Bytes())
+	p, err := ParseCSV(buf.Bytes(), 10000)
 	if err != nil || len(p.Entries) != 2 {
 		t.Fatalf("re-read: %v %+v", err, p)
 	}
@@ -174,5 +174,36 @@ func TestValidateAndSlug(t *testing.T) {
 	}
 	if got := SplitNumbers("1001；1002; ;1003"); len(got) != 3 {
 		t.Errorf("split %v", got)
+	}
+}
+
+// TestParseLimits: a file with more lines of people than can be imported is refused at the
+// line past the limit, good or bad lines alike; errors and warnings kept for the page stop
+// at rules.MaxShownLineErrors and the others are counted.
+func TestParseLimits(t *testing.T) {
+	if _, err := ParseCSV([]byte("姓名\n甲\n\n乙\n丙\n"), 3); err != nil {
+		t.Errorf("3 lines, limit 3: %v", err)
+	}
+	for body, max := range map[string]int{"姓名\n甲\n乙\n丙\n": 2, "姓名\n甲\n\"broken\n": 1} {
+		_, err := ParseCSV([]byte(body), max)
+		if m, ok := i18n.AsMsg(err); !ok || m.Key != "dirs.import.too_many" {
+			t.Errorf("%q over the limit: %v", body, err)
+		}
+	}
+	var b strings.Builder
+	b.WriteString("姓名")
+	for i := range 250 {
+		fmt.Fprintf(&b, ",extra%d", i)
+	}
+	b.WriteString("\n")
+	for range 250 {
+		b.WriteString(",x\n") // no name
+	}
+	p, err := ParseCSV([]byte(b.String()), 1000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(p.Errors) != 200 || p.MoreErrors != 50 || len(p.Warnings) != 200 || p.MoreWarnings != 50 {
+		t.Errorf("kept %d errors (+%d), %d warnings (+%d)", len(p.Errors), p.MoreErrors, len(p.Warnings), p.MoreWarnings)
 	}
 }

@@ -154,7 +154,7 @@
   "clients.import.directory_word": "<справочник>",
   "clients.import.format_columns": "Столбцы: {name}, {region}, {client_template}, {note}, {group}, {tags} (несколько — через «;»); для каждой учётной записи — «{username}», «{password}», «{auth_user}», «{display_name}»; для каждого справочника с отдельными паролями клиентов — «{ldap_password}».",
   "clients.import.format_english": "Названия столбцов на английском: {columns}",
-  "clients.import.format_size": "Не более {mb} МБ, UTF-8 или GB18030.",
+  "clients.import.format_size": "Не более {mb} МБ и {n} клиентов в файле, UTF-8 или GB18030.",
   "clients.import.unreadable": "Не удаётся прочитать файл (не более {mb} МБ).",
   "clients.import.need_header": "Первая строка должна быть заголовком, за ним — хотя бы один клиент.",
   "clients.import.missing_column": "В заголовке нет столбца «{column}».",

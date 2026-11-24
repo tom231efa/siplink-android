@@ -249,7 +249,7 @@ Replace `data/` with the directory mounted at `/data` in the container in Compos
 ## Daily use
 
 - Order: region → directories (optional, internal or external) → configuration template (accounts, settings, chosen directories) → key template (optional) → client template → clients → print or show the QR codes.
-- Clients can be imported in bulk: "Clients → Bulk import" offers the CSV header of each client template for download, checks first and then asks for confirmation.
+- Clients can be imported in bulk: "Clients → Bulk import" offers the CSV header of each client template for download, checks first and then asks for confirmation. A file holds at most 2,000 clients and 4 MB.
 - Names are sorted by Unicode code point, **not by pinyin**; homophones and common characters may sort differently from what you expect.
 - The client page shows the SipLink version, version code and User-Agent reported by the phone. The platform provisions the same configuration to all versions; older versions ignore fields they do not know.
 - Administrators must re-enter their own password before viewing a password stored for a client, and every view is recorded in the audit log.

@@ -154,7 +154,7 @@
   "clients.import.directory_word": "<annuaire>",
   "clients.import.format_columns": "Colonnes : {name}, {region}, {client_template}, {note}, {group}, {tags} (plusieurs séparées par « ; ») ; pour chaque compte « {username} », « {password} », « {auth_user} », « {display_name} » ; pour chaque annuaire à mot de passe par client « {ldap_password} ».",
   "clients.import.format_english": "Noms de colonnes en anglais : {columns}",
-  "clients.import.format_size": "{mb} Mo au maximum, UTF-8 ou GB18030.",
+  "clients.import.format_size": "{mb} Mo et {n} clients par fichier au maximum, UTF-8 ou GB18030.",
   "clients.import.unreadable": "Le fichier ne peut pas être lu ({mb} Mo au maximum).",
   "clients.import.need_header": "La première ligne doit être l'en-tête, suivie d'au moins un client.",
   "clients.import.missing_column": "L'en-tête ne contient pas la colonne « {column} ».",

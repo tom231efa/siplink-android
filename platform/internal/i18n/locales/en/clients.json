@@ -154,7 +154,7 @@
   "clients.import.directory_word": "<directory>",
   "clients.import.format_columns": "Columns: {name}, {region}, {client_template}, {note}, {group}, {tags} (several separated by “;”); for each account “{username}”, “{password}”, “{auth_user}”, “{display_name}”; for each directory with per-client passwords “{ldap_password}”.",
   "clients.import.format_english": "English column names: {columns}",
-  "clients.import.format_size": "At most {mb} MB, UTF-8 or GB18030.",
+  "clients.import.format_size": "At most {mb} MB and {n} clients per file, UTF-8 or GB18030.",
   "clients.import.unreadable": "The file cannot be read (at most {mb} MB).",
   "clients.import.need_header": "The first line must be the header, followed by at least one client.",
   "clients.import.missing_column": "The header lacks the column “{column}”.",

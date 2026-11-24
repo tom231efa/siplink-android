@@ -1,6 +1,8 @@
 package rules
 
 import (
+	"iter"
+	"slices"
 	"strings"
 
 	"siplink/internal/i18n"
@@ -23,40 +25,61 @@ type CsvRow struct {
 // CsvRows returns the rows of a text. Blank lines and lines starting with `#` are skipped,
 // as is a byte order mark.
 // Port of Csv.rows (android/app/src/main/java/com/sky/siplink/core/logic/Csv.kt).
-func CsvRows(text string) []CsvRow {
-	var rows []CsvRow
-	for index, raw := range lineSequence(text) {
-		line := trim(strings.TrimPrefix(trim(raw), "\uFEFF"))
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
+func CsvRows(text string) []CsvRow { return slices.Collect(CsvRowSeq(text)) }
+
+// CsvRowSeq yields the rows of CsvRows one at a time, so that a reader can stop early.
+func CsvRowSeq(text string) iter.Seq[CsvRow] {
+	return func(yield func(CsvRow) bool) {
+		for index, raw := range lineSequence(text) {
+			line := trim(strings.TrimPrefix(trim(raw), "\uFEFF"))
+			if line == "" || strings.HasPrefix(line, "#") {
+				continue
+			}
+			fields, ok := CsvSplit(line)
+			if !ok {
+				fields = nil
+			}
+			if !yield(CsvRow{Line: index + 1, Fields: fields}) {
+				return
+			}
 		}
-		fields, ok := CsvSplit(line)
-		if !ok {
-			fields = nil
-		}
-		rows = append(rows, CsvRow{Line: index + 1, Fields: fields})
 	}
-	return rows
 }
 
-// lineSequence mirrors Kotlin's CharSequence.lineSequence(): lines end at \r\n, \n or \r.
-func lineSequence(text string) []string {
-	var lines []string
-	start := 0
-	for i := 0; i < len(text); i++ {
-		switch text[i] {
-		case '\n':
-			lines = append(lines, text[start:i])
-			start = i + 1
-		case '\r':
-			lines = append(lines, text[start:i])
-			if i+1 < len(text) && text[i+1] == '\n' {
-				i++
-			}
-			start = i + 1
+// CsvRowsOver reports whether text has more than max rows, reading no row past that.
+func CsvRowsOver(text string, max int) bool {
+	n := 0
+	for range CsvRowSeq(text) {
+		if n++; n > max {
+			return true
 		}
 	}
-	return append(lines, text[start:])
+	return false
+}
+
+// MaxShownLineErrors is how many line errors of an import a page lists; the others are
+// only counted.
+const MaxShownLineErrors = 200
+
+// lineSequence mirrors Kotlin's CharSequence.lineSequence(): lines end at \r\n, \n or \r.
+// It yields each line with its index.
+func lineSequence(text string) iter.Seq2[int, string] {
+	return func(yield func(int, string) bool) {
+		index, start := 0, 0
+		for i := 0; i < len(text); i++ {
+			if text[i] != '\n' && text[i] != '\r' {
+				continue
+			}
+			if !yield(index, text[start:i]) {
+				return
+			}
+			if text[i] == '\r' && i+1 < len(text) && text[i+1] == '\n' {
+				i++
+			}
+			index, start = index+1, i+1
+		}
+		yield(index, text[start:])
+	}
 }
 
 // CsvSplit splits one CSV line; ok is false when a quoted field is not closed.

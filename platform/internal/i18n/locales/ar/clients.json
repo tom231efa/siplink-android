@@ -154,7 +154,7 @@
   "clients.import.directory_word": "<دليل>",
   "clients.import.format_columns": "الأعمدة: {name}، {region}، {client_template}، {note}، {group}، {tags} (تُفصل الوسوم المتعددة بـ «;»)؛ ولكل حساب «{username}» و«{password}» و«{auth_user}» و«{display_name}»؛ ولكل دليل بكلمة مرور لكل عميل «{ldap_password}».",
   "clients.import.format_english": "أسماء الأعمدة بالإنجليزية: {columns}",
-  "clients.import.format_size": "الحد الأقصى {mb} MB، بترميز UTF-8 أو GB18030.",
+  "clients.import.format_size": "الحد الأقصى {mb} MB و{n} عميل لكل ملف، بترميز UTF-8 أو GB18030.",
   "clients.import.unreadable": "تعذّرت قراءة الملف (الحد الأقصى {mb} MB).",
   "clients.import.need_header": "يجب أن يكون السطر الأول هو الترويسة، يليه عميل واحد على الأقل.",
   "clients.import.missing_column": "تفتقد الترويسة العمود «{column}».",

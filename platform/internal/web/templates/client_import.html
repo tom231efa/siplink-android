@@ -10,13 +10,14 @@
 {{with $d.Error}}<div class="flash error" role="alert">{{.}}</div>{{end}}
 {{if $d.Rows}}
 <section class="card table-card">
-  <div class="card-head"><h2>{{t "clients.import.results"}}</h2><span class="badge{{if eq $d.OK (len $d.Rows)}} ok{{else}} warn{{end}}">{{t "clients.import.ok_count" "ok" $d.OK "total" (len $d.Rows)}}</span></div>
+  <div class="card-head"><h2>{{t "clients.import.results"}}</h2><span class="badge{{if eq $d.OK $d.Total}} ok{{else}} warn{{end}}">{{t "clients.import.ok_count" "ok" $d.OK "total" $d.Total}}</span></div>
   {{if not $d.Key}}<div class="card-body"><div class="flash error">{{t "clients.import.has_errors"}}</div></div>{{end}}
   <div class="table-wrap"><table class="table">
     <thead><tr><th class="num">{{t "clients.import.col_line"}}</th><th>{{t "common.name"}}</th><th>{{t "common.region"}}</th><th>{{t "clients.field.template"}}</th><th>{{t "groups.group"}}</th><th>{{t "tags.title"}}</th><th>{{t "clients.import.col_result"}}</th></tr></thead>
     <tbody>{{range $d.Rows}}<tr><td class="num">{{.Line}}</td><td class="strong"><span dir="auto" class="fade">{{with .C}}{{.Name}}{{end}}</span></td><td><span dir="auto" class="fade">{{.Region}}</span></td><td><span dir="auto" class="fade">{{.Template}}</span></td>
       <td><span dir="auto" class="fade">{{.Group}}</span></td><td>{{range .Tags}}<span class="tag"><span dir="auto" class="fade">{{.}}</span></span>{{end}}</td>
-      <td>{{if .Problems}}<ul class="errors danger-text">{{range .Problems}}<li>{{.}}</li>{{end}}</ul>{{else}}<span class="status ok">{{t "clients.import.row_ok"}}</span>{{end}}</td></tr>{{end}}</tbody>
+      <td>{{if .Problems}}<ul class="errors danger-text">{{range .Problems}}<li>{{.}}</li>{{end}}</ul>{{else}}<span class="status ok">{{t "clients.import.row_ok"}}</span>{{end}}</td></tr>{{end}}
+    {{with $d.More}}<tr><td></td><td colspan="6">{{t "dashboard.attention.more" "n" .}}</td></tr>{{end}}</tbody>
   </table></div>
   <div class="card-foot form-actions"><a class="btn" href="/clients/import">{{if $d.Key}}{{t "common.cancel"}}{{else}}{{t "clients.import.upload_again"}}{{end}}</a>
   {{if $d.Key}}<form method="post" action="/clients/import/confirm" class="inline">

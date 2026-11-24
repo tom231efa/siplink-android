@@ -154,7 +154,7 @@
   "clients.import.directory_word": "<通訊錄>",
   "clients.import.format_columns": "欄位：{name}、{region}、{client_template}、{note}、{group}、{tags}（多個標籤以「;」分隔），以及每個帳號的「{username}」「{password}」「{auth_user}」「{display_name}」；按用戶端設定密碼的通訊錄另有「{ldap_password}」。",
   "clients.import.format_english": "英文欄位名稱：{columns}",
-  "clients.import.format_size": "最大 {mb} MB，UTF-8 或 GB18030。",
+  "clients.import.format_size": "最大 {mb} MB，每個檔案最多 {n} 個用戶端，UTF-8 或 GB18030。",
   "clients.import.unreadable": "檔案無法讀取（最大 {mb} MB）。",
   "clients.import.need_header": "第一行須為標頭，且至少包含一行用戶端資料。",
   "clients.import.missing_column": "標頭缺少「{column}」欄。",

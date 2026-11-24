@@ -9,7 +9,7 @@
   <div class="card-body">
     <div class="stat-row">
       <div><span class="card-label">{{t "dirs.import.ready"}}</span><span class="stat-value">{{len .Entries}}</span></div>
-      <div><span class="card-label">{{t "dirs.import.errors"}}</span><span class="stat-value{{if .Errors}} danger-text{{end}}">{{len .Errors}}</span></div>
+      <div><span class="card-label">{{t "dirs.import.errors"}}</span><span class="stat-value{{if .Errors}} danger-text{{end}}">{{add (len .Errors) .MoreErrors}}</span></div>
       <div><span class="card-label">{{t "dirs.import.after"}}</span><span class="stat-value{{if $.Data.TooMany}} danger-text{{end}}">{{$.Data.After}}</span></div>
     </div>
     <dl class="kv spaced">
@@ -18,11 +18,13 @@
     </dl>
     {{if $.Data.TooMany}}<div class="flash error spaced"><strong>{{t "dirs.import.too_many" "max" $.Data.Max}}</strong></div>{{end}}
     {{range .Warnings}}<div class="flash warn spaced">{{msg .}}</div>{{end}}
+    {{with .MoreWarnings}}<div class="flash warn spaced">{{t "dashboard.attention.more" "n" .}}</div>{{end}}
   </div>
   {{if .Errors}}
   <div class="table-wrap codec-table"><table class="table">
     <thead><tr><th class="num">{{t "dirs.import.col_line"}}</th><th>{{t "dirs.import.col_reason"}}</th></tr></thead>
-    <tbody>{{range .Errors}}<tr><td class="num">{{.Line}}</td><td>{{join (msgs .Problems) (t "format.problem_sep")}}</td></tr>{{end}}</tbody>
+    <tbody>{{range .Errors}}<tr><td class="num">{{.Line}}</td><td>{{join (msgs .Problems) (t "format.problem_sep")}}</td></tr>{{end}}
+    {{with .MoreErrors}}<tr><td></td><td>{{t "dashboard.attention.more" "n" .}}</td></tr>{{end}}</tbody>
   </table></div>
   {{end}}
   <div class="card-foot form-actions"><a class="btn" href="/books/{{$.Data.Book.ID}}/import">{{t "dirs.import.choose_again"}}</a>

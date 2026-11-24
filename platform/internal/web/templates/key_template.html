@@ -12,7 +12,8 @@
 {{if $d.Errors}}<section class="card table-card error-card">
   <div class="card-head"><h2>{{icon "circle-alert"}}{{t "keys.import.failed"}}</h2></div>
   <div class="table-wrap"><table class="table"><thead><tr><th class="num">{{t "keys.import.col_row"}}</th><th>{{t "keys.import.col_reason"}}</th></tr></thead>
-    <tbody>{{range $d.Errors}}<tr><td class="num">{{.Line}}</td><td>{{msg .Reason}}</td></tr>{{end}}</tbody></table></div>
+    <tbody>{{range $d.Errors}}<tr><td class="num">{{.Line}}</td><td>{{msg .Reason}}</td></tr>{{end}}
+    {{with $d.More}}<tr><td></td><td>{{t "dashboard.attention.more" "n" .}}</td></tr>{{end}}</tbody></table></div>
 </section>{{end}}
 
 <section class="card table-card">

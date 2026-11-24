@@ -61,3 +61,15 @@ func TestCsvRows(t *testing.T) {
 		t.Errorf("%#v", rows)
 	}
 }
+
+// TestCsvRowsOver counts rows as CsvRows does: blank and comment lines are no rows; \r\n,
+// \n and \r end lines.
+func TestCsvRowsOver(t *testing.T) {
+	text := "a\r\n\n# comment\rb\nc"
+	if CsvRowsOver(text, 3) || !CsvRowsOver(text, 2) || CsvRowsOver("", 0) {
+		t.Error("CsvRowsOver miscounts")
+	}
+	if rows := CsvRows(text); len(rows) != 3 || rows[1].Line != 4 || rows[2].Line != 5 {
+		t.Errorf("rows: %#v", rows)
+	}
+}

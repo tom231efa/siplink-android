@@ -117,6 +117,7 @@ type keyData struct {
 	Users   i18n.Names
 	Error   string
 	Errors  []rules.CsvLineError
+	More    int // errors of an import not listed
 	Hint    string
 	Max     int
 	Regions []store.Region
@@ -284,6 +285,11 @@ func (s *Server) keyImport(w http.ResponseWriter, r *http.Request) {
 		f.Close()
 		text = string(b)
 	}
+	// A file with more keys than a template can ever hold is not read further.
+	if rules.CsvRowsOver(text, rules.MaxShortcuts) {
+		s.renderKeys(w, r, http.StatusBadRequest, t, keyData{Error: tr(r).Msg(rules.ShortcutLimitReached.Msg())})
+		return
+	}
 	replace := r.FormValue("mode") == "replace"
 	room := rules.MaxShortcuts
 	if !replace {
@@ -305,7 +311,8 @@ func (s *Server) keyImport(w http.ResponseWriter, r *http.Request) {
 		if parsed.SkippedForLimit > 0 {
 			msg = tr(r).T("keys.import.none_over_limit", "max", rules.MaxShortcuts, "n", parsed.SkippedForLimit)
 		}
-		s.renderKeys(w, r, http.StatusBadRequest, t, keyData{Error: msg, Errors: parsed.Errors})
+		more := max(0, len(parsed.Errors)-rules.MaxShownLineErrors)
+		s.renderKeys(w, r, http.StatusBadRequest, t, keyData{Error: msg, Errors: parsed.Errors[:len(parsed.Errors)-more], More: more})
 		return
 	}
 	if err := s.St.AddKeys(r.Context(), t.ID, keys, replace, rules.MaxShortcuts); errors.Is(err, store.ErrLimit) {

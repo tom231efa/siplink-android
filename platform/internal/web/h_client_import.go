@@ -24,9 +24,11 @@ import (
 // "{profile} username", …, in any case); one file uses one language. Extra columns are
 // ignored. Several tags in one cell are separated by ";" or "；". maxClientUpload is the
 // body limit of the dry run: the file, or the pasted text, and the form around it.
+// maxClientRows is the most clients one file holds.
 const (
 	maxClientCSV    = 4 << 20
 	maxClientUpload = maxClientCSV + 64<<10
+	maxClientRows   = 2000
 )
 
 // csvColumn is a column of the client CSV by its Chinese and its English name; the
@@ -179,7 +181,7 @@ func clientCSVFormat(r *http.Request) []string {
 		lines = append(lines, t.T("clients.import.format_english", "columns", []string{colName.en, colRegion.en, colTemplate.en,
 			colNote.en, colGroup.en, colTags.en, account + sufUser.en, account + sufPass.en, account + sufAuth.en, account + sufDisp.en, directory + sufDir.en}))
 	}
-	return append(lines, t.T("clients.import.format_size", "mb", maxClientCSV>>20))
+	return append(lines, t.T("clients.import.format_size", "mb", maxClientCSV>>20, "n", maxClientRows))
 }
 
 func (s *Server) routesClientImport() {
@@ -218,8 +220,10 @@ func (m importGroups) find(r *http.Request, s *Server, region int64, name string
 
 type clientImportData struct {
 	Templates []*store.ClientTemplate
-	Format    []string // the lines of the format help
-	Rows      []*importedClient
+	Format    []string          // the lines of the format help
+	Rows      []*importedClient // all lines, but of those with problems only the first rules.MaxShownLineErrors
+	More      int               // lines with problems not kept
+	Total     int               // lines of the file
 	Error     string
 	Key       string
 	OK        int
@@ -287,6 +291,10 @@ func (s *Server) clientImportDryRun(w http.ResponseWriter, r *http.Request) {
 		fail(errText(r, err))
 		return
 	}
+	if rules.CsvRowsOver(text, 1+maxClientRows) { // the header and the clients
+		fail(tr(r).T("dirs.import.too_many", "max", maxClientRows))
+		return
+	}
 	rows := rules.CsvRows(text)
 	if len(rows) < 2 || rows[0].Fields == nil {
 		fail(tr(r).T("clients.import.need_header"))
@@ -326,6 +334,7 @@ func (s *Server) clientImportDryRun(w http.ResponseWriter, r *http.Request) {
 			}
 			seen[key] = true
 		}
+		d.Total++
 		if len(ic.Problems) == 0 {
 			d.OK++
 		}
@@ -334,13 +343,17 @@ func (s *Server) clientImportDryRun(w http.ResponseWriter, r *http.Request) {
 				newTags[key] = true
 			}
 		}
+		if len(ic.Problems) > 0 && len(d.Rows)-d.OK >= rules.MaxShownLineErrors { // every good line is kept
+			d.More++
+			continue
+		}
 		d.Rows = append(d.Rows, ic)
 	}
 	if len(known)+len(newTags) > catalog.MaxTags {
 		fail(tr(r).T("tags.limit", "max", catalog.MaxTags))
 		return
 	}
-	if d.OK == len(d.Rows) {
+	if d.OK == d.Total {
 		d.Key = s.imports.put(s.Now(), &pendingImport{adminID: current(r).ID, clients: d.Rows})
 	}
 	s.ok(w, r, "client_import", &Page{Title: tr(r).T("clients.import.title_results"), Nav: "clients", Data: d})
