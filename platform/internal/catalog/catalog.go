@@ -129,9 +129,13 @@ func ConfigPasswordHash(password string) (string, error) {
 
 var codecKey = regexp.MustCompile(`^[A-Za-z0-9._+-]+/[0-9]+/[0-9]+$`)
 
+// MaxCodecKey is the longest codec key in bytes; a phone's report of a longer one is not
+// stored.
+const MaxCodecKey = 64
+
 // CodecProblem checks one Codec.key ("mime/clockRate/channels").
 func CodecProblem(key string) error {
-	if !codecKey.MatchString(key) {
+	if len(key) > MaxCodecKey || !codecKey.MatchString(key) {
 		return i18n.E("catalog.codec_invalid")
 	}
 	return nil

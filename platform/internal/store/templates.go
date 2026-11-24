@@ -587,9 +587,14 @@ func (s *Store) DeleteDirectory(ctx context.Context, templateID, id int64) error
 	})
 }
 
+// MaxReportedCodecs is the most rows reported_codecs holds; phones write them and nothing
+// deletes them, so once it is full new keys are not kept.
+const MaxReportedCodecs = 2000
+
 // ReportCodecs remembers codec keys a phone reported. A phone reports them on every sync:
 // the keys stored for its app version are read first and only the others are written, so
-// that the usual sync does not take the write lock once per key.
+// that the usual sync does not take the write lock once per key. Only when there is
+// something to write is the table counted against MaxReportedCodecs.
 func (s *Store) ReportCodecs(ctx context.Context, appVersion string, audio, video []string) error {
 	if len(audio)+len(video) == 0 {
 		return nil
@@ -613,17 +618,27 @@ func (s *Store) ReportCodecs(ctx context.Context, appVersion string, audio, vide
 	if err := rows.Err(); err != nil {
 		return err
 	}
-	now := s.NowText()
+	var fresh [][2]string
 	for kind, keys := range map[string][]string{"audio": audio, "video": video} {
 		for _, k := range keys {
-			if stored[[2]string{kind, k}] {
-				continue
+			if key := [2]string{kind, k}; !stored[key] {
+				stored[key] = true // a key reported twice is written once
+				fresh = append(fresh, key)
 			}
-			stored[[2]string{kind, k}] = true // a key reported twice is written once
-			if _, err := s.DB.ExecContext(ctx, `INSERT OR IGNORE INTO reported_codecs(kind, key, app_version, first_seen) VALUES(?,?,?,?)`,
-				kind, k, appVersion, now); err != nil {
-				return err
-			}
+		}
+	}
+	if len(fresh) == 0 {
+		return nil
+	}
+	var n int
+	if err := s.DB.QueryRowContext(ctx, `SELECT count(*) FROM reported_codecs`).Scan(&n); err != nil {
+		return err
+	}
+	now := s.NowText()
+	for _, key := range fresh[:max(0, min(len(fresh), MaxReportedCodecs-n))] {
+		if _, err := s.DB.ExecContext(ctx, `INSERT OR IGNORE INTO reported_codecs(kind, key, app_version, first_seen) VALUES(?,?,?,?)`,
+			key[0], key[1], appVersion, now); err != nil {
+			return err
 		}
 	}
 	return nil

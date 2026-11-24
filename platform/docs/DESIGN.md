@@ -342,7 +342,7 @@ used for authorization.
 | `model` | `Build.MANUFACTURER + " " + Build.MODEL` |
 | `applied` | `{ "version": "...", "at": "RFC3339", "error": "" }` — the last document the loader tried, and the reason it rejected it (validation messages are the app's own `…Error.full` texts) |
 | `registrations` | `[{ "account": "<account key>", "state": "OK" }]` — `RegState` names from `core/model/Models.kt` (`DISABLED`, `NONE`, `PROGRESS`, `OK`, `FAILED`) plus `error` (`SipAccount.error`) |
-| `codecs` | `{ "audio": ["opus/48000/2", …], "video": [...] }` — `Codec.key` of `CodecManager.codecs` / `videoCodecs`; the platform keeps the union per app version to offer in the codec editor |
+| `codecs` | `{ "audio": ["opus/48000/2", …], "video": [...] }` — `Codec.key` of `CodecManager.codecs` / `videoCodecs`; the platform keeps the union per app version to offer in the codec editor (keys of at most 64 bytes, at most 2,000 rows in all; once full, new keys are not kept) |
 
 No phone number, contacts, call history or location is sent. Besides the `device` object the
 platform keeps the `User-Agent` header of the request (`client_reports.user_agent`, at most 200

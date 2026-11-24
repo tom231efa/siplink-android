@@ -217,3 +217,39 @@ func TestReportCodecsWritesChanges(t *testing.T) {
 		t.Errorf("reported codecs: %d rows, %v", rows, got)
 	}
 }
+
+// TestReportCodecsLimit: reported_codecs stops growing at MaxReportedCodecs rows; keys
+// already stored are still read without a write.
+func TestReportCodecsLimit(t *testing.T) {
+	st := testutil.Store(t)
+	ctx := t.Context()
+	tx, err := st.DB.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := range store.MaxReportedCodecs - 1 {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO reported_codecs(kind, key, app_version, first_seen) VALUES('audio', ?, 'filler', '')`,
+			fmt.Sprintf("c%d/8000/1", i)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+	count := func() (n int) {
+		st.DB.QueryRowContext(ctx, `SELECT count(*) FROM reported_codecs`).Scan(&n)
+		return n
+	}
+	if err := st.ReportCodecs(ctx, "0.3.0", []string{"opus/48000/2", "PCMA/8000/1"}, []string{"H264/90000/1"}); err != nil {
+		t.Fatal(err)
+	}
+	if n := count(); n != store.MaxReportedCodecs {
+		t.Errorf("rows after a report into the last place: %d", n)
+	}
+	if err := st.ReportCodecs(ctx, "0.3.1", []string{"G722/8000/1"}, nil); err != nil || count() != store.MaxReportedCodecs {
+		t.Errorf("a full table grew: %v, %d rows", err, count())
+	}
+	if err := st.ReportCodecs(ctx, "filler", []string{"c1/8000/1"}, nil); err != nil {
+		t.Errorf("a known key in a full table: %v", err)
+	}
+}
