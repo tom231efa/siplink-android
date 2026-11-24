@@ -200,11 +200,20 @@ func (s *Store) AccountRegionsOfBook(ctx context.Context, bookID int64) ([]*int6
 	return out, rows.Err()
 }
 
-// BooksOfAccount returns the books an enabled account may read.
-func (s *Store) BooksOfAccount(ctx context.Context, accountID int64) ([]*Book, error) {
-	return s.queryBooks(ctx, `SELECT `+prefixed("b.", bookCols)+` FROM address_books b
+// BooksOfAccount returns the books an account may read. ok is false when the account
+// is gone, disabled or no longer has passwordHash: deleted, or its password reset, since
+// the bind that checked the hash. A new account that reuses the id has another hash.
+func (s *Store) BooksOfAccount(ctx context.Context, accountID int64, passwordHash string) (books []*Book, ok bool, err error) {
+	books, err = s.queryBooks(ctx, `SELECT `+prefixed("b.", bookCols)+` FROM address_books b
 		JOIN ldap_account_books g ON g.book_id = b.id JOIN ldap_accounts a ON a.id = g.account_id
-		WHERE a.id = ? AND a.disabled = 0 ORDER BY b.name COLLATE NOCASE, b.id`, accountID)
+		WHERE a.id = ? AND a.disabled = 0 AND a.password_hash = ? ORDER BY b.name COLLATE NOCASE, b.id`, accountID, passwordHash)
+	if err != nil || len(books) > 0 {
+		return books, err == nil, err
+	}
+	// No rows: an account without books, or none that matches any more.
+	err = s.DB.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM ldap_accounts WHERE id = ? AND disabled = 0 AND password_hash = ?)`,
+		accountID, passwordHash).Scan(&ok)
+	return nil, ok, err
 }
 
 // AnonymousBooks returns the books anyone may read.

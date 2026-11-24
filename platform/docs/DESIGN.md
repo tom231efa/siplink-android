@@ -764,6 +764,12 @@ public_id fails or the client is not `active`); an unbind (new QR code, or the p
 also bumps `ldap_generation`, so the old phone's password stays invalid once a new phone has
 enrolled.
 
+A bound connection keeps what its bind was checked against: the client's `ldap_generation`, the
+account's password hash. Every search compares it with the stored value in the query that reads
+the permitted books (an account granted no book needs a second query); once the credential was
+reset, or the client or account is gone, disabled or no longer active (a new account reusing the
+id has another hash), the connection is anonymous until it binds again.
+
 A search whose base is outside the permitted books returns `noSuchObject` (32) — not
 `insufficientAccessRights` — so DNs of other books do not leak. A base of `ou=books` or the
 suffix with scope subtree returns entries of all permitted books. Bind failures answer

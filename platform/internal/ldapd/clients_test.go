@@ -81,7 +81,11 @@ func TestClientBinds(t *testing.T) {
 	if err := e.dialTLS().Bind(clientDN(active), pw); code(err) != ldap.LDAPResultInvalidCredentials {
 		t.Errorf("old generation still binds: %v", err)
 	}
-	// A client deleted while connected reads nothing more.
+	// A client deleted while connected reads nothing more (bound with the new password:
+	// the reset alone already ends the old binding).
+	active, err = e.st.ClientByPublicID(context.Background(), active.PublicID)
+	must(t, err)
+	must(t, c.Bind(clientDN(active), secret.LDAPPassword(testLDAPKey, active.PublicID, active.LDAPGeneration)))
 	if _, err := search(c, bookBase("staff"), ldap.ScopeWholeSubtree, 51, "(cn=*)"); err != nil {
 		t.Fatal(err)
 	}

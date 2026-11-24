@@ -12,11 +12,14 @@ import (
 	"siplink/internal/store"
 )
 
-// identity is who a connection is bound as.
+// identity is who a connection is bound as, with what its bind was checked against:
+// a reset credential changes it, and so does a new account that reuses a deleted one's id.
 type identity struct {
 	kind    int // idAnonymous, idAccount, idClient
 	account int64
+	hash    string // the account's password hash at the bind
 	client  string // public id
+	gen     int64  // the client's ldap_generation at the bind
 }
 
 const (
@@ -25,18 +28,24 @@ const (
 	idClient
 )
 
-// permittedBooks returns the books the identity may read (design §4.3).
-func (s *Server) permittedBooks(ctx context.Context, id identity) ([]*store.Book, error) {
+// permittedBooks returns the books the identity may read (design §4.3). It is looked up
+// again per search: when the account or client is gone, disabled or no longer active, or
+// its credential was reset since the bind, the identity becomes anonymous for good.
+func (s *Server) permittedBooks(ctx context.Context, id *identity) ([]*store.Book, error) {
 	switch id.kind {
 	case idAccount:
-		return s.st.BooksOfAccount(ctx, id.account)
+		books, ok, err := s.st.BooksOfAccount(ctx, id.account, id.hash)
+		if err != nil || ok {
+			return books, err
+		}
 	case idClient:
-		// Looked up again per search: a client unbound or deleted meanwhile reads nothing.
-		_, books, _, err := s.st.ClientBooks(ctx, id.client)
-		return books, err
-	default:
-		return s.st.AnonymousBooks(ctx)
+		gen, books, ok, err := s.st.ClientBooks(ctx, id.client)
+		if err != nil || ok && gen == id.gen {
+			return books, err
+		}
 	}
+	*id = identity{}
+	return s.st.AnonymousBooks(ctx)
 }
 
 // bind handles a BindRequest: simple bind of a provisioned client, a service account
@@ -98,7 +107,7 @@ func (s *Server) checkBind(ctx context.Context, dn, password string) (identity, 
 		if subtle.ConstantTimeCompare([]byte(password), []byte(want)) != 1 {
 			return identity{}, false, nil
 		}
-		return identity{kind: idClient, client: pub}, true, nil
+		return identity{kind: idClient, client: pub, gen: gen}, true, nil
 	}
 	name := s.dit.accountName(dn)
 	if name == "" {
@@ -115,5 +124,5 @@ func (s *Server) checkBind(ctx context.Context, dn, password string) (identity, 
 	if a.Disabled || subtle.ConstantTimeCompare([]byte(secret.HashHex(password)), []byte(a.PasswordHash)) != 1 {
 		return identity{}, false, nil
 	}
-	return identity{kind: idAccount, account: a.ID}, true, nil
+	return identity{kind: idAccount, account: a.ID, hash: a.PasswordHash}, true, nil
 }

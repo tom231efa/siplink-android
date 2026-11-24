@@ -86,7 +86,7 @@ func (c *conn) search(m *message) bool {
 		sent++
 		return nil
 	}
-	code, err := c.s.walk(ctx, c.ident, t, req.scope, emit)
+	code, err := c.s.walk(ctx, &c.ident, t, req.scope, emit)
 	switch {
 	case writeFailed:
 		return false
@@ -103,7 +103,7 @@ func (c *conn) search(m *message) bool {
 
 // walk visits the nodes a search covers, in DIT order, calling emit for each. It
 // returns noSuchObject for a base outside the permitted books (design §4.3).
-func (s *Server) walk(ctx context.Context, id identity, t target, scope int, emit func(*node) error) (int, error) {
+func (s *Server) walk(ctx context.Context, id *identity, t target, scope int, emit func(*node) error) (int, error) {
 	if t.kind == tNone || t.kind == tRoot {
 		return rcNoSuchObject, nil
 	}
