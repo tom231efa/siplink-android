@@ -90,7 +90,7 @@
     <string name="call_keypad_close">إغلاق لوحة المفاتيح</string>
     <string name="call_transfer_title">تحويل المكالمة</string>
     <string name="call_transfer_to">التحويل إلى</string>
-    <string name="call_transfer_hint">رقم داخلي أو عنوان SIP</string>
+    <string name="call_transfer_hint">رقم داخلي</string>
     <string name="call_transfer_attended">تحويل بعد الاستشارة</string>
     <string name="call_transfer_blind">تحويل مباشر</string>
     <string name="call_shortcuts_empty">لا توجد مفاتيح اختصار</string>

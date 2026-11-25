@@ -96,7 +96,7 @@
     <string name="call_keypad_close">Fermer le clavier</string>
     <string name="call_transfer_title">Transférer l\'appel</string>
     <string name="call_transfer_to">Transférer à</string>
-    <string name="call_transfer_hint">Poste ou adresse SIP</string>
+    <string name="call_transfer_hint">Poste</string>
     <string name="call_transfer_attended">Transfert supervisé</string>
     <string name="call_transfer_blind">Transfert aveugle</string>
     <string name="call_shortcuts_empty">Aucune touche rapide</string>

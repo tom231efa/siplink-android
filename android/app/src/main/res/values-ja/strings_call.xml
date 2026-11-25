@@ -84,7 +84,7 @@
     <string name="call_keypad_close">キーパッドを閉じる</string>
     <string name="call_transfer_title">通話の転送</string>
     <string name="call_transfer_to">転送先</string>
-    <string name="call_transfer_hint">内線番号または SIP アドレス</string>
+    <string name="call_transfer_hint">内線番号</string>
     <string name="call_transfer_attended">アテンド転送</string>
     <string name="call_transfer_blind">ブラインド転送</string>
     <string name="call_shortcuts_empty">ショートカットキーはありません</string>

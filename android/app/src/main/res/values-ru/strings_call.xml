@@ -84,7 +84,7 @@
     <string name="call_keypad_close">Скрыть клавиатуру</string>
     <string name="call_transfer_title">Перевод вызова</string>
     <string name="call_transfer_to">Перевести на</string>
-    <string name="call_transfer_hint">Добавочный номер или адрес SIP</string>
+    <string name="call_transfer_hint">Добавочный номер</string>
     <string name="call_transfer_attended">Перевод с консультацией</string>
     <string name="call_transfer_blind">Слепой перевод</string>
     <string name="call_shortcuts_empty">Быстрых клавиш нет</string>

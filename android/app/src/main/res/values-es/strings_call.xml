@@ -90,7 +90,7 @@
     <string name="call_keypad_close">Cerrar teclado</string>
     <string name="call_transfer_title">Transferir llamada</string>
     <string name="call_transfer_to">Transferir a</string>
-    <string name="call_transfer_hint">Extensión o dirección SIP</string>
+    <string name="call_transfer_hint">Extensión</string>
     <string name="call_transfer_attended">Transferencia con consulta</string>
     <string name="call_transfer_blind">Transferencia ciega</string>
     <string name="call_shortcuts_empty">No hay teclas rápidas</string>

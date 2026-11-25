@@ -97,7 +97,7 @@
     <string name="call_keypad_close">Close keypad</string>
     <string name="call_transfer_title">Transfer call</string>
     <string name="call_transfer_to">Transfer to</string>
-    <string name="call_transfer_hint">Extension or SIP address</string>
+    <string name="call_transfer_hint">Extension</string>
     <string name="call_transfer_attended">Attended transfer</string>
     <string name="call_transfer_blind">Blind transfer</string>
     <string name="call_shortcuts_empty">No shortcut keys</string>

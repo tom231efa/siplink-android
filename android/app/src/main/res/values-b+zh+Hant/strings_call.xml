@@ -97,7 +97,7 @@
     <string name="call_keypad_close">收合鍵盤</string>
     <string name="call_transfer_title">轉接通話</string>
     <string name="call_transfer_to">轉接至</string>
-    <string name="call_transfer_hint">分機號碼或 SIP 位址</string>
+    <string name="call_transfer_hint">分機號碼</string>
     <string name="call_transfer_attended">詢問轉接</string>
     <string name="call_transfer_blind">直接轉接</string>
     <string name="call_shortcuts_empty">尚無快速鍵</string>
