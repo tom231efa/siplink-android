@@ -31,8 +31,8 @@ android {
         applicationId = "com.sky.siplink"
         minSdk = 28 // Android 9
         targetSdk = 36 // Android 16
-        versionCode = 7
-        versionName = "0.3.0"
+        versionCode = 8
+        versionName = "0.3.1"
 
         ndk {
             // Linphone SDK native libraries (16 KB page aligned).
