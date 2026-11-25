@@ -1,6 +1,10 @@
 package com.sky.siplink.itest
 
 import android.accessibilityservice.AccessibilityService
+import android.accessibilityservice.AccessibilityServiceInfo
+import android.app.Activity
+import android.content.pm.ActivityInfo
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Rect
 import android.os.Build
@@ -11,7 +15,11 @@ import android.view.InputDevice
 import android.view.MotionEvent
 import android.view.ViewConfiguration
 import android.view.accessibility.AccessibilityNodeInfo
+import android.view.accessibility.AccessibilityWindowInfo
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
+import androidx.test.runner.lifecycle.Stage
+import com.sky.siplink.MainActivity
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import java.io.File
@@ -253,6 +261,131 @@ abstract class ScreenTestBase(private val pictures: String) : PbxTestBase() {
     /** Types [text] into the field with the label [label]. */
     protected fun typeInto(label: String, text: String) = setText(text) { chain(see(label)).firstOrNull { it.isEditable && it.isEnabled } }
 
+    // ------------------------------------------------------------------ turning the app
+
+    /** The activity of type [T] in front, if there is one. */
+    protected inline fun <reified T : Activity> resumed(): T? = onMain {
+        ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED).filterIsInstance<T>().firstOrNull()
+    }
+
+    /** The app's own screen (the one of the tabs), once it is in front. */
+    protected fun app(): MainActivity {
+        await("the app to be in front") { resumed<MainActivity>() != null }
+        return resumed<MainActivity>()!!
+    }
+
+    /** How the display of [activity] is turned: one of the Surface.ROTATION_ values. */
+    protected fun rotation(activity: Activity): Int = onMain {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            activity.display!!.rotation
+        } else {
+            @Suppress("DEPRECATION")
+            activity.windowManager.defaultDisplay.rotation
+        }
+    }
+
+    /**
+     * Turns the app the way turning the phone does, without a hand on it or a change to its
+     * settings. A quarter turn makes the app anew; half way round it is only laid out anew.
+     *
+     * @param orientation one of the ActivityInfo.SCREEN_ORIENTATION_ values
+     * @return the rotation of the display then, one of the Surface.ROTATION_ values
+     */
+    protected fun turnApp(orientation: Int): Int {
+        val before = app()
+        val from = rotation(before)
+        val sideways = orientation != ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        onMain { before.requestedOrientation = orientation }
+        await("the app to be turned") {
+            val now = resumed<MainActivity>()
+            now != null && rotation(now) != from &&
+                (now.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) == sideways
+        }
+        Thread.sleep(TURN_MS)
+        settle()
+        return rotation(app())
+    }
+
+    // ------------------------------------------------------------------ the keyboard of the system
+
+    /** The top edge of the keyboard of the system on the screen, in pixels; null while it is away. */
+    protected fun keyboardTop(): Int? {
+        // The windows of other apps, the keyboard's among them, are only told on request.
+        val info = automation.serviceInfo
+        if (info.flags and AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS == 0) {
+            automation.serviceInfo = info.apply { flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS }
+        }
+        val bounds = Rect()
+        val keyboard = automation.windows.firstOrNull { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD } ?: return null
+        keyboard.getBoundsInScreen(bounds)
+        return bounds.top
+    }
+
+    /**
+     * Types [text] into the empty field that [field] finds the way a user does: a finger on the
+     * field brings the keyboard of the system up, and keys type. The keyboard has to stay up and
+     * the text has to arrive. ([setText] fills a field without a keyboard, and so never meets a
+     * screen that the keyboard rearranges.)
+     *
+     * The place of the field is looked at once the screen is at rest again: what scrolls brings
+     * no more than the line that is written into sight, a moment after the keys.
+     *
+     * @return what is wrong with the place of the field while the keyboard is up (it is out of
+     *   sight or cut off, or the keyboard covers it); null when it stands whole above the keyboard,
+     *   or is higher than the room there and fills it
+     */
+    protected fun typeWithKeyboard(text: String, field: () -> AccessibilityNodeInfo): String? {
+        // As a user finds the screen: without a keyboard that the stop before left up, or that the key that keeps the phone awake brought back.
+        closeKeyboard()
+        val before = Rect()
+        field().getBoundsInScreen(before)
+        tapAt(before.exactCenterX(), before.exactCenterY())
+        await("the keyboard to open") { keyboardTop() != null }
+        never("the keyboard closed by itself", KEYBOARD_STAYS_MS) { keyboardTop() == null }
+        typeKeys(text)
+        settle()
+        val keyboard = keyboardTop()
+        assertTrue("The keyboard closed while \"$text\" was typed", keyboard != null)
+        val now = Rect()
+        holding(text)?.getBoundsInScreen(now) ?: return "the field is out of sight"
+        return when {
+            now.bottom > keyboard!! -> "the keyboard covers the field: the field ends at ${now.bottom}, the keyboard starts at $keyboard"
+            now.height() >= before.height() -> null
+            // A field of many lines may be higher than the room above the keyboard: it fills that room, and the keyboard covers the rest of it.
+            before.height() > keyboard - now.top && keyboard - now.bottom <= EDGE_PX -> null
+            else -> "the field is cut off: ${now.height()} of its ${before.height()} pixels are in sight"
+        }
+    }
+
+    /**
+     * The keys that write [text], into the empty field that has the focus: back once the field
+     * holds it. Keys that do not come from a touch take the phone out of touch mode, where a
+     * screen that opens gives its first field the focus, and the keyboard with it; the keys of
+     * the keyboard on the screen are touches, so the phone is put back into touch mode.
+     */
+    protected fun typeKeys(text: String) {
+        shell("input text $text")
+        await("\"$text\" to be in the field") { holding(text) != null }
+        instrumentation.setInTouchMode(true)
+    }
+
+    private fun holding(text: String): AccessibilityNodeInfo? = nodes().firstOrNull { it.isEditable && it.text?.toString() == text }
+
+    /**
+     * Sends the keyboard of the system away, as the back key does while it is up. The key that
+     * the test runner keeps the phone awake with (run-tests.sh) brings a hidden keyboard up again
+     * when it meets a field that has the focus: one that is back before the screen has come to
+     * rest is sent away once more, and it may still be back a moment after this returns.
+     */
+    protected fun closeKeyboard() {
+        repeat(KEYBOARD_CLOSES) {
+            if (keyboardTop() == null) return
+            back()
+            if (settles(KEYBOARD_GONE_MS) { keyboardTop() == null }) return
+        }
+        throw AssertionError("The keyboard does not close. The screen says: ${screenText()}")
+    }
+
     /**
      * Saves what the display shows as [name].png; [name] may hold folders ("ar/dialer"). The
      * screen is let come to rest and be drawn first ([drawn]): the accessibility tree has a
@@ -307,5 +440,18 @@ abstract class ScreenTestBase(private val pictures: String) : PbxTestBase() {
 
         /** How long the finger of a tap stays down. */
         const val TAP_MS = 60L
+
+        /** Longer than the animation that turns the screen. */
+        const val TURN_MS = 1_000L
+
+        /** A keyboard that a screen sends away again goes within a second; it is watched for longer. */
+        const val KEYBOARD_STAYS_MS = 3_000L
+
+        /** How long the keyboard takes at the most to be gone after the back key, and how often it is sent away. */
+        const val KEYBOARD_GONE_MS = 2_000L
+        const val KEYBOARD_CLOSES = 3
+
+        /** Two edges that are the same edge, rounded apart. */
+        const val EDGE_PX = 2
     }
 }

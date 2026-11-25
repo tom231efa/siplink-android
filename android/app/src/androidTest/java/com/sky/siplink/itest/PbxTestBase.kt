@@ -63,6 +63,10 @@ abstract class PbxTestBase {
             Manifest.permission.BLUETOOTH_CONNECT,
         ).forEach { instrumentation.uiAutomation.grantRuntimePermission(packageName, it) }
 
+        // A finger drives the app. Keys typed before (by a test, by hand over adb) leave the phone
+        // out of touch mode, where a screen that opens gives its first field the focus.
+        instrumentation.setInTouchMode(true)
+
         // The tests' texts are the user's Chinese ones; the phone may speak another language.
         pinLanguage(Language.CHINESE_SIMPLIFIED)
 

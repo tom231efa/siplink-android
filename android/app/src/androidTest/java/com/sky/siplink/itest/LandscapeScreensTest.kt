@@ -1,19 +1,14 @@
 package com.sky.siplink.itest
 
 import android.Manifest
-import android.app.Activity
 import android.content.pm.ActivityInfo
-import android.content.res.Configuration
 import android.graphics.Rect
-import android.os.Build
 import android.view.Surface
 import android.view.View
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.core.graphics.Insets
 import androidx.core.view.WindowInsetsCompat
 import androidx.test.platform.app.InstrumentationRegistry
-import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry
-import androidx.test.runner.lifecycle.Stage
 import com.sky.siplink.CallActivity
 import com.sky.siplink.MainActivity
 import com.sky.siplink.core.FeedAnswer
@@ -212,49 +207,6 @@ class LandscapeScreensTest : RoomTestBase("landscape") {
     }
 
     // ------------------------------------------------------------------ the main screens
-
-    /** The activity of type [T] in front, if there is one. */
-    private inline fun <reified T : Activity> resumed(): T? = onMain {
-        ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED).filterIsInstance<T>().firstOrNull()
-    }
-
-    /** The app's own screen (the one of the tabs), once it is in front. */
-    private fun app(): MainActivity {
-        await("the app to be in front") { resumed<MainActivity>() != null }
-        return resumed<MainActivity>()!!
-    }
-
-    /** How the display of [activity] is turned: one of the Surface.ROTATION_ values. */
-    private fun rotation(activity: Activity): Int = onMain {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            activity.display!!.rotation
-        } else {
-            @Suppress("DEPRECATION")
-            activity.windowManager.defaultDisplay.rotation
-        }
-    }
-
-    /**
-     * Turns the app the way turning the phone does, without a hand on it or a change to its
-     * settings. A quarter turn makes the app anew; half way round it is only laid out anew.
-     *
-     * @param orientation one of the ActivityInfo.SCREEN_ORIENTATION_ values
-     * @return the rotation of the display then, one of the Surface.ROTATION_ values
-     */
-    private fun turnApp(orientation: Int): Int {
-        val before = app()
-        val from = rotation(before)
-        val sideways = orientation != ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-        onMain { before.requestedOrientation = orientation }
-        await("the app to be turned") {
-            val now = resumed<MainActivity>()
-            now != null && rotation(now) != from &&
-                (now.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) == sideways
-        }
-        Thread.sleep(TURN_MS)
-        settle()
-        return rotation(app())
-    }
 
     /** The app's window on the screen. */
     private fun window(): Rect {
@@ -514,6 +466,5 @@ class LandscapeScreensTest : RoomTestBase("landscape") {
 
         /** How long the call has lasted, as the call screen shows it. */
         val TIME = Regex("\\d+:\\d{2}")
-        const val TURN_MS = 1_000L
     }
 }

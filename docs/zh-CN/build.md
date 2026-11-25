@@ -115,6 +115,8 @@ SIP core 有自己的线程（`core/CoreThread`，一个 `HandlerThread`），�
 
 `ui/AppRoot.kt` 定义导航与四个标签页，其余按页面分包：`accounts`、`call`、`dialer`、`directory`、`history`、`settings`、`shortcuts`，公共组件在 `components`，主题在 `theme`。界面通过 `StateFlow` 读取管理器状态，通过管理器方法修改。
 
+输入框所在的布局只按窗口本身选择（`ui/components/AppBottomSheet.kt` 中的 `isLowWindow()`），不按面板或页面剩余的空间选择：键盘会占去大部分空间，输入框若在键盘弹出时换到另一种布局，会被重新组合、失去焦点，键盘随即收回。窗口较矮时（手机横屏），键盘上方只剩约一个输入框的高度：面板不显示拖动手柄并直接以全高打开（`AppBottomSheet`），输入框上方的内容在键盘打开期间让位（`AwayWhileTyping`：带输入框页面的标题栏 `PageTopBar`，以及会议室添加成员面板的标题）；输入框下方的内容被键盘盖住。`KeyboardTest` 用系统键盘在竖屏和横屏下对每一类输入框位置实际输入；其他集成测试填写输入框时不经过键盘。
+
 `service/SipService` 是前台服务：空闲时以 `specialUse` 类型保持进程与注册，通话时切换为 `phoneCall` / `microphone` 类型。`CallNotifier` 负责通知，`BootReceiver` 在开机和应用更新后启动服务。
 
 ## 语言

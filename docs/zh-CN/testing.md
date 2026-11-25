@@ -80,7 +80,7 @@ testenv/run-tests.sh 'com.sky.siplink.itest.BasicCallTest#outgoingCallSendsDtmf'
 SKIP_INSTALL=1 testenv/run-tests.sh com.sky.siplink.itest.CodecTest    # 不重新安装
 ```
 
-运行全部测试时，每个测试类在单独的进程中运行，结束时列出失败的类。测试期间脚本会定时唤醒设备屏幕，防止熄屏后后台进程失去网络。测试所需的口令和地址以单个 instrumentation 参数传入，不写入测试 APK 或仓库。
+运行全部测试时，每个测试类在单独的进程中运行，结束时列出失败的类。测试期间脚本会定时唤醒设备屏幕，防止熄屏后后台进程失去网络；它发送的按键在输入框有焦点时也会让已收起的键盘重新弹出，`KeyboardTest` 已考虑这一点。每个测试开始时先让设备回到触摸模式：通过 adb 输入的按键（`input text`）会使设备离开触摸模式，此时新打开的界面会自动聚焦第一个输入框并弹出键盘。测试所需的口令和地址以单个 instrumentation 参数传入，不写入测试 APK 或仓库。
 
 以下测试类不在默认运行之列，需单独运行：
 

@@ -392,9 +392,6 @@ class ConferenceTest : RoomTestBase("conference") {
         /** A member beeps every 3 s; the PBX reports sound once a beep of another member came through. */
         const val ROOM_SOUND_TIMEOUT_MS = 20_000L
 
-        /** Longer than the animation that turns the screen. */
-        const val TURN_MS = 1_000L
-
         /** How often [until] looks: well under the time a tap is kept back after the rows moved. */
         const val QUICK_POLL_MS = 5L
         const val TAG = "SipLinkConferenceTest"

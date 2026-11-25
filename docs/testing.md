@@ -80,7 +80,7 @@ testenv/run-tests.sh 'com.sky.siplink.itest.BasicCallTest#outgoingCallSendsDtmf'
 SKIP_INSTALL=1 testenv/run-tests.sh com.sky.siplink.itest.CodecTest    # without reinstalling
 ```
 
-When all tests run, each test class runs in its own process, and the failed classes are listed at the end. During the tests the script wakes the device screen at intervals, so that background processes do not lose the network when the screen is off. The passwords and addresses the tests need are passed as a single instrumentation argument and are not written into the test APK or the repository.
+When all tests run, each test class runs in its own process, and the failed classes are listed at the end. During the tests the script wakes the device screen at intervals, so that background processes do not lose the network when the screen is off; the key it sends also brings a hidden keyboard back when a field has the focus, which `KeyboardTest` allows for. Every test puts the device into touch mode first: keys typed over adb (`input text`) leave it, and a screen that opens outside touch mode gives its first field the focus and brings the keyboard up. The passwords and addresses the tests need are passed as a single instrumentation argument and are not written into the test APK or the repository.
 
 The following test classes are not part of the default run and must be run on their own:
 

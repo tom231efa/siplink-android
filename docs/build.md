@@ -115,6 +115,8 @@ The SIP core has a thread of its own (`core/CoreThread`, a `HandlerThread`), as 
 
 `ui/AppRoot.kt` defines the navigation and the four tabs; the rest is grouped by page into packages: `accounts`, `call`, `dialer`, `directory`, `history`, `settings`, `shortcuts`, with shared components in `components` and the theme in `theme`. The UI reads manager state through `StateFlow` and changes it through manager methods.
 
+A layout around a text field is chosen from the window alone (`isLowWindow()` in `ui/components/AppBottomSheet.kt`), never from the room a sheet or a page has left: the keyboard takes most of that room, and a field that moves into another layout while the keyboard comes up is composed anew, loses the focus, and the keyboard closes again at once. In a low window (a phone on its side) the keyboard leaves hardly more than one field: a sheet has no handle there and opens at its full height (`AppBottomSheet`), and what stands above a field gives way while the keyboard is up (`AwayWhileTyping`: the top bar of a page with fields, `PageTopBar`, and the title of the sheet that adds members to a room); what stands below the field is covered by the keyboard. `KeyboardTest` types into every kind of place a field stands in with the keyboard of the system, upright and on its side; the other integration tests fill their fields without a keyboard.
+
 `service/SipService` is the foreground service: when idle it keeps the process and registration alive with the `specialUse` type, and during calls it switches to the `phoneCall` / `microphone` types. `CallNotifier` handles notifications, and `BootReceiver` starts the service after boot and after app updates.
 
 ## Languages
