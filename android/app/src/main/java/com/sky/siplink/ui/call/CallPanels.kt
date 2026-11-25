@@ -65,6 +65,7 @@ import com.sky.siplink.ui.components.AppBottomSheet
 import com.sky.siplink.ui.components.FieldText
 import com.sky.siplink.ui.components.LeftToRight
 import com.sky.siplink.ui.components.LocalMessenger
+import com.sky.siplink.ui.components.isLowWindow
 import com.sky.siplink.ui.components.machineValueStyle
 import com.sky.siplink.ui.shortcuts.ShortcutBoard
 import com.sky.siplink.ui.shortcuts.rememberShortcutRunner
@@ -175,6 +176,8 @@ internal fun TransferSheet(
         Column(
             Modifier
                 .fillMaxWidth()
+                // Where the keyboard leaves less than the sheet holds, the field stays in sight.
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -236,7 +239,7 @@ internal fun ShortcutsSheet(onDismiss: () -> Unit, onNotice: (String) -> Unit) {
                     onCategoryChange = { category = it },
                     editing = false,
                     onKey = runner,
-                    modifier = Modifier.fillMaxHeight(0.72f),
+                    modifier = Modifier.fillMaxHeight(if (isLowWindow()) 1f else 0.72f),
                 )
             }
         }

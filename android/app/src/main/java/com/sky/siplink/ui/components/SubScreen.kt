@@ -42,18 +42,20 @@ fun SubScreen(
 ) {
     val locked = LocalConfigLocked.current
     Column(Modifier.fillMaxSize()) {
-        TopAppBar(
-            title = { Text(title) },
-            navigationIcon = {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.common_back))
-                }
-            },
-            actions = {
-                ManagedLock()
-                if (!locked) actions()
-            },
-        )
+        PageTopBar {
+            TopAppBar(
+                title = { Text(title) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.common_back))
+                    }
+                },
+                actions = {
+                    ManagedLock()
+                    if (!locked) actions()
+                },
+            )
+        }
         Column(
             modifier = Modifier
                 .fillMaxSize()

@@ -85,6 +85,7 @@ import com.sky.siplink.ui.components.FieldText
 import com.sky.siplink.ui.components.LocalConfigLocked
 import com.sky.siplink.ui.components.LocalMessenger
 import com.sky.siplink.ui.components.ManagedLock
+import com.sky.siplink.ui.components.PageTopBar
 import com.sky.siplink.ui.components.StatusDot
 import com.sky.siplink.ui.components.pluralOf
 import com.sky.siplink.ui.components.regStateColor
@@ -138,26 +139,28 @@ fun AccountsScreen(onBack: () -> Unit, onAdd: () -> Unit, onEdit: (String) -> Un
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
-            TopAppBar(
-                title = { Text(stringResource(R.string.account_list_title)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.common_back)) }
-                },
-                actions = {
-                    ManagedLock()
-                    if (!locked) {
-                        IconButton(onClick = { if (full) messenger(context.render(AccountRules.Error.LIMIT_REACHED.message)) else importOpen = true }) {
-                            Icon(Icons.Rounded.UploadFile, contentDescription = stringResource(R.string.account_import_action))
+            PageTopBar {
+                TopAppBar(
+                    title = { Text(stringResource(R.string.account_list_title)) },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.common_back)) }
+                    },
+                    actions = {
+                        ManagedLock()
+                        if (!locked) {
+                            IconButton(onClick = { if (full) messenger(context.render(AccountRules.Error.LIMIT_REACHED.message)) else importOpen = true }) {
+                                Icon(Icons.Rounded.UploadFile, contentDescription = stringResource(R.string.account_import_action))
+                            }
                         }
-                    }
-                    IconButton(
-                        onClick = { if (searching) closeSearch() else openSearch() },
-                        enabled = accounts.isNotEmpty(),
-                    ) {
-                        Icon(Icons.Rounded.Search, contentDescription = stringResource(R.string.account_search_action))
-                    }
-                },
-            )
+                        IconButton(
+                            onClick = { if (searching) closeSearch() else openSearch() },
+                            enabled = accounts.isNotEmpty(),
+                        ) {
+                            Icon(Icons.Rounded.Search, contentDescription = stringResource(R.string.account_search_action))
+                        }
+                    },
+                )
+            }
             AnimatedVisibility(
                 visible = searchOpen,
                 enter = expandVertically(Motion.spatial()) + fadeIn(Motion.fade(160)),

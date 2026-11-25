@@ -5,7 +5,7 @@ package com.sky.siplink.ui.call
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -51,6 +50,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -64,9 +64,11 @@ import com.sky.siplink.core.model.ShortcutAction
 import com.sky.siplink.engine
 import com.sky.siplink.ui.components.AppBottomSheet
 import com.sky.siplink.ui.components.Avatar
+import com.sky.siplink.ui.components.AwayWhileTyping
 import com.sky.siplink.ui.components.ChoiceRow
 import com.sky.siplink.ui.components.FadingText
 import com.sky.siplink.ui.components.FieldText
+import com.sky.siplink.ui.components.isLowWindow
 import com.sky.siplink.ui.components.machineValueStyle
 import com.sky.siplink.ui.components.stringOf
 import kotlinx.coroutines.delay
@@ -142,11 +144,14 @@ internal fun RoomAddSheet(room: RoomInfo, calls: CallManager, onDismiss: () -> U
         typed = ""
     }
 
-    val head: @Composable () -> Unit = {
+    // The phone on its side: too low for the list under the field, so it stands beside it.
+    val twoPanes = isLowWindow()
+
+    val title: @Composable () -> Unit = {
         Row(
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp),
+                .padding(start = 24.dp, end = 24.dp, bottom = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(stringResource(R.string.room_add_title), style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
@@ -156,7 +161,8 @@ internal fun RoomAddSheet(room: RoomInfo, calls: CallManager, onDismiss: () -> U
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        Spacer(Modifier.height(12.dp))
+    }
+    val field: @Composable () -> Unit = {
         OutlinedTextField(
             value = typed,
             onValueChange = { typed = it },
@@ -167,7 +173,13 @@ internal fun RoomAddSheet(room: RoomInfo, calls: CallManager, onDismiss: () -> U
             singleLine = true,
             textStyle = machineValueStyle(),
             shape = MaterialTheme.shapes.medium,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Done),
+            // Names are typed here as well as numbers, in any script.
+            keyboardOptions = KeyboardOptions(
+                capitalization = KeyboardCapitalization.None,
+                autoCorrectEnabled = false,
+                keyboardType = KeyboardType.Text,
+                imeAction = ImeAction.Done,
+            ),
             keyboardActions = KeyboardActions(onDone = { addTyped() }),
             trailingIcon = {
                 IconButton(onClick = ::addTyped, enabled = query.isNotEmpty()) {
@@ -175,10 +187,20 @@ internal fun RoomAddSheet(room: RoomInfo, calls: CallManager, onDismiss: () -> U
                 }
             },
         )
+    }
+    // The members picked so far, and where the list is taken from.
+    val choices: @Composable () -> Unit = {
         AnimatedVisibility(picked.isNotEmpty()) {
+            // Many picks scroll in two rows of their own, the newest in sight: the list and the
+            // call button keep their room, also above the keyboard.
+            val picks = rememberScrollState()
+            // Its end is known once the rows are laid out anew.
+            LaunchedEffect(picked.size, picks.maxValue) { picks.animateScrollTo(picks.maxValue) }
             FlowRow(
                 Modifier
                     .fillMaxWidth()
+                    .heightIn(max = PICKS_MAX_HEIGHT)
+                    .verticalScroll(picks)
                     .padding(horizontal = 24.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -241,28 +263,39 @@ internal fun RoomAddSheet(room: RoomInfo, calls: CallManager, onDismiss: () -> U
     }
 
     AppBottomSheet(onDismiss) {
-        BoxWithConstraints(
+        Box(
             Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(SHEET_HEIGHT),
+                .fillMaxHeight(if (twoPanes) 1f else SHEET_HEIGHT),
         ) {
-            if (maxHeight < TWO_PANES_BELOW) {
-                // The phone on its side: too low for the list under the field, so it stands beside it.
+            if (twoPanes) {
                 Row(Modifier.fillMaxSize()) {
                     Column(
                         Modifier
                             .weight(1f)
-                            .fillMaxHeight()
-                            .verticalScroll(rememberScrollState()),
+                            .fillMaxHeight(),
                     ) {
-                        head()
-                        foot()
+                        // The keyboard leaves hardly more than the field here. The title gives way
+                        // to it and the field stays where it is, at the top and whole: it is not
+                        // part of what scrolls. What stands below it the keyboard covers.
+                        AwayWhileTyping(title)
+                        field()
+                        Column(
+                            Modifier
+                                .weight(1f)
+                                .verticalScroll(rememberScrollState()),
+                        ) {
+                            choices()
+                            foot()
+                        }
                     }
                     list(Modifier.weight(1f).fillMaxHeight())
                 }
             } else {
                 Column(Modifier.fillMaxSize()) {
-                    head()
+                    title()
+                    field()
+                    choices()
                     list(Modifier.weight(1f))
                     foot()
                 }
@@ -299,8 +332,9 @@ private fun CandidateRow(candidate: Candidate, inRoom: Boolean, picked: Boolean,
 private const val SEARCH_DEBOUNCE_MS = 250L
 private const val MESSAGE_MS = 3_500L
 
-/** Tall enough for a list, and the room stays in sight above it. */
+/** Two rows of picked members, each as high as a finger needs, and the gap around them. */
+private val PICKS_MAX_HEIGHT = 104.dp
+
+/** Upright: tall enough for a list, and the room stays in sight above it. On its side the sheet takes all the height there is. */
 private const val SHEET_HEIGHT = 0.86f
 
-/** A sheet lower than this has its list beside the field rather than under it. */
-private val TWO_PANES_BELOW = 420.dp

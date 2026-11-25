@@ -70,6 +70,7 @@ import com.sky.siplink.ui.components.EmptyState
 import com.sky.siplink.ui.components.FadingText
 import com.sky.siplink.ui.components.FeatureSheet
 import com.sky.siplink.ui.components.FieldText
+import com.sky.siplink.ui.components.PageTopBar
 import com.sky.siplink.ui.components.pluralOf
 import com.sky.siplink.ui.components.rememberCallLauncher
 import com.sky.siplink.ui.components.stringOf
@@ -115,14 +116,16 @@ fun DirectoryScreen(onOpenSettings: () -> Unit) {
     }
 
     Column(Modifier.fillMaxSize()) {
-        TopAppBar(
-            title = { Text(stringResource(R.string.directory_title)) },
-            actions = {
-                IconButton(onClick = onOpenSettings) {
-                    Icon(Icons.Rounded.Tune, contentDescription = stringResource(R.string.directory_ldap_settings))
-                }
-            },
-        )
+        PageTopBar {
+            TopAppBar(
+                title = { Text(stringResource(R.string.directory_title)) },
+                actions = {
+                    IconButton(onClick = onOpenSettings) {
+                        Icon(Icons.Rounded.Tune, contentDescription = stringResource(R.string.directory_ldap_settings))
+                    }
+                },
+            )
+        }
 
         when {
             !directory.isAvailable -> EmptyState(

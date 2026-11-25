@@ -52,6 +52,7 @@ import com.sky.siplink.ui.components.EmptyState
 import com.sky.siplink.ui.components.ImportOutcome
 import com.sky.siplink.ui.components.LocalConfigLocked
 import com.sky.siplink.ui.components.LocalMessenger
+import com.sky.siplink.ui.components.PageTopBar
 import com.sky.siplink.ui.components.importReport
 import com.sky.siplink.ui.components.stringOf
 import kotlinx.coroutines.Dispatchers
@@ -115,65 +116,67 @@ fun ShortcutsScreen(accountId: String?, onBack: () -> Unit) {
     }
 
     Column(Modifier.fillMaxSize()) {
-        TopAppBar(
-            title = {
-                Column {
-                    Text(stringResource(R.string.shortcut_title))
-                    // Under a managed configuration what counts is how many keys of their own the user has.
-                    Text(
-                        if (locked) {
-                            stringOf(R.string.shortcut_count_of, ownCount.toString(), ShortcutRules.MAX_OWN.toString())
-                        } else {
-                            stringOf(R.string.shortcut_count_of, all.size.toString(), ShortcutRules.MAX_SHORTCUTS.toString())
-                        },
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            },
-            navigationIcon = {
-                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.common_back)) }
-            },
-            actions = {
-                TextButton(onClick = { editing = !editing }, enabled = editable || editing) {
-                    AnimatedContent(editing, label = "editMode") { on -> Text(stringResource(if (on) R.string.common_done else R.string.common_edit)) }
-                }
-                IconButton(onClick = newKey, enabled = loaded) {
-                    Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.shortcut_new))
-                }
-                IconButton(onClick = { menuOpen = true }) { Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.common_more)) }
-                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    if (!locked) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.shortcut_bulk_import)) },
-                            enabled = loaded,
-                            onClick = {
-                                menuOpen = false
-                                importOpen = true
+        PageTopBar {
+            TopAppBar(
+                title = {
+                    Column {
+                        Text(stringResource(R.string.shortcut_title))
+                        // Under a managed configuration what counts is how many keys of their own the user has.
+                        Text(
+                            if (locked) {
+                                stringOf(R.string.shortcut_count_of, ownCount.toString(), ShortcutRules.MAX_OWN.toString())
+                            } else {
+                                stringOf(R.string.shortcut_count_of, all.size.toString(), ShortcutRules.MAX_SHORTCUTS.toString())
                             },
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.shortcut_export_csv)) },
-                        enabled = all.isNotEmpty(),
-                        onClick = {
-                            menuOpen = false
-                            exporter.launch("siplink-shortcuts.csv")
-                        },
-                    )
-                    val selected = category
-                    if (!selected.isNullOrEmpty() && (!locked || ShortcutRules.ownsCategory(all, selected))) {
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.common_back)) }
+                },
+                actions = {
+                    TextButton(onClick = { editing = !editing }, enabled = editable || editing) {
+                        AnimatedContent(editing, label = "editMode") { on -> Text(stringResource(if (on) R.string.common_done else R.string.common_edit)) }
+                    }
+                    IconButton(onClick = newKey, enabled = loaded) {
+                        Icon(Icons.Rounded.Add, contentDescription = stringResource(R.string.shortcut_new))
+                    }
+                    IconButton(onClick = { menuOpen = true }) { Icon(Icons.Rounded.MoreVert, contentDescription = stringResource(R.string.common_more)) }
+                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        if (!locked) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.shortcut_bulk_import)) },
+                                enabled = loaded,
+                                onClick = {
+                                    menuOpen = false
+                                    importOpen = true
+                                },
+                            )
+                        }
                         DropdownMenuItem(
-                            text = { Text(stringOf(R.string.shortcut_edit_category, selected)) },
+                            text = { Text(stringResource(R.string.shortcut_export_csv)) },
+                            enabled = all.isNotEmpty(),
                             onClick = {
                                 menuOpen = false
-                                renaming = selected
+                                exporter.launch("siplink-shortcuts.csv")
                             },
                         )
+                        val selected = category
+                        if (!selected.isNullOrEmpty() && (!locked || ShortcutRules.ownsCategory(all, selected))) {
+                            DropdownMenuItem(
+                                text = { Text(stringOf(R.string.shortcut_edit_category, selected)) },
+                                onClick = {
+                                    menuOpen = false
+                                    renaming = selected
+                                },
+                            )
+                        }
                     }
-                }
-            },
-        )
+                },
+            )
+        }
 
         when {
             !loaded -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }

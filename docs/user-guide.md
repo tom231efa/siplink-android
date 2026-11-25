@@ -23,7 +23,7 @@ When the configuration is provisioned by the management platform, most settings 
 
 ## Interface
 
-The navigation has four tabs: **Dialer**, **History**, **Directory**, **Settings**, at the bottom in portrait and on the left in landscape (a window narrower than 600 dp, as in split screen, keeps them at the bottom). Shortcut keys open from the shortcut keys button on the dialer, and from the call screen during a call.
+The navigation has four tabs: **Dialer**, **History**, **Directory**, **Settings**, at the bottom in portrait and on the left in landscape (a window narrower than 600 dp, as in split screen, keeps them at the bottom). Shortcut keys open from the shortcut keys button on the dialer, and from the call screen during a call. In landscape, the title bar of a page hides while the keyboard is open and returns when it closes.
 
 During a call, the other pages show a banner that returns to the call; its position is set in **Settings → Appearance → Call banner position** (Top / Bottom, default Bottom).
 
@@ -172,7 +172,7 @@ A conference room brings several calls together on the phone: the phone mixes th
 
 - **Open**: once a call is connected, tap **Conference room** at the top left of the call screen; the current call (and the held call) go into the room. **Merge** opens a room as well. In a video call, the app first confirms "The conference room is voice only; video will stop."
 - **Size**: up to 30 members by default (not counting the phone), set to 2–30 in **Settings → Advanced settings → Conference room → Maximum members**; read-only when the configuration is managed remotely. The title shows the count and the limit, such as `3/30`; when the room is full, **Add members** is grayed out
-- **Add members**: choose from "Recent calls", "Directory" (the first enabled LDAP directory) or "Shortcut keys" (speed dial keys), or type a number and add it; several can be picked, then tap **Call**. Numbers already in the room are not called again
+- **Add members**: choose from "Recent calls", "Directory" (the first enabled LDAP directory) or "Shortcut keys" (speed dial keys); typing a name or a number searches the list, and a typed number can be added as it is; several can be picked, then tap **Call**. Numbers already in the room are not called again
 - **Calling**: the phone calls at most 3 members at a time; the others show "Waiting" and are called in turn
 - **Members**: each row shows the state (Waiting, Calling, Ringing, Connected, On hold), and connected members also three call quality bars; each member can be hung up on their own
 - **End**: **End conference** hangs up all members, after a confirmation when more than one member is in the room (also when hanging up from the notification). The room ends when the last member leaves
